@@ -209,12 +209,55 @@ function showView(view, fichaName) {
   document.getElementById('app-mapa').style.display  = view === 'mapa'  ? 'block' : 'none';
   document.getElementById('app-ficha').style.display = view === 'ficha' ? 'block' : 'none';
 
-  if (fichaName) {
-    const breadcrumb = document.getElementById('ficha-breadcrumb');
-    if (breadcrumb) breadcrumb.textContent = fichaName;
-  }
-
+  updateBreadcrumb(view === 'ficha' ? fichaName : null);
   window.scrollTo(0, 0);
+}
+
+/**
+ * Actualiza el breadcrumb según la vista activa.
+ * - Vista mapa:  ← Inicio / Mapa de Servicios
+ * - Vista ficha: ← Inicio / Mapa de Servicios / <fichaName>
+ * @param {string|null} fichaName - null para restaurar la vista mapa
+ */
+function updateBreadcrumb(fichaName) {
+  const nav = document.querySelector('.breadcrumb');
+  if (!nav) return;
+
+  // Eliminar ítems dinámicos previos (sep + ficha)
+  nav.querySelectorAll('.breadcrumb__dynamic').forEach(el => el.remove());
+
+  const current = nav.querySelector('.breadcrumb__current');
+  if (!current) return;
+
+  if (fichaName) {
+    // Convertir "Mapa de Servicios" en enlace clickeable
+    current.outerHTML =
+      `<a class="breadcrumb__link" onclick="showView('mapa')" style="cursor:pointer;">Mapa de Servicios</a>`;
+
+    // Agregar separador + página actual de la ficha
+    const sep = document.createElement('span');
+    sep.className = 'breadcrumb__sep breadcrumb__dynamic';
+    sep.setAttribute('aria-hidden', 'true');
+    sep.textContent = '/';
+
+    const fichaSpan = document.createElement('span');
+    fichaSpan.className = 'breadcrumb__current breadcrumb__dynamic';
+    fichaSpan.setAttribute('aria-current', 'page');
+    fichaSpan.textContent = fichaName;
+
+    nav.appendChild(sep);
+    nav.appendChild(fichaSpan);
+  } else {
+    // Restaurar "Mapa de Servicios" como ítem actual (no enlace)
+    const mapaLink = nav.querySelector('.breadcrumb__link[onclick]');
+    if (mapaLink) {
+      const span = document.createElement('span');
+      span.className = 'breadcrumb__current';
+      span.setAttribute('aria-current', 'page');
+      span.textContent = 'Mapa de Servicios';
+      mapaLink.replaceWith(span);
+    }
+  }
 }
 
 function goToFicha() {
