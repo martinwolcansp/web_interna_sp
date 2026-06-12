@@ -58,7 +58,6 @@
 .site-header__logo-img {
   height: 44px;
   display: block;
-  filter: brightness(0) saturate(100%) invert(11%) sepia(55%) saturate(800%) hue-rotate(185deg) brightness(85%);
 }
 
 .site-header__logo-fallback {
