@@ -1,0 +1,34 @@
+/* ============================================================
+   mapa-servicios.css — Estilos específicos del Mapa de Servicios
+   Sólo sobreescrituras o estilos únicos de esta página.
+   ============================================================ */
+
+/* ── WRAP ── */
+.mapa-wrap {
+  max-width: var(--max-width-content);
+  margin: var(--space-10) auto;
+  padding: 0 var(--space-6) 3rem;
+}
+
+/* ── SERVICE CARDS GRID ── */
+.service-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+/* ── TRANSVERSALES GRID ── */
+.transversal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-3);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 640px) {
+  .site-header       { flex-direction: column; }
+  .site-header__right { text-align: left; }
+  .service-grid      { grid-template-columns: 1fr; }
+  .transversal-grid  { grid-template-columns: 1fr; }
+}
