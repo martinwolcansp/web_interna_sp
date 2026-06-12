@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intranet — SP Seguridad Privada</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+
+  <style>
+    .home-wrap {
+      max-width: 860px;
+      margin: 3rem auto;
+      padding: 0 1.5rem 4rem;
+    }
+
+    .home-hero {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      border-top: 3px solid var(--color-red);
+      padding: 2rem 2.5rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .home-hero__eyebrow {
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-red);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: var(--space-2);
+    }
+
+    .home-hero__title {
+      font-size: 22px;
+      font-weight: var(--font-weight-bold);
+      color: var(--color-navy);
+      letter-spacing: -0.3px;
+    }
+
+    .home-hero__desc {
+      font-size: var(--font-size-base);
+      color: var(--color-text-muted);
+      margin-top: var(--space-2);
+      line-height: var(--line-height-base);
+    }
+
+    .home-section-label {
+      font-size: 10px;
+      font-weight: var(--font-weight-bold);
+      color: var(--color-blue);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: var(--space-3);
+    }
+
+    .home-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--space-4);
+      margin-bottom: 2rem;
+    }
+
+    .home-card {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-4);
+      transition: all var(--transition-fast);
+      position: relative;
+    }
+
+    .home-card:hover {
+      border-color: var(--color-red);
+      box-shadow: var(--shadow-red);
+      transform: translateY(-1px);
+      color: inherit;
+    }
+
+    .home-card--disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .home-card__icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      background: var(--color-blue-light);
+      border: 1px solid var(--color-blue-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .home-card__icon i {
+      font-size: 20px;
+      color: var(--color-blue);
+    }
+
+    .home-card__name {
+      font-size: var(--font-size-md);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-navy);
+      line-height: var(--line-height-tight);
+    }
+
+    .home-card__desc {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+      margin-top: 3px;
+      line-height: 1.5;
+    }
+
+    .home-card__badge {
+      position: absolute;
+      top: var(--space-3);
+      right: var(--space-3);
+      font-size: 10px;
+      background: var(--color-bg-soft);
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .home-card__badge--new {
+      background: #d1fae5;
+      color: #065f46;
+      border-color: #6ee7b7;
+    }
+
+    @media (max-width: 640px) {
+      .site-header { flex-direction: column; }
+      .site-header__right { text-align: left; }
+      .home-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header" role="banner">
+    <div>
+      <img
+        src="https://spseguridad.com.ar/wp-content/uploads/2025/06/SP-Logo-Blanco-2.svg"
+        alt="SP Seguridad Privada"
+        class="site-header__logo-img"
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+      <div class="site-header__logo-fallback">SP <span>Seguridad</span> Privada</div>
+      <p class="site-header__sub">Intranet — Uso Interno</p>
+    </div>
+    <div class="site-header__right">
+      <div class="site-header__title">Portal Interno</div>
+      <p class="site-header__subtitle">SP Seguridad Privada SA</p>
+    </div>
+  </header>
+
+  <main class="home-wrap" role="main">
+
+    <div class="home-hero">
+      <p class="home-hero__eyebrow">Bienvenido</p>
+      <h1 class="home-hero__title">Portal interno SP Seguridad</h1>
+      <p class="home-hero__desc">
+        Acceso centralizado a herramientas, documentación de productos y recursos operativos
+        para el equipo de SP Seguridad Privada.
+      </p>
+    </div>
+
+    <p class="home-section-label">Productos y servicios</p>
+    <nav class="home-grid" aria-label="Páginas del portal">
+
+      <a class="home-card" href="pages/mapa-servicios.html">
+        <div class="home-card__icon" aria-hidden="true"><i class="ti ti-map-2"></i></div>
+        <div>
+          <div class="home-card__name">Mapa de Servicios</div>
+          <p class="home-card__desc">Hogar, Comercio y Servicios Transversales. Fichas por segmento.</p>
+        </div>
+        <span class="home-card__badge home-card__badge--new">Disponible</span>
+      </a>
+
+      <a class="home-card home-card--disabled" href="#" aria-disabled="true">
+        <div class="home-card__icon" aria-hidden="true"><i class="ti ti-file-description"></i></div>
+        <div>
+          <div class="home-card__name">Fichas de Producto</div>
+          <p class="home-card__desc">Detalle completo de cada producto: equipamiento, precios y procesos.</p>
+        </div>
+        <span class="home-card__badge">Próximamente</span>
+      </a>
+
+      <a class="home-card home-card--disabled" href="#" aria-disabled="true">
+        <div class="home-card__icon" aria-hidden="true"><i class="ti ti-users"></i></div>
+        <div>
+          <div class="home-card__name">Directorio de Áreas</div>
+          <p class="home-card__desc">Responsables por área, contactos y estructura del equipo.</p>
+        </div>
+        <span class="home-card__badge">Próximamente</span>
+      </a>
+
+      <a class="home-card home-card--disabled" href="#" aria-disabled="true">
+        <div class="home-card__icon" aria-hidden="true"><i class="ti ti-sitemap"></i></div>
+        <div>
+          <div class="home-card__name">Procesos Operativos</div>
+          <p class="home-card__desc">Flujos de ventas, instalaciones, operaciones y servicio técnico.</p>
+        </div>
+        <span class="home-card__badge">Próximamente</span>
+      </a>
+
+    </nav>
+
+  </main>
+
+  <footer class="site-footer" role="contentinfo" style="max-width:860px; margin:0 auto; margin-bottom: 2rem;">
+    <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+    <div>
+      <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+      &nbsp;&middot;&nbsp;
+      <a href="tel:08102224141">0810-222-4141</a>
+    </div>
+  </footer>
+
+</body>
+</html>
