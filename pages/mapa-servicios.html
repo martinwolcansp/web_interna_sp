@@ -23,21 +23,21 @@
 <div id="app-mapa">
 
   <!-- HEADER -->
-  <header class="site-header" role="banner">
-    <div>
-      <img
-        src="https://spseguridad.com.ar/wp-content/uploads/2025/06/SP-Logo-Blanco-2.svg"
-        alt="SP Seguridad Privada"
-        class="site-header__logo-img"
-        onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-      <div class="site-header__logo-fallback">SP <span>Seguridad</span> Privada</div>
-      <p class="site-header__sub">Mapa de Servicios &mdash; Uso Interno</p>
-    </div>
-    <div class="site-header__right">
-      <div class="site-header__title">Mapa de Servicios</div>
-      <p class="site-header__subtitle">Estructura orientada al cliente &middot; Ventas y Onboarding</p>
-    </div>
-  </header>
+  <div id="site-header"
+    data-sub="Mapa de Servicios — Uso Interno"
+    data-title="Mapa de Servicios"
+    data-subtitle="Estructura orientada al cliente · Ventas y Onboarding">
+  </div>
+  <script src="/components/header/header.js"></script>
+
+  <!-- BREADCRUMB -->
+  <nav class="breadcrumb" aria-label="Navegación de retorno">
+    <a class="breadcrumb__link" href="/index.html">
+      <i class="ti ti-arrow-left" aria-hidden="true"></i> Inicio
+    </a>
+    <span class="breadcrumb__sep" aria-hidden="true">/</span>
+    <span class="breadcrumb__current">Mapa de Servicios</span>
+  </nav>
 
   <!-- CONTENIDO PRINCIPAL -->
   <main class="mapa-wrap" role="main">

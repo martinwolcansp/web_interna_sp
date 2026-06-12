@@ -151,21 +151,12 @@
 </head>
 <body>
 
-  <header class="site-header" role="banner">
-    <div>
-      <img
-        src="https://spseguridad.com.ar/wp-content/uploads/2025/06/SP-Logo-Blanco-2.svg"
-        alt="SP Seguridad Privada"
-        class="site-header__logo-img"
-        onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-      <div class="site-header__logo-fallback">SP <span>Seguridad</span> Privada</div>
-      <p class="site-header__sub">Intranet — Uso Interno</p>
-    </div>
-    <div class="site-header__right">
-      <div class="site-header__title">Portal Interno</div>
-      <p class="site-header__subtitle">SP Seguridad Privada SA</p>
-    </div>
-  </header>
+  <div id="site-header"
+    data-sub="Intranet — Uso Interno"
+    data-title="Portal Interno"
+    data-subtitle="SP Seguridad Privada SA">
+  </div>
+  <script src="/components/header/header.js"></script>
 
   <main class="home-wrap" role="main">
 

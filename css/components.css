@@ -4,6 +4,44 @@
    ============================================================ */
 
 
+/* ── BREADCRUMB ── */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-20);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  background: var(--color-bg-soft);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.breadcrumb__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-blue);
+  font-weight: var(--font-weight-medium);
+  transition: color var(--transition-fast);
+}
+
+.breadcrumb__link:hover {
+  color: var(--color-navy);
+}
+
+.breadcrumb__link i {
+  font-size: 14px;
+}
+
+.breadcrumb__sep {
+  color: var(--color-border);
+}
+
+.breadcrumb__current {
+  color: var(--color-text-muted);
+}
+
+
 /* ── SITE HEADER ── */
 .site-header {
   background: var(--color-bg);
