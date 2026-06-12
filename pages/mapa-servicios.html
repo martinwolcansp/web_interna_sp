@@ -17,16 +17,16 @@
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════════
-     VISTA: MAPA DE SERVICIOS
-     ══════════════════════════════════════════════════════════ -->
-<div id="app-mapa">
-
-  <!-- HEADER + BREADCRUMB automático -->
+  <!-- HEADER compartido: visible en todas las vistas de esta página -->
   <div id="site-header"
     data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Mapa de Servicios"}]'>
   </div>
   <script src="/components/header/header.js"></script>
+
+<!-- ══════════════════════════════════════════════════════════
+     VISTA: MAPA DE SERVICIOS
+     ══════════════════════════════════════════════════════════ -->
+<div id="app-mapa">
 
   <!-- CONTENIDO PRINCIPAL -->
   <main class="mapa-wrap" role="main">
@@ -385,15 +385,6 @@
 
       <!-- FICHA HEADER -->
       <header class="ficha-header">
-        <div>
-          <img
-            src="https://spseguridad.com.ar/wp-content/uploads/2025/06/SP-Logo-Blanco-2.svg"
-            alt="SP Seguridad Privada"
-            style="height:38px; filter: brightness(0) saturate(100%) invert(11%) sepia(55%) saturate(800%) hue-rotate(185deg) brightness(85%);"
-            onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-          <div class="ficha-header__logo" style="display:none;">SP <span>Seguridad</span> Privada</div>
-          <p class="ficha-header__sub">Ficha de Producto &mdash; Uso Interno</p>
-        </div>
         <div class="ficha-header__right">
           <span class="ficha-header__badge">Comercios</span>
           <h1 class="ficha-header__product-name">SP Comercio Seguro</h1>
