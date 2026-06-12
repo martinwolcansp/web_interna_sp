@@ -22,22 +22,14 @@
      ══════════════════════════════════════════════════════════ -->
 <div id="app-mapa">
 
-  <!-- HEADER -->
+  <!-- HEADER + BREADCRUMB automático -->
   <div id="site-header"
     data-sub="Mapa de Servicios — Uso Interno"
     data-title="Mapa de Servicios"
-    data-subtitle="Estructura orientada al cliente · Ventas y Onboarding">
+    data-subtitle="Estructura orientada al cliente · Ventas y Onboarding"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Mapa de Servicios"}]'>
   </div>
   <script src="/components/header/header.js"></script>
-
-  <!-- BREADCRUMB -->
-  <nav class="breadcrumb" aria-label="Navegación de retorno">
-    <a class="breadcrumb__link" href="/index.html">
-      <i class="ti ti-arrow-left" aria-hidden="true"></i> Inicio
-    </a>
-    <span class="breadcrumb__sep" aria-hidden="true">/</span>
-    <span class="breadcrumb__current">Mapa de Servicios</span>
-  </nav>
 
   <!-- CONTENIDO PRINCIPAL -->
   <main class="mapa-wrap" role="main">
