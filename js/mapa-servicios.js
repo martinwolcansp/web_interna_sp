@@ -22,8 +22,7 @@ const SERVICES = {
     ],
     billing: 'Cargo de instalación único + abono mensual de monitoreo. Equipamiento en comodato: el mantenimiento es responsabilidad de SP.',
     diff: 'La central monitorea de forma continua y actúa aunque el cliente no esté disponible. El sistema identifica qué usuario activó o desactivó la alarma en cada momento.',
-    ficha: 'sp_ficha_hogar.html',
-    fichaName: 'Hogar Seguro',
+    ficha: null,
   },
   'video-hogar': {
     badge: 'Hogar',
@@ -67,8 +66,7 @@ const SERVICES = {
     ],
     billing: 'Cargo de instalación único + abono mensual de monitoreo. Equipamiento en comodato: el mantenimiento es responsabilidad de SP.',
     diff: 'Combina detección, monitoreo y respuesta en un solo servicio. El registro de aperturas y cierres permite identificar irregularidades y se reporta mensualmente.',
-    ficha: 'sp_ficha_comercio.html',
-    fichaName: 'Comercio Seguro',
+    ficha: null,
   },
   'video-comercio': {
     badge: 'Comercio',
