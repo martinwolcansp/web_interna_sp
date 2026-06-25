@@ -31,6 +31,32 @@
   <!-- CONTENIDO PRINCIPAL -->
   <main class="mapa-wrap" role="main">
 
+    <!-- VERSION SELECTOR -->
+    <div class="mapa-topbar">
+      <div class="version-selector" id="version-selector">
+        <button class="version-selector__btn" id="version-btn"
+                onclick="toggleVersionDropdown()"
+                aria-haspopup="listbox" aria-expanded="false"
+                aria-label="Selector de versión del mapa">
+          <i class="ti ti-git-branch" aria-hidden="true"></i>
+          <span id="version-current-label">V1.0 — Original</span>
+          <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
+        </button>
+        <ul class="version-selector__dropdown" id="version-dropdown" role="listbox">
+          <li class="version-selector__item is-active" data-version="v1.0"
+              role="option" aria-selected="true" onclick="setVersion('v1.0')">
+            <span class="version-selector__item-label">V1.0</span>
+            <span class="version-selector__item-desc">Original</span>
+          </li>
+          <li class="version-selector__item" data-version="v1.1"
+              role="option" aria-selected="false" onclick="setVersion('v1.1')">
+            <span class="version-selector__item-label">V1.1</span>
+            <span class="version-selector__item-desc">Revisión</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <!-- SEGMENT NAV -->
     <nav class="segment-nav" role="tablist" aria-label="Segmentos de servicio">
       <button class="segment-tab is-active" role="tab" aria-selected="true"
@@ -56,7 +82,7 @@
         </div>
         <div class="segment-hero__body">
           <h2 class="segment-hero__name">Hogar</h2>
-          <p class="segment-hero__desc">
+          <p class="segment-hero__desc" data-vf="hogar-desc">
             Soluciones para residencias y familias. El objetivo es que puedas estar tranquilo en casa
             y cuando no estás. Cada servicio puede contratarse de forma independiente o combinada.
           </p>
@@ -73,17 +99,19 @@
       <div class="service-grid">
 
         <article class="service-card" onclick="openServiceModal('alarma-hogar')"
-                 role="button" tabindex="0" aria-label="Ver detalle: Alarma domiciliaria">
+                 role="button" tabindex="0"
+                 aria-label="Ver detalle: Alarma domiciliaria"
+                 data-vf-aria="alarma-hogar-card">
           <header class="service-card__header">
             <div class="service-card__icon" aria-hidden="true"><i class="ti ti-bell-ringing"></i></div>
             <div>
-              <h3 class="service-card__name">Alarma domiciliaria</h3>
+              <h3 class="service-card__name" data-vf="alarma-hogar-name">Alarma domiciliaria</h3>
               <p class="service-card__tagline">Detección y respuesta 24/7</p>
             </div>
           </header>
           <div class="service-card__problem">
             <p class="service-card__problem-label">¿Qué resuelve?</p>
-            La preocupación de no saber qué pasa en casa cuando no estás, o ante una emergencia.
+            <span data-vf="alarma-hogar-problem">La preocupación de no saber qué pasa en casa cuando no estás, o ante una emergencia.</span>
           </div>
           <div class="service-card__includes">
             <p class="service-card__includes-label">Incluye</p>

@@ -99,6 +99,120 @@ const SERVICES = {
 };
 
 
+/* ── VERSIONES ───────────────────────────────────────────── */
+
+const VERSION_DATA = {
+  'v1.0': {
+    label: 'V1.0 — Original',
+    textFields: {
+      'hogar-desc':
+        'Soluciones para residencias y familias. El objetivo es que puedas estar tranquilo en casa y cuando no estás. Cada servicio puede contratarse de forma independiente o combinada.',
+      'alarma-hogar-name':    'Alarma domiciliaria',
+      'alarma-hogar-problem': 'La preocupación de no saber qué pasa en casa cuando no estás, o ante una emergencia.',
+    },
+    ariaLabels: {
+      'alarma-hogar-card': 'Ver detalle: Alarma domiciliaria',
+    },
+    services: {
+      'alarma-hogar': {
+        name:    'Alarma domiciliaria',
+        problem: 'La preocupación de no saber qué pasa en casa cuando no estás, o ante una situación de emergencia imprevista.',
+        includes: [
+          'Instalación del sistema en el domicilio',
+          'Monitoreo 24/7 desde la central SP',
+          'Notificación inmediata ante cualquier evento',
+          'Control y armado/desarmado desde el celular (App)',
+          'Botón de pánico para emergencias manuales',
+          'Aviso ante corte de luz',
+        ],
+        diff: 'La central monitorea de forma continua y actúa aunque el cliente no esté disponible. El sistema identifica qué usuario activó o desactivó la alarma en cada momento.',
+      },
+    },
+  },
+
+  'v1.1': {
+    label: 'V1.1 — Revisión',
+    textFields: {
+      'hogar-desc':
+        'Seguridad para casas y departamentos. El objetivo es brindar total tranquilidad dentro del hogar pero también en momentos de ausencia. Cada servicio puede contratarse de forma independiente o combinada.',
+      'alarma-hogar-name':    'Alarma monitoreada',
+      'alarma-hogar-problem': 'La seguridad del hogar en todo momento: ante cualquier intento de intrusión o emergencia, tanto cuando estás en casa como cuando no estás.',
+    },
+    ariaLabels: {
+      'alarma-hogar-card': 'Ver detalle: Alarma monitoreada',
+    },
+    services: {
+      'alarma-hogar': {
+        name:    'Alarma monitoreada',
+        problem: 'Un problema de seguridad real: intrusiones o emergencias que pueden ocurrir tanto cuando no estás en casa como mientras estás presente. El sistema actúa de forma autónoma en ambos casos.',
+        includes: [
+          'Instalación del sistema en el domicilio',
+          'Monitoreo 24/7 desde la central SP',
+          'Notificación inmediata ante cualquier evento',
+          'Control y armado/desarmado desde el celular (App)',
+          'Botón de pánico',
+          'Aviso ante corte de luz',
+        ],
+        diff: 'Es un servicio de seguridad que no depende del usuario. La central actúa de forma autónoma ante cualquier emergencia aunque no se pueda ubicar al cliente. El sistema registra con precisión los movimientos, detallando quién activa o desactiva la alarma en cada momento.',
+      },
+    },
+  },
+};
+
+/**
+ * Aplica una versión del contenido al mapa de servicios.
+ * Actualiza campos de texto en el DOM, aria-labels y datos del modal.
+ * @param {string} versionKey - 'v1.0' | 'v1.1'
+ */
+function setVersion(versionKey) {
+  const vd = VERSION_DATA[versionKey];
+  if (!vd) return;
+
+  // Actualizar campos de texto
+  Object.entries(vd.textFields).forEach(([field, value]) => {
+    const el = document.querySelector(`[data-vf="${field}"]`);
+    if (el) el.textContent = value;
+  });
+
+  // Actualizar aria-labels
+  Object.entries(vd.ariaLabels).forEach(([field, value]) => {
+    const el = document.querySelector(`[data-vf-aria="${field}"]`);
+    if (el) el.setAttribute('aria-label', value);
+  });
+
+  // Actualizar datos de SERVICES (para el modal)
+  Object.entries(vd.services).forEach(([serviceId, overrides]) => {
+    Object.assign(SERVICES[serviceId], overrides);
+  });
+
+  // Actualizar UI del selector
+  document.querySelectorAll('.version-selector__item').forEach(item => {
+    const active = item.dataset.version === versionKey;
+    item.classList.toggle('is-active', active);
+    item.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  const label = document.getElementById('version-current-label');
+  if (label) label.textContent = vd.label;
+
+  closeVersionDropdown();
+}
+
+function toggleVersionDropdown() {
+  const dropdown = document.getElementById('version-dropdown');
+  const btn      = document.getElementById('version-btn');
+  if (!dropdown || !btn) return;
+  const isOpen = dropdown.classList.toggle('is-open');
+  btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
+function closeVersionDropdown() {
+  const dropdown = document.getElementById('version-dropdown');
+  const btn      = document.getElementById('version-btn');
+  if (dropdown) dropdown.classList.remove('is-open');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+
 /* ── ESTADO ─────────────────────────────────────────────── */
 
 let _currentFichaName = null;
@@ -267,7 +381,18 @@ function goToFicha() {
 /* ── INIT ────────────────────────────────────────────────── */
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Cerrar modal con Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
   });
+
+  // Cerrar dropdown de versión al click fuera
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#version-selector')) {
+      closeVersionDropdown();
+    }
+  });
+
+  // Inicializar en la versión más reciente
+  setVersion('v1.1');
 });
