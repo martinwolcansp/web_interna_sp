@@ -131,7 +131,7 @@ const VERSION_DATA = {
   },
 
   'v1.1': {
-    label: 'V1.1 — Revisión',
+    label: 'V1.1 — Revisión 25/6',
     textFields: {
       'hogar-desc':
         'Seguridad para casas y departamentos. El objetivo es brindar total tranquilidad dentro del hogar pero también en momentos de ausencia. Cada servicio puede contratarse de forma independiente o combinada.',
