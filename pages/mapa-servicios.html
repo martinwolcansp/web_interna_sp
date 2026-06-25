@@ -207,7 +207,7 @@
             con herramientas de gestión y control adaptadas al día a día de un negocio.
           </p>
           <div class="segment-hero__actions">
-            <button class="btn btn--primary" onclick="showView('ficha', 'Comercio Seguro')">
+            <button class="btn btn--primary" onclick="openFicha('comercio-seguro')">
               <i class="ti ti-file-description" aria-hidden="true"></i> Ver ficha: Comercio Seguro
             </button>
           </div>
@@ -396,319 +396,13 @@
 
 <!-- ══════════════════════════════════════════════════════════
      VISTA: FICHA DE PRODUCTO (inline SPA)
+     Contenido renderizado dinámicamente por ficha-renderer.js
      ══════════════════════════════════════════════════════════ -->
 <div id="app-ficha" style="display:none;">
 
   <div class="ficha-page">
-    <div class="ficha-wrap">
-
-      <!-- FICHA HEADER -->
-      <header class="ficha-header">
-        <div class="ficha-header__right">
-          <span class="ficha-header__badge">Comercios</span>
-          <h1 class="ficha-header__product-name">SP Comercio Seguro</h1>
-          <p class="ficha-header__version">Ver 1.1 &nbsp;&middot;&nbsp; 30/05/2025 &nbsp;&middot;&nbsp; Autor: AP</p>
-        </div>
-      </header>
-
-      <!-- SECTION TABS -->
-      <nav class="section-tab-row" role="tablist" aria-label="Secciones de la ficha">
-        <button class="section-tab is-active" role="tab" onclick="showFichaSection('general', this)">
-          <i class="ti ti-file-description" aria-hidden="true"></i> General
-        </button>
-        <button class="section-tab" role="tab" onclick="showFichaSection('equipamiento', this)">
-          <i class="ti ti-cpu" aria-hidden="true"></i> Equipamiento
-        </button>
-        <button class="section-tab" role="tab" onclick="showFichaSection('precios', this)">
-          <i class="ti ti-currency-dollar" aria-hidden="true"></i> Precios
-        </button>
-        <button class="section-tab" role="tab" onclick="showFichaSection('proceso', this)">
-          <i class="ti ti-sitemap" aria-hidden="true"></i> Procesos
-        </button>
-        <button class="section-tab" role="tab" onclick="showFichaSection('faq', this)">
-          <i class="ti ti-help-circle" aria-hidden="true"></i> FAQ
-        </button>
-        <button class="section-tab" role="tab" onclick="showFichaSection('competencia', this)">
-          <i class="ti ti-chart-bar" aria-hidden="true"></i> Competencia
-        </button>
-        <button class="section-tab" role="tab" onclick="showFichaSection('areas', this)">
-          <i class="ti ti-users" aria-hidden="true"></i> Áreas
-        </button>
-      </nav>
-
-      <!-- ── SECCIÓN: GENERAL ── -->
-      <section id="sec-general" class="section-panel is-active" role="tabpanel">
-        <div class="ficha-card-full">
-          <p class="section-label">Descripción del producto</p>
-          <p style="font-size:14px; color:#374151; line-height:1.7;">
-            Soluciones de alarmas inalámbricas para comercios en esquema de kits predefinidos más opcionales adicionales.
-            La solución se ofrece en formato de comodato con un abono mensual.
-          </p>
-        </div>
-
-        <div class="ficha-info-row">
-          <div class="ficha-info-card">
-            <i class="ti ti-building-store" aria-hidden="true"></i>
-            <div>
-              <div class="ficha-info-card__title">Cliente objetivo</div>
-              <div class="ficha-info-card__body">Comercios chicos y medianos &middot; La Plata y Gran La Plata</div>
-            </div>
-          </div>
-          <div class="ficha-info-card">
-            <i class="ti ti-contract" aria-hidden="true"></i>
-            <div>
-              <div class="ficha-info-card__title">Plazo de contrato</div>
-              <div class="ficha-info-card__body">12 meses mínimo &middot; renovación mensual automática</div>
-            </div>
-          </div>
-          <div class="ficha-info-card">
-            <i class="ti ti-device-mobile" aria-hidden="true"></i>
-            <div>
-              <div class="ficha-info-card__title">Plataforma</div>
-              <div class="ficha-info-card__body">App SP Ajax Security &middot; Smartphone y Apple Watch</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="ficha-card">
-            <p class="section-label">Forma de comercialización</p>
-            <ul class="checklist">
-              <li><i class="ti ti-check" aria-hidden="true"></i>Equipamiento en comodato</li>
-              <li><i class="ti ti-check" aria-hidden="true"></i>Cargo de instalación (herramienta de cierre)</li>
-              <li><i class="ti ti-check" aria-hidden="true"></i>Abono mensual a mes vencido</li>
-              <li><i class="ti ti-check" aria-hidden="true"></i>Facturación por mes adelantado</li>
-              <li><i class="ti ti-check" aria-hidden="true"></i>50% bonificación por cliente recomendado</li>
-            </ul>
-          </div>
-          <div class="ficha-card">
-            <p class="section-label">Check-list de lanzamiento</p>
-            <ul class="checklist">
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Nombre <span class="status-badge status-badge--ok">OK</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Alcance detallado <span class="status-badge status-badge--ok">OK</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Preguntas Frecuentes <span class="status-badge status-badge--ok">OK</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Contrato <span class="status-badge status-badge--ok">OK</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Artículo en Netsuite <span class="status-badge status-badge--ok">OK</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Material Marketing <span class="status-badge status-badge--prog">En progreso</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Proceso Ventas <span class="status-badge status-badge--rev">A revisión</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Proceso Instaladores <span class="status-badge status-badge--rev">A revisión</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Proceso Operadores <span class="status-badge status-badge--rev">A revisión</span></li>
-              <li><i class="ti ti-clipboard-list" aria-hidden="true"></i>Proceso Serv. Técnico <span class="status-badge status-badge--rev">A revisión</span></li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── SECCIÓN: EQUIPAMIENTO ── -->
-      <section id="sec-equipamiento" class="section-panel" role="tabpanel">
-        <div class="ficha-card-full">
-          <p class="section-label">Kits disponibles — Equipamiento Ajax</p>
-          <table class="data-table" style="table-layout:fixed;">
-            <thead>
-              <tr>
-                <th style="width:52%;">Componente</th>
-                <th style="width:24%; text-align:center;">Kit 1</th>
-                <th style="width:24%; text-align:center;">Kit 2</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style="background:#f9fafb;">
-                <td colspan="3" style="font-size:11px; font-weight:700; color:#9ca3af; padding:8px 12px; text-transform:uppercase; letter-spacing:0.5px;">Equipamiento instalado</td>
-              </tr>
-              <tr><td>Panel Hub 4G Jeweler c/ batería de respaldo</td><td style="text-align:center;"><span class="dot dot--ok"></span></td><td style="text-align:center;"><span class="dot dot--ok"></span></td></tr>
-              <tr><td>Detector Magnético DoorProtect inalámbrico</td><td style="text-align:center;">x 1</td><td style="text-align:center;">x 2</td></tr>
-              <tr><td>Detector Infrarrojo MotionProtect anti-mascota</td><td style="text-align:center;">x 1</td><td style="text-align:center;">x 2</td></tr>
-              <tr><td>Sirena interior HomeSiren inalámbrica</td><td style="text-align:center;"><span class="dot dot--ok"></span></td><td style="text-align:center;"><span class="dot dot--ok"></span></td></tr>
-              <tr><td>Botón Pánico Silencioso Jewel inalámbrico</td><td style="text-align:center;"><span class="dot dot--ok"></span></td><td style="text-align:center;"><span class="dot dot--ok"></span></td></tr>
-              <tr><td>Control Inalámbrico SpaceControl</td><td style="text-align:center;"><span class="dot dot--ok"></span></td><td style="text-align:center;"><span class="dot dot--ok"></span></td></tr>
-              <tr><td>Cartel disuasivo SP Seguridad Privada</td><td style="text-align:center;">x 2</td><td style="text-align:center;">x 2</td></tr>
-              <tr style="background:#f9fafb;">
-                <td colspan="3" style="font-size:11px; font-weight:700; color:#9ca3af; padding:8px 12px; text-transform:uppercase; letter-spacing:0.5px;">Adicionales opcionales</td>
-              </tr>
-              <tr><td>Cámara interior WiFi 2 Mpx FullHD + mem. 64 GB</td><td style="text-align:center;"><span class="pill">Opcional CAM</span></td><td style="text-align:center;"><span class="pill">Opcional CAM</span></td></tr>
-              <tr><td>Teclado KeyPad inalámbrico</td><td style="text-align:center;"><span class="pill">Opcional TECL</span></td><td style="text-align:center;"><span class="pill">Opcional TECL</span></td></tr>
-              <tr><td>Control Remoto SpaceControl adicional</td><td style="text-align:center;"><span class="pill">Opcional CRSC</span></td><td style="text-align:center;"><span class="pill">Opcional CRSC</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="ficha-card-full">
-          <p class="section-label">Servicios incluidos</p>
-          <div class="feature-grid">
-            <div class="feature-item"><i class="ti ti-shield-check" aria-hidden="true"></i><div class="feature-item__label">Monitoreo 7/24</div><div class="feature-item__desc">Central SP + aviso a Policía</div></div>
-            <div class="feature-item"><i class="ti ti-car" aria-hidden="true"></i><div class="feature-item__label">SP Acuda</div><div class="feature-item__desc">La Plata, Gonnet, City Bell y Villa Elisa</div></div>
-            <div class="feature-item"><i class="ti ti-video" aria-hidden="true"></i><div class="feature-item__label">Video verificación</div><div class="feature-item__desc">Ante evento de alarma — requiere cámara opcional</div></div>
-            <div class="feature-item"><i class="ti ti-device-mobile" aria-hidden="true"></i><div class="feature-item__label">App SP Ajax Security</div><div class="feature-item__desc">Smartphone, Apple Watch y versión PC</div></div>
-            <div class="feature-item"><i class="ti ti-clock" aria-hidden="true"></i><div class="feature-item__label">Control apertura/cierre</div><div class="feature-item__desc">Aviso fuera de horario + reporte mensual</div></div>
-            <div class="feature-item"><i class="ti ti-tool" aria-hidden="true"></i><div class="feature-item__label">Servicio técnico sin cargo</div><div class="feature-item__desc">Equipamiento en comodato propiedad de SP</div></div>
-            <div class="feature-item"><i class="ti ti-bolt" aria-hidden="true"></i><div class="feature-item__label">Aviso corte de luz</div><div class="feature-item__desc">Por mail y SMS al cortar y al restablecer</div></div>
-            <div class="feature-item"><i class="ti ti-smart-home" aria-hidden="true"></i><div class="feature-item__label">Domótica</div><div class="feature-item__desc">Persianas, luces, escenarios con accesorios IOT</div></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── SECCIÓN: PRECIOS ── -->
-      <section id="sec-precios" class="section-panel" role="tabpanel">
-        <div class="ficha-card-full">
-          <p class="section-label">Estructura de precios</p>
-          <div class="pricing-row">
-            <div class="price-card">
-              <div class="price-card__label">Kit 1 — Abono mensual</div>
-              <div class="price-card__value">$ —</div>
-              <div class="price-card__sub">Completar con precio vigente</div>
-            </div>
-            <div class="price-card price-card--featured">
-              <div class="price-card__badge-popular">Más contratado</div>
-              <div class="price-card__label">Kit 2 — Abono mensual</div>
-              <div class="price-card__value">$ —</div>
-              <div class="price-card__sub">Completar con precio vigente</div>
-            </div>
-            <div class="price-card">
-              <div class="price-card__label">Cargo de instalación</div>
-              <div class="price-card__value">$ —</div>
-              <div class="price-card__sub">Bonif. hasta 50% sin aprobación — hasta 100% con gerencia</div>
-            </div>
-          </div>
-          <div class="alert-box">
-            <i class="ti ti-info-circle" aria-hidden="true"></i>
-            Los abonos se ajustan periódicamente por IPC según cláusulas del contrato. SP notifica al cliente por los medios que considere conveniente.
-          </div>
-        </div>
-        <div class="ficha-card-full">
-          <p class="section-label">Condiciones de cancelación anticipada</p>
-          <table class="data-table">
-            <thead><tr><th>Momento de cancelación</th><th>Penalidad</th></tr></thead>
-            <tbody>
-              <tr><td>Antes del mes 6</td><td>Pago de todos los meses restantes hasta mes 12</td></tr>
-              <tr><td>Entre mes 6 y mes 12</td><td>80% de los meses restantes hasta completar mes 12</td></tr>
-              <tr><td>A partir del mes 13</td><td>30 días de preaviso — sin penalidad económica</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="ficha-card-full">
-          <p class="section-label">Notas sobre precios de venta</p>
-          <ul class="checklist">
-            <li><i class="ti ti-alert-triangle" style="color:#d97706;" aria-hidden="true"></i>Los precios de venta de Mayo son a valor promocional. El precio real es un 40% más alto.</li>
-            <li><i class="ti ti-discount" aria-hidden="true"></i>Instalación: bonificación hasta 50% sin aprobación — 100% con aprobación de Federico.</li>
-            <li><i class="ti ti-star" aria-hidden="true"></i>50% de bonificación de 1 mes por cliente recomendado.</li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ── SECCIÓN: PROCESO ── -->
-      <section id="sec-proceso" class="section-panel" role="tabpanel">
-        <div class="grid-2">
-          <div class="ficha-card">
-            <p class="section-label">Ventas</p>
-            <div class="process-step"><div class="process-step__num">1</div><div><div class="process-step__title">Oportunidad en NS</div><div class="process-step__note">Formulario SP Oportunidad Comodato — verificar casillero Comodato tildado</div></div></div>
-            <div class="process-step"><div class="process-step__num">2</div><div><div class="process-step__title">Presupuesto en NS</div><div class="process-step__note">Tipo de Proyecto: SP Comercio Seguro — ingresar kit + abonos correspondientes</div></div></div>
-            <div class="process-step"><div class="process-step__num">3</div><div><div class="process-step__title">Impresión y firma del contrato</div><div class="process-step__note">El presupuesto incluye texto del contrato — debe ser firmado por el cliente</div></div></div>
-            <div class="process-step"><div class="process-step__num">4</div><div><div class="process-step__title">Adjuntar contrato firmado</div><div class="process-step__note">Escanear y adjuntar en NS — original a carpeta del cliente en At. Cliente</div></div></div>
-          </div>
-          <div class="ficha-card">
-            <p class="section-label">Instalaciones</p>
-            <div class="process-step"><div class="process-step__num">1</div><div><div class="process-step__title">Orden de Instalación</div><div class="process-step__note">Verificar en presupuesto: control apertura/cierre e informe mensual</div></div></div>
-            <div class="process-step"><div class="process-step__num">2</div><div><div class="process-step__title">Configurar App usuario principal</div><div class="process-step__note">Instalar app — explicar cómo dar de alta usuarios adicionales</div></div></div>
-            <div class="process-step"><div class="process-step__num">3</div><div><div class="process-step__title">Alta en Ajax Pro y Bykom</div><div class="process-step__note">Tipo de panel: SP COMERCIO SEGURO — KIT AJAX — registrar horarios apertura/cierre</div></div></div>
-            <div class="process-step"><div class="process-step__num">4</div><div><div class="process-step__title">Cierre OV en Netsuite</div><div class="process-step__note">Transferir artículos a Depósito Comodato Cliente — asignar números de serie</div></div></div>
-          </div>
-        </div>
-        <div class="ficha-card-full">
-          <p class="section-label">Códigos Netsuite</p>
-          <table class="data-table">
-            <thead><tr><th>Artículo</th><th>Código NS</th><th>Descripción</th></tr></thead>
-            <tbody>
-              <tr><td>Kit 1 Comodato</td><td><code class="ns-code">KIT01-CDATO</code></td><td style="color:#6b7280;">Hub 4G + mag + inf + sir int + ctrl rem + bot pánico</td></tr>
-              <tr><td>Kit 2 Comodato</td><td><code class="ns-code">KIT02-CDATO</code></td><td style="color:#6b7280;">Hub 4G + mag (2) + inf (2) + sir int + ctrl rem + bot pánico</td></tr>
-              <tr><td>Kit 1 + Cámara</td><td><code class="ns-code">KIT03-CDATO</code></td><td style="color:#6b7280;">Kit 1 + cámara IP WiFi</td></tr>
-              <tr><td>Kit 2 + Cámara</td><td><code class="ns-code">KIT04-CDATO</code></td><td style="color:#6b7280;">Kit 2 + cámara IP WiFi</td></tr>
-              <tr><td>Cámara adicional c/ mem.</td><td><code class="ns-code">CC-CAM006</code></td><td style="color:#6b7280;">Cámara IP WiFi Interior Ezviz slot SD</td></tr>
-              <tr><td>Relé adicional</td><td><code class="ns-code">CC-MOD008</code></td><td style="color:#6b7280;">Módulo relé de potencia Ajax 110-230V</td></tr>
-              <tr><td>Control Remoto adicional</td><td><code class="ns-code">CC-CRE013</code></td><td style="color:#6b7280;">Control Remoto Ajax</td></tr>
-              <tr><td>Botón Pánico adicional</td><td><code class="ns-code">CC-CRE017</code></td><td style="color:#6b7280;">Botón Inalámbrico Ajax</td></tr>
-              <tr><td>Teclado adicional</td><td><code class="ns-code">CC-TEC014</code></td><td style="color:#6b7280;">Teclado Ajax táctil</td></tr>
-              <tr><td>Magnético adicional</td><td><code class="ns-code">CC-MAG004</code></td><td style="color:#6b7280;">Magnético Inalámbrico Ajax</td></tr>
-              <tr><td>Infrarrojo adicional</td><td><code class="ns-code">CC-INF014</code></td><td style="color:#6b7280;">Infrarrojo Anti-mascota Ajax</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- ── SECCIÓN: FAQ ── -->
-      <section id="sec-faq" class="section-panel" role="tabpanel">
-        <div class="ficha-card-full">
-          <p class="section-label">Preguntas frecuentes</p>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿Cómo activa/desactiva la alarma el personal? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">3 opciones: desde la App instalada en su smartphone, desde un Control Remoto inalámbrico (opcional) o desde un Teclado inalámbrico instalado en el comercio (opcional). En cualquier caso el sistema identifica al usuario.</div></div>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿Cómo sé qué empleado desactivó o activó la alarma? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">En las 3 opciones el sistema identifica al usuario: la App del smartphone está asociada al usuario, el control remoto también, y en el caso del teclado cada usuario tiene un PIN distinto.</div></div>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿Qué pasa si se dispara la alarma? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">El Centro de Monitoreo de SP se contactará para verificar la situación y solicitará la Palabra Clave. Si hay evento positivo se avisa a Policía y se despacha un móvil SP Acuda al lugar.</div></div>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿Cuánto dura la batería del sistema? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">Los detectores inalámbricos tienen baterías con duración promedio de 4 años. El hub central se conecta a 220V y ante un corte de luz opera con batería por un promedio de 15 horas. Desde la app se puede ver el estado de batería de todos los componentes.</div></div>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿SP puede ver mis cámaras en cualquier momento? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">No. SP solo puede acceder a las cámaras cuando se genera un evento de alarma desde la central. En otros momentos SP no tiene acceso.</div></div>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿Cuánto tiempo entre la firma del contrato y la instalación? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">Dentro de los 5 días hábiles. El departamento de instalaciones se contactará dentro de las 48 horas de la contratación para coordinar la fecha.</div></div>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿Cómo agrego nuevos usuarios a la app? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">Contactando con nuestro Centro de Atención. El nuevo usuario debe instalarse la app, generar una cuenta con un mail e informarnos con qué email se inscribió para darlo de alta.</div></div>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿Qué pasa si un elemento instalado se rompe? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">Si el equipo tiene un problema de fabricación, SP se hace cargo del reemplazo sin cargo ya que está en comodato. Si la rotura es por causas atribuibles al cliente, se cobra un cargo de reposición del elemento dañado.</div></div>
-          <div class="faq-item"><div class="faq-item__question" onclick="toggleFaq(this.parentElement)">¿Cómo me llega el reporte de apertura y cierre? <i class="ti ti-chevron-down" aria-hidden="true"></i></div><div class="faq-item__answer">En forma mensual se envía un mail con el reporte de aperturas y cierres con detalle de día, hora y usuario en formato PDF.</div></div>
-        </div>
-      </section>
-
-      <!-- ── SECCIÓN: COMPETENCIA ── -->
-      <section id="sec-competencia" class="section-panel" role="tabpanel">
-        <div class="ficha-card-full">
-          <p class="section-label">Análisis comparativo de competencia</p>
-          <table class="data-table comparison-table">
-            <thead>
-              <tr>
-                <th>Criterio</th>
-                <th class="sp-col">SP Comercio Seguro</th>
-                <th>901</th>
-                <th>Prosegur</th>
-                <th>ADT</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Equipamiento</td><td class="sp-col">Kit predefinido + opcionales</td><td>Kit básico</td><td>Kit básico</td><td>Kit básico</td></tr>
-              <tr><td>Comodato</td><td class="sp-col"><span class="dot dot--ok"></span> Sí</td><td><span class="dot dot--no"></span> No</td><td><span class="dot dot--ok"></span> Sí</td><td><span class="dot dot--ok"></span> Con opción a compra</td></tr>
-              <tr><td>Móvil Acuda propio</td><td class="sp-col"><span class="dot dot--ok"></span> Auto propio</td><td><span class="dot dot--ok"></span> Sí</td><td>Moto</td><td><span class="dot dot--no"></span> No</td></tr>
-              <tr><td>Abono mensual</td><td class="sp-col" style="font-weight:600;">Actualizar</td><td>$ 38.000</td><td>$ 40–100K</td><td>$ 61.900–69.900</td></tr>
-              <tr><td>Cargo instalación</td><td class="sp-col">Bonificable hasta 100%</td><td>Incluido en equipo</td><td>Bonif. hasta 100K$</td><td>$ 92.900–104.900</td></tr>
-              <tr><td>Cotización online</td><td class="sp-col"><span class="dot dot--ok"></span> Sí</td><td><span class="dot dot--no"></span> No</td><td><span class="dot dot--ok"></span> Sí</td><td>—</td></tr>
-              <tr><td>Video verificación</td><td class="sp-col"><span class="dot dot--ok"></span> Sí</td><td>—</td><td>—</td><td>Con cámara opcional</td></tr>
-            </tbody>
-          </table>
-          <p class="comparison-note">
-            <i class="ti ti-alert-triangle" style="color:#d97706;" aria-hidden="true"></i>
-            Precios de competencia de mayo 2025 — requieren actualización periódica.
-          </p>
-        </div>
-      </section>
-
-      <!-- ── SECCIÓN: ÁREAS ── -->
-      <section id="sec-areas" class="section-panel" role="tabpanel">
-        <div class="ficha-card-full">
-          <p class="section-label">Aprobación por área</p>
-          <table class="data-table">
-            <thead><tr><th>Área</th><th>Responsable</th><th>Comentarios / Pendientes</th><th>Estado</th></tr></thead>
-            <tbody>
-              <tr><td>Ventas y Mktg</td><td>Federico</td><td>—</td><td><span class="status-badge status-badge--ok">OK — 30-5-25</span></td></tr>
-              <tr><td>Vendedor</td><td>Gustavo</td><td>Ver comentarios en ficha original (sirena exterior, proceso presupuesto, firma digital)</td><td><span class="status-badge status-badge--rev">Pendiente</span></td></tr>
-              <tr><td>Vendedor</td><td>Gonzalo</td><td>—</td><td><span class="status-badge status-badge--rev">Pendiente</span></td></tr>
-              <tr><td>Operaciones</td><td>Gonzalo</td><td>—</td><td><span class="status-badge status-badge--rev">Pendiente</span></td></tr>
-              <tr><td>Instalaciones</td><td>Eduardo</td><td>—</td><td><span class="status-badge status-badge--rev">Pendiente</span></td></tr>
-              <tr><td>Servicio Técnico</td><td>Martín</td><td>—</td><td><span class="status-badge status-badge--ok">OK — 30/05/2025</span></td></tr>
-              <tr><td>Operadores</td><td>Orlando</td><td>Protocolo Pánico desde App fuera del comercio — pendiente de redacción</td><td><span class="status-badge status-badge--rev">Pendiente</span></td></tr>
-              <tr><td>Admin y Precios</td><td>Belén</td><td>—</td><td><span class="status-badge status-badge--ok">OK — 30/05/2025</span></td></tr>
-              <tr><td>Facturación</td><td>Marcela</td><td>—</td><td><span class="status-badge status-badge--rev">Pendiente</span></td></tr>
-              <tr><td>Depósito</td><td>David</td><td>Resolver Nros de serie en rol Jefe Depósito para seguimiento de artículos en comodato</td><td><span class="status-badge status-badge--rev">Pendiente</span></td></tr>
-              <tr><td>Procesos</td><td>Martín</td><td>Pasos en NS para Instalaciones y Depósito agregados</td><td><span class="status-badge status-badge--ok">OK — 28/05/2025</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- FICHA FOOTER -->
-      <footer class="ficha-footer">
-        <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
-        <div>ventas@spseguridad.com.ar &nbsp;&middot;&nbsp; 0810-222-4141</div>
-      </footer>
-
+    <div class="ficha-wrap" id="ficha-container">
+      <!-- renderFicha(data) inyecta aquí el contenido -->
     </div><!-- /.ficha-wrap -->
   </div><!-- /.ficha-page -->
 </div><!-- /#app-ficha -->
@@ -741,7 +435,13 @@
 </div>
 
 
-<!-- Scripts -->
+<!-- Datos de fichas (deben cargarse antes del renderer) -->
+<script src="../js/fichas/comercio-seguro.js"></script>
+<script src="../js/fichas/hogar-venta.js"></script>
+<script src="../js/fichas/hogar-comodato.js"></script>
+<!-- Renderer de fichas -->
+<script src="../js/ficha-renderer.js"></script>
+<!-- Lógica del mapa y de la ficha -->
 <script src="../js/mapa-servicios.js"></script>
 <script src="../js/ficha.js"></script>
 

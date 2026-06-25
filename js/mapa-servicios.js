@@ -55,6 +55,7 @@ const SERVICES = {
   'alarma-comercio': {
     badge: 'Comercio',
     name: 'Protección anti-intrusión',
+    ficha: 'comercio-seguro',
     problem: 'El riesgo de robo o ingreso no autorizado al local, especialmente fuera del horario comercial.',
     includes: [
       'Instalación del sistema de alarma en el local',
@@ -216,6 +217,7 @@ function closeVersionDropdown() {
 /* ── ESTADO ─────────────────────────────────────────────── */
 
 let _currentFichaName = null;
+let _currentFichaId   = null;
 
 
 /* ── SEGMENT TABS ────────────────────────────────────────── */
@@ -248,7 +250,8 @@ function openServiceModal(serviceId) {
   const service = SERVICES[serviceId];
   if (!service) return;
 
-  _currentFichaName = service.fichaName || null;
+  _currentFichaId   = service.ficha    || null;
+  _currentFichaName = service.name     || null;
 
   document.getElementById('modal-badge').textContent = service.badge;
   document.getElementById('modal-name').textContent  = service.name;
@@ -372,9 +375,23 @@ function updateBreadcrumb(fichaName) {
   }
 }
 
+/**
+ * Renderiza y navega a una ficha por ID.
+ * @param {string} fichaId - Clave en el objeto FICHAS de ficha-renderer.js
+ */
+function openFicha(fichaId) {
+  const data = (typeof FICHAS !== 'undefined') ? FICHAS[fichaId] : null;
+  if (data) renderFicha(data);
+  showView('ficha', data ? data.name : 'Ficha de Producto');
+}
+
 function goToFicha() {
   closeModal();
-  showView('ficha', _currentFichaName || 'Ficha de Producto');
+  if (_currentFichaId) {
+    openFicha(_currentFichaId);
+  } else {
+    showView('ficha', _currentFichaName || 'Ficha de Producto');
+  }
 }
 
 
