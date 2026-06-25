@@ -84,9 +84,9 @@ const FICHA_COMERCIO_SEGURO = {
   /* ── PRECIOS ─────────────────────────────────────────── */
   precios: {
     cards: [
-      { label: 'Kit 1 — Abono mensual', value: '$ —', sub: 'Completar con precio vigente',                                          featured: false },
-      { label: 'Kit 2 — Abono mensual', value: '$ —', sub: 'Completar con precio vigente', featured: true, featuredLabel: 'Más contratado' },
-      { label: 'Cargo de instalación',  value: '$ —', sub: 'Bonif. hasta 50% sin aprobación — hasta 100% con gerencia',             featured: false },
+      { label: 'Kit 1 — Abono mensual', value: '$ 75.000.-', sub: 'Completar con precio vigente',                                          featured: false },
+      { label: 'Kit 2 — Abono mensual', value: '$ 85.000.-', sub: 'Completar con precio vigente', featured: true, featuredLabel: 'Más contratado' },
+      { label: 'Cargo de instalación',  value: '$ 0', sub: 'Bonif. hasta 50% sin aprobación — hasta 100% con gerencia',             featured: false },
     ],
     alerta: 'Los abonos se ajustan periódicamente por IPC según cláusulas del contrato. SP notifica al cliente por los medios que considere conveniente.',
     cancelacion: [
