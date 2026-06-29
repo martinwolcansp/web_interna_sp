@@ -17,7 +17,7 @@
 </head>
 <body>
 
-  <!-- HEADER compartido: visible en todas las vistas de esta página -->
+  <!-- HEADER compartido -->
   <div id="site-header"
     data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Mapa de Servicios"}]'>
   </div>
@@ -27,8 +27,6 @@
      VISTA: MAPA DE SERVICIOS
      ══════════════════════════════════════════════════════════ -->
 <div id="app-mapa">
-
-  <!-- CONTENIDO PRINCIPAL -->
   <main class="mapa-wrap" role="main">
 
     <!-- VERSION SELECTOR -->
@@ -39,20 +37,11 @@
                 aria-haspopup="listbox" aria-expanded="false"
                 aria-label="Selector de versión del mapa">
           <i class="ti ti-git-branch" aria-hidden="true"></i>
-          <span id="version-current-label">V1.0 — Original</span>
+          <span id="version-current-label">Cargando…</span>
           <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
         </button>
         <ul class="version-selector__dropdown" id="version-dropdown" role="listbox">
-          <li class="version-selector__item is-active" data-version="v1.0"
-              role="option" aria-selected="true" onclick="setVersion('v1.0')">
-            <span class="version-selector__item-label">V1.0</span>
-            <span class="version-selector__item-desc">Original</span>
-          </li>
-          <li class="version-selector__item" data-version="v1.1"
-              role="option" aria-selected="false" onclick="setVersion('v1.1')">
-            <span class="version-selector__item-label">V1.1</span>
-            <span class="version-selector__item-desc">Revisión</span>
-          </li>
+          <!-- Renderizado por mapa-servicios.js -->
         </ul>
       </div>
     </div>
@@ -75,308 +64,34 @@
 
     <!-- ══ SEGMENTO: HOGAR ══ -->
     <section id="segment-hogar" class="segment-panel is-active" role="tabpanel" aria-label="Hogar">
-
-      <div class="segment-hero">
-        <div class="segment-hero__icon" aria-hidden="true">
-          <i class="ti ti-home"></i>
-        </div>
-        <div class="segment-hero__body">
-          <h2 class="segment-hero__name">Hogar</h2>
-          <p class="segment-hero__desc" data-vf="hogar-desc">
-            Soluciones para residencias y familias. El objetivo es que puedas estar tranquilo en casa
-            y cuando no estás. Cada servicio puede contratarse de forma independiente o combinada.
-          </p>
-          <div class="segment-hero__actions">
-            <span class="btn btn--disabled">
-              <i class="ti ti-clock" aria-hidden="true"></i>
-              Ficha Hogar Seguro — Próximamente
-            </span>
-          </div>
-        </div>
+      <div class="segment-hero" id="hero-hogar">
+        <!-- Renderizado por mapa-servicios.js -->
       </div>
-
       <p class="section-label">Servicios disponibles</p>
-      <div class="service-grid">
-
-        <article class="service-card" onclick="openServiceModal('alarma-hogar')"
-                 role="button" tabindex="0"
-                 aria-label="Ver detalle: Alarma domiciliaria"
-                 data-vf-aria="alarma-hogar-card">
-          <header class="service-card__header">
-            <div class="service-card__icon" aria-hidden="true"><i class="ti ti-bell-ringing"></i></div>
-            <div>
-              <h3 class="service-card__name" data-vf="alarma-hogar-name">Alarma domiciliaria</h3>
-              <p class="service-card__tagline">Detección y respuesta 24/7</p>
-            </div>
-          </header>
-          <div class="service-card__problem">
-            <p class="service-card__problem-label">¿Qué resuelve?</p>
-            <span data-vf="alarma-hogar-problem">La preocupación de no saber qué pasa en casa cuando no estás, o ante una emergencia.</span>
-          </div>
-          <div class="service-card__includes">
-            <p class="service-card__includes-label">Incluye</p>
-            <ul class="tag-list" aria-label="Características incluidas">
-              <li class="tag">Instalación</li>
-              <li class="tag">Monitoreo 24/7</li>
-              <li class="tag">App móvil</li>
-              <li class="tag">Botón pánico</li>
-            </ul>
-          </div>
-          <footer class="service-card__footer">
-            <span class="service-card__billing">
-              <i class="ti ti-calendar-repeat" aria-hidden="true"></i> Instalación + abono mensual
-            </span>
-            <span class="service-card__cta">Ver ficha <i class="ti ti-arrow-right" aria-hidden="true"></i></span>
-          </footer>
-        </article>
-
-        <article class="service-card" onclick="openServiceModal('video-hogar')"
-                 role="button" tabindex="0" aria-label="Ver detalle: Videovigilancia">
-          <header class="service-card__header">
-            <div class="service-card__icon" aria-hidden="true"><i class="ti ti-video"></i></div>
-            <div>
-              <h3 class="service-card__name">Videovigilancia</h3>
-              <p class="service-card__tagline">Monitoreo visual interior y exterior</p>
-            </div>
-          </header>
-          <div class="service-card__problem">
-            <p class="service-card__problem-label">¿Qué resuelve?</p>
-            No poder ver qué ocurre en el hogar en tiempo real, o no tener registro visual ante un incidente.
-          </div>
-          <div class="service-card__includes">
-            <p class="service-card__includes-label">Incluye</p>
-            <ul class="tag-list">
-              <li class="tag">Cámaras int./ext.</li>
-              <li class="tag">Grabación continua</li>
-              <li class="tag">Acceso remoto</li>
-              <li class="tag">Video verificación</li>
-            </ul>
-          </div>
-          <footer class="service-card__footer">
-            <span class="service-card__billing">
-              <i class="ti ti-calendar-repeat" aria-hidden="true"></i> Instalación + abono mensual
-            </span>
-            <span class="service-card__cta">Ver ficha <i class="ti ti-arrow-right" aria-hidden="true"></i></span>
-          </footer>
-        </article>
-
-        <article class="service-card" onclick="openServiceModal('cerco-hogar')"
-                 role="button" tabindex="0" aria-label="Ver detalle: Cerco eléctrico">
-          <header class="service-card__header">
-            <div class="service-card__icon" aria-hidden="true"><i class="ti ti-fence"></i></div>
-            <div>
-              <h3 class="service-card__name">Cerco eléctrico</h3>
-              <p class="service-card__tagline">Protección perimetral activa</p>
-            </div>
-          </header>
-          <div class="service-card__problem">
-            <p class="service-card__problem-label">¿Qué resuelve?</p>
-            El riesgo de ingreso no autorizado por los límites de la propiedad.
-          </div>
-          <div class="service-card__includes">
-            <p class="service-card__includes-label">Incluye</p>
-            <ul class="tag-list">
-              <li class="tag">Instalación perimetral</li>
-              <li class="tag">Disuasión visible</li>
-              <li class="tag">Alerta inmediata</li>
-              <li class="tag">Integración monitoreo</li>
-            </ul>
-          </div>
-          <footer class="service-card__footer">
-            <span class="service-card__billing">
-              <i class="ti ti-calendar-repeat" aria-hidden="true"></i> Instalación + abono mensual
-            </span>
-            <span class="service-card__cta">Ver ficha <i class="ti ti-arrow-right" aria-hidden="true"></i></span>
-          </footer>
-        </article>
-
+      <div class="service-grid" id="grid-hogar">
+        <!-- Renderizado por mapa-servicios.js -->
       </div>
     </section>
 
     <!-- ══ SEGMENTO: COMERCIO ══ -->
     <section id="segment-comercio" class="segment-panel" role="tabpanel" aria-label="Comercio">
-
-      <div class="segment-hero">
-        <div class="segment-hero__icon" aria-hidden="true">
-          <i class="ti ti-building-store"></i>
-        </div>
-        <div class="segment-hero__body">
-          <h2 class="segment-hero__name">Comercio</h2>
-          <p class="segment-hero__desc">
-            Soluciones para negocios, locales y PyMEs. Protección del local y los activos,
-            con herramientas de gestión y control adaptadas al día a día de un negocio.
-          </p>
-          <div class="segment-hero__actions">
-            <button class="btn btn--primary" onclick="openFicha('comercio-seguro')">
-              <i class="ti ti-file-description" aria-hidden="true"></i> Ver ficha: Comercio Seguro
-            </button>
-          </div>
-        </div>
+      <div class="segment-hero" id="hero-comercio">
+        <!-- Renderizado por mapa-servicios.js -->
       </div>
-
       <p class="section-label">Servicios disponibles</p>
-      <div class="service-grid">
-
-        <article class="service-card" onclick="openServiceModal('alarma-comercio')"
-                 role="button" tabindex="0" aria-label="Ver detalle: Protección anti-intrusión">
-          <header class="service-card__header">
-            <div class="service-card__icon" aria-hidden="true"><i class="ti ti-shield-lock"></i></div>
-            <div>
-              <h3 class="service-card__name">Protección anti-intrusión</h3>
-              <p class="service-card__tagline">Alarma + monitoreo + respuesta</p>
-            </div>
-          </header>
-          <div class="service-card__problem">
-            <p class="service-card__problem-label">¿Qué resuelve?</p>
-            El riesgo de robo o ingreso no autorizado, especialmente fuera del horario comercial.
-          </div>
-          <div class="service-card__includes">
-            <p class="service-card__includes-label">Incluye</p>
-            <ul class="tag-list">
-              <li class="tag">Instalación</li>
-              <li class="tag">Monitoreo 24/7</li>
-              <li class="tag">Control apertura/cierre</li>
-              <li class="tag">Respuesta ante alertas</li>
-            </ul>
-          </div>
-          <footer class="service-card__footer">
-            <span class="service-card__billing">
-              <i class="ti ti-calendar-repeat" aria-hidden="true"></i> Instalación + abono mensual
-            </span>
-            <span class="service-card__cta">Ver ficha <i class="ti ti-arrow-right" aria-hidden="true"></i></span>
-          </footer>
-        </article>
-
-        <article class="service-card" onclick="openServiceModal('video-comercio')"
-                 role="button" tabindex="0" aria-label="Ver detalle: Videovigilancia comercio">
-          <header class="service-card__header">
-            <div class="service-card__icon" aria-hidden="true"><i class="ti ti-video"></i></div>
-            <div>
-              <h3 class="service-card__name">Videovigilancia</h3>
-              <p class="service-card__tagline">Verificación visual y evidencia</p>
-            </div>
-          </header>
-          <div class="service-card__problem">
-            <p class="service-card__problem-label">¿Qué resuelve?</p>
-            La falta de visibilidad sobre lo que ocurre en el local y la necesidad de evidencia ante incidentes.
-          </div>
-          <div class="service-card__includes">
-            <p class="service-card__includes-label">Incluye</p>
-            <ul class="tag-list">
-              <li class="tag">Cámaras int./ext.</li>
-              <li class="tag">Grabación continua</li>
-              <li class="tag">Acceso remoto</li>
-              <li class="tag">Video verificación</li>
-            </ul>
-          </div>
-          <footer class="service-card__footer">
-            <span class="service-card__billing">
-              <i class="ti ti-calendar-repeat" aria-hidden="true"></i> Instalación + abono mensual
-            </span>
-            <span class="service-card__cta">Ver ficha <i class="ti ti-arrow-right" aria-hidden="true"></i></span>
-          </footer>
-        </article>
-
-        <article class="service-card" onclick="openServiceModal('accesos-comercio')"
-                 role="button" tabindex="0" aria-label="Ver detalle: Control de accesos">
-          <header class="service-card__header">
-            <div class="service-card__icon" aria-hidden="true"><i class="ti ti-door"></i></div>
-            <div>
-              <h3 class="service-card__name">Control de accesos</h3>
-              <p class="service-card__tagline">Registro y trazabilidad de ingresos</p>
-            </div>
-          </header>
-          <div class="service-card__problem">
-            <p class="service-card__problem-label">¿Qué resuelve?</p>
-            La falta de control sobre quién entra al local, cuándo y a qué sectores.
-          </div>
-          <div class="service-card__includes">
-            <p class="service-card__includes-label">Incluye</p>
-            <ul class="tag-list">
-              <li class="tag">Tarjeta / código / biometría</li>
-              <li class="tag">Registro de accesos</li>
-              <li class="tag">Gestión de permisos</li>
-              <li class="tag">Zonas restringidas</li>
-            </ul>
-          </div>
-          <footer class="service-card__footer">
-            <span class="service-card__billing">
-              <i class="ti ti-calendar-repeat" aria-hidden="true"></i> Instalación + abono mensual
-            </span>
-            <span class="service-card__cta">Ver ficha <i class="ti ti-arrow-right" aria-hidden="true"></i></span>
-          </footer>
-        </article>
-
+      <div class="service-grid" id="grid-comercio">
+        <!-- Renderizado por mapa-servicios.js -->
       </div>
     </section>
 
     <!-- ══ SEGMENTO: TRANSVERSALES ══ -->
     <section id="segment-transversal" class="segment-panel" role="tabpanel" aria-label="Servicios Transversales">
-
-      <div class="segment-hero">
-        <div class="segment-hero__icon" aria-hidden="true">
-          <i class="ti ti-layers-intersect"></i>
-        </div>
-        <div class="segment-hero__body">
-          <h2 class="segment-hero__name">Servicios Transversales</h2>
-          <p class="segment-hero__desc">
-            Servicios y capacidades que aplican a todos los segmentos. Forman parte del valor
-            diferencial de SP y están disponibles para clientes residenciales y comerciales.
-          </p>
-        </div>
+      <div class="segment-hero" id="hero-transversal">
+        <!-- Renderizado por mapa-servicios.js -->
       </div>
-
       <p class="section-label">Capacidades de SP</p>
-      <div class="transversal-grid">
-
-        <div class="transversal-card">
-          <div class="transversal-card__icon" aria-hidden="true"><i class="ti ti-shield-check"></i></div>
-          <div>
-            <h3 class="transversal-card__name">Monitoreo 24/7</h3>
-            <p class="transversal-card__desc">Central propia de monitoreo con respuesta continua ante eventos.</p>
-          </div>
-        </div>
-
-        <div class="transversal-card">
-          <div class="transversal-card__icon" aria-hidden="true"><i class="ti ti-car"></i></div>
-          <div>
-            <h3 class="transversal-card__name">SP Acuda</h3>
-            <p class="transversal-card__desc">Móvil propio de respuesta. La Plata, Gonnet, City Bell y Villa Elisa.</p>
-          </div>
-        </div>
-
-        <div class="transversal-card">
-          <div class="transversal-card__icon" aria-hidden="true"><i class="ti ti-device-mobile"></i></div>
-          <div>
-            <h3 class="transversal-card__name">App Ajax Security</h3>
-            <p class="transversal-card__desc">Control total desde el celular. Disponible en smartphone y Apple Watch.</p>
-          </div>
-        </div>
-
-        <div class="transversal-card">
-          <div class="transversal-card__icon" aria-hidden="true"><i class="ti ti-tool"></i></div>
-          <div>
-            <h3 class="transversal-card__name">Servicio técnico</h3>
-            <p class="transversal-card__desc">Resolución rápida de problemas. Asistencia remota o con visita cuando se requiere.</p>
-          </div>
-        </div>
-
-        <div class="transversal-card">
-          <div class="transversal-card__icon" aria-hidden="true"><i class="ti ti-bolt"></i></div>
-          <div>
-            <h3 class="transversal-card__name">Aviso corte de luz</h3>
-            <p class="transversal-card__desc">Notificación por mail y SMS al cortar y al restablecer el servicio eléctrico.</p>
-          </div>
-        </div>
-
-        <div class="transversal-card">
-          <div class="transversal-card__icon" aria-hidden="true"><i class="ti ti-headset"></i></div>
-          <div>
-            <h3 class="transversal-card__name">Atención al cliente</h3>
-            <p class="transversal-card__desc">Centro de atención disponible para consultas, gestión de usuarios y soporte.</p>
-          </div>
-        </div>
-
+      <div class="transversal-grid" id="grid-transversal">
+        <!-- Renderizado por mapa-servicios.js -->
       </div>
     </section>
 
@@ -396,16 +111,14 @@
 
 <!-- ══════════════════════════════════════════════════════════
      VISTA: FICHA DE PRODUCTO (inline SPA)
-     Contenido renderizado dinámicamente por ficha-renderer.js
      ══════════════════════════════════════════════════════════ -->
 <div id="app-ficha" style="display:none;">
-
   <div class="ficha-page">
     <div class="ficha-wrap" id="ficha-container">
       <!-- renderFicha(data) inyecta aquí el contenido -->
-    </div><!-- /.ficha-wrap -->
-  </div><!-- /.ficha-page -->
-</div><!-- /#app-ficha -->
+    </div>
+  </div>
+</div>
 
 
 <!-- ══════════════════════════════════════════════════════════
@@ -441,6 +154,10 @@
 <script src="../js/fichas/hogar-comodato.js"></script>
 <!-- Renderer de fichas -->
 <script src="../js/ficha-renderer.js"></script>
+<!-- Versiones del mapa (orden cronológico) -->
+<script src="../js/versiones/mapa-v1.0.js"></script>
+<script src="../js/versiones/mapa-v1.1.js"></script>
+<script src="../js/versiones/mapa-v1.2.js"></script>
 <!-- Lógica del mapa y de la ficha -->
 <script src="../js/mapa-servicios.js"></script>
 <script src="../js/ficha.js"></script>
