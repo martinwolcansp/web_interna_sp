@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organigrama — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/organigrama.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Organigrama"}]'>
+  </div>
+  <script src="/components/header/header.js"></script>
+
+  <main class="org-wrap" role="main">
+    <section class="org-section" aria-labelledby="org-section-title">
+      <div class="org-section__header">
+        <h1 id="org-section-title" class="org-section__title">Organigrama</h1>
+        <p class="org-section__subtitle">Tocá cada área para ver responsable, cargo y funciones.</p>
+      </div>
+
+      <div id="orgChart" class="org-chart" aria-label="Árbol del organigrama institucional"></div>
+    </section>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Modal de detalle de área (estilos/lógica propios de esta página: ver organigrama.css / organigrama.js) -->
+  <div id="orgModal" class="org-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="org-modal__backdrop"></div>
+    <div class="org-modal__dialog">
+      <button type="button" class="org-modal__close" aria-label="Cerrar">&times;</button>
+      <h2 class="org-modal__title"></h2>
+      <p class="org-modal__subtitle" hidden></p>
+      <div class="org-modal__body"></div>
+    </div>
+  </div>
+
+  <script type="module" src="../js/organigrama.js"></script>
+</body>
+</html>

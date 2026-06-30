@@ -1,0 +1,227 @@
+/* ============================================================
+   organigrama.css — Estilos específicos de la página Organigrama
+   Árbol jerárquico de áreas + modal de detalle (org-modal).
+   ============================================================ */
+
+.org-wrap {
+  max-width: var(--max-width-content);
+  margin: 0 auto;
+  padding: 0 1.5rem 2rem;
+}
+
+.org-section {
+  padding: var(--space-10) 0 var(--space-6);
+}
+
+.org-section__header {
+  margin-bottom: var(--space-10);
+}
+
+.org-section__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.org-section__subtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+}
+
+/* Árbol jerárquico, mobile-first: lista anidada con líneas de conexión */
+.org-chart__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.org-chart__list .org-chart__list {
+  margin-top: var(--space-4);
+  margin-left: var(--space-6);
+  padding-left: var(--space-6);
+  border-left: 2px solid var(--color-border);
+}
+
+.org-node__row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.org-node__toggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-xs);
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+.org-node__toggle:hover { background: var(--color-bg-soft); }
+.org-node__toggle[aria-expanded="true"] { transform: rotate(90deg); }
+.org-node__toggle--spacer { visibility: hidden; }
+
+.org-node__card {
+  flex: 1;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.org-node__card:hover {
+  box-shadow: var(--shadow-red);
+  border-color: var(--color-red);
+  transform: translateY(-1px);
+}
+
+.org-node__card--root {
+  border: none;
+  border-top: 3px solid var(--color-red);
+  background: var(--color-navy);
+  color: #fff;
+}
+.org-node__card--root .org-node__cargo { color: #cfe0ff; }
+.org-node__card--root:hover { transform: none; }
+
+.org-node__card--item {
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-bg-soft);
+}
+
+.org-node__area {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+}
+
+.org-node__responsable {
+  font-size: var(--font-size-sm);
+}
+
+.org-node__cargo {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.org-node__children {
+  margin-left: 28px; /* alinea con el ancho del toggle */
+}
+
+@media (min-width: 720px) {
+  .org-node__card { padding: var(--space-6); }
+  .org-node__area { font-size: var(--font-size-md); }
+}
+
+
+/* ── ORG MODAL (detalle de área) ──
+   Namespace propio para no colisionar con .modal-overlay/.modal de components.css. */
+.org-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  padding: var(--space-6);
+}
+
+.org-modal.is-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.org-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 35, 64, 0.55);
+}
+
+.org-modal__dialog {
+  position: relative;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  border-top: 3px solid var(--color-red);
+  max-width: var(--max-width-modal);
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-8);
+  box-shadow: var(--shadow-lg);
+}
+
+.org-modal__close {
+  position: absolute;
+  top: var(--space-6);
+  right: var(--space-6);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  transition: background var(--transition-fast);
+}
+.org-modal__close:hover { background: var(--color-border); color: var(--color-navy); }
+
+.org-modal__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-right: var(--space-20);
+}
+
+.org-modal__subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+.org-modal__subtitle[hidden] { display: none; }
+
+.org-modal__body {
+  margin-top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.org-modal__section-title {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: var(--space-2);
+}
+
+.org-modal__list {
+  list-style: disc;
+  padding-left: var(--space-6);
+  font-size: var(--font-size-base);
+  color: var(--color-text-body);
+  line-height: var(--line-height-loose);
+}
+
+.org-modal__placeholder {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
