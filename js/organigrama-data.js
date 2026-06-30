@@ -170,7 +170,19 @@ export const ORGANIGRAMA_DATA = {
           funcionesCargo: [],
           children: [
             { id: "instalaciones", area: "Instalaciones", type: "box", responsable: "Eduardo / Walter", cargo: "", funcionesGenerales: [], funcionesCargo: [], children: [] },
-            { id: "ampliaciones", area: "Ampliaciones", type: "box", responsable: "Federico Champané", cargo: "", funcionesGenerales: [], funcionesCargo: [], children: [] },
+            {
+              id: "ampliaciones",
+              area: "Ampliaciones",
+              type: "box",
+              responsable: "Federico Champané",
+              cargo: "",
+              funcionesGenerales: [],
+              funcionesCargo: [],
+              children: [
+                { id: "operacion-tecnica-ampliaciones", area: "Operación Técnica de Ampliaciones", type: "item", funcionesGenerales: [], children: [] },
+                { id: "comunicaciones-renovacion-tecnologias", area: "Comunicaciones y Renovación de Tecnologías", type: "item", funcionesGenerales: [], children: [] }
+              ]
+            },
             { id: "servicio-tecnico", area: "Servicio Técnico", type: "box", responsable: "Alejandro Pesce", cargo: "", funcionesGenerales: [], funcionesCargo: [], children: [] }
           ]
         },
@@ -185,7 +197,7 @@ export const ORGANIGRAMA_DATA = {
           children: [
             {
               id: "it-comunicaciones",
-              area: "Infraestructura IT y Comunicaciones",
+              area: "Infraestructura y Tecnología en Comunicaciones",
               type: "box",
               responsable: "Gunther Block",
               cargo: "",
@@ -216,7 +228,7 @@ export const ORGANIGRAMA_DATA = {
           area: "Procesos y Mejora Continua",
           type: "box",
           responsable: "Martin Wolcan",
-          cargo: "Gte. Procesos",
+          cargo: "Gte. Procesos y Mejora Continua",
           funcionesGenerales: [],
           funcionesCargo: [],
           children: [
