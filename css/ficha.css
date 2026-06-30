@@ -37,6 +37,14 @@
   padding: 0 var(--space-6) 3rem;
 }
 
+/* Version selector alineado con ficha-wrap */
+#app-ficha .mapa-topbar {
+  max-width: var(--max-width-ficha);
+  margin-right: auto;
+  margin-left: auto;
+  padding: 0 var(--space-6);
+}
+
 
 /* ── FICHA HEADER ── */
 .ficha-header {
