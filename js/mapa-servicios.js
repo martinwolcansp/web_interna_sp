@@ -336,12 +336,15 @@ function updateBreadcrumb(fichaName) {
 }
 
 /**
- * Renderiza y navega a una ficha por ID.
- * @param {string} fichaId
+ * Renderiza y navega a una ficha por ID (última versión disponible).
+ * @param {string} fichaId - ej. 'comercio-seguro'
  */
 function openFicha(fichaId) {
-  const data = (typeof FICHAS !== 'undefined') ? FICHAS[fichaId] : null;
-  if (data) renderFicha(data);
+  const fichaVersions = window.FICHA_VERSIONS && window.FICHA_VERSIONS[fichaId];
+  if (!fichaVersions) return;
+  const latestKey = Object.keys(fichaVersions).at(-1);
+  const data      = fichaVersions[latestKey];
+  renderFichaById(fichaId);
   showView('ficha', data ? data.name : 'Ficha de Producto');
 }
 
@@ -363,9 +366,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') closeModal();
   });
 
-  // Cerrar dropdown al click fuera
+  // Cerrar dropdowns al click fuera
   document.addEventListener('click', e => {
-    if (!e.target.closest('#version-selector')) closeVersionDropdown();
+    if (!e.target.closest('#version-selector'))       closeVersionDropdown();
+    if (!e.target.closest('#ficha-version-selector')) closeFichaVersionDropdown();
   });
 
   // Cargar la versión más reciente

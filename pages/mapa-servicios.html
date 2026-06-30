@@ -114,9 +114,28 @@
      ══════════════════════════════════════════════════════════ -->
 <div id="app-ficha" style="display:none;">
   <div class="ficha-page">
-    <div class="ficha-wrap" id="ficha-container">
-      <!-- renderFicha(data) inyecta aquí el contenido -->
+
+    <!-- VERSION SELECTOR (mismo estilo que el del mapa) -->
+    <div class="mapa-topbar">
+      <div class="version-selector" id="ficha-version-selector">
+        <button class="version-selector__btn" id="ficha-version-btn"
+                onclick="toggleFichaVersionDropdown()"
+                aria-haspopup="listbox" aria-expanded="false"
+                aria-label="Selector de versión de la ficha">
+          <i class="ti ti-git-branch" aria-hidden="true"></i>
+          <span id="ficha-version-current-label">Cargando…</span>
+          <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
+        </button>
+        <ul class="version-selector__dropdown" id="ficha-version-dropdown" role="listbox">
+          <!-- Renderizado por ficha-renderer.js -->
+        </ul>
+      </div>
     </div>
+
+    <div class="ficha-wrap" id="ficha-container">
+      <!-- renderFichaById() inyecta aquí el contenido -->
+    </div>
+
   </div>
 </div>
 
@@ -148,16 +167,16 @@
 </div>
 
 
-<!-- Datos de fichas (deben cargarse antes del renderer) -->
-<script src="../js/fichas/comercio-seguro.js"></script>
-<script src="../js/fichas/hogar-venta.js"></script>
-<script src="../js/fichas/hogar-comodato.js"></script>
-<!-- Renderer de fichas -->
-<script src="../js/ficha-renderer.js"></script>
 <!-- Versiones del mapa (orden cronológico) -->
 <script src="../js/versiones/mapa-v1.0.js"></script>
 <script src="../js/versiones/mapa-v1.1.js"></script>
 <script src="../js/versiones/mapa-v1.2.js"></script>
+<!-- Versiones de fichas (orden cronológico por ficha) -->
+<script src="../js/fichas/versiones/comercio-seguro-v1.1.js"></script>
+<script src="../js/fichas/versiones/hogar-venta-v1.0.js"></script>
+<script src="../js/fichas/versiones/hogar-comodato-v1.0.js"></script>
+<!-- Renderers -->
+<script src="../js/ficha-renderer.js"></script>
 <!-- Lógica del mapa y de la ficha -->
 <script src="../js/mapa-servicios.js"></script>
 <script src="../js/ficha.js"></script>

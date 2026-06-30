@@ -1,18 +1,92 @@
 /* ============================================================
    ficha-renderer.js — Renderizado dinámico de Fichas de Producto
-   Lee objetos de datos de js/fichas/ y genera el HTML completo.
-   Depende de: fichas/comercio-seguro.js, hogar-venta.js, hogar-comodato.js
+   Solo lógica y rendering. Sin datos de contenido.
+   El contenido vive en js/fichas/versiones/[ficha]-v*.js
    ============================================================ */
 
 'use strict';
 
-/* ── REGISTRO DE FICHAS ─────────────────────────────────── */
 
-const FICHAS = {
-  'comercio-seguro': FICHA_COMERCIO_SEGURO,
-  'hogar-venta':     FICHA_HOGAR_VENTA,
-  'hogar-comodato':  FICHA_HOGAR_COMODATO,
-};
+/* ── ESTADO ─────────────────────────────────────────────── */
+
+let _activeFichaId = null;
+
+
+/* ── VERSIONES: ENTRY POINTS ─────────────────────────────── */
+
+/**
+ * Renderiza una ficha en su última versión (o una versión específica).
+ * Entry point principal — llamado desde mapa-servicios.js.
+ * @param {string} fichaId   - ej. 'comercio-seguro'
+ * @param {string} [versionKey] - ej. 'v1.1' — si se omite, usa la última
+ */
+function renderFichaById(fichaId, versionKey) {
+  const fichaVersions = window.FICHA_VERSIONS && window.FICHA_VERSIONS[fichaId];
+  if (!fichaVersions) return;
+
+  const key  = versionKey || Object.keys(fichaVersions).at(-1);
+  const data = fichaVersions[key];
+  if (!data) return;
+
+  _activeFichaId = fichaId;
+
+  _renderFichaContent(data);
+  _renderFichaVersionSelector(fichaId, key);
+}
+
+/**
+ * Cambia la versión de la ficha actualmente visible.
+ * Llamado desde los ítems del dropdown de versión.
+ * @param {string} versionKey
+ */
+function setFichaVersion(versionKey) {
+  if (_activeFichaId) renderFichaById(_activeFichaId, versionKey);
+  closeFichaVersionDropdown();
+}
+
+
+/* ── SELECTOR DE VERSIÓN ─────────────────────────────────── */
+
+function _renderFichaVersionSelector(fichaId, activeKey) {
+  const fichaVersions = window.FICHA_VERSIONS[fichaId] || {};
+  const dropdown = document.getElementById('ficha-version-dropdown');
+  const label    = document.getElementById('ficha-version-current-label');
+
+  if (dropdown) {
+    dropdown.innerHTML = Object.entries(fichaVersions)
+      .map(([key, vd]) => {
+        const isActive = key === activeKey;
+        return `
+          <li class="version-selector__item${isActive ? ' is-active' : ''}"
+              data-version="${key}" role="option"
+              aria-selected="${isActive ? 'true' : 'false'}"
+              onclick="setFichaVersion('${key}')">
+            <span class="version-selector__item-label">${vd.versionId}</span>
+            <span class="version-selector__item-desc">${vd.versionDesc}</span>
+          </li>`;
+      }).join('');
+  }
+
+  if (label && fichaVersions[activeKey]) {
+    const vd = fichaVersions[activeKey];
+    label.textContent = `${vd.versionId} — ${vd.versionDesc}`;
+  }
+}
+
+function toggleFichaVersionDropdown() {
+  const dropdown = document.getElementById('ficha-version-dropdown');
+  const btn      = document.getElementById('ficha-version-btn');
+  if (!dropdown || !btn) return;
+  const isOpen = dropdown.classList.toggle('is-open');
+  btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
+function closeFichaVersionDropdown() {
+  const dropdown = document.getElementById('ficha-version-dropdown');
+  const btn      = document.getElementById('ficha-version-btn');
+  if (dropdown) dropdown.classList.remove('is-open');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
 
 
 /* ── HELPERS ─────────────────────────────────────────────── */
@@ -125,7 +199,6 @@ function _secGeneral(g) {
 
 function _secEquipamiento(e) {
   const kitCols   = e.kits.cols;
-  const colWidths = kitCols.slice(1).map(() => `<th style="width:24%; text-align:center;"></th>`);
   const colHeaders = kitCols.slice(1).map(c =>
     `<th style="width:24%; text-align:center;">${c}</th>`).join('');
 
@@ -266,8 +339,7 @@ function _secFaq(faq) {
 
 function _secCompetencia(comp) {
   const headers = comp.competidores.map(c => `<th>${c}</th>`).join('');
-
-  const rows = comp.filas.map(fila => {
+  const rows    = comp.filas.map(fila => {
     const vals = fila.valores.map(v => `<td>${_compCell(v)}</td>`).join('');
     return `<tr><td>${fila.criterio}</td><td class="sp-col">${_compCell(fila.sp)}</td>${vals}</tr>`;
   }).join('');
@@ -331,13 +403,14 @@ function _footer() {
 }
 
 
-/* ── ENTRY POINT ─────────────────────────────────────────── */
+/* ── RENDER INTERNO ──────────────────────────────────────── */
 
 /**
- * Renderiza una ficha completa en #ficha-container.
- * @param {Object} data - Objeto de datos de la ficha (de js/fichas/*.js)
+ * Renderiza el contenido completo de una ficha en #ficha-container.
+ * Uso interno — llamar renderFichaById() desde fuera.
+ * @param {Object} data - Datos de una versión de ficha
  */
-function renderFicha(data) {
+function _renderFichaContent(data) {
   const container = document.getElementById('ficha-container');
   if (!container || !data) return;
 
