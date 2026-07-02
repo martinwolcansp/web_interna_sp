@@ -180,7 +180,15 @@ export const ORGANIGRAMA_DATA = {
               funcionesCargo: [],
               children: [
                 { id: "operacion-tecnica-ampliaciones", area: "Operación Técnica de Ampliaciones", type: "item", funcionesGenerales: [], children: [] },
-                { id: "comunicaciones-renovacion-tecnologias", area: "Comunicaciones y Renovación de Tecnologías", type: "item", funcionesGenerales: [], children: [] }
+                {
+                  id: "comunicaciones-renovacion-tecnologias",
+                  area: "Comunicaciones y Renovación de Tecnologías",
+                  type: "item",
+                  funcionesGenerales: [
+                    "Liderar la comercialización, instalación y mantenimiento de la migración tecnológica de sistemas de seguridad obsoletos hacia centrales híbridas Hellgrün, bajo modalidad de comodato."
+                  ],
+                  children: []
+                }
               ]
             },
             { id: "servicio-tecnico", area: "Servicio Técnico", type: "box", responsable: "Alejandro Pesce", cargo: "", funcionesGenerales: [], funcionesCargo: [], children: [] }
