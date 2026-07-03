@@ -28,6 +28,7 @@ function setVersion(versionKey) {
   // Heroes de segmento
   renderSegmentHero('hogar',       vd.segments.hogar);
   renderSegmentHero('comercio',    vd.segments.comercio);
+  renderSegmentHero('obras',       vd.segments.obras);
   renderSegmentHero('consorcios',  vd.segments.consorcios);
   renderSegmentHero('empresas',    vd.segments.empresas);
   renderSegmentHero('transversal', vd.segments.transversal);
@@ -35,6 +36,7 @@ function setVersion(versionKey) {
   // Grids de servicios
   renderServiceGrid('hogar',      vd);
   renderServiceGrid('comercio',   vd);
+  renderServiceGrid('obras',      vd);
   renderServiceGrid('consorcios', vd);
   renderServiceGrid('empresas',   vd);
 

@@ -57,6 +57,10 @@
         <i class="ti ti-building-store" aria-hidden="true"></i> Comercio
       </button>
       <button class="segment-tab" role="tab" aria-selected="false"
+              onclick="showSegment('obras', this)">
+        <i class="ti ti-crane-tower" aria-hidden="true"></i> Obras
+      </button>
+      <button class="segment-tab" role="tab" aria-selected="false"
               onclick="showSegment('consorcios', this)">
         <i class="ti ti-building-community" aria-hidden="true"></i> Consorcios y Edificios
       </button>
@@ -88,6 +92,17 @@
       </div>
       <p class="section-label">Servicios disponibles</p>
       <div class="service-grid" id="grid-comercio">
+        <!-- Renderizado por mapa-servicios.js -->
+      </div>
+    </section>
+
+    <!-- ══ SEGMENTO: OBRAS ══ -->
+    <section id="segment-obras" class="segment-panel" role="tabpanel" aria-label="Obras">
+      <div class="segment-hero" id="hero-obras">
+        <!-- Renderizado por mapa-servicios.js -->
+      </div>
+      <p class="section-label">Servicios disponibles</p>
+      <div class="service-grid" id="grid-obras">
         <!-- Renderizado por mapa-servicios.js -->
       </div>
     </section>
@@ -202,8 +217,10 @@
 <script src="../js/versiones/mapa-v1.1.js"></script>
 <script src="../js/versiones/mapa-v1.2.js"></script>
 <script src="../js/versiones/mapa-v1.3.js"></script>
+<script src="../js/versiones/mapa-v1.4.js"></script>
 <!-- Versiones de fichas (orden cronológico por ficha) -->
 <script src="../js/fichas/versiones/comercio-seguro-v1.1.js"></script>
+<script src="../js/fichas/versiones/obra-segura-v1.2.js"></script>
 <script src="../js/fichas/versiones/hogar-venta-v1.0.js"></script>
 <script src="../js/fichas/versiones/hogar-comodato-v1.0.js"></script>
 <!-- Renderers -->
