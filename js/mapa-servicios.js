@@ -28,11 +28,15 @@ function setVersion(versionKey) {
   // Heroes de segmento
   renderSegmentHero('hogar',       vd.segments.hogar);
   renderSegmentHero('comercio',    vd.segments.comercio);
+  renderSegmentHero('consorcios',  vd.segments.consorcios);
+  renderSegmentHero('empresas',    vd.segments.empresas);
   renderSegmentHero('transversal', vd.segments.transversal);
 
   // Grids de servicios
-  renderServiceGrid('hogar',    vd);
-  renderServiceGrid('comercio', vd);
+  renderServiceGrid('hogar',      vd);
+  renderServiceGrid('comercio',   vd);
+  renderServiceGrid('consorcios', vd);
+  renderServiceGrid('empresas',   vd);
 
   // Transversales
   renderTransversals(vd.transversals);
@@ -51,6 +55,12 @@ function setVersion(versionKey) {
 function renderSegmentHero(segmentId, data) {
   const container = document.getElementById('hero-' + segmentId);
   if (!container) return;
+
+  // Segmento no definido en esta versión (ej. versiones anteriores a su alta)
+  if (!data) {
+    container.innerHTML = `<p class="segment-hero__placeholder">Este segmento no existe en esta versión del mapa.</p>`;
+    return;
+  }
 
   let btnHTML = '';
   if (data.fichaBtn) {
@@ -88,6 +98,12 @@ function renderServiceGrid(segmentId, vd) {
   if (!grid) return;
 
   const serviceIds = vd.segmentServices[segmentId] || [];
+
+  if (serviceIds.length === 0) {
+    grid.innerHTML = `<p class="service-grid__empty">Pendiente de carga.</p>`;
+    return;
+  }
+
   grid.innerHTML = serviceIds.map(id => {
     const s = vd.services[id];
     if (!s) return '';

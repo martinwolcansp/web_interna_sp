@@ -18,6 +18,18 @@
   margin-bottom: var(--space-6);
 }
 
+.service-grid__empty {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
+.segment-hero__placeholder {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
 /* ── TRANSVERSALES GRID ── */
 .transversal-grid {
   display: grid;
