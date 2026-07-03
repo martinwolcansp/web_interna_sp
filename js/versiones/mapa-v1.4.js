@@ -1,7 +1,8 @@
 /* ============================================================
    mapa-v1.4.js — Contenido del Mapa de Servicios V1.4
-   Revisión 3/7: se incorpora el segmento "Obras" (SP Obra Segura),
-   alineado a la estructura de referencia del PPT de Mapa de Servicios.
+   Revisión 3/7: se incorpora el segmento "Obras" (SP Obra Segura) y
+   se completan Consorcios y Edificios / Empresas, alineados a la
+   estructura de referencia del PPT de Mapa de Servicios.
    ============================================================ */
 
 'use strict';
@@ -10,7 +11,7 @@ window.MAPA_VERSIONS = window.MAPA_VERSIONS || {};
 window.MAPA_VERSIONS['v1.4'] = {
 
   id:   'V1.4',
-  desc: 'Revisión 3/7 — segmento Obras',
+  desc: 'Revisión 3/7 — Obras, Consorcios y Empresas',
 
   /* ── SEGMENTOS ────────────────────────────────────────── */
 
@@ -28,7 +29,7 @@ window.MAPA_VERSIONS['v1.4'] = {
       fichaBtn: { type: 'primary', icon: 'ti-file-description', label: 'Ver ficha: Comercio Seguro', id: 'comercio-seguro' },
     },
     obras: {
-      icon: 'ti-crane-tower',
+      icon: 'ti-building-warehouse',
       name: 'Obras',
       desc: 'Seguridad para obras en construcción y sitios temporales. Solución autónoma en formato tótem, fácil de reubicar a medida que avanza la obra.',
       fichaBtn: { type: 'primary', icon: 'ti-file-description', label: 'Ver ficha: SP Obra Segura', id: 'obra-segura' },
@@ -36,13 +37,13 @@ window.MAPA_VERSIONS['v1.4'] = {
     consorcios: {
       icon: 'ti-building-community',
       name: 'Consorcios y Edificios',
-      desc: 'Contenido pendiente de carga.',
+      desc: 'Seguridad para consorcios, edificios y depósitos. Vigilancia presencial, monitoreo remoto y control de perímetro para espacios comunes y accesos.',
       fichaBtn: null,
     },
     empresas: {
       icon: 'ti-briefcase',
       name: 'Empresas',
-      desc: 'Contenido pendiente de carga.',
+      desc: 'Seguridad para empresas e instituciones: seguridad integral (CCTV, accesos y monitoreo), consultoría y capacitación en seguridad.',
       fichaBtn: null,
     },
     transversal: {
@@ -57,8 +58,8 @@ window.MAPA_VERSIONS['v1.4'] = {
     hogar:      ['alarma-hogar', 'video-hogar', 'cerco-hogar'],
     comercio:   ['alarma-comercio', 'video-comercio', 'accesos-comercio'],
     obras:      ['totem-obra'],
-    consorcios: [],
-    empresas:   [],
+    consorcios: ['vigilancia-consorcios', 'monitoreo-consorcios', 'perimetro-consorcios'],
+    empresas:   ['integral-empresas', 'consultoria-empresas', 'capacitacion-empresas'],
   },
 
   /* ── SERVICIOS ────────────────────────────────────────── */
@@ -172,7 +173,7 @@ window.MAPA_VERSIONS['v1.4'] = {
     },
     'totem-obra': {
       segment: 'obras',
-      icon:    'ti-cctv',
+      icon:    'ti-video',
       name:    'SP Obra Segura — Tótem',
       tagline: 'Vigilancia autónoma y reubicable',
       problem: 'La seguridad de la obra en construcción durante y fuera del horario de trabajo, sin instalaciones complejas y con la posibilidad de reubicarse a medida que avanza la obra.',
@@ -188,6 +189,102 @@ window.MAPA_VERSIONS['v1.4'] = {
       billing: 'Equipamiento en comodato + abono mensual. Sin cargo de instalación. Plazo mínimo de contrato: 12 meses.',
       diff:    'Formato tótem 100% autónomo y reubicable: no requiere obra civil ni cableado, solo alimentación eléctrica. Pensado para acompañar el avance de la obra.',
       ficha:   'obra-segura',
+    },
+    'vigilancia-consorcios': {
+      segment: 'consorcios',
+      icon:    'ti-shield-lock',
+      name:    'Vigilancia presencial',
+      tagline: 'Personal de seguridad en sitio',
+      problem: 'La necesidad de una presencia física constante en el edificio o consorcio, con registro de novedades y comunicación permanente con la central.',
+      tags:    ['Personal de seguridad', 'Registro de novedades', 'Radiocomunicación'],
+      includes: [
+        'Personal de seguridad presente en el edificio o consorcio',
+        'Registro de novedades y control de ingresos/egresos',
+        'Comunicación permanente por radio con la central de monitoreo',
+      ],
+      billing: 'Servicio de personal por turno o guardia. Modalidad y abono a definir según dotación requerida.',
+      diff:    'Combina presencia humana con respaldo tecnológico: el personal está en comunicación directa con la central SP ante cualquier evento.',
+      ficha:   null,
+    },
+    'monitoreo-consorcios': {
+      segment: 'consorcios',
+      icon:    'ti-video',
+      name:    'Monitoreo remoto',
+      tagline: 'Cámaras móviles con grabación autónoma',
+      problem: 'La cobertura de áreas comunes o accesos sin necesidad de obra civil ni cableado eléctrico permanente.',
+      tags:    ['Cámaras móviles', 'Alimentación solar', 'Grabación continua'],
+      includes: [
+        'Cámaras móviles reubicables según necesidad',
+        'Alimentación autónoma con panel solar',
+        'Grabación continua con almacenamiento local',
+      ],
+      billing: 'Cargo de instalación único + abono mensual de monitoreo.',
+      diff:    'Autonomía energética y movilidad: se puede reubicar la cobertura sin depender de tendido eléctrico ni obra civil.',
+      ficha:   null,
+    },
+    'perimetro-consorcios': {
+      segment: 'consorcios',
+      icon:    'ti-fence',
+      name:    'Control de perímetro',
+      tagline: 'Cerco y control de accesos',
+      problem: 'El riesgo de ingreso no autorizado por los límites del edificio o consorcio, y la falta de control sobre quién entra y sale.',
+      tags:    ['Cerco perimetral', 'Control de entrada', 'Alertas inmediatas'],
+      includes: [
+        'Instalación de cerco perimetral',
+        'Control de entrada de personas y vehículos',
+        'Alertas inmediatas ante intentos de intrusión',
+      ],
+      billing: 'Cargo de instalación único + abono mensual de monitoreo.',
+      diff:    'Combina barrera física con control de acceso y alertas automáticas ante cualquier irregularidad.',
+      ficha:   null,
+    },
+    'integral-empresas': {
+      segment: 'empresas',
+      icon:    'ti-shield-check',
+      name:    'Seguridad integral',
+      tagline: 'CCTV, accesos y monitoreo combinados',
+      problem: 'La necesidad de una solución de seguridad completa para empresas e instituciones, que combine video, control de accesos y monitoreo central.',
+      tags:    ['CCTV', 'Control de accesos', 'Monitoreo 24/7'],
+      includes: [
+        'Sistema de videovigilancia (CCTV) adaptado a las instalaciones',
+        'Control de accesos por sector o área',
+        'Monitoreo centralizado con respuesta ante eventos',
+      ],
+      billing: 'Instalación + abono mensual de monitoreo. A definir según alcance del proyecto.',
+      diff:    'Solución integral pensada a medida de cada empresa, combinando las distintas capas de seguridad en un mismo servicio.',
+      ficha:   null,
+    },
+    'consultoria-empresas': {
+      segment: 'empresas',
+      icon:    'ti-clipboard-check',
+      name:    'Consultoría en seguridad',
+      tagline: 'Auditoría, diseño y diagnóstico',
+      problem: 'La falta de un diagnóstico profesional sobre el estado de la seguridad actual y cómo mejorarla.',
+      tags:    ['Auditoría', 'Diseño de soluciones', 'Diagnóstico'],
+      includes: [
+        'Auditoría de seguridad de las instalaciones',
+        'Diseño de soluciones a medida',
+        'Diagnóstico de riesgos y recomendaciones',
+      ],
+      billing: 'A definir según alcance del proyecto de consultoría.',
+      diff:    'Mirada profesional externa que identifica riesgos y propone soluciones antes de invertir en equipamiento.',
+      ficha:   null,
+    },
+    'capacitacion-empresas': {
+      segment: 'empresas',
+      icon:    'ti-certificate',
+      name:    'Capacitación',
+      tagline: 'Protocolos, formación y certificación',
+      problem: 'La falta de protocolos claros y personal capacitado para actuar ante situaciones de riesgo.',
+      tags:    ['Protocolos', 'Formación', 'Certificación'],
+      includes: [
+        'Elaboración de protocolos de seguridad',
+        'Formación del personal de la empresa',
+        'Certificación de los procesos implementados',
+      ],
+      billing: 'A definir según alcance del programa de capacitación.',
+      diff:    'Prepara al personal de la empresa para actuar correctamente ante incidentes, no solo instala equipamiento.',
+      ficha:   null,
     },
   },
 
