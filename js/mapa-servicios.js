@@ -388,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => {
     if (!e.target.closest('#version-selector'))       closeVersionDropdown();
     if (!e.target.closest('#ficha-version-selector')) closeFichaVersionDropdown();
+    if (!e.target.closest('#ficha-role-selector'))    closeFichaRoleDropdown();
   });
 
   // Cargar la versión más reciente

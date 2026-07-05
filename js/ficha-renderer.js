@@ -9,7 +9,9 @@
 
 /* ── ESTADO ─────────────────────────────────────────────── */
 
-let _activeFichaId = null;
+let _activeFichaId    = null;
+let _activeVersionKey = null;
+let _activeRole       = 'todas';
 
 
 /* ── VERSIONES: ENTRY POINTS ─────────────────────────────── */
@@ -24,14 +26,18 @@ function renderFichaById(fichaId, versionKey) {
   const fichaVersions = window.FICHA_VERSIONS && window.FICHA_VERSIONS[fichaId];
   if (!fichaVersions) return;
 
+  if (fichaId !== _activeFichaId) _activeRole = 'todas'; // ficha nueva → reset de área activa
+
   const key  = versionKey || Object.keys(fichaVersions).at(-1);
   const data = fichaVersions[key];
   if (!data) return;
 
-  _activeFichaId = fichaId;
+  _activeFichaId    = fichaId;
+  _activeVersionKey = key;
 
   _renderFichaContent(data);
   _renderFichaVersionSelector(fichaId, key);
+  _renderFichaRoleSelector();
 }
 
 /**
@@ -42,6 +48,108 @@ function renderFichaById(fichaId, versionKey) {
 function setFichaVersion(versionKey) {
   if (_activeFichaId) renderFichaById(_activeFichaId, versionKey);
   closeFichaVersionDropdown();
+}
+
+
+/* ── ÁREAS: VISTA POR ROL ─────────────────────────────────── */
+
+/** Etiquetas visibles del selector de área. */
+const _AREA_LABELS = {
+  todas:              'Todas las áreas',
+  ventas:             'Ventas',
+  instalaciones:      'Instalaciones',
+  'atencion-cliente': 'Atención al Cliente',
+  operadores:         'Operadores',
+  deposito:           'Depósito',
+  'servicio-tecnico': 'Servicio Técnico',
+  administracion:     'Administración',
+};
+
+/**
+ * Qué tabs son relevantes para cada área. Config global — vale para todas las
+ * fichas, no depende del contenido de cada una.
+ */
+const _TAB_RELEVANCE = {
+  general:      ['ventas', 'instalaciones', 'atencion-cliente', 'operadores', 'deposito', 'servicio-tecnico', 'administracion'],
+  equipamiento: ['instalaciones', 'servicio-tecnico', 'deposito'],
+  precios:      ['ventas', 'administracion'],
+  proceso:      ['ventas', 'instalaciones', 'atencion-cliente'],
+  faq:          ['ventas', 'instalaciones', 'atencion-cliente', 'operadores'],
+  competencia:  ['ventas'],
+  areas:        ['ventas', 'instalaciones', 'atencion-cliente', 'operadores', 'deposito', 'servicio-tecnico', 'administracion'],
+};
+
+/**
+ * Palabras clave (sin acentos) para matchear el "label" de una sección de
+ * Proceso o el nombre de un área en la tabla de Áreas contra el rol activo.
+ */
+const _ROLE_KEYWORDS = {
+  ventas:             ['venta'],
+  instalaciones:      ['instalaci'],
+  'atencion-cliente': ['atenci'],
+  operadores:         ['operador', 'operacion'],
+  deposito:           ['deposito'],
+  'servicio-tecnico': ['servicio tecnico'],
+  administracion:     ['administraci'],
+};
+
+function _normalize(str) {
+  return String(str).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+/** ¿El label de una sección/área corresponde al rol activo? */
+function _labelMatchesRole(label, role) {
+  if (role === 'todas') return true;
+  const kws = _ROLE_KEYWORDS[role] || [];
+  const norm = _normalize(label);
+  return kws.some(k => norm.includes(k));
+}
+
+/**
+ * Cambia el área de trabajo activa — atenúa tabs y contenido no relevante.
+ * Llamado desde los ítems del dropdown de área.
+ * @param {string} role
+ */
+function setFichaRole(role) {
+  _activeRole = role;
+  if (_activeFichaId) renderFichaById(_activeFichaId, _activeVersionKey);
+  closeFichaRoleDropdown();
+}
+
+function _renderFichaRoleSelector() {
+  const dropdown = document.getElementById('ficha-role-dropdown');
+  const label    = document.getElementById('ficha-role-current-label');
+
+  if (dropdown) {
+    dropdown.innerHTML = Object.entries(_AREA_LABELS)
+      .map(([key, text]) => {
+        const isActive = key === _activeRole;
+        return `
+          <li class="version-selector__item${isActive ? ' is-active' : ''}"
+              data-role="${key}" role="option"
+              aria-selected="${isActive ? 'true' : 'false'}"
+              onclick="setFichaRole('${key}')">
+            <span class="version-selector__item-label">${text}</span>
+          </li>`;
+      }).join('');
+  }
+
+  if (label) label.textContent = _AREA_LABELS[_activeRole];
+}
+
+function toggleFichaRoleDropdown() {
+  const dropdown = document.getElementById('ficha-role-dropdown');
+  const btn      = document.getElementById('ficha-role-btn');
+  if (!dropdown || !btn) return;
+  const isOpen = dropdown.classList.toggle('is-open');
+  btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
+function closeFichaRoleDropdown() {
+  const dropdown = document.getElementById('ficha-role-dropdown');
+  const btn      = document.getElementById('ficha-role-btn');
+  if (dropdown) dropdown.classList.remove('is-open');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 
@@ -142,22 +250,28 @@ function _header(d) {
     </header>`;
 }
 
+const _TAB_META = [
+  { id: 'general',      icon: 'ti-file-description', label: 'General'      },
+  { id: 'equipamiento', icon: 'ti-cpu',              label: 'Equipamiento' },
+  { id: 'precios',      icon: 'ti-currency-dollar',  label: 'Precios'      },
+  { id: 'proceso',      icon: 'ti-sitemap',          label: 'Procesos'     },
+  { id: 'faq',          icon: 'ti-help-circle',      label: 'FAQ'          },
+  { id: 'competencia',  icon: 'ti-chart-bar',        label: 'Competencia'  },
+  { id: 'areas',        icon: 'ti-users',            label: 'Áreas'        },
+];
+
 function _tabNav() {
-  const tabs = [
-    { id: 'general',      icon: 'ti-file-description', label: 'General'      },
-    { id: 'equipamiento', icon: 'ti-cpu',              label: 'Equipamiento' },
-    { id: 'precios',      icon: 'ti-currency-dollar',  label: 'Precios'      },
-    { id: 'proceso',      icon: 'ti-sitemap',          label: 'Procesos'     },
-    { id: 'faq',          icon: 'ti-help-circle',      label: 'FAQ'          },
-    { id: 'competencia',  icon: 'ti-chart-bar',        label: 'Competencia'  },
-    { id: 'areas',        icon: 'ti-users',            label: 'Áreas'        },
-  ];
   return `
     <nav class="section-tab-row" role="tablist" aria-label="Secciones de la ficha">
-      ${tabs.map(t => `
-        <button class="section-tab" role="tab" onclick="showFichaSection('${t.id}', this)">
+      ${_TAB_META.map(t => {
+        const relevant = _activeRole === 'todas' || (_TAB_RELEVANCE[t.id] || []).includes(_activeRole);
+        const mutedCls = relevant ? '' : ' section-tab--muted';
+        const title    = relevant ? '' : ` title="Sección secundaria para ${_AREA_LABELS[_activeRole]}"`;
+        return `
+        <button class="section-tab${mutedCls}" role="tab" data-tab-id="${t.id}" onclick="showFichaSection('${t.id}', this)"${title}>
           <i class="ti ${t.icon}" aria-hidden="true"></i> ${t.label}
-        </button>`).join('')}
+        </button>`;
+      }).join('')}
     </nav>`;
 }
 
@@ -288,6 +402,7 @@ function _secPrecios(p) {
 
 function _secProceso(pr) {
   const secciones = pr.secciones.map(s => {
+    const dimmedCls = _labelMatchesRole(s.label, _activeRole) ? '' : ' ficha-card--dimmed';
     const pasos = s.pasos.map((paso, i) => `
       <div class="process-step">
         <div class="process-step__num">${i + 1}</div>
@@ -297,7 +412,7 @@ function _secProceso(pr) {
         </div>
       </div>`).join('');
     return `
-      <div class="ficha-card">
+      <div class="ficha-card${dimmedCls}">
         <p class="section-label">${s.label}</p>
         ${pasos}
       </div>`;
@@ -367,13 +482,16 @@ function _secCompetencia(comp) {
 }
 
 function _secAreas(areas) {
-  const rows = areas.map(a => `
-    <tr>
+  const rows = areas.map(a => {
+    const mineCls = _labelMatchesRole(a.area, _activeRole) ? ' areas-row--mine' : '';
+    return `
+    <tr class="${mineCls.trim()}">
       <td>${a.area}</td>
       <td>${a.responsable}</td>
       <td>${a.comentarios}</td>
       <td>${_badge(a.estado, a.fecha)}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   return `
     <section id="sec-areas" class="section-panel" role="tabpanel">
@@ -427,9 +545,12 @@ function _renderFichaContent(data) {
     _footer(),
   ].join('');
 
-  // Activar primera pestaña y panel
-  const firstTab   = container.querySelector('.section-tab');
-  const firstPanel = container.querySelector('.section-panel');
+  // Activar la primera pestaña relevante para el área activa (o la primera, si es "Todas")
+  const firstId = _TAB_META.map(t => t.id)
+    .find(id => _activeRole === 'todas' || (_TAB_RELEVANCE[id] || []).includes(_activeRole)) || _TAB_META[0].id;
+
+  const firstTab   = container.querySelector(`[data-tab-id="${firstId}"]`);
+  const firstPanel = container.querySelector('#sec-' + firstId);
   if (firstTab)   firstTab.classList.add('is-active');
   if (firstPanel) firstPanel.classList.add('is-active');
 }
