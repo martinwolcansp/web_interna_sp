@@ -212,6 +212,27 @@
 </div>
 
 
+<!-- ══════════════════════════════════════════════════════════
+     MODAL DE DETALLE POR ÁREA (ficha de producto → tab Áreas)
+     ══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="area-modal-overlay"
+     role="dialog" aria-modal="true" aria-labelledby="area-modal-title"
+     onclick="closeAreaDetailOnOverlayClick(event)">
+  <div class="modal" id="area-modal-box">
+    <header class="modal__header">
+      <div>
+        <div class="modal__segment-badge" id="area-modal-badge"></div>
+        <h2 class="modal__name" id="area-modal-title"></h2>
+      </div>
+      <button class="modal__close" onclick="closeAreaDetail()" aria-label="Cerrar detalle de área">
+        <i class="ti ti-x" aria-hidden="true"></i>
+      </button>
+    </header>
+    <div class="modal__body" id="area-modal-body"></div>
+  </div>
+</div>
+
+
 <!-- Versiones del mapa (orden cronológico) -->
 <script src="../js/versiones/mapa-v1.0.js"></script>
 <script src="../js/versiones/mapa-v1.1.js"></script>
@@ -221,6 +242,7 @@
 <!-- Versiones de fichas (orden cronológico por ficha) -->
 <script src="../js/fichas/versiones/comercio-seguro-v1.1.js"></script>
 <script src="../js/fichas/versiones/obra-segura-v1.2.js"></script>
+<script src="../js/fichas/versiones/obra-segura-v1.3.js"></script>
 <script src="../js/fichas/versiones/hogar-venta-v1.0.js"></script>
 <script src="../js/fichas/versiones/hogar-comodato-v1.0.js"></script>
 <!-- Renderers -->

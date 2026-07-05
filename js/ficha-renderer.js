@@ -177,6 +177,14 @@ function _secGeneral(g) {
   const checkItems = g.checklist.map(item =>
     `<li><i class="ti ti-clipboard-list" aria-hidden="true"></i>${item.label} ${_badge(item.status, item.fecha)}</li>`).join('');
 
+  // "Requerimientos para el cliente" es opcional — no todas las fichas lo tienen cargado todavía.
+  const requerimientosBlock = (g.requerimientos && g.requerimientos.length) ? `
+      <div class="ficha-card-full">
+        <p class="section-label">Requerimientos para el cliente</p>
+        <ul class="checklist">${g.requerimientos.map(item =>
+          `<li><i class="ti ti-list-check" aria-hidden="true"></i>${item}</li>`).join('')}</ul>
+      </div>` : '';
+
   return `
     <section id="sec-general" class="section-panel" role="tabpanel">
       <div class="ficha-card-full">
@@ -194,6 +202,7 @@ function _secGeneral(g) {
           <ul class="checklist">${checkItems}</ul>
         </div>
       </div>
+      ${requerimientosBlock}
     </section>`;
 }
 
@@ -367,12 +376,22 @@ function _secCompetencia(comp) {
 }
 
 function _secAreas(areas) {
-  const rows = areas.map(a => `
+  // Se guarda para que openAreaDetail() pueda ir a buscar el detalle por índice.
+  _currentAreasData = areas;
+
+  const rows = areas.map((a, i) => `
     <tr>
       <td>${a.area}</td>
       <td>${a.responsable}</td>
       <td>${a.comentarios}</td>
       <td>${_badge(a.estado, a.fecha)}</td>
+      <td>
+        ${a.detalle
+          ? `<button class="areas-detail-btn" onclick="openAreaDetail(${i})">
+               <i class="ti ti-file-text" aria-hidden="true"></i> Ver detalle
+             </button>`
+          : '—'}
+      </td>
     </tr>`).join('');
 
   return `
@@ -386,12 +405,77 @@ function _secAreas(areas) {
               <th>Responsable</th>
               <th>Comentarios / Pendientes</th>
               <th>Estado</th>
+              <th>Información</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
     </section>`;
+}
+
+
+/* ── MODAL DE DETALLE POR ÁREA ────────────────────────────── */
+
+let _currentAreasData = [];
+
+/**
+ * Renderiza los bloques de contenido de un detalle de área.
+ * Soporta: 'texto', 'lista', 'pasos', 'tabla'.
+ */
+function _renderAreaDetailBlocks(bloques) {
+  return bloques.map(b => {
+    if (b.tipo === 'texto') {
+      return `<p class="modal__row-content">${b.texto}</p>`;
+    }
+    if (b.tipo === 'lista') {
+      return `<ul class="checklist">${b.items.map(item =>
+        `<li><i class="ti ti-check" aria-hidden="true"></i>${item}</li>`).join('')}</ul>`;
+    }
+    if (b.tipo === 'pasos') {
+      return b.pasos.map((paso, i) => `
+        <div class="process-step">
+          <div class="process-step__num">${i + 1}</div>
+          <div>
+            <div class="process-step__title">${paso.title}</div>
+            ${paso.note ? `<div class="process-step__note">${paso.note}</div>` : ''}
+          </div>
+        </div>`).join('');
+    }
+    if (b.tipo === 'tabla') {
+      const headers = b.headers.map(h => `<th>${h}</th>`).join('');
+      const filas   = b.filas.map(fila =>
+        `<tr>${fila.map(v => `<td>${v}</td>`).join('')}</tr>`).join('');
+      return `
+        <table class="data-table">
+          <thead><tr>${headers}</tr></thead>
+          <tbody>${filas}</tbody>
+        </table>`;
+    }
+    return '';
+  }).join('');
+}
+
+/**
+ * Abre el modal de detalle de un área. Llamado desde el botón "Ver detalle".
+ * @param {number} index - índice del área dentro de data.areas
+ */
+function openAreaDetail(index) {
+  const area = _currentAreasData[index];
+  if (!area || !area.detalle) return;
+
+  document.getElementById('area-modal-badge').textContent = area.area;
+  document.getElementById('area-modal-title').textContent = area.detalle.titulo;
+  document.getElementById('area-modal-body').innerHTML = _renderAreaDetailBlocks(area.detalle.bloques);
+  document.getElementById('area-modal-overlay').classList.add('is-open');
+}
+
+function closeAreaDetail() {
+  document.getElementById('area-modal-overlay').classList.remove('is-open');
+}
+
+function closeAreaDetailOnOverlayClick(event) {
+  if (event.target === document.getElementById('area-modal-overlay')) closeAreaDetail();
 }
 
 function _footer() {

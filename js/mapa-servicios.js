@@ -381,7 +381,7 @@ function goToFicha() {
 document.addEventListener('DOMContentLoaded', () => {
   // Cerrar modal con Escape
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') { closeModal(); closeAreaDetail(); }
   });
 
   // Cerrar dropdowns al click fuera
