@@ -44,10 +44,6 @@
   margin-bottom: var(--space-4);
 }
 
-.mapa-topbar--split {
-  justify-content: space-between;
-}
-
 .version-selector {
   position: relative;
 }
@@ -144,5 +140,4 @@
   .site-header__right { text-align: left; }
   .service-grid      { grid-template-columns: 1fr; }
   .transversal-grid  { grid-template-columns: 1fr; }
-  .mapa-topbar--split { flex-wrap: wrap; gap: var(--space-2); }
 }
