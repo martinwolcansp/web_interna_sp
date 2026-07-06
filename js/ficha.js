@@ -35,3 +35,23 @@ function showFichaSection(sectionName, activeTab) {
 function toggleFaq(faqItem) {
   faqItem.classList.toggle('is-open');
 }
+
+
+/* ── INIT: cierre de overlays propios de la ficha ─────────────
+   Vale para cualquier página que muestre una ficha de producto
+   (mapa de servicios y páginas de ficha independientes), por eso
+   vive acá y no en mapa-servicios.js.
+   ────────────────────────────────────────────────────────────── */
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeFichaVersionDropdown();
+      closeAreaDetail();
+    }
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#ficha-version-selector')) closeFichaVersionDropdown();
+  });
+});

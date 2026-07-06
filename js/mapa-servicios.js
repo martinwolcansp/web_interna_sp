@@ -379,15 +379,14 @@ function goToFicha() {
 /* ── INIT ────────────────────────────────────────────────── */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Cerrar modal con Escape
+  // Cerrar modal de servicio con Escape (el cierre de overlays de ficha vive en ficha.js)
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeModal(); closeAreaDetail(); }
+    if (e.key === 'Escape') closeModal();
   });
 
-  // Cerrar dropdowns al click fuera
+  // Cerrar dropdown de versión del mapa al click fuera
   document.addEventListener('click', e => {
-    if (!e.target.closest('#version-selector'))       closeVersionDropdown();
-    if (!e.target.closest('#ficha-version-selector')) closeFichaVersionDropdown();
+    if (!e.target.closest('#version-selector')) closeVersionDropdown();
   });
 
   // Cargar la versión más reciente
