@@ -49,15 +49,6 @@ window.FICHA_VERSIONS['nuevas-tecnologias']['v1.0'] = {
       'Reemplaza de forma definitiva el comunicador de transición que el cliente pueda tener instalado hoy',
       'Recupero de la inversión a través del abono — mes exacto de recupero NO validado todavía (ver pestaña Áreas → Administrativo de Sector Comunicaciones)',
     ],
-    indicadores: [
-      { nombre: 'Cantidad de migraciones / mes',           descripcion: 'Equipos nuevos instalados en reemplazo de sistemas obsoletos, por período.',        meta: '[PENDIENTE] — a definir con Gerencia' },
-      { nombre: 'Tasa de conversión comercial',             descripcion: '% de clientes contactados que aceptan la propuesta de migración.',                   meta: '[PENDIENTE]' },
-      { nombre: 'Tiempo promedio de instalación',           descripcion: 'Desde la aceptación comercial hasta la puesta en marcha y el alta en monitoreo.',    meta: '[PENDIENTE]' },
-      { nombre: 'Recupero de comodato',                     descripcion: 'Cantidad de equipos que alcanzaron el punto de recupero de la inversión.',           meta: '[PENDIENTE] — mes de recupero aún no validado' },
-      { nombre: 'Tasa de incidencias post-instalación',     descripcion: 'Reclamos de servicio técnico sobre equipos migrados, en los primeros 90 días.',      meta: '[PENDIENTE]' },
-      { nombre: 'Mora del abono de comodato',                descripcion: '% de cuotas del abono de comodato impagas.',                                        meta: '[PENDIENTE]' },
-    ],
-
     checklist: [
       { label: 'Identificación del servicio (Eje 3, Sección 1)', status: 'ok' },
       { label: 'Propuesta de valor y objeciones (Eje 3, Sección 2)', status: 'ok' },
@@ -141,6 +132,14 @@ window.FICHA_VERSIONS['nuevas-tecnologias']['v1.0'] = {
     ],
     netsuite: [
       { articulo: 'Abono Comodato Nuevas Tecnologías', codigo: '[PENDIENTE]', desc: 'Nuevo concepto de abono — todavía no creado en el sistema administrativo' },
+    ],
+    indicadores: [
+      { nombre: 'Cantidad de migraciones / mes',           descripcion: 'Equipos nuevos instalados en reemplazo de sistemas obsoletos, por período.',        meta: '[PENDIENTE] — a definir con Gerencia' },
+      { nombre: 'Tasa de conversión comercial',             descripcion: '% de clientes contactados que aceptan la propuesta de migración.',                   meta: '[PENDIENTE]' },
+      { nombre: 'Tiempo promedio de instalación',           descripcion: 'Desde la aceptación comercial hasta la puesta en marcha y el alta en monitoreo.',    meta: '[PENDIENTE]' },
+      { nombre: 'Recupero de comodato',                     descripcion: 'Cantidad de equipos que alcanzaron el punto de recupero de la inversión.',           meta: '[PENDIENTE] — mes de recupero aún no validado' },
+      { nombre: 'Tasa de incidencias post-instalación',     descripcion: 'Reclamos de servicio técnico sobre equipos migrados, en los primeros 90 días.',      meta: '[PENDIENTE]' },
+      { nombre: 'Mora del abono de comodato',                descripcion: '% de cuotas del abono de comodato impagas.',                                        meta: '[PENDIENTE]' },
     ],
   },
 
