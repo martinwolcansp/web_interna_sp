@@ -185,6 +185,18 @@ function _secGeneral(g) {
           `<li><i class="ti ti-list-check" aria-hidden="true"></i>${item}</li>`).join('')}</ul>
       </div>` : '';
 
+  // "Indicadores de gestión (KPIs)" es opcional — pensado para fichas de unidad de
+  // negocio (ej. pilotos), no para fichas de producto estándar.
+  const indicadoresBlock = (g.indicadores && g.indicadores.length) ? `
+      <div class="ficha-card-full">
+        <p class="section-label">Indicadores de gestión (KPIs)</p>
+        <table class="data-table">
+          <thead><tr><th>Indicador</th><th>Descripción</th><th>Meta / objetivo</th></tr></thead>
+          <tbody>${g.indicadores.map(k =>
+            `<tr><td>${k.nombre}</td><td>${k.descripcion}</td><td>${k.meta}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>` : '';
+
   return `
     <section id="sec-general" class="section-panel" role="tabpanel">
       <div class="ficha-card-full">
@@ -203,6 +215,7 @@ function _secGeneral(g) {
         </div>
       </div>
       ${requerimientosBlock}
+      ${indicadoresBlock}
     </section>`;
 }
 
