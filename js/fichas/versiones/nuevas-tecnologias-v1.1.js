@@ -16,8 +16,11 @@
      opcional y aviso de corte/restablecimiento de luz (220V).
    - La estructura y roles del sector pasan a "definida" (Eje 1, Tema 1)
      y la capacitación técnica del equipo ya está realizada.
-   - Se agrega el área "Servicio Técnico" (pestaña Áreas), pendiente de
-     confirmar su capacidad de mantenimiento de los equipos Hellgrun.
+   - Pestaña Áreas corregida: lista las áreas YA EXISTENTES de la empresa
+     que deben aprobar o ser informadas de este nuevo servicio (Jefatura
+     de Ampliaciones, Gerencia, Administración, Legal, Central de
+     Monitoreo, Servicio Técnico) en lugar de los roles nuevos del propio
+     Sector Comunicaciones, que quedan descriptos en la pestaña Proceso.
 
    Sigue pendiente: precio y composición del abono (Gerencia +
    Administración) y los datos técnicos del equipo — modelo, zonas,
@@ -190,74 +193,79 @@ window.FICHA_VERSIONS['nuevas-tecnologias']['v1.1'] = {
   },
 
   /* ── ÁREAS ───────────────────────────────────────────── */
+  /* Aprobación / comunicación a las áreas YA EXISTENTES de la empresa
+     sobre este nuevo servicio — no confundir con los roles nuevos del
+     Sector Comunicaciones (esos están descriptos en la pestaña Proceso
+     y en Eje 1 / Estructura_y_Roles_Sector_Comunicaciones.docx). */
   areas: [
     {
-      area: 'Responsable de Sector Comunicaciones', responsable: '—', comentarios: 'Estructura definida (Eje 1, Tema 1) — pendiente formalizar los roles del Sector Ampliaciones compartidos con Comunicaciones', estado: 'ok', fecha: '07/07/2026',
+      area: 'Jefatura de Ampliaciones', responsable: '—', comentarios: 'Valida la creación del Sector Comunicaciones y su dependencia jerárquica (Eje 1, Tema 1) — pendiente formalizar los roles de Ampliaciones que se comparten con Comunicaciones y relevar la capacidad máxima del equipo actual', estado: 'rev', fecha: '07/07/2026',
       detalle: {
-        titulo: 'Responsable de Sector Comunicaciones',
+        titulo: 'Jefatura de Ampliaciones',
         bloques: [
-          { tipo: 'texto', texto: 'Depende de: Jefe de Ampliaciones. Gestiona de forma integral el Sector Comunicaciones, garantizando el cumplimiento de los objetivos comerciales, técnicos y administrativos.' },
+          { tipo: 'texto', texto: 'El Sector Comunicaciones depende de la Jefatura de Ampliaciones y comparte recursos con el Sector Ampliaciones durante esta primera etapa.' },
           { tipo: 'lista', items: [
-            'Coordinar al Técnico Comercial y al Técnico Instalador en la operación diaria',
-            'Definir la priorización de la cartera de clientes y supervisar el proceso comercial',
-            'Supervisar la calidad de las instalaciones y el cumplimiento de los procesos técnicos',
-            'Reportar los KPIs del sector a la Jefatura de Ampliaciones y a Gerencia',
-            'Supervisar al Administrativo de Sector Comunicaciones y coordinar con Administración general el circuito del abono de comodato',
-            'Gestionar con la Jefatura de Ampliaciones el uso de recursos compartidos durante la etapa inicial',
+            'Validar la estructura y dotación inicial del sector (reasignación de personal de Ampliaciones)',
+            'Formalizar los roles del Sector Ampliaciones que se comparten con Comunicaciones',
+            'Relevar la capacidad máxima del equipo actual para saber cuánto puede absorber el nuevo sector sin afectar la operación de Ampliaciones',
           ]},
         ],
       },
     },
     {
-      area: 'Técnico Comercial', responsable: '—', comentarios: 'Estructura definida (Eje 1, Tema 1) — pendiente formalizar los roles del Sector Ampliaciones compartidos con Comunicaciones', estado: 'ok', fecha: '07/07/2026',
+      area: 'Gerencia', responsable: '—', comentarios: 'Debe definir precio y composición del abono, metas de los indicadores de gestión y qué ocurre con el abono una vez recuperado el valor del equipo', estado: 'rev', fecha: '07/07/2026',
       detalle: {
-        titulo: 'Técnico Comercial',
+        titulo: 'Gerencia',
         bloques: [
-          { tipo: 'texto', texto: 'Depende de: Responsable de Sector Comunicaciones. Identifica, contacta y cierra la migración comercial de clientes candidatos.' },
+          { tipo: 'texto', texto: 'Define las condiciones comerciales y los objetivos de negocio del piloto.' },
           { tipo: 'lista', items: [
-            'Relevar y priorizar la cartera de clientes candidatos a migración',
-            'Contactar al cliente y agendar la visita de diagnóstico',
-            'Realizar el relevamiento comercial y técnico preliminar en sitio',
-            'Elaborar y presentar la propuesta comercial utilizando la ficha de producto',
-            'Gestionar objeciones y cerrar la venta',
-            'Formalizar con el cliente la firma del contrato de comodato y las condiciones del nuevo abono',
-            'Traspasar la información necesaria al Administrativo de Sector Comunicaciones para el alta del contrato y la orden de instalación',
+            'Definir el precio del abono mensual y su composición (¿incluye monitoreo o es un concepto separado?)',
+            'Definir si el Técnico Comercial tiene margen de descuento sobre el abono',
+            'Definir metas de migraciones, universo de clientes candidatos y objetivo de facturación del primer año',
+            'Definir qué ocurre con el monto del abono a partir de la cuota de recupero del equipo (baja, se mantiene o cambia de categoría)',
           ]},
         ],
       },
     },
     {
-      area: 'Técnico Instalador', responsable: '—', comentarios: 'Estructura definida (Eje 1, Tema 1) — pendiente formalizar los roles del Sector Ampliaciones compartidos con Comunicaciones', estado: 'ok', fecha: '07/07/2026',
+      area: 'Administración', responsable: '—', comentarios: 'Circuito de facturación y cobranza definido a nivel de responsabilidades; falta adaptar el sistema de gestión para el nuevo concepto de abono y sus hitos', estado: 'rev', fecha: '07/07/2026',
       detalle: {
-        titulo: 'Técnico Instalador',
+        titulo: 'Administración',
         bloques: [
-          { tipo: 'texto', texto: 'Depende de: Responsable de Sector Comunicaciones. Ejecuta la instalación y puesta en marcha de la nueva tecnología en el domicilio del cliente.' },
+          { tipo: 'texto', texto: 'A cargo de la facturación y cobranza del nuevo abono de comodato, a partir de la información que le traslada el Administrativo de Sector Comunicaciones.' },
           { tipo: 'lista', items: [
-            'Realizar el relevamiento técnico final en sitio y definir los materiales necesarios',
-            'Instalar la central híbrida Hellgrun e integrar los elementos cableados existentes y los nuevos dispositivos inalámbricos',
-            'Configurar zonas, particiones, usuarios y el módulo de comunicación hacia la central de monitoreo',
-            'Probar el funcionamiento del sistema y capacitar al cliente en su uso básico',
-            'Dar de baja el comunicador Lantrix que el cliente tuviera activo, como parte de la instalación, y activar el alta definitiva en el sistema de monitoreo',
-            'Relevar y sugerir mejoras adicionales al sistema del cliente, derivándolas al sector Operaciones Técnicas de Ampliaciones',
+            'Confirmar si el sistema de gestión actual permite crear el nuevo concepto de abono con seguimiento de cuotas e hitos (ej. cuota de recupero)',
+            'Confirmar si se puede asociar el número de serie del equipo a cada contrato de comodato para trazabilidad',
+            'Definir el circuito de seguimiento de mora para este abono (impacta directo en el recupero del equipo)',
+            'Definir el procedimiento de baja de servicio (recupero de equipo o de saldo) para bajas anteriores a la cuota de recupero',
           ]},
         ],
       },
     },
     {
-      area: 'Administrativo de Sector Comunicaciones', responsable: '—', comentarios: 'Rol formalizado en la estructura del sector (Eje 1, Tema 1) — circuito administrativo definido', estado: 'ok', fecha: '07/07/2026',
+      area: 'Legal', responsable: '—', comentarios: 'Contrato de comodato con el cliente cerrado (permanencia, baja anticipada, revocación, ajuste por IPC, protección de datos) — quedan puntos abiertos sobre casos excepcionales', estado: 'ok', fecha: '07/07/2026',
       detalle: {
-        titulo: 'Administrativo de Sector Comunicaciones',
+        titulo: 'Legal',
         bloques: [
-          { tipo: 'texto', texto: 'Depende de: Responsable de Sector Comunicaciones. Gestiona el circuito administrativo interno del sector: alta de contratos de comodato, generación de órdenes de instalación y trazabilidad de los equipos entregados.' },
+          { tipo: 'texto', texto: 'El contrato de comodato con el cliente está definido y disponible en "Contrato Hellgrun.docx": duración de 12 meses con renovación mensual automática, condiciones de baja anticipada, derecho de revocación (Ley 24.240), ajuste del abono por IPC y tratamiento de datos personales (Ley 25.326).' },
           { tipo: 'lista', items: [
-            'Recibir del Técnico Comercial la información del cliente, la propuesta cerrada y el contrato de comodato firmado',
-            'Dar de alta el contrato de comodato en el sistema administrativo, con número de serie del equipo y condiciones',
-            'Generar la orden de instalación para el Técnico Instalador',
-            'Cerrar la orden de trabajo una vez finalizada la instalación, registrando el número de serie del equipo entregado en comodato',
-            'Mantener la trazabilidad de los equipos entregados en comodato (número de serie, estado, historial)',
-            'Ser el enlace operativo con Administración general de la empresa para todo lo referido a facturación y cobranza del abono',
+            'Definir qué ocurre con el equipo Hellgrun si el cliente fallece, la empresa cierra o hay un cambio de titular',
+            'Confirmar si el saldo del comodato no recuperado en una baja anticipada es exigible judicialmente, y con qué documentación',
           ]},
-          { tipo: 'texto', texto: 'Nota: Administración general de la empresa queda acotada a facturación y cobranza del abono, a partir de la información que le traslada este rol.' },
+        ],
+      },
+    },
+    {
+      area: 'Central de Monitoreo', responsable: '—', comentarios: 'Debe confirmar el procedimiento de alta de un equipo Hellgrun y la baja coordinada del comunicador Lantrix', estado: 'rev', fecha: '07/07/2026',
+      detalle: {
+        titulo: 'Central de Monitoreo',
+        bloques: [
+          { tipo: 'texto', texto: 'Valida la correcta comunicación del equipo instalado y reporta incidencias al Sector Comunicaciones.' },
+          { tipo: 'lista', items: [
+            'Confirmar el procedimiento para dar de alta un equipo Hellgrun en el sistema de monitoreo',
+            'Confirmar si la plataforma de monitoreo actual recibe señales del módulo de comunicación Hellgrun sin necesidad de adaptación',
+            'Coordinar con el Técnico Instalador la baja del comunicador Lantrix durante la instalación, sin dejar al cliente sin comunicación',
+          ]},
         ],
       },
     },
