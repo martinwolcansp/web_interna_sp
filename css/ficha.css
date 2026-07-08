@@ -187,7 +187,8 @@
 
 .checklist li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-3);
   font-size: var(--font-size-base);
   color: var(--color-text-body);
