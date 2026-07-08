@@ -45,7 +45,7 @@ window.FICHA_VERSIONS['nuevas-tecnologias']['v1.2'] = {
 
   /* ── IDENTIFICACIÓN ───────────────────────────────────── */
   id:      'nuevas-tecnologias',
-  badge:   'Piloto · Sector Comunicaciones',
+  badge:   'Eje 3 · Sector Comunicaciones',
   name:    'Nuevas Tecnologías — Migración a Comodato',
   version: '1.2',
   date:    '07/07/2026',
