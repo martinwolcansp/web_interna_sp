@@ -124,7 +124,10 @@ const _STATUS = {
 
 function _badge(status, fecha) {
   const s = _STATUS[status] || { cls: '', label: status };
-  const f = fecha ? ` — ${fecha}` : '';
+  // La nota/fecha va en su propio span para poder envolverla en una
+  // segunda línea (ver .status-badge__date en css/components.css) sin
+  // que el texto largo desborde la tabla o la lista.
+  const f = fecha ? `<span class="status-badge__date"> — ${fecha}</span>` : '';
   return `<span class="status-badge ${s.cls}">${s.label}${f}</span>`;
 }
 
