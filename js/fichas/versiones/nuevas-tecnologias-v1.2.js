@@ -18,6 +18,23 @@
          js/documentos-externos.js.
        · El checklist de lanzamiento referencia explícitamente el
          estado de ese link externo.
+       · Badge del encabezado: "Eje 3 · Ficha de Producto" (antes decía
+         "Sector Comunicaciones", repetido en los 3 módulos y sin
+         distinguirlos) — coherente con "Eje 1 · Unidad de Negocio" y
+         "Eje 2 · Procesos".
+       · Checklist de lanzamiento realineado 1 a 1 con la tabla real de
+         Eje3_Ficha_Producto.docx (9 ítems: Identificación y propuesta
+         de valor, Condiciones comerciales, Requerimientos para el
+         cliente, Terminología, Contrato, Material de marketing,
+         Componentes técnicos, Procesos internos, Validación de
+         Servicio Técnico). Se sacan ítems que no estaban en el
+         documento fuente (estructura y roles, indicadores, piloto con
+         clientes, capacitación del equipo — esos viven en Eje 1) y se
+         corrige "Datos técnicos" → "Componentes técnicos".
+       · "Forma de comercialización" y "Checklist de lanzamiento" pasan
+         de estar uno al lado del otro (grid 2 columnas) a apilados en
+         vertical — cambio en el componente compartido (ficha-renderer.js),
+         aplica a todas las fichas del sitio.
    - Sin cambios de fondo en condiciones comerciales, equipamiento o
      áreas respecto de v1.1 — los datos siguen alineados con Eje 1 y
      Eje 2 (mismos roles, mismas cifras de contrato, mismos pendientes).
@@ -45,7 +62,7 @@ window.FICHA_VERSIONS['nuevas-tecnologias']['v1.2'] = {
 
   /* ── IDENTIFICACIÓN ───────────────────────────────────── */
   id:      'nuevas-tecnologias',
-  badge:   'Eje 3 · Sector Comunicaciones',
+  badge:   'Eje 3 · Ficha de Producto',
   name:    'Nuevas Tecnologías — Migración a Comodato',
   version: '1.2',
   date:    '07/07/2026',
@@ -67,19 +84,18 @@ window.FICHA_VERSIONS['nuevas-tecnologias']['v1.2'] = {
       'Video-verificación opcional con cámaras propias del cliente, mediante abono adicional — [PENDIENTE] costo a definir con Gerencia',
       'Recupero de la inversión a través del abono — estimado en la 6ª cuota, mes exacto NO validado todavía con números reales (ver pestaña Áreas → Administrativo de Sector Comunicaciones)',
     ],
+    /* Checklist alineado 1 a 1 con la tabla "Checklist de lanzamiento" de
+       Eje3_Ficha_Producto.docx (mismos ítems, mismo orden). */
     checklist: [
-      { label: 'Identificación del servicio (Eje 3, Sección 1)', status: 'ok' },
-      { label: 'Propuesta de valor y objeciones (Eje 3, Sección 2)', status: 'ok' },
-      { label: 'Datos comerciales — permanencia, baja y ajuste ya cerrados por contrato; falta precio y composición del abono', status: 'rev', fecha: 'Pendiente: Gerencia + Administración' },
-      { label: 'Datos técnicos — modelo, zonas, protocolo, batería y garantía', status: 'rev', fecha: 'Pendiente: confirmar con el proveedor Hellgrun' },
-      { label: 'Contrato de comodato con el cliente', status: 'ok', fecha: 'Definido — ver condiciones en la pestaña Precios' },
-      { label: 'Link externo al contrato de comodato', status: 'rev', fecha: 'Pendiente: aún no existe repositorio interno (Nextcloud/Drive) donde alojarlo — ver pestaña Precios → Documentos' },
-      { label: 'Estructura y roles del Sector Comunicaciones', status: 'ok', fecha: 'Definida — ver módulo Unidad de Negocio (Eje 1)' },
-      { label: 'Procesos comercial, instalación y administrativo', status: 'rev', fecha: 'Detalle completo en el módulo Procesos (Eje 2) — puntos críticos aún abiertos' },
-      { label: 'Capacitación técnica del equipo', status: 'ok', fecha: 'Equipo ya capacitado en Hellgrun — falta referencia formal (contenido, fecha, certificación)' },
-      { label: 'Objetivos e indicadores de gestión (metas)', status: 'rev', fecha: 'Catálogo cargado, metas numéricas pendientes (Unidad de Negocio, Eje 1)' },
-      { label: 'Validación de Servicio Técnico (mantenimiento de los equipos)', status: 'rev', fecha: 'Pendiente — ver pestaña Áreas' },
-      { label: 'Piloto con clientes', status: 'rev', fecha: 'No iniciado — depende de precio del abono y datos técnicos del proveedor' },
+      { label: 'Identificación y propuesta de valor', status: 'ok' },
+      { label: 'Condiciones comerciales', status: 'prog', fecha: 'Falta precio y composición del abono (Gerencia + Administración)' },
+      { label: 'Requerimientos para el cliente', status: 'ok' },
+      { label: 'Terminología', status: 'ok' },
+      { label: 'Contrato', status: 'ok', fecha: 'Firmado; falta cargar el link externo (ver pestaña Precios → Documentos)' },
+      { label: 'Material de marketing', status: 'rev', fecha: 'Pendiente — falta el link a la carpeta de piezas' },
+      { label: 'Componentes técnicos', status: 'rev', fecha: 'Requiere datos del proveedor Hellgrun (modelo, zonas, protocolo, batería, garantía)' },
+      { label: 'Procesos internos (Comercial / Instalación / Administrativo)', status: 'rev', fecha: 'Detalle completo en el módulo Procesos, Eje 2' },
+      { label: 'Validación de Servicio Técnico', status: 'rev', fecha: 'Pendiente — ver pestaña Áreas' },
     ],
   },
 

@@ -32,7 +32,7 @@ window.EJE_VERSIONS['eje2-procesos']['v1.0'] = {
 
   /* ── IDENTIFICACIÓN ───────────────────────────────────── */
   id:      'eje2-procesos',
-  badge:   'Eje 2 · Sector Comunicaciones',
+  badge:   'Eje 2 · Procesos',
   name:    'Procesos — Sector Comunicaciones',
   version: '1.0',
   date:    '07/07/2026',

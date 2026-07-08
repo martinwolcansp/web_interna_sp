@@ -38,7 +38,7 @@ window.EJE_VERSIONS['eje1-unidad-negocio']['v1.0'] = {
 
   /* ── IDENTIFICACIÓN ───────────────────────────────────── */
   id:      'eje1-unidad-negocio',
-  badge:   'Eje 1 · Sector Comunicaciones',
+  badge:   'Eje 1 · Unidad de Negocio',
   name:    'Unidad de Negocio — Sector Comunicaciones',
   version: '1.0',
   date:    '07/07/2026',

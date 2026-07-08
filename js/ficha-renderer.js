@@ -232,15 +232,13 @@ function _secGeneral(g) {
         <p style="font-size:14px; color:#374151; line-height:1.7;">${g.descripcion}</p>
       </div>
       <div class="ficha-info-row">${infocards}</div>
-      <div class="grid-2">
-        <div class="ficha-card">
-          <p class="section-label">Forma de comercialización</p>
-          <ul class="checklist">${comercItems}</ul>
-        </div>
-        <div class="ficha-card">
-          <p class="section-label">Check-list de lanzamiento</p>
-          <ul class="checklist">${checkItems}</ul>
-        </div>
+      <div class="ficha-card-full">
+        <p class="section-label">Forma de comercialización</p>
+        <ul class="checklist">${comercItems}</ul>
+      </div>
+      <div class="ficha-card-full">
+        <p class="section-label">Check-list de lanzamiento</p>
+        <ul class="checklist">${checkItems}</ul>
       </div>
       ${requerimientosBlock}
     </section>`;
