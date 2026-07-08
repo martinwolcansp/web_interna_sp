@@ -128,16 +128,56 @@ function _badge(status, fecha) {
   return `<span class="status-badge ${s.cls}">${s.label}${f}</span>`;
 }
 
+/**
+ * Renderiza el link a un documento externo (contrato, documento fuente
+ * de un eje, comunicación interna, etc.) a partir de su key en
+ * window.DOCUMENTOS_EXTERNOS (ver js/documentos-externos.js).
+ * Reutilizable desde cualquier página que cargue ficha-renderer.js
+ * (fichas de producto y módulos de eje).
+ * Mientras el documento no tenga `url` cargada, se muestra deshabilitado
+ * con el motivo como tooltip — así queda listo para completar el día
+ * que exista el repositorio interno (Nextcloud / Drive / SharePoint).
+ * @param {string} key - clave en window.DOCUMENTOS_EXTERNOS
+ */
+function _docLink(key) {
+  const doc = (window.DOCUMENTOS_EXTERNOS || {})[key];
+  if (!doc) return '';
+
+  if (doc.url) {
+    return `
+      <a class="doc-link" href="${doc.url}" target="_blank" rel="noopener">
+        <i class="ti ti-file-text" aria-hidden="true"></i>
+        <span>${doc.label}</span>
+        <i class="ti ti-external-link" aria-hidden="true"></i>
+      </a>`;
+  }
+
+  return `
+    <span class="doc-link doc-link--pending" title="${doc.nota || 'Link externo pendiente de definir.'}">
+      <i class="ti ti-file-text" aria-hidden="true"></i>
+      <span>${doc.label}</span>
+      <i class="ti ti-clock" aria-hidden="true"></i>
+    </span>`;
+}
+
 
 /* ── SECCIONES ───────────────────────────────────────────── */
 
 function _header(d) {
+  // Líder de producto / colaborador son opcionales — se suman al pie del
+  // encabezado solo si la ficha ya los tiene cargados.
+  const metaExtra = [
+    d.liderProducto ? `Líder de producto: ${d.liderProducto}` : null,
+    d.colaborador   ? `Colaborador: ${d.colaborador}`         : null,
+  ].filter(Boolean).join(' &nbsp;&middot;&nbsp; ');
+
   return `
     <header class="ficha-header">
       <div class="ficha-header__right">
         <span class="ficha-header__badge">${d.badge}</span>
         <h1 class="ficha-header__product-name">${d.name}</h1>
         <p class="ficha-header__version">Ver ${d.version} &nbsp;&middot;&nbsp; ${d.date} &nbsp;&middot;&nbsp; Autor: ${d.author}</p>
+        ${metaExtra ? `<p class="ficha-header__version">${metaExtra}</p>` : ''}
       </div>
     </header>`;
 }
@@ -271,6 +311,16 @@ function _secPrecios(p) {
       <i class="ti ${n.icon}"${n.color ? ` style="color:${n.color};"` : ''} aria-hidden="true"></i>${n.text}
     </li>`).join('');
 
+  // "Documentos" es opcional — links externos (contrato, etc.) declarados
+  // como keys de window.DOCUMENTOS_EXTERNOS. Ver js/documentos-externos.js.
+  const documentosBlock = (p.documentos && p.documentos.length) ? `
+      <div class="ficha-card-full">
+        <p class="section-label">Documentos</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          ${p.documentos.map(key => _docLink(key)).join('')}
+        </div>
+      </div>` : '';
+
   return `
     <section id="sec-precios" class="section-panel" role="tabpanel">
       <div class="ficha-card-full">
@@ -292,11 +342,15 @@ function _secPrecios(p) {
         <p class="section-label">Notas sobre precios de venta</p>
         <ul class="checklist">${notas}</ul>
       </div>
+      ${documentosBlock}
     </section>`;
 }
 
 function _secProceso(pr) {
-  const secciones = pr.secciones.map(s => {
+  // "secciones" (con pasos detallados) es opcional — algunas fichas remiten
+  // el detalle paso a paso al módulo de Procesos (Eje 2) y acá solo dejan
+  // el resumen por "resumen", para no duplicar contenido entre ambos.
+  const secciones = (pr.secciones || []).map(s => {
     const pasos = s.pasos.map((paso, i) => `
       <div class="process-step">
         <div class="process-step__num">${i + 1}</div>
@@ -311,6 +365,21 @@ function _secProceso(pr) {
         ${pasos}
       </div>`;
   }).join('');
+
+  const seccionesBlock = (pr.secciones && pr.secciones.length)
+    ? `<div class="grid-2">${secciones}</div>` : '';
+
+  // "resumen" es opcional — tabla Proceso / Áreas involucradas cuando el
+  // detalle completo vive en el módulo de Procesos (Eje 2, ver pr.nota).
+  const resumenBlock = (pr.resumen && pr.resumen.length) ? `
+      <div class="ficha-card-full">
+        <p class="section-label">Procesos y áreas involucradas</p>
+        <table class="data-table">
+          <thead><tr><th>Proceso</th><th>Áreas involucradas</th></tr></thead>
+          <tbody>${pr.resumen.map(r =>
+            `<tr><td>${r.proceso}</td><td>${r.areas}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>` : '';
 
   const nsRows = pr.netsuite.map(r =>
     `<tr><td>${r.articulo}</td><td><code class="ns-code">${r.codigo}</code></td><td style="color:#6b7280;">${r.desc}</td></tr>`).join('');
@@ -327,9 +396,19 @@ function _secProceso(pr) {
         </table>
       </div>` : '';
 
+  // "Nota" es opcional — para remitir al módulo de Procesos (Eje 2) cuando
+  // el detalle paso a paso completo vive ahí y acá solo va un resumen.
+  const notaBlock = pr.nota ? `
+      <div class="alert-box" style="margin-bottom: var(--space-4);">
+        <i class="ti ti-info-circle" aria-hidden="true"></i>
+        ${pr.nota}
+      </div>` : '';
+
   return `
     <section id="sec-proceso" class="section-panel" role="tabpanel">
-      <div class="grid-2">${secciones}</div>
+      ${notaBlock}
+      ${resumenBlock}
+      ${seccionesBlock}
       <div class="ficha-card-full">
         <p class="section-label">Códigos Netsuite</p>
         <table class="data-table">
@@ -484,7 +563,11 @@ function openAreaDetail(index) {
 }
 
 function closeAreaDetail() {
-  document.getElementById('area-modal-overlay').classList.remove('is-open');
+  // Guard: páginas sin modal de detalle de área (ej. módulos de Eje 1/Eje 2,
+  // que reutilizan showFichaSection/closeFichaVersionDropdown de este
+  // archivo pero no tienen el modal en el DOM) no tienen este elemento.
+  const overlay = document.getElementById('area-modal-overlay');
+  if (overlay) overlay.classList.remove('is-open');
 }
 
 function closeAreaDetailOnOverlayClick(event) {

@@ -856,6 +856,87 @@
 .dot--no { background: var(--color-border); }
 
 
+/* ── DOC LINK (link externo a documentos fuente: contratos, ejes, etc.) ── */
+.doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-blue-border);
+  background: var(--color-blue-light);
+  color: var(--color-blue);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.doc-link:hover {
+  border-color: var(--color-blue);
+  color: var(--color-navy);
+}
+
+.doc-link i:first-child { font-size: 15px; }
+.doc-link i:last-child  { font-size: 13px; }
+
+.doc-link--pending {
+  background: var(--color-bg-soft);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: help;
+}
+
+.doc-link--pending:hover {
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+
+/* ── MODULE NAV (switcher entre los módulos de una unidad de negocio,
+     ej. Sector Comunicaciones: Ficha de Producto / Unidad de Negocio /
+     Procesos, cada uno en su propia página) ── */
+.module-nav {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  max-width: var(--max-width-ficha);
+  margin: var(--space-6) auto 0;
+  padding: 0 var(--space-6);
+}
+
+.module-nav__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px var(--space-6);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.module-nav__item i { font-size: 16px; }
+
+.module-nav__item:hover {
+  border-color: var(--color-blue);
+  color: var(--color-blue);
+}
+
+.module-nav__item.is-active {
+  background: var(--color-bg);
+  color: var(--color-navy);
+  border-color: var(--color-navy);
+  border-bottom: 2px solid var(--color-red);
+}
+
+
 /* ── ALERT BOX ── */
 .alert-box {
   background: var(--color-alert-bg);
