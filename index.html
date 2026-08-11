@@ -227,6 +227,23 @@
       line-height: 1.5;
     }
 
+    /* Mensaje de "iniciá sesión" / "cuenta pendiente de aprobación",
+       reemplaza a la pizarra + mosaicos hasta que se sepa qué mostrar. */
+    .home-gate-message {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 1.5rem 2rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      color: var(--color-text-muted);
+      font-size: var(--font-size-sm);
+    }
+
+    .home-gate-message .btn {
+      margin-top: var(--space-3);
+    }
+
     @media (max-width: 640px) {
       .site-header { flex-direction: column; }
       .site-header__right { text-align: left; }
@@ -240,6 +257,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabase-client.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/home.js"></script>
   <script src="/components/header/header.js"></script>
 
   <main class="home-wrap" role="main">
@@ -256,51 +274,25 @@
     <!-- Sección general: no es un mosaico, es la portada del sitio.
          Los mosaicos con permiso por rol van debajo, en la grilla
          "Productos y servicios". Ver punto 10 de la propuesta de
-         Auth/Roles/CMS. -->
-    <section class="home-pizarra" aria-label="Pizarra institucional">
+         Auth/Roles/CMS. Contenido real cargado por js/home.js según
+         sesión y permisos (supabase/rpc_home.sql). -->
+    <div id="home-gate-message" class="home-gate-message" style="display:none;"></div>
+
+    <section id="pizarra-section" class="home-pizarra" aria-label="Pizarra institucional">
       <div class="home-pizarra__header">
         <p class="home-section-label" style="margin-bottom:0;">Pizarra institucional — Novedades</p>
-        <span class="home-pizarra__unread">2 sin leer</span>
+        <span id="pizarra-unread-badge" class="home-pizarra__unread" style="display:none;"></span>
       </div>
 
-      <div class="home-pizarra__list">
-
-        <article class="pizarra-post pizarra-post--unread">
-          <div class="pizarra-post__meta">
-            <span class="tag">Feriados</span>
-            <span class="pizarra-post__date">10 ago 2026 · RRHH</span>
-            <span class="pizarra-post__dot" aria-label="No leído" title="No leído"></span>
-          </div>
-          <h3 class="pizarra-post__title">Calendario de feriados 2026 actualizado</h3>
-          <p class="pizarra-post__excerpt">Se publicó el detalle de días no laborables del segundo semestre. Reemplaza el envío por correo anterior.</p>
-        </article>
-
-        <article class="pizarra-post pizarra-post--unread">
-          <div class="pizarra-post__meta">
-            <span class="tag">Comunicados</span>
-            <span class="pizarra-post__date">05 ago 2026 · RRHH</span>
-            <span class="pizarra-post__dot" aria-label="No leído" title="No leído"></span>
-          </div>
-          <h3 class="pizarra-post__title">Nueva política de home office</h3>
-          <p class="pizarra-post__excerpt">Actualización de días y condiciones habilitadas por área a partir de septiembre.</p>
-        </article>
-
-        <article class="pizarra-post">
-          <div class="pizarra-post__meta">
-            <span class="tag">Novedades</span>
-            <span class="pizarra-post__date">02 ago 2026 · RRHH</span>
-          </div>
-          <h3 class="pizarra-post__title">Bienvenida al equipo de Unidad de Negocio Comunicaciones</h3>
-          <p class="pizarra-post__excerpt">Presentación del nuevo sector y su responsable de producto.</p>
-        </article>
-
+      <div id="pizarra-list" class="home-pizarra__list">
+        <p class="pizarra-post__excerpt">Cargando novedades…</p>
       </div>
     </section>
 
     <p class="home-section-label">Productos y servicios</p>
     <nav class="home-grid" aria-label="Páginas del portal">
 
-      <a class="home-card" href="pages/mapa-servicios.html">
+      <a class="home-card" data-seccion-id="mapa-servicios" href="pages/mapa-servicios.html">
         <div class="home-card__icon" aria-hidden="true"><i class="ti ti-map-2"></i></div>
         <div>
           <div class="home-card__name">Mapa de Servicios</div>
@@ -309,7 +301,7 @@
         <span class="home-card__badge home-card__badge--new">Disponible</span>
       </a>
 
-      <a class="home-card" href="pages/sector-comunicaciones.html">
+      <a class="home-card" data-seccion-id="sector-comunicaciones" href="pages/sector-comunicaciones.html">
         <div class="home-card__icon" aria-hidden="true"><i class="ti ti-antenna"></i></div>
         <div>
           <div class="home-card__name">Sector Comunicaciones</div>
@@ -318,7 +310,7 @@
         <span class="home-card__badge home-card__badge--piloto">Piloto</span>
       </a>
 
-      <a class="home-card" href="pages/organigrama.html">
+      <a class="home-card" data-seccion-id="organigrama" href="pages/organigrama.html">
         <div class="home-card__icon" aria-hidden="true"><i class="ti ti-users"></i></div>
         <div>
           <div class="home-card__name">Directorio de Áreas</div>
@@ -326,6 +318,10 @@
         </div>
         <span class="home-card__badge home-card__badge--new">Disponible</span>
       </a>
+
+      <p id="mosaicos-empty" class="home-gate-message" style="display:none;">
+        Todavía no tenés mosaicos habilitados. Pedile a un administrador que te asigne un área.
+      </p>
 
       <a class="home-card home-card--disabled" href="#" aria-disabled="true">
         <div class="home-card__icon" aria-hidden="true"><i class="ti ti-certificate"></i></div>

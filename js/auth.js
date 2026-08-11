@@ -17,11 +17,19 @@ async function initAuthArea() {
 
   const { data: { session } } = await window.supabaseClient.auth.getSession();
   renderAuthState(area, session);
+  notifyAuthReady(session);
 
   // Repinta automáticamente ante login, logout o refresco de token.
   window.supabaseClient.auth.onAuthStateChange((_event, session) => {
     renderAuthState(area, session);
+    notifyAuthReady(session);
   });
+}
+
+// Avisa al resto de los scripts de la página (ej. js/home.js) que ya se
+// sabe si hay sesión o no, para que puedan cargar contenido según permisos.
+function notifyAuthReady(session) {
+  document.dispatchEvent(new CustomEvent('sp:auth-ready', { detail: { session } }));
 }
 
 function renderLoading(area) {

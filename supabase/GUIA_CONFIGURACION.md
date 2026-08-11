@@ -26,6 +26,7 @@ Orden de archivos (cada uno depende del anterior):
 1. `schema.sql` — tablas, funciones, triggers y políticas RLS.
 2. `seed_areas.sql` — las 42 áreas del organigrama (generadas desde `js/organigrama-data.js`).
 3. `seed_secciones.sql` — los mosaicos actuales + la pizarra, con permisos de ejemplo.
+4. `rpc_home.sql` — funciones que usa el home dinámico (`js/home.js`) para saber qué mosaicos mostrar y traer las novedades de la pizarra con su estado de lectura.
 
 Dos formas de correrlos:
 
