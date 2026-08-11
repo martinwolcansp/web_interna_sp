@@ -134,6 +134,23 @@ create table if not exists novedades_leidas (
 
 comment on table novedades_leidas is 'Sostiene el indicador de "notificaciones pendientes": lo no leído por el usuario logueado es novedades vigentes que no tienen fila acá.';
 
+-- Chequeo de superadmin para usar en las políticas de perfiles. No se puede
+-- consultar "perfiles" directamente adentro de una política de la propia
+-- tabla "perfiles" (dispara esa misma política de nuevo → recursión
+-- infinita, error 42P17) — por eso va en una función security definer,
+-- que al ejecutar su consulta interna no vuelve a evaluar RLS.
+create or replace function fn_es_superadmin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from perfiles where id = auth.uid() and es_superadmin and activo
+  );
+$$;
+
 -- -------------------------------------------------------------------------
 -- 6. ROW LEVEL SECURITY
 -- -------------------------------------------------------------------------
@@ -167,9 +184,9 @@ create policy "permisos: escritura superadmin" on permisos_area_seccion
 create policy "perfiles: ver el propio" on perfiles
   for select using (id = auth.uid());
 create policy "perfiles: superadmin ve todos" on perfiles
-  for select using (exists (select 1 from perfiles s where s.id = auth.uid() and s.es_superadmin and s.activo));
+  for select using (fn_es_superadmin());
 create policy "perfiles: superadmin edita todos" on perfiles
-  for update using (exists (select 1 from perfiles s where s.id = auth.uid() and s.es_superadmin and s.activo));
+  for update using (fn_es_superadmin());
 
 -- novedades (pizarra): ver es libre para cualquier autenticado (no depende
 -- de permisos_area_seccion); editar/publicar requiere permiso 'editar'
