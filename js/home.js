@@ -52,11 +52,12 @@ async function handleAuthReady(session) {
 function showGateMessage(texto, mostrarBotonLogin) {
   const msg = document.getElementById('home-gate-message');
   const pizarra = document.getElementById('pizarra-section');
+  const mosaicosWrap = document.getElementById('mosaicos-wrap');
+  // Sin sesión (o cuenta pendiente) no se sabe qué mosaico corresponde
+  // mostrar, así que se oculta toda la sección "Productos y servicios"
+  // (incluidos los "Próximamente"), no solo los mosaicos con permiso.
   if (pizarra) pizarra.style.display = 'none';
-  SECCION_IDS_MOSAICOS.forEach(id => {
-    const card = document.querySelector(`[data-seccion-id="${id}"]`);
-    if (card) card.style.display = 'none';
-  });
+  if (mosaicosWrap) mosaicosWrap.style.display = 'none';
   if (msg) {
     msg.textContent = texto;
     msg.style.display = '';
@@ -66,6 +67,8 @@ function showGateMessage(texto, mostrarBotonLogin) {
 function hideGateMessage() {
   const msg = document.getElementById('home-gate-message');
   const pizarra = document.getElementById('pizarra-section');
+  const mosaicosWrap = document.getElementById('mosaicos-wrap');
+  if (mosaicosWrap) mosaicosWrap.style.display = '';
   if (msg) msg.style.display = 'none';
   if (pizarra) pizarra.style.display = '';
 }
