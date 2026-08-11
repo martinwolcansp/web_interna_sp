@@ -97,6 +97,31 @@
   margin-top: 4px;
 }
 
+/* ── AUTH AREA (login/logout en el header) ── */
+.site-header__auth {
+  margin-top: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.site-header__auth .btn {
+  padding: 6px 14px;
+  font-size: var(--font-size-xs);
+}
+
+.auth-user {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+}
+
+.auth-loading {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
 
 /* ── SEGMENT TABS (navegación por pestañas) ── */
 .segment-nav {

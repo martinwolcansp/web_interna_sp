@@ -77,6 +77,10 @@
       }
 
       placeholder.remove();
+
+      // Avisa al resto del sitio que el header ya está en el DOM, para que
+      // auth.js pueda engancharse a #auth-area (ver js/auth.js).
+      document.dispatchEvent(new CustomEvent('sp:header-loaded'));
     })
     .catch(err => console.error('[header.js]', err));
 })();
