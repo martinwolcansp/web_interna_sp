@@ -16,11 +16,13 @@ async function initAuthArea() {
   renderLoading(area);
 
   const { data: { session } } = await window.supabaseClient.auth.getSession();
+  if (session) cleanAuthTokensFromUrl();
   renderAuthState(area, session);
   notifyAuthReady(session);
 
   // Repinta automáticamente ante login, logout o refresco de token.
   window.supabaseClient.auth.onAuthStateChange((_event, session) => {
+    if (session) cleanAuthTokensFromUrl();
     renderAuthState(area, session);
     notifyAuthReady(session);
   });
@@ -55,15 +57,32 @@ function renderAuthState(area, session) {
 }
 
 async function login() {
+  // Ojo: nunca usar window.location.href acá. Si la URL todavía tiene
+  // colgado un #access_token=... de un login anterior (ver
+  // cleanAuthTokensFromUrl), ese token viejo se manda como parte del
+  // redirectTo, se le suma el token nuevo al volver, y así se va
+  // acumulando hasta romper con "414 URI Too Long". Siempre se arma la
+  // URL limpia, sin hash ni query.
+  const redirectTo = window.location.origin + window.location.pathname;
   await window.supabaseClient.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.href }
+    options: { redirectTo }
   });
 }
 
 async function logout() {
   await window.supabaseClient.auth.signOut();
   window.location.reload();
+}
+
+// Saca el #access_token=...&refresh_token=...&token_type=bearer de la
+// barra de direcciones una vez que la sesión ya se estableció. Sin esto,
+// el token queda pegado en la URL y contamina el próximo login (ver
+// login() más arriba) además de quedar visible/copiable por el usuario.
+function cleanAuthTokensFromUrl() {
+  if (!window.location.hash || !window.location.hash.includes('access_token')) return;
+  const cleanUrl = window.location.origin + window.location.pathname + window.location.search;
+  window.history.replaceState(null, '', cleanUrl);
 }
 
 // Evita inyectar HTML si el nombre/email trae caracteres raros.
