@@ -32,7 +32,10 @@ comment on table areas is 'Mirror del organigrama institucional. Fuente: js/orga
 create table if not exists perfiles (
   id            uuid primary key references auth.users(id) on delete cascade,
   nombre        text,
+  apellido      text,
   email         text,
+  legajo        text,
+  foto_url      text,
   area_id       text references areas(id) on delete set null,
   nivel         text not null default 'colaborador' check (nivel in ('colaborador', 'responsable')),
   es_superadmin boolean not null default false,
@@ -41,9 +44,14 @@ create table if not exists perfiles (
 );
 
 comment on table perfiles is 'Perfil de cada usuario logueado. activo=false hasta que un superadmin le asigna área/rol (alta manual, Fase 5). Mientras activo=false, no tiene permisos.';
+comment on column perfiles.apellido is 'Autocompletado desde Google (family_name) en el primer login; editable por el superadmin.';
+comment on column perfiles.legajo is 'No viene de Google. Se carga a mano desde el panel de superadmin (o import de RRHH, a definir) — ver Adenda 2 de la propuesta.';
+comment on column perfiles.foto_url is 'Autocompletado desde Google (avatar_url/picture) en el primer login.';
 
 -- Alta automática de perfil (pendiente de aprobación) cuando alguien
--- inicia sesión por primera vez vía Google Workspace.
+-- inicia sesión por primera vez vía Google Workspace. nombre/apellido/foto
+-- se completan solos desde los datos que entrega Google; legajo no viene
+-- de ahí y queda null hasta que el superadmin lo cargue (ver Adenda 2).
 create or replace function fn_alta_perfil_nuevo()
 returns trigger
 language plpgsql
@@ -51,8 +59,14 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into perfiles (id, nombre, email)
-  values (new.id, coalesce(new.raw_user_meta_data ->> 'full_name', new.email), new.email)
+  insert into perfiles (id, nombre, apellido, email, foto_url)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'given_name', new.raw_user_meta_data ->> 'full_name', new.email),
+    new.raw_user_meta_data ->> 'family_name',
+    new.email,
+    coalesce(new.raw_user_meta_data ->> 'avatar_url', new.raw_user_meta_data ->> 'picture')
+  )
   on conflict (id) do nothing;
   return new;
 end;
@@ -134,6 +148,45 @@ create table if not exists novedades_leidas (
 
 comment on table novedades_leidas is 'Sostiene el indicador de "notificaciones pendientes": lo no leído por el usuario logueado es novedades vigentes que no tienen fila acá.';
 
+-- A qué área(s) está dirigida una novedad (ver Adenda 2 de la propuesta).
+-- Sin filas = visible para todas las áreas (comportamiento por defecto,
+-- igual al que tenía la pizarra antes de esta tabla). Con filas cargadas,
+-- sólo la ven usuarios de esas áreas (+ superadmin, que ve todo).
+create table if not exists novedades_areas (
+  novedad_id uuid not null references novedades(id) on delete cascade,
+  area_id    text not null references areas(id) on delete cascade,
+  primary key (novedad_id, area_id)
+);
+
+comment on table novedades_areas is 'Filtro de audiencia por área para una novedad. Sin filas = todas las áreas.';
+
+-- Chequeo de visibilidad de una novedad puntual, usado en la política de
+-- select de "novedades" y disponible para el frontend vía RPC si hace
+-- falta. security definer por el mismo motivo que fn_es_superadmin: evita
+-- reevaluar RLS recursivamente al consultar perfiles/novedades_areas.
+create or replace function fn_puede_ver_novedad(p_novedad_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    -- superadmin: ve todo
+    exists (select 1 from perfiles where id = auth.uid() and es_superadmin and activo)
+    or
+    -- sin filas en novedades_areas: la novedad es para todas las áreas
+    not exists (select 1 from novedades_areas na where na.novedad_id = p_novedad_id)
+    or
+    -- el área del usuario está entre las áreas destinatarias
+    exists (
+      select 1
+      from perfiles p
+      join novedades_areas na on na.area_id = p.area_id
+      where p.id = auth.uid() and p.activo and na.novedad_id = p_novedad_id
+    );
+$$;
+
 -- Chequeo de superadmin para usar en las políticas de perfiles. No se puede
 -- consultar "perfiles" directamente adentro de una política de la propia
 -- tabla "perfiles" (dispara esa misma política de nuevo → recursión
@@ -160,6 +213,7 @@ alter table secciones enable row level security;
 alter table permisos_area_seccion enable row level security;
 alter table novedades enable row level security;
 alter table novedades_leidas enable row level security;
+alter table novedades_areas enable row level security;
 
 -- areas / secciones / permisos_area_seccion: catálogos, lectura libre para
 -- cualquier usuario autenticado (los necesita el frontend para saber qué
@@ -188,11 +242,12 @@ create policy "perfiles: superadmin ve todos" on perfiles
 create policy "perfiles: superadmin edita todos" on perfiles
   for update using (fn_es_superadmin());
 
--- novedades (pizarra): ver es libre para cualquier autenticado (no depende
--- de permisos_area_seccion); editar/publicar requiere permiso 'editar'
--- sobre la sección 'pizarra', o ser el autor de esa publicación.
-create policy "novedades: ver todo autenticado" on novedades
-  for select using (auth.role() = 'authenticated');
+-- novedades (pizarra): ver depende de novedades_areas (sin filas = todas
+-- las áreas, comportamiento por defecto; ver fn_puede_ver_novedad más
+-- arriba); editar/publicar requiere permiso 'editar' sobre la sección
+-- 'pizarra', o ser el autor de esa publicación.
+create policy "novedades: ver segun area o global" on novedades
+  for select using (auth.role() = 'authenticated' and fn_puede_ver_novedad(id));
 create policy "novedades: crear con permiso de editar pizarra" on novedades
   for insert with check (fn_tiene_permiso('pizarra', 'editar'));
 create policy "novedades: autor o permiso edita/borra" on novedades
@@ -203,3 +258,12 @@ create policy "novedades: autor o permiso borra" on novedades
 -- novedades_leidas: cada usuario marca y lee solo lo propio.
 create policy "lecturas: propias" on novedades_leidas
   for all using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
+
+-- novedades_areas: lectura libre para autenticados (el frontend la
+-- necesita para saber a quién mostrarle cada novedad); escritura sólo
+-- para quien tiene permiso de editar la pizarra (mismo criterio que crear
+-- una novedad).
+create policy "novedades_areas: lectura autenticados" on novedades_areas
+  for select using (auth.role() = 'authenticated');
+create policy "novedades_areas: escritura con permiso de editar pizarra" on novedades_areas
+  for all using (fn_tiene_permiso('pizarra', 'editar'));

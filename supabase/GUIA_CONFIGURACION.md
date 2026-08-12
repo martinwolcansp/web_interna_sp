@@ -27,6 +27,8 @@ Orden de archivos (cada uno depende del anterior):
 2. `seed_areas.sql` — las 42 áreas del organigrama (generadas desde `js/organigrama-data.js`).
 3. `seed_secciones.sql` — los mosaicos actuales + la pizarra, con permisos de ejemplo.
 4. `rpc_home.sql` — funciones que usa el home dinámico (`js/home.js`) para saber qué mosaicos mostrar y traer las novedades de la pizarra con su estado de lectura.
+5. `fix_perfiles_rls.sql` — **solo si aplicaste `schema.sql` antes del 11 de agosto de 2026.** Corrige un bug real encontrado en producción: la política de `perfiles` se consultaba a sí misma y entraba en recursión infinita (error `42P17`). Ya está incorporado a `schema.sql` para instalaciones nuevas — si instalaste después de esa fecha, no hace falta correrlo aparte.
+6. `migracion_2_perfil_extendido_pizarra_areas.sql` — **correr una sola vez sobre la base actual (12 de agosto de 2026 en adelante).** Agrega apellido/legajo/foto a `perfiles` (autocompletados desde Google en el próximo login; hace backfill de las cuentas que ya existen), y la tabla `novedades_areas` para poder dirigir una publicación de la pizarra a áreas puntuales en vez de a todo el mundo (Adenda 2 de la propuesta, puntos 12.1 y 12.3). **Importante:** para una base ya desplegada, correr este archivo — no volver a pegar `schema.sql` completo, porque la política vieja de lectura de `novedades` quedaría duplicada en vez de reemplazada. `schema.sql` ya incluye estos cambios, así que una instalación nueva desde cero no necesita este archivo aparte.
 
 Dos formas de correrlos:
 
@@ -66,11 +68,30 @@ GOTRUE_EXTERNAL_GOOGLE_SECRET=<client secret de Google>
 GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI=https://<tu-dominio-de-supabase>/auth/v1/callback
 ```
 
-Reiniciar el servicio de Auth después de guardarlas.
+**Importante — a dónde vuelve el usuario después de loguearse.** Por default, `GOTRUE_SITE_URL` en el template de Coolify apunta a `${SERVICE_URL_SUPABASEKONG}` (o sea, a Supabase Studio), no al sitio. Si no se corrige, el login funciona pero termina mandando al usuario a Studio en vez de de vuelta al sitio. Dos variables a revisar en el mismo lugar:
+
+```
+GOTRUE_SITE_URL=<url-de-tu-sitio>
+```
+(reemplazar el valor por defecto por la URL real del sitio, no dejarlo apuntando a Kong/Studio).
+
+Para permitir que el sitio reciba el redirect, no se edita `GOTRUE_URI_ALLOW_LIST` directamente — en el template de Coolify hay una variable separada pensada para esto:
+```
+ADDITIONAL_REDIRECT_URLS=<url-de-tu-sitio>/**
+```
+El `**` cubre todas las páginas del sitio, no solo el home.
+
+**Después de cualquier cambio de variables, hace falta volver a hacer Deploy del recurso, no alcanza con reiniciar el contenedor** (`docker restart` no relee variables de entorno nuevas — solo revive el contenedor con la configuración vieja).
 
 ### 2.3 Por qué no hace falta restringir el dominio "a mano" en el código
 
 Se podría pasar `hd: 'spseguridad.com.ar'` como parámetro al iniciar sesión desde el frontend, pero eso es solo cosmético (un usuario externo podría igual completar el login si Google se lo permite). La restricción real ya está resuelta por diseño en `schema.sql`: el trigger `on_auth_user_created` da de alta el perfil con `activo = false`, y todas las políticas RLS exigen `activo = true` para tener cualquier permiso. Es decir: cualquiera puede loguearse, pero nadie ve ni edita nada hasta que un superadmin lo activa y le asigna área — así que si en el paso 2.1 dejás el consent screen como *Internal*, ya alcanza.
+
+### 2.4 Certificado HTTPS — limitación conocida, pendiente de resolver
+
+Si el dominio de Kong quedó en un subdominio `sslip.io` (ver punto 0), Let's Encrypt necesita alcanzar el puerto 80 del servidor desde internet para emitir el certificado (challenge HTTP-01). En un servidor propio detrás de firewall/NAT, esto suele fallar ("Timeout during connect") y Traefik sirve su certificado autofirmado por defecto — el navegador va a marcar la conexión como no confiable, y las llamadas en segundo plano del SDK de Supabase (`fetch`/XHR) fallan en silencio con `ERR_CERT_AUTHORITY_INVALID` hasta que se acepte manualmente la excepción una vez por navegador (entrando directo a la URL de Kong y aceptando el aviso).
+
+Esto es un parche temporal, no la solución. Antes de dar acceso a más usuarios además del superadmin, hace falta resolver esto en serio: abrir el puerto 80 hacia internet (requiere a quien administra la red), o pasar a un dominio propio con validación por DNS en vez de por HTTP.
 
 ## 3. Dar de alta al primer superadmin
 
@@ -86,8 +107,23 @@ Hasta que exista un superadmin no hay quien active usuarios desde una interfaz. 
 
 De ahí en adelante, activar usuarios y asignarles área/rol es tarea del panel de superadministrador (Fase 5) — hasta que ese panel exista, se puede seguir haciendo con `UPDATE` directos sobre `perfiles`.
 
-## 4. Próximos pasos técnicos (fuera de esta guía)
+## 4. Ya implementado (11 de agosto de 2026)
 
-- Conectar el botón de login del sitio a `supabase.auth.signInWithOAuth({ provider: 'google' })`.
-- Construir en el frontend la consulta que arma el home dinámico: qué mosaicos mostrar según `permisos_area_seccion` del área del usuario (Fase 3).
-- Panel de edición de la pizarra y de administración de usuarios (Fases 4 y 5).
+Lo que originalmente estaba listado acá como "próximos pasos" ya está hecho y en el sitio:
+
+- **Login conectado**: `js/supabase-client.js` (cliente) + `js/auth.js` (botón de login/logout en el header, en las 6 páginas del sitio).
+- **Home dinámico**: `js/home.js` arma qué mosaicos mostrar según `permisos_area_seccion` del área del usuario, y trae las novedades reales de la pizarra con su estado de lectura (usa las RPCs de `rpc_home.sql`).
+- **Control de acceso en las páginas de cada mosaico**: `js/page-guard.js`, agregado a Mapa de Servicios, Sector Comunicaciones (+ sus 2 sub-páginas) y Directorio de Áreas. Es un control del lado del navegador, no reemplaza la protección real que da RLS sobre los datos — sirve mientras el contenido de esas páginas siga siendo HTML estático en vez de datos servidos desde Supabase.
+
+## 5. Pendiente
+
+Ver los puntos 11 ("Estado de avance"), 12 ("Adenda 2") y 13 ("Qué falta para arrancar la Fase 5") de `Propuesta_Proyecto_Auth_Roles_CMS.docx` para el detalle completo. En resumen, en orden sugerido:
+
+1. Resolver el certificado HTTPS real (punto 2.4) — pasó a ser bloqueante en serio ahora que se viene el alta de usuarios vía panel (punto 13 de la propuesta), no sólo antes de sumar usuarios sueltos.
+2. Seguir completando los permisos reales por área en `permisos_area_seccion` a medida que se sumen roles (ya cargada la primera tanda: Directorio, Gerencia General, Admin y Finanzas, RRHH, Operaciones Técnicas, Procesos y Mejora Continua — ver `Permisos_por_Area_WebInternaSP.xlsx`).
+3. ~~Cargar las primeras novedades reales~~ — hecho, el circuito de publicación y lectura ya se probó.
+4. **En curso:** `migracion_2_perfil_extendido_pizarra_areas.sql` (perfil extendido + pizarra filtrable por área) — base para construir el editor de la pizarra y el panel de superadministrador (Fases 4 y 5) en conjunto, que es el siguiente paso.
+5. Definir de dónde sale el legajo de cada persona (carga manual o import de RRHH) — bloquea terminar la pantalla de alta de usuario del panel.
+6. Migrar el contenido estático de las páginas de cada mosaico a la base de datos.
+7. Implementar la notificación por email al publicar (punto 10 de la propuesta).
+8. Auditoría de actividad (punto 12.2) — etapa posterior, no bloquea nada de lo anterior.
