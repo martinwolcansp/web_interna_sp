@@ -66,9 +66,16 @@ async function handleAuthReady(e) {
   content.style.display = '';
 
   if (!data.leida) {
-    window.supabaseClient.rpc('fn_marcar_leida', { p_novedad_id: data.id }).catch(err => {
-      console.error('[novedad.js] error marcando como leída', err);
-    });
+    // Ojo: los builders de supabase-js sólo implementan .then (son
+    // "thenable", no Promise completas) — encadenar .catch(...) directo
+    // sobre el resultado de .rpc(...) tira "catch is not a function" en
+    // silencio y la marca nunca se guarda. Por eso va con await + chequeo
+    // de error, no encadenado.
+    const { error: marcarError } = await window.supabaseClient
+      .rpc('fn_marcar_leida', { p_novedad_id: data.id });
+    if (marcarError) {
+      console.error('[novedad.js] error marcando como leída', marcarError);
+    }
   }
 }
 
