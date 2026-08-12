@@ -34,10 +34,10 @@ async function initAuthArea() {
 // sin esperar a la base), completa/corrige lo que depende de la tabla
 // perfiles: 1) el nombre mostrado, con nombre/apellido tal como los haya
 // cargado el superadmin desde el panel (pueden no coincidir con lo que
-// manda Google — ver Adenda 2); 2) si es superadmin activo, suma el
-// acceso directo al panel de administración; 3) si tiene permiso de
-// editar la pizarra (o es superadmin), suma el acceso al editor de la
-// pizarra. Ambos accesos pueden convivir (un superadmin ve los dos).
+// manda Google — ver Adenda 2); 2) si tiene algún permiso de edición
+// (usuarios, pizarra o fichas), suma el acceso al panel de administración
+// — un único botón que agrupa las tres pantallas; adentro
+// (pages/panel-admin.html) se filtra de nuevo cuál de las tres puede usar.
 async function loadPerfilExtras(area, session) {
   const { data: perfil, error } = await window.supabaseClient
     .from('perfiles')
@@ -55,32 +55,21 @@ async function loadPerfilExtras(area, session) {
 
   if (!perfil.activo) return;
 
-  if (perfil.es_superadmin) {
-    addHeaderLink(area, 'auth-admin-link', '/pages/admin.html', 'ti-settings', 'Administración');
+  const tieneAlgunAccesoDeAdmin = perfil.es_superadmin || await tienePermisoDeEdicion();
+  if (tieneAlgunAccesoDeAdmin) {
+    addHeaderLink(area, 'auth-admin-link', '/pages/panel-admin.html', 'ti-settings', 'Administración');
   }
+}
 
-  let puedeEditarPizarra = perfil.es_superadmin;
-  if (!puedeEditarPizarra) {
-    const { data: tienePermiso } = await window.supabaseClient
-      .rpc('fn_tiene_permiso', { p_seccion_id: 'pizarra', p_nivel: 'editar' });
-    puedeEditarPizarra = !!tienePermiso;
-  }
-  if (puedeEditarPizarra) {
-    addHeaderLink(area, 'auth-pizarra-link', '/pages/pizarra-editor.html', 'ti-news', 'Editor de novedades');
-  }
-
-  // Fichas de producto: mismo criterio que la pizarra, pero sobre
-  // cualquier sección tipo mosaico (fn_mis_secciones_editables), ya que
-  // el editor de fichas es compartido entre Mapa de Servicios y Sector
-  // Comunicaciones — ver supabase/migracion_4_fichas_producto.sql.
-  let puedeEditarFichas = perfil.es_superadmin;
-  if (!puedeEditarFichas) {
-    const { data: secciones } = await window.supabaseClient.rpc('fn_mis_secciones_editables');
-    puedeEditarFichas = !!(secciones && secciones.length > 0);
-  }
-  if (puedeEditarFichas) {
-    addHeaderLink(area, 'auth-fichas-link', '/pages/fichas-editor.html', 'ti-file-description', 'Editor de fichas');
-  }
+// true si puede editar la pizarra o al menos una ficha de producto —
+// mismos chequeos que hace pages/panel-admin.html para decidir qué
+// tarjetas mostrar, acá sólo hace falta saber si mostrar el botón o no.
+async function tienePermisoDeEdicion() {
+  const [pizarraRes, seccionesRes] = await Promise.all([
+    window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'pizarra', p_nivel: 'editar' }),
+    window.supabaseClient.rpc('fn_mis_secciones_editables')
+  ]);
+  return !!pizarraRes.data || !!(seccionesRes.data && seccionesRes.data.length > 0);
 }
 
 function addHeaderLink(area, className, href, icon, label) {

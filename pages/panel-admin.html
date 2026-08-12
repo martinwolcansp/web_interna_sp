@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Usuarios — SP Seguridad</title>
+  <title>Panel de administración — SP Seguridad</title>
 
   <!-- Iconografía -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -13,12 +13,13 @@
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/panel-admin.css">
 </head>
 <body>
 
   <!-- HEADER compartido -->
   <div id="site-header"
-    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Panel de administración","href":"/pages/panel-admin.html"},{"label":"Usuarios"}]'>
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Panel de administración"}]'>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabase-client.js"></script>
@@ -26,33 +27,27 @@
   <script src="/components/header/header.js"></script>
 
   <!-- ══════════════════════════════════════════════════════════
-       PANEL DE SUPERADMINISTRADOR (Fase 5) — primera versión: alta
-       y edición de usuarios (área, nivel, activo, superadmin, legajo)
-       desde la UI en vez de a mano por SQL. El acceso lo controla
-       js/admin.js (sólo perfiles con es_superadmin=true y activo=true),
-       no page-guard.js — es un caso aparte, no depende de
-       permisos_area_seccion como los mosaicos.
+       PANEL DE ADMINISTRACIÓN — punto de entrada único a Usuarios,
+       Editor de la pizarra y Editor de fichas. Cada tarjeta se muestra
+       sólo si el usuario tiene permiso para esa sección puntual — el
+       acceso real a cada pantalla lo sigue controlando su propio script
+       (admin.js / pizarra-editor.js / fichas-editor.js) por si alguien
+       entra directo por URL. Ver js/panel-admin.js.
        ══════════════════════════════════════════════════════════ -->
   <main class="admin-wrap" role="main">
 
-    <div id="admin-gate" class="admin-gate" style="display:none;"></div>
+    <div id="pa-gate" class="admin-gate" style="display:none;"></div>
 
-    <div id="admin-content" style="display:none;">
+    <div id="pa-content" style="display:none;">
       <div class="admin-page-header">
-        <p class="section-label">Fase 5 — En construcción</p>
-        <h1 class="admin-page-title">Usuarios</h1>
-        <p class="admin-page-subtitle">Alta y edición de usuarios: área, nivel, legajo y permisos. Los cambios se guardan por fila.</p>
+        <p class="section-label">Administración</p>
+        <h1 class="admin-page-title">Panel de administración</h1>
+        <p class="admin-page-subtitle">Accesos según tu permiso. Sólo ves lo que podés editar.</p>
       </div>
 
-      <section class="admin-section" aria-labelledby="admin-users-title">
-        <div class="admin-section__header">
-          <h2 id="admin-users-title" class="admin-section__title">Usuarios</h2>
-          <p class="admin-section__subtitle">Ordenados con los pendientes de activar primero.</p>
-        </div>
-        <div id="admin-users-table-wrap" class="admin-table-wrap">
-          <p class="admin-loading">Cargando usuarios…</p>
-        </div>
-      </section>
+      <div id="pa-cards" class="pa-cards"></div>
+
+      <p id="pa-empty" class="admin-empty" style="display:none;">No tenés ningún permiso de edición asignado todavía. Pedile a un administrador que te lo habilite.</p>
     </div>
 
     <footer class="site-footer" role="contentinfo">
@@ -65,6 +60,6 @@
     </footer>
   </main>
 
-  <script src="../js/admin.js"></script>
+  <script src="../js/panel-admin.js"></script>
 </body>
 </html>
