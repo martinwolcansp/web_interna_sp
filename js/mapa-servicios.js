@@ -355,9 +355,15 @@ function updateBreadcrumb(fichaName) {
 
 /**
  * Renderiza y navega a una ficha por ID (última versión disponible).
+ * El contenido ahora llega de Supabase de forma asíncrona (ver
+ * js/fichas-data-loader.js) — se espera window.SP_FICHAS_READY antes de
+ * leer window.FICHA_VERSIONS, a diferencia de antes que los <script>
+ * estáticos ya estaban listos al cargar la página.
  * @param {string} fichaId - ej. 'comercio-seguro'
  */
-function openFicha(fichaId) {
+async function openFicha(fichaId) {
+  await (window.SP_FICHAS_READY || Promise.resolve());
+
   const fichaVersions = window.FICHA_VERSIONS && window.FICHA_VERSIONS[fichaId];
   if (!fichaVersions) return;
   const latestKey = Object.keys(fichaVersions).at(-1);

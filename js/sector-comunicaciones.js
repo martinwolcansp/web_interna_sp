@@ -7,6 +7,10 @@
 
 'use strict';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // El contenido ahora llega de Supabase de forma asíncrona (ver
+  // js/fichas-data-loader.js) — antes los <script> estáticos ya estaban
+  // listos en este punto, ahora hace falta esperar la promesa.
+  await (window.SP_FICHAS_READY || Promise.resolve());
   renderFichaById('nuevas-tecnologias');
 });

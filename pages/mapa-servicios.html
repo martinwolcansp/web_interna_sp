@@ -244,12 +244,10 @@
 <script src="../js/versiones/mapa-v1.2.js"></script>
 <script src="../js/versiones/mapa-v1.3.js"></script>
 <script src="../js/versiones/mapa-v1.4.js"></script>
-<!-- Versiones de fichas (orden cronológico por ficha) -->
-<script src="../js/fichas/versiones/comercio-seguro-v1.1.js"></script>
-<script src="../js/fichas/versiones/obra-segura-v1.2.js"></script>
-<script src="../js/fichas/versiones/obra-segura-v1.3.js"></script>
-<script src="../js/fichas/versiones/hogar-venta-v1.0.js"></script>
-<script src="../js/fichas/versiones/hogar-comodato-v1.0.js"></script>
+<!-- Fichas: contenido real desde Supabase (fichas / ficha_versiones) en
+     vez de los archivos estáticos de js/fichas/versiones/ — ver
+     js/fichas-data-loader.js y supabase/migracion_4_fichas_producto.sql. -->
+<script src="../js/fichas-data-loader.js"></script>
 <!-- Renderers -->
 <script src="../js/ficha-renderer.js"></script>
 <!-- Lógica del mapa y de la ficha -->

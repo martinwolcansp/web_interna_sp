@@ -13,7 +13,20 @@ const vm = require('vm');
 const dir = path.join(__dirname, '..', 'js', 'fichas', 'versiones');
 const outFile = path.join(__dirname, 'fichas_extracted.json');
 
-const files = fs.readdirSync(dir).filter(f => f.endsWith('.js')).sort();
+// Orden numérico real del nombre de archivo (...-v1.10.js después de
+// ...-v1.9.js, no antes) — un sort de string plano pondría v1.10 antes de
+// v1.2. Sólo afecta el orden de inserción en el JSON intermedio (informativo);
+// generate_fichas_seed.js y js/fichas-data-loader.js ya re-ordenan por su
+// cuenta al armar el seed y window.FICHA_VERSIONS respectivamente.
+function partesDelNombre(filename) {
+  const m = filename.match(/^(.*)-v(\d+)\.(\d+)\.js$/i);
+  return m ? [m[1], parseInt(m[2], 10), parseInt(m[3], 10)] : [filename, 0, 0];
+}
+const files = fs.readdirSync(dir).filter(f => f.endsWith('.js')).sort((a, b) => {
+  const [aPrefix, aMaj, aMin] = partesDelNombre(a);
+  const [bPrefix, bMaj, bMin] = partesDelNombre(b);
+  return aPrefix.localeCompare(bPrefix, 'es') || (aMaj - bMaj) || (aMin - bMin);
+});
 
 const sandbox = { window: {}, console };
 vm.createContext(sandbox);
