@@ -4,16 +4,27 @@
  * Reemplaza el mock estático de index.html. Se engancha al evento
  * 'sp:auth-ready' que dispara js/auth.js una vez que se sabe si hay
  * sesión o no. Requiere las RPCs de supabase/rpc_home.sql
- * (fn_mis_secciones_visibles, fn_mis_novedades, fn_marcar_leida).
+ * (fn_mis_secciones_visibles, fn_mis_novedades).
  *
- * "Leída" se marca al hacer clic (o Enter/Espacio) sobre la publicación,
- * no automáticamente al mostrarse en pantalla — ver marcarComoLeida().
+ * El feed sólo muestra un extracto de cada novedad (pensado para cuando
+ * el cuerpo sea más largo) con link a pages/novedad.html, que es donde
+ * se ve completa y donde se marca como leída al acceder — ver
+ * js/novedad.js. Este archivo no marca nada como leído por su cuenta.
  */
 
 const SECCION_IDS_MOSAICOS = ['mapa-servicios', 'sector-comunicaciones', 'organigrama'];
+const PIZARRA_EXCERPT_LEN = 180;
 
 document.addEventListener('sp:auth-ready', (e) => {
   handleAuthReady(e.detail.session);
+});
+
+// Si el navegador restauró la página desde el bfcache (por ejemplo al
+// volver con "atrás" desde pages/novedad.html), el DOM queda como estaba
+// antes de irse — con el estado de "no leída" viejo. Se refresca la
+// pizarra en ese caso para que el punto rojo/contador queden al día.
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) cargarPizarra();
 });
 
 async function handleAuthReady(session) {
@@ -127,20 +138,6 @@ async function cargarPizarra() {
   }
 
   list.innerHTML = novedades.map(renderNovedad).join('');
-
-  // Se marca como leída recién cuando el usuario interactúa con la
-  // publicación (clic o Enter/Espacio con el teclado), no apenas se
-  // muestra en pantalla — así el indicador de "sin leer" refleja algo
-  // que realmente se leyó, no sólo que se renderizó en la página.
-  list.querySelectorAll('.pizarra-post--unread').forEach(article => {
-    article.addEventListener('click', () => marcarComoLeida(article, badge));
-    article.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') {
-        ev.preventDefault();
-        marcarComoLeida(article, badge);
-      }
-    });
-  });
 }
 
 function actualizarBadge(badge) {
@@ -153,39 +150,13 @@ function actualizarBadge(badge) {
   }
 }
 
-async function marcarComoLeida(article, badge) {
-  const id = article.dataset.novedadId;
-  if (!id || article.dataset.marcando === '1') return;
-  article.dataset.marcando = '1';
-
-  const { error } = await window.supabaseClient.rpc('fn_marcar_leida', { p_novedad_id: id });
-
-  delete article.dataset.marcando;
-
-  if (error) {
-    console.error('[home.js] error marcando como leída', error);
-    return;
-  }
-
-  article.classList.remove('pizarra-post--unread');
-  article.removeAttribute('role');
-  article.removeAttribute('tabindex');
-  article.removeAttribute('aria-label');
-  const dot = article.querySelector('.pizarra-post__dot');
-  if (dot) dot.remove();
-
-  sp_unreadCount = Math.max(0, sp_unreadCount - 1);
-  actualizarBadge(badge);
-}
-
 function renderNovedad(n) {
   const meta = [formatFecha(n.publicado_en), n.autor_nombre].filter(Boolean).join(' · ');
   const esNoLeida = !n.leida;
   return `
-    <article
+    <a
       class="pizarra-post ${esNoLeida ? 'pizarra-post--unread' : ''}"
-      data-novedad-id="${escapeAttr(n.id)}"
-      ${esNoLeida ? 'role="button" tabindex="0" aria-label="Marcar como leída"' : ''}
+      href="/pages/novedad.html?id=${encodeURIComponent(n.id)}"
     >
       <div class="pizarra-post__meta">
         <span class="tag">${escapeHtml(n.categoria)}</span>
@@ -193,10 +164,20 @@ function renderNovedad(n) {
         ${esNoLeida ? '<span class="pizarra-post__dot" aria-label="No leído" title="No leído"></span>' : ''}
       </div>
       <h3 class="pizarra-post__title">${escapeHtml(n.titulo)}</h3>
-      <p class="pizarra-post__excerpt">${escapeHtml(n.cuerpo)}</p>
-      ${esNoLeida ? '<p class="pizarra-post__hint">Tocá para marcar como leída</p>' : ''}
-    </article>
+      <p class="pizarra-post__excerpt">${escapeHtml(truncar(n.cuerpo, PIZARRA_EXCERPT_LEN))}</p>
+      <p class="pizarra-post__hint">Leer más</p>
+    </a>
   `;
+}
+
+// Corta al espacio anterior al límite, para no partir una palabra al
+// medio, y agrega "…". Si el texto ya entra completo, lo devuelve tal
+// cual (no todo el mundo va a escribir novedades largas).
+function truncar(texto, maxLen) {
+  if (!texto || texto.length <= maxLen) return texto;
+  const cortado = texto.slice(0, maxLen);
+  const ultimoEspacio = cortado.lastIndexOf(' ');
+  return (ultimoEspacio > 40 ? cortado.slice(0, ultimoEspacio) : cortado) + '…';
 }
 
 function formatFecha(iso) {
@@ -211,8 +192,4 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str == null ? '' : String(str);
   return div.innerHTML;
-}
-
-function escapeAttr(str) {
-  return escapeHtml(str).replace(/"/g, '&quot;');
 }

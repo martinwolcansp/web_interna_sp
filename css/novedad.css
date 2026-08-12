@@ -1,0 +1,88 @@
+/* ============================================================
+   novedad.css — Pantalla de detalle de una novedad de la pizarra
+   ============================================================ */
+
+.novedad-wrap {
+  max-width: 720px;
+  margin: 3rem auto;
+  padding: 0 1.5rem 4rem;
+}
+
+.novedad-gate {
+  max-width: 480px;
+  margin: 4rem auto;
+  text-align: center;
+  padding: 0 1.5rem;
+}
+
+.novedad-gate p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+
+.novedad-article {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  border-top: 3px solid var(--color-red);
+  padding: var(--space-8) var(--space-10);
+  box-shadow: var(--shadow-xs);
+}
+
+.novedad-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue);
+  text-decoration: none;
+  margin-bottom: var(--space-8);
+}
+
+.novedad-back:hover {
+  color: var(--color-navy);
+}
+
+.novedad-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.novedad-meta__date {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.novedad-titulo {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.3px;
+}
+
+.novedad-autor {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-8);
+}
+
+.novedad-cuerpo {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-body);
+  line-height: var(--line-height-loose);
+  white-space: pre-wrap;
+}
+
+.novedad-areas {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border-light);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}

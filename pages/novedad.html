@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Novedad — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/novedad.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Pizarra institucional","href":"/index.html"},{"label":"Novedad"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <!-- ══════════════════════════════════════════════════════════
+       DETALLE DE NOVEDAD — pantalla propia para cuando el cuerpo de
+       una publicación sea más largo que el extracto que se ve en la
+       pizarra del home. Marca como leída al acceder (ver js/novedad.js).
+       ══════════════════════════════════════════════════════════ -->
+  <main class="novedad-wrap" role="main">
+
+    <div id="novedad-gate" class="novedad-gate" style="display:none;"></div>
+
+    <article id="novedad-content" class="novedad-article" style="display:none;">
+      <a href="/index.html" class="novedad-back">
+        <i class="ti ti-arrow-left" aria-hidden="true"></i> Volver a la pizarra
+      </a>
+
+      <div class="novedad-meta">
+        <span id="novedad-categoria" class="tag"></span>
+        <span id="novedad-fecha" class="novedad-meta__date"></span>
+      </div>
+
+      <h1 id="novedad-titulo" class="novedad-titulo"></h1>
+      <p id="novedad-autor" class="novedad-autor"></p>
+
+      <div id="novedad-cuerpo" class="novedad-cuerpo"></div>
+
+      <p id="novedad-areas" class="novedad-areas" style="display:none;"></p>
+    </article>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/novedad.js"></script>
+</body>
+</html>
