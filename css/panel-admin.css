@@ -24,7 +24,12 @@
   border-radius: var(--radius);
   border-top: 3px solid var(--color-red);
   box-shadow: var(--shadow-xs);
-  padding: var(--space-8) var(--space-7);
+  /* Antes usaba var(--space-7), que no existe en tokens.css — el padding
+     horizontal quedaba inválido y el navegador lo resolvía como 0 (el
+     vertical se veía bien porque ese sí usaba --space-8, válido). Mismo
+     padding que .home-card en index.html, para que las tarjetas del panel
+     se vean consistentes con las de la home. */
+  padding: 1.25rem 1.5rem;
   text-decoration: none;
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
