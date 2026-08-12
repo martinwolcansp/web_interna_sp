@@ -5,6 +5,9 @@
  * 'sp:auth-ready' que dispara js/auth.js una vez que se sabe si hay
  * sesión o no. Requiere las RPCs de supabase/rpc_home.sql
  * (fn_mis_secciones_visibles, fn_mis_novedades, fn_marcar_leida).
+ *
+ * "Leída" se marca al hacer clic (o Enter/Espacio) sobre la publicación,
+ * no automáticamente al mostrarse en pantalla — ver marcarComoLeida().
  */
 
 const SECCION_IDS_MOSAICOS = ['mapa-servicios', 'sector-comunicaciones', 'organigrama'];
@@ -99,6 +102,8 @@ async function cargarMosaicos(perfil) {
   }
 }
 
+let sp_unreadCount = 0;
+
 async function cargarPizarra() {
   const list = document.getElementById('pizarra-list');
   const badge = document.getElementById('pizarra-unread-badge');
@@ -113,16 +118,8 @@ async function cargarPizarra() {
   }
 
   const novedades = data || [];
-  const noLeidas = novedades.filter(n => !n.leida);
-
-  if (badge) {
-    if (noLeidas.length > 0) {
-      badge.textContent = `${noLeidas.length} sin leer`;
-      badge.style.display = '';
-    } else {
-      badge.style.display = 'none';
-    }
-  }
+  sp_unreadCount = novedades.filter(n => !n.leida).length;
+  actualizarBadge(badge);
 
   if (novedades.length === 0) {
     list.innerHTML = '<p class="pizarra-post__excerpt">Todavía no hay publicaciones.</p>';
@@ -131,25 +128,73 @@ async function cargarPizarra() {
 
   list.innerHTML = novedades.map(renderNovedad).join('');
 
-  // Marca como leídas, en segundo plano, las que se acaban de mostrar.
-  noLeidas.forEach(n => {
-    window.supabaseClient.rpc('fn_marcar_leida', { p_novedad_id: n.id }).catch(err => {
-      console.error('[home.js] error marcando como leída', err);
+  // Se marca como leída recién cuando el usuario interactúa con la
+  // publicación (clic o Enter/Espacio con el teclado), no apenas se
+  // muestra en pantalla — así el indicador de "sin leer" refleja algo
+  // que realmente se leyó, no sólo que se renderizó en la página.
+  list.querySelectorAll('.pizarra-post--unread').forEach(article => {
+    article.addEventListener('click', () => marcarComoLeida(article, badge));
+    article.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        marcarComoLeida(article, badge);
+      }
     });
   });
 }
 
+function actualizarBadge(badge) {
+  if (!badge) return;
+  if (sp_unreadCount > 0) {
+    badge.textContent = `${sp_unreadCount} sin leer`;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function marcarComoLeida(article, badge) {
+  const id = article.dataset.novedadId;
+  if (!id || article.dataset.marcando === '1') return;
+  article.dataset.marcando = '1';
+
+  const { error } = await window.supabaseClient.rpc('fn_marcar_leida', { p_novedad_id: id });
+
+  delete article.dataset.marcando;
+
+  if (error) {
+    console.error('[home.js] error marcando como leída', error);
+    return;
+  }
+
+  article.classList.remove('pizarra-post--unread');
+  article.removeAttribute('role');
+  article.removeAttribute('tabindex');
+  article.removeAttribute('aria-label');
+  const dot = article.querySelector('.pizarra-post__dot');
+  if (dot) dot.remove();
+
+  sp_unreadCount = Math.max(0, sp_unreadCount - 1);
+  actualizarBadge(badge);
+}
+
 function renderNovedad(n) {
   const meta = [formatFecha(n.publicado_en), n.autor_nombre].filter(Boolean).join(' · ');
+  const esNoLeida = !n.leida;
   return `
-    <article class="pizarra-post ${!n.leida ? 'pizarra-post--unread' : ''}">
+    <article
+      class="pizarra-post ${esNoLeida ? 'pizarra-post--unread' : ''}"
+      data-novedad-id="${escapeAttr(n.id)}"
+      ${esNoLeida ? 'role="button" tabindex="0" aria-label="Marcar como leída"' : ''}
+    >
       <div class="pizarra-post__meta">
         <span class="tag">${escapeHtml(n.categoria)}</span>
         <span class="pizarra-post__date">${escapeHtml(meta)}</span>
-        ${!n.leida ? '<span class="pizarra-post__dot" aria-label="No leído" title="No leído"></span>' : ''}
+        ${esNoLeida ? '<span class="pizarra-post__dot" aria-label="No leído" title="No leído"></span>' : ''}
       </div>
       <h3 class="pizarra-post__title">${escapeHtml(n.titulo)}</h3>
       <p class="pizarra-post__excerpt">${escapeHtml(n.cuerpo)}</p>
+      ${esNoLeida ? '<p class="pizarra-post__hint">Tocá para marcar como leída</p>' : ''}
     </article>
   `;
 }
@@ -166,4 +211,8 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str == null ? '' : String(str);
   return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, '&quot;');
 }

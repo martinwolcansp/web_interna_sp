@@ -190,6 +190,27 @@
 
     .pizarra-post--unread {
       border-left: 3px solid var(--color-red);
+      cursor: pointer;
+      transition: background var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .pizarra-post--unread:hover,
+    .pizarra-post--unread:focus-visible {
+      background: var(--color-bg-soft);
+      border-color: var(--color-red);
+    }
+
+    .pizarra-post--unread:focus-visible {
+      outline: 2px solid var(--color-blue);
+      outline-offset: 2px;
+    }
+
+    .pizarra-post__hint {
+      font-size: var(--font-size-xs);
+      color: var(--color-red);
+      font-weight: var(--font-weight-semibold);
+      margin-top: var(--space-3);
+      text-align: right;
     }
 
     .pizarra-post__meta {
