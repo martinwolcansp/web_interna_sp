@@ -19,13 +19,42 @@ async function initAuthArea() {
   if (session) cleanAuthTokensFromUrl();
   renderAuthState(area, session);
   notifyAuthReady(session);
+  if (session) addAdminLinkIfSuperadmin(area, session);
 
   // Repinta automáticamente ante login, logout o refresco de token.
   window.supabaseClient.auth.onAuthStateChange((_event, session) => {
     if (session) cleanAuthTokensFromUrl();
     renderAuthState(area, session);
     notifyAuthReady(session);
+    if (session) addAdminLinkIfSuperadmin(area, session);
   });
+}
+
+// Si quien se loguea es superadmin activo, suma un acceso directo al
+// panel de administración (pages/admin.html) en el header, en cualquier
+// página del sitio — es el único punto de entrada, no está linkeado
+// desde ningún mosaico porque no depende de permisos_area_seccion.
+async function addAdminLinkIfSuperadmin(area, session) {
+  const { data: perfil, error } = await window.supabaseClient
+    .from('perfiles')
+    .select('es_superadmin, activo')
+    .eq('id', session.user.id)
+    .single();
+
+  if (error || !perfil || !perfil.es_superadmin || !perfil.activo) return;
+  if (area.querySelector('.auth-admin-link')) return; // ya está
+
+  const link = document.createElement('a');
+  link.href = '/pages/admin.html';
+  link.className = 'btn btn--secondary auth-admin-link';
+  link.innerHTML = '<i class="ti ti-settings" aria-hidden="true"></i> Administración';
+
+  const logoutBtn = document.getElementById('btn-logout');
+  if (logoutBtn) {
+    logoutBtn.insertAdjacentElement('beforebegin', link);
+  } else {
+    area.appendChild(link);
+  }
 }
 
 // Avisa al resto de los scripts de la página (ej. js/home.js) que ya se

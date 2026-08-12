@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de administración — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Panel de administración"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <!-- ══════════════════════════════════════════════════════════
+       PANEL DE SUPERADMINISTRADOR (Fase 5) — primera versión: alta
+       y edición de usuarios (área, nivel, activo, superadmin, legajo)
+       desde la UI en vez de a mano por SQL. El acceso lo controla
+       js/admin.js (sólo perfiles con es_superadmin=true y activo=true),
+       no page-guard.js — es un caso aparte, no depende de
+       permisos_area_seccion como los mosaicos.
+       ══════════════════════════════════════════════════════════ -->
+  <main class="admin-wrap" role="main">
+
+    <div id="admin-gate" class="admin-gate" style="display:none;"></div>
+
+    <div id="admin-content" style="display:none;">
+      <div class="admin-page-header">
+        <p class="section-label">Fase 5 — En construcción</p>
+        <h1 class="admin-page-title">Panel de administración</h1>
+        <p class="admin-page-subtitle">Alta y edición de usuarios: área, nivel, legajo y permisos. Los cambios se guardan por fila.</p>
+      </div>
+
+      <section class="admin-section" aria-labelledby="admin-users-title">
+        <div class="admin-section__header">
+          <h2 id="admin-users-title" class="admin-section__title">Usuarios</h2>
+          <p class="admin-section__subtitle">Ordenados con los pendientes de activar primero.</p>
+        </div>
+        <div id="admin-users-table-wrap" class="admin-table-wrap">
+          <p class="admin-loading">Cargando usuarios…</p>
+        </div>
+      </section>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/admin.js"></script>
+</body>
+</html>
