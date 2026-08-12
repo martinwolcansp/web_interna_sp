@@ -19,29 +19,40 @@ async function initAuthArea() {
   if (session) cleanAuthTokensFromUrl();
   renderAuthState(area, session);
   notifyAuthReady(session);
-  if (session) addAdminLinkIfSuperadmin(area, session);
+  if (session) loadPerfilExtras(area, session);
 
   // Repinta automáticamente ante login, logout o refresco de token.
   window.supabaseClient.auth.onAuthStateChange((_event, session) => {
     if (session) cleanAuthTokensFromUrl();
     renderAuthState(area, session);
     notifyAuthReady(session);
-    if (session) addAdminLinkIfSuperadmin(area, session);
+    if (session) loadPerfilExtras(area, session);
   });
 }
 
-// Si quien se loguea es superadmin activo, suma un acceso directo al
-// panel de administración (pages/admin.html) en el header, en cualquier
-// página del sitio — es el único punto de entrada, no está linkeado
-// desde ningún mosaico porque no depende de permisos_area_seccion.
-async function addAdminLinkIfSuperadmin(area, session) {
+// Una vez que ya se pintó el header con lo que trae Google (instantáneo,
+// sin esperar a la base), completa/corrige dos cosas contra la tabla
+// perfiles: 1) el nombre mostrado, con nombre/apellido tal como los haya
+// cargado el superadmin desde el panel (pueden no coincidir con lo que
+// manda Google — ver Adenda 2); 2) si es superadmin activo, suma el
+// acceso directo al panel de administración. Una sola consulta para las
+// dos cosas.
+async function loadPerfilExtras(area, session) {
   const { data: perfil, error } = await window.supabaseClient
     .from('perfiles')
-    .select('es_superadmin, activo')
+    .select('nombre, apellido, es_superadmin, activo')
     .eq('id', session.user.id)
     .single();
 
-  if (error || !perfil || !perfil.es_superadmin || !perfil.activo) return;
+  if (error || !perfil) return;
+
+  const nombreCompleto = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ');
+  const nameEl = document.getElementById('auth-user-name');
+  if (nameEl && nombreCompleto) {
+    nameEl.textContent = nombreCompleto;
+  }
+
+  if (!perfil.es_superadmin || !perfil.activo) return;
   if (area.querySelector('.auth-admin-link')) return; // ya está
 
   const link = document.createElement('a');
@@ -69,9 +80,12 @@ function renderLoading(area) {
 
 function renderAuthState(area, session) {
   if (session && session.user) {
+    // Nombre instantáneo con lo que ya trae la sesión de Google, sin
+    // esperar a la base — loadPerfilExtras() lo corrige/completa después
+    // con nombre/apellido de la tabla perfiles apenas responde.
     const nombre = session.user.user_metadata?.full_name || session.user.email;
     area.innerHTML = `
-      <span class="auth-user">${escapeHtml(nombre)}</span>
+      <span id="auth-user-name" class="auth-user">${escapeHtml(nombre)}</span>
       <button id="btn-logout" class="btn btn--secondary" type="button">Cerrar sesión</button>
     `;
     document.getElementById('btn-logout').addEventListener('click', logout);
