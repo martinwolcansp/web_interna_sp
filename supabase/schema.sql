@@ -216,7 +216,74 @@ as $$
 $$;
 
 -- -------------------------------------------------------------------------
--- 6. ROW LEVEL SECURITY
+-- 7. FICHAS DE PRODUCTO — gestor de contenidos estandarizado (Mapa de
+--    Servicios + ficha "Eje 3" de Sector Comunicaciones comparten el mismo
+--    renderer y la misma forma de datos: js/fichas/ficha-renderer.js).
+--    Migración 4 / 2026-08-12. Campos de identificación como columnas
+--    reales; las 7 pestañas de contenido (general, equipamiento, precios,
+--    proceso, faq, competencia, areas) como jsonb, editadas vía textarea
+--    de JSON validado en el editor (no formularios granulares por campo).
+--    Los nombres de columna espejan 1:1 los que ya usa ficha-renderer.js
+--    (d.badge, d.name, d.version, d.date, d.author, d.liderProducto,
+--    d.colaborador, vd.versionId, vd.versionDesc) para que cambiar el
+--    renderer de "leer JS" a "leer Supabase" sea un mapeo de nombres, no
+--    un rediseño.
+-- -------------------------------------------------------------------------
+create table if not exists fichas (
+  id          text primary key,
+  seccion_id  text not null references secciones(id) on delete cascade,
+  nombre      text not null,
+  badge       text,
+  creado_en   timestamptz not null default now()
+);
+
+comment on table fichas is 'Catálogo de fichas de producto (Mapa de Servicios + ficha Eje 3 de Sector Comunicaciones). Cada ficha tiene 1..N versiones en ficha_versiones.';
+comment on column fichas.seccion_id is 'Gatea permisos: mapa-servicios para las fichas del mapa, sector-comunicaciones para la ficha de Eje 3.';
+
+create table if not exists ficha_versiones (
+  id              uuid primary key default gen_random_uuid(),
+  ficha_id        text not null references fichas(id) on delete cascade,
+  version_key     text not null,
+  version_id      text,
+  version_desc    text,
+  nombre          text not null,
+  badge           text,
+  version         text,
+  fecha           text,
+  autor           text,
+  lider_producto  text,
+  colaborador     text,
+  general         jsonb not null default '{}'::jsonb,
+  equipamiento    jsonb not null default '{}'::jsonb,
+  precios         jsonb not null default '{}'::jsonb,
+  proceso         jsonb not null default '{}'::jsonb,
+  faq             jsonb not null default '{}'::jsonb,
+  competencia     jsonb not null default '{}'::jsonb,
+  areas           jsonb not null default '{}'::jsonb,
+  creado_en       timestamptz not null default now(),
+  actualizado_en  timestamptz not null default now(),
+  unique (ficha_id, version_key)
+);
+
+comment on table ficha_versiones is 'Una fila por versión histórica de una ficha (hoy: js/fichas/versiones/*.js). Las 7 columnas jsonb son las 7 pestañas que arma ficha-renderer.js.';
+
+create or replace function fn_touch_ficha_version()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.actualizado_en = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_touch_ficha_version on ficha_versiones;
+create trigger trg_touch_ficha_version
+  before update on ficha_versiones
+  for each row execute function fn_touch_ficha_version();
+
+-- -------------------------------------------------------------------------
+-- 8. ROW LEVEL SECURITY
 -- -------------------------------------------------------------------------
 alter table areas enable row level security;
 alter table perfiles enable row level security;
@@ -226,6 +293,8 @@ alter table novedades enable row level security;
 alter table novedades_leidas enable row level security;
 alter table novedades_areas enable row level security;
 alter table categorias_novedades enable row level security;
+alter table fichas enable row level security;
+alter table ficha_versiones enable row level security;
 
 create policy "categorias_novedades: lectura autenticados" on categorias_novedades
   for select using (auth.role() = 'authenticated');
@@ -284,3 +353,28 @@ create policy "novedades_areas: lectura autenticados" on novedades_areas
   for select using (auth.role() = 'authenticated');
 create policy "novedades_areas: escritura con permiso de editar pizarra" on novedades_areas
   for all using (fn_tiene_permiso('pizarra', 'editar'));
+
+-- fichas / ficha_versiones: ver requiere permiso 'ver' sobre la sección
+-- dueña de la ficha (mapa-servicios o sector-comunicaciones); editar
+-- requiere 'editar' sobre esa misma sección (superadmin ya cubierto
+-- dentro de fn_tiene_permiso).
+create policy "fichas: ver con permiso de seccion" on fichas
+  for select using (auth.role() = 'authenticated' and fn_tiene_permiso(seccion_id, 'ver'));
+create policy "fichas: editar con permiso de seccion" on fichas
+  for all using (fn_tiene_permiso(seccion_id, 'editar'));
+
+create policy "ficha_versiones: ver con permiso de seccion" on ficha_versiones
+  for select using (
+    auth.role() = 'authenticated'
+    and exists (
+      select 1 from fichas f
+      where f.id = ficha_versiones.ficha_id and fn_tiene_permiso(f.seccion_id, 'ver')
+    )
+  );
+create policy "ficha_versiones: editar con permiso de seccion" on ficha_versiones
+  for all using (
+    exists (
+      select 1 from fichas f
+      where f.id = ficha_versiones.ficha_id and fn_tiene_permiso(f.seccion_id, 'editar')
+    )
+  );

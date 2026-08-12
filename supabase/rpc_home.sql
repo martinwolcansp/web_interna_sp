@@ -22,6 +22,26 @@ as $$
     );
 $$;
 
+-- Mismo patrón que fn_mis_secciones_visibles() pero con nivel 'editar'.
+-- La usa el editor de fichas de producto para saber qué fichas puede
+-- tocar el usuario, y el header (auth.js) para decidir si muestra el
+-- link al editor.
+create or replace function fn_mis_secciones_editables()
+returns setof secciones
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.*
+  from secciones s
+  where s.tipo = 'mosaico'
+    and (
+      exists (select 1 from perfiles where id = auth.uid() and es_superadmin and activo)
+      or fn_tiene_permiso(s.id, 'editar')
+    );
+$$;
+
 -- Novedades vigentes de la pizarra, con el nombre del autor y si el
 -- usuario logueado ya las leyó (para el indicador de "no leídas").
 --

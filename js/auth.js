@@ -68,6 +68,19 @@ async function loadPerfilExtras(area, session) {
   if (puedeEditarPizarra) {
     addHeaderLink(area, 'auth-pizarra-link', '/pages/pizarra-editor.html', 'ti-news', 'Editor de novedades');
   }
+
+  // Fichas de producto: mismo criterio que la pizarra, pero sobre
+  // cualquier sección tipo mosaico (fn_mis_secciones_editables), ya que
+  // el editor de fichas es compartido entre Mapa de Servicios y Sector
+  // Comunicaciones — ver supabase/migracion_4_fichas_producto.sql.
+  let puedeEditarFichas = perfil.es_superadmin;
+  if (!puedeEditarFichas) {
+    const { data: secciones } = await window.supabaseClient.rpc('fn_mis_secciones_editables');
+    puedeEditarFichas = !!(secciones && secciones.length > 0);
+  }
+  if (puedeEditarFichas) {
+    addHeaderLink(area, 'auth-fichas-link', '/pages/fichas-editor.html', 'ti-file-description', 'Editor de fichas');
+  }
 }
 
 function addHeaderLink(area, className, href, icon, label) {

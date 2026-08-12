@@ -1,0 +1,193 @@
+/* ============================================================
+   fichas-editor.css — Editor de fichas de producto
+   Complementa admin.css y pizarra-editor.css (comparten
+   .admin-section, .pe-label, .pe-form__row, .pe-textarea, etc.)
+   ============================================================ */
+
+.fe-search-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: var(--font-size-base);
+}
+
+.fe-search-results {
+  margin-top: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.fe-search-result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-bg);
+  cursor: pointer;
+  font-family: var(--font-base);
+}
+
+.fe-search-result:last-child {
+  border-bottom: none;
+}
+
+.fe-search-result:hover,
+.fe-search-result:focus-visible {
+  background: var(--color-bg-soft);
+}
+
+.fe-search-result__path {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 3px;
+}
+
+.fe-search-result__snippet {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-body);
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.fe-search-result__snippet mark {
+  background: #fde68a;
+  color: inherit;
+  border-radius: 2px;
+}
+
+.fe-search-empty {
+  padding: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.fe-selector-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.fe-selector-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.fe-new-ficha-details {
+  margin-top: var(--space-6);
+  border-top: 1px solid var(--color-border-light);
+  padding-top: var(--space-4);
+}
+
+.fe-new-ficha-details summary {
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue);
+}
+
+.fe-new-ficha-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-4);
+}
+
+.fe-new-ficha-row .admin-input,
+.fe-new-ficha-row .admin-select {
+  flex: 1;
+  min-width: 140px;
+}
+
+.fe-ident-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-5) var(--space-6);
+}
+
+.fe-ident-desc {
+  grid-column: 1 / -1;
+}
+
+.fe-tabs-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.fe-tab {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-bg-soft);
+}
+
+.fe-tab__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.fe-tab__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  text-transform: capitalize;
+}
+
+.fe-tab__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.fe-tab__actions .btn {
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+.fe-tab-textarea {
+  width: 100%;
+  min-height: 160px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.fe-tab-textarea--error {
+  border-color: var(--color-red);
+}
+
+.fe-tab__error {
+  font-size: var(--font-size-xs);
+  color: var(--color-red);
+  margin-top: 6px;
+}
+
+.fe-save-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md, 0 -2px 12px rgba(0,0,0,0.08));
+  margin-bottom: 2rem;
+}

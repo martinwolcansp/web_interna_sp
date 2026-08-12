@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor de fichas de producto — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/fichas-editor.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Editor de fichas de producto"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <!-- ══════════════════════════════════════════════════════════
+       EDITOR DE FICHAS DE PRODUCTO — gestor de contenidos
+       estandarizado para Mapa de Servicios y la ficha "Eje 3" de
+       Sector Comunicaciones (comparten renderer y forma de datos).
+       Los campos de identificación son inputs reales; las 7
+       pestañas de contenido se editan como JSON validado (v1: sin
+       formularios granulares por campo — ver supabase/migracion_4).
+       El acceso lo controla js/fichas-editor.js
+       (fn_mis_secciones_editables, true también para superadmin).
+       ══════════════════════════════════════════════════════════ -->
+  <main class="admin-wrap" role="main">
+
+    <div id="fe-gate" class="admin-gate" style="display:none;"></div>
+
+    <div id="fe-content" style="display:none;">
+      <div class="admin-page-header">
+        <p class="section-label">Gestor de contenidos</p>
+        <h1 class="admin-page-title">Editor de fichas de producto</h1>
+        <p class="admin-page-subtitle">Mapa de Servicios y la ficha de Sector Comunicaciones comparten la misma estructura de 7 pestañas. Los campos simples son formulario; el contenido de cada pestaña se edita como JSON.</p>
+      </div>
+
+      <!-- Buscador: cruza todas las fichas/versiones/pestañas -->
+      <section class="admin-section" aria-labelledby="fe-search-title">
+        <div class="admin-section__header">
+          <h2 id="fe-search-title" class="admin-section__title">Buscar</h2>
+          <p class="admin-section__subtitle">Busca en todas las fichas y versiones que podés editar. Al elegir un resultado, te lleva directo al campo.</p>
+        </div>
+        <input type="search" id="fe-search-input" class="admin-input fe-search-input" placeholder="Ej: comodato, número de serie, precio mensual…">
+        <div id="fe-search-results" class="fe-search-results" style="display:none;"></div>
+      </section>
+
+      <!-- Selector de ficha + versión -->
+      <section class="admin-section" aria-labelledby="fe-selector-title">
+        <div class="admin-section__header">
+          <h2 id="fe-selector-title" class="admin-section__title">Ficha y versión</h2>
+        </div>
+        <div class="fe-selector-row">
+          <div class="fe-selector-field">
+            <label class="pe-label" for="fe-select-ficha">Ficha</label>
+            <select id="fe-select-ficha" class="admin-select"></select>
+          </div>
+          <div class="fe-selector-field">
+            <label class="pe-label" for="fe-select-version">Versión</label>
+            <select id="fe-select-version" class="admin-select"></select>
+          </div>
+          <button type="button" id="fe-new-version-btn" class="btn btn--secondary">Nueva versión (a partir de ésta)</button>
+        </div>
+        <details class="fe-new-ficha-details">
+          <summary>Dar de alta una ficha nueva</summary>
+          <div class="fe-new-ficha-row">
+            <input type="text" id="fe-new-ficha-id" class="admin-input" placeholder="id (slug), ej: comercio-seguro">
+            <input type="text" id="fe-new-ficha-nombre" class="admin-input" placeholder="Nombre">
+            <input type="text" id="fe-new-ficha-badge" class="admin-input" placeholder="Badge (opcional)">
+            <select id="fe-new-ficha-seccion" class="admin-select"></select>
+            <button type="button" id="fe-new-ficha-btn" class="btn btn--secondary">Crear</button>
+            <span id="fe-new-ficha-status" class="admin-row-status"></span>
+          </div>
+        </details>
+      </section>
+
+      <!-- Identificación (campos reales) -->
+      <section class="admin-section" aria-labelledby="fe-ident-title">
+        <div class="admin-section__header">
+          <h2 id="fe-ident-title" class="admin-section__title">Identificación</h2>
+        </div>
+        <div class="fe-ident-grid">
+          <div class="pe-form__row"><label class="pe-label" for="fe-nombre">Nombre</label><input type="text" id="fe-nombre" class="admin-input"></div>
+          <div class="pe-form__row"><label class="pe-label" for="fe-badge">Badge</label><input type="text" id="fe-badge" class="admin-input"></div>
+          <div class="pe-form__row"><label class="pe-label" for="fe-version">Versión (ej. 1.10)</label><input type="text" id="fe-version" class="admin-input"></div>
+          <div class="pe-form__row"><label class="pe-label" for="fe-version-id">Etiqueta del selector (ej. V1.10)</label><input type="text" id="fe-version-id" class="admin-input"></div>
+          <div class="pe-form__row"><label class="pe-label" for="fe-fecha">Fecha (ej. 04/08/2026)</label><input type="text" id="fe-fecha" class="admin-input"></div>
+          <div class="pe-form__row"><label class="pe-label" for="fe-autor">Autor</label><input type="text" id="fe-autor" class="admin-input"></div>
+          <div class="pe-form__row"><label class="pe-label" for="fe-lider">Líder de producto</label><input type="text" id="fe-lider" class="admin-input"></div>
+          <div class="pe-form__row"><label class="pe-label" for="fe-colaborador">Colaborador</label><input type="text" id="fe-colaborador" class="admin-input"></div>
+          <div class="pe-form__row fe-ident-desc"><label class="pe-label" for="fe-version-desc">Descripción de la versión (qué cambió)</label><textarea id="fe-version-desc" class="admin-input pe-textarea" rows="2"></textarea></div>
+        </div>
+      </section>
+
+      <!-- Pestañas de contenido (JSON) -->
+      <section class="admin-section" aria-labelledby="fe-tabs-title">
+        <div class="admin-section__header">
+          <h2 id="fe-tabs-title" class="admin-section__title">Contenido (JSON por pestaña)</h2>
+          <p class="admin-section__subtitle">Cada pestaña es el JSON tal cual lo consume ficha-renderer.js. Se valida al guardar; si algo no es JSON válido, se avisa y no se guarda nada.</p>
+        </div>
+        <div id="fe-tabs-wrap" class="fe-tabs-wrap"></div>
+      </section>
+
+      <div class="fe-save-bar">
+        <button type="button" id="fe-save-btn" class="btn btn--primary">Guardar versión</button>
+        <span id="fe-save-status" class="admin-row-status"></span>
+      </div>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/fichas-editor.js"></script>
+</body>
+</html>
