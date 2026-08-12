@@ -6,7 +6,13 @@
 .pa-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-6);
+  gap: var(--space-8);
+  /* Las demás páginas del admin envuelven su contenido en .admin-section,
+     que ya trae margin-bottom propio antes del footer. Este grid es un
+     div suelto (no tiene sentido ponerle el borde/fondo de .admin-section
+     a cada tarjeta), así que necesita su propio margen para no quedar
+     pegado al footer. */
+  margin-bottom: var(--space-16);
 }
 
 .pa-card {
