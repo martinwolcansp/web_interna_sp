@@ -24,6 +24,13 @@ $$;
 
 -- Novedades vigentes de la pizarra, con el nombre del autor y si el
 -- usuario logueado ya las leyó (para el indicador de "no leídas").
+--
+-- IMPORTANTE: al ser security definer, esta función consulta "novedades"
+-- sin pasar por sus políticas RLS -- por eso el filtro de área
+-- (fn_puede_ver_novedad, ver Adenda 2 / Migración 2) se chequea acá
+-- explícitamente en el where. Sin esto, cualquier usuario vería todas
+-- las novedades sin importar a qué área estén dirigidas, porque home.js
+-- siempre entra por esta RPC, nunca consulta la tabla directo.
 create or replace function fn_mis_novedades()
 returns table (
   id uuid,
@@ -41,14 +48,16 @@ security definer
 set search_path = public
 as $$
   select
-    n.id, n.titulo, n.cuerpo, n.categoria,
+    n.id, n.titulo, n.cuerpo, c.nombre as categoria,
     p.nombre as autor_nombre,
     n.publicado_en, n.vigente_hasta,
     (nl.usuario_id is not null) as leida
   from novedades n
   left join perfiles p on p.id = n.autor_id
+  left join categorias_novedades c on c.id = n.categoria_id
   left join novedades_leidas nl on nl.novedad_id = n.id and nl.usuario_id = auth.uid()
-  where n.vigente_hasta is null or n.vigente_hasta > now()
+  where (n.vigente_hasta is null or n.vigente_hasta > now())
+    and fn_puede_ver_novedad(n.id)
   order by n.publicado_en desc;
 $$;
 

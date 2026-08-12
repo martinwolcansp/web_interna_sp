@@ -31,12 +31,13 @@ async function initAuthArea() {
 }
 
 // Una vez que ya se pintó el header con lo que trae Google (instantáneo,
-// sin esperar a la base), completa/corrige dos cosas contra la tabla
+// sin esperar a la base), completa/corrige lo que depende de la tabla
 // perfiles: 1) el nombre mostrado, con nombre/apellido tal como los haya
 // cargado el superadmin desde el panel (pueden no coincidir con lo que
 // manda Google — ver Adenda 2); 2) si es superadmin activo, suma el
-// acceso directo al panel de administración. Una sola consulta para las
-// dos cosas.
+// acceso directo al panel de administración; 3) si tiene permiso de
+// editar la pizarra (o es superadmin), suma el acceso al editor de la
+// pizarra. Ambos accesos pueden convivir (un superadmin ve los dos).
 async function loadPerfilExtras(area, session) {
   const { data: perfil, error } = await window.supabaseClient
     .from('perfiles')
@@ -52,13 +53,30 @@ async function loadPerfilExtras(area, session) {
     nameEl.textContent = nombreCompleto;
   }
 
-  if (!perfil.es_superadmin || !perfil.activo) return;
-  if (area.querySelector('.auth-admin-link')) return; // ya está
+  if (!perfil.activo) return;
+
+  if (perfil.es_superadmin) {
+    addHeaderLink(area, 'auth-admin-link', '/pages/admin.html', 'ti-settings', 'Administración');
+  }
+
+  let puedeEditarPizarra = perfil.es_superadmin;
+  if (!puedeEditarPizarra) {
+    const { data: tienePermiso } = await window.supabaseClient
+      .rpc('fn_tiene_permiso', { p_seccion_id: 'pizarra', p_nivel: 'editar' });
+    puedeEditarPizarra = !!tienePermiso;
+  }
+  if (puedeEditarPizarra) {
+    addHeaderLink(area, 'auth-pizarra-link', '/pages/pizarra-editor.html', 'ti-news', 'Editor de novedades');
+  }
+}
+
+function addHeaderLink(area, className, href, icon, label) {
+  if (area.querySelector('.' + className)) return; // ya está
 
   const link = document.createElement('a');
-  link.href = '/pages/admin.html';
-  link.className = 'btn btn--secondary auth-admin-link';
-  link.innerHTML = '<i class="ti ti-settings" aria-hidden="true"></i> Administración';
+  link.href = href;
+  link.className = 'btn btn--secondary ' + className;
+  link.innerHTML = `<i class="ti ${icon}" aria-hidden="true"></i> ${label}`;
 
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {

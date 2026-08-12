@@ -1,0 +1,171 @@
+/* ============================================================
+   pizarra-editor.css — Editor de la pizarra institucional (Fase 4)
+   Complementa admin.css (comparten .admin-section, .admin-table, etc.)
+   ============================================================ */
+
+.pe-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.pe-form__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pe-form__row-group {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.pe-form__row-group .pe-form__row {
+  flex: 1;
+  min-width: 180px;
+}
+
+.pe-label {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.pe-input-wide {
+  width: 100%;
+}
+
+.pe-textarea {
+  resize: vertical;
+  font-family: var(--font-base);
+  line-height: 1.5;
+}
+
+.pe-checkbox-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-body);
+  cursor: pointer;
+  width: fit-content;
+}
+
+.pe-areas-grid {
+  margin-top: var(--space-2);
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px var(--space-4);
+  background: var(--color-bg-soft);
+}
+
+.pe-area-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-body);
+  cursor: pointer;
+}
+
+.pe-form__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.pe-post {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.pe-post:last-child {
+  margin-bottom: 0;
+}
+
+.pe-post__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: 6px;
+}
+
+.pe-post__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+}
+
+.pe-post__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pe-post__actions .btn {
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+.pe-post__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.pe-post__excerpt {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-body);
+  line-height: 1.5;
+}
+
+.pe-cat-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.pe-cat-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.pe-cat-row:last-child {
+  border-bottom: none;
+}
+
+.pe-cat-row .admin-input {
+  max-width: 200px;
+}
+
+.pe-cat-row .admin-input--orden {
+  width: 60px;
+  max-width: 60px;
+}
+
+.pe-cat-row__id {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  min-width: 90px;
+}

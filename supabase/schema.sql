@@ -129,11 +129,22 @@ $$;
 -- 5. PIZARRA INSTITUCIONAL (novedades) — sección general, ver punto 10
 --    de la propuesta.
 -- -------------------------------------------------------------------------
+-- Catálogo de categorías de la pizarra (Novedades, Comunicados, Feriados,
+-- Vacaciones, RRHH...). Estructural: lo gestiona el superadmin desde el
+-- editor de la pizarra, igual que secciones/areas.
+create table if not exists categorias_novedades (
+  id     text primary key,
+  nombre text not null,
+  orden  int not null default 0
+);
+
+comment on table categorias_novedades is 'Catálogo de categorías de la pizarra institucional. Gestionado por el superadmin desde el editor de la pizarra.';
+
 create table if not exists novedades (
   id              uuid primary key default gen_random_uuid(),
   titulo          text not null,
   cuerpo          text not null,
-  categoria       text not null,       -- 'Feriados', 'Comunicados', 'Novedades', etc.
+  categoria_id    text not null references categorias_novedades(id),
   autor_id        uuid references perfiles(id) on delete set null,
   publicado_en    timestamptz not null default now(),
   vigente_hasta   timestamptz
@@ -214,6 +225,12 @@ alter table permisos_area_seccion enable row level security;
 alter table novedades enable row level security;
 alter table novedades_leidas enable row level security;
 alter table novedades_areas enable row level security;
+alter table categorias_novedades enable row level security;
+
+create policy "categorias_novedades: lectura autenticados" on categorias_novedades
+  for select using (auth.role() = 'authenticated');
+create policy "categorias_novedades: escritura superadmin" on categorias_novedades
+  for all using (fn_es_superadmin());
 
 -- areas / secciones / permisos_area_seccion: catálogos, lectura libre para
 -- cualquier usuario autenticado (los necesita el frontend para saber qué

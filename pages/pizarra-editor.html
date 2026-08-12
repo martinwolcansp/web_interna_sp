@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor de la pizarra — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/pizarra-editor.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Editor de la pizarra"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <!-- ══════════════════════════════════════════════════════════
+       EDITOR DE LA PIZARRA (Fase 4, primera versión) — alta/edición/
+       borrado de novedades, con categoría (del catálogo) y áreas
+       destinatarias. El acceso lo controla js/pizarra-editor.js
+       (fn_tiene_permiso('pizarra','editar'), true también para
+       superadmin) — no es un mosaico, no usa page-guard.js.
+       ══════════════════════════════════════════════════════════ -->
+  <main class="admin-wrap" role="main">
+
+    <div id="pe-gate" class="admin-gate" style="display:none;"></div>
+
+    <div id="pe-content" style="display:none;">
+      <div class="admin-page-header">
+        <p class="section-label">Fase 4 — En construcción</p>
+        <h1 class="admin-page-title">Editor de la pizarra institucional</h1>
+        <p class="admin-page-subtitle">Publicá novedades, elegí a qué áreas van dirigidas, y gestioná las categorías.</p>
+      </div>
+
+      <!-- Alta / edición de una novedad -->
+      <section class="admin-section" aria-labelledby="pe-form-title">
+        <div class="admin-section__header">
+          <h2 id="pe-form-title" class="admin-section__title">Nueva publicación</h2>
+          <p class="admin-section__subtitle" id="pe-form-subtitle">Si no tildás ningún área puntual, la publicación queda visible para todas las áreas (comportamiento por defecto).</p>
+        </div>
+
+        <form id="pe-form" class="pe-form">
+          <input type="hidden" id="pe-editing-id" value="">
+
+          <div class="pe-form__row">
+            <label class="pe-label" for="pe-titulo">Título</label>
+            <input type="text" id="pe-titulo" class="admin-input pe-input-wide" required maxlength="200">
+          </div>
+
+          <div class="pe-form__row">
+            <label class="pe-label" for="pe-cuerpo">Texto</label>
+            <textarea id="pe-cuerpo" class="admin-input pe-input-wide pe-textarea" required rows="4"></textarea>
+          </div>
+
+          <div class="pe-form__row-group">
+            <div class="pe-form__row">
+              <label class="pe-label" for="pe-categoria">Categoría</label>
+              <select id="pe-categoria" class="admin-select" required></select>
+            </div>
+
+            <div class="pe-form__row">
+              <label class="pe-label" for="pe-vigencia">Vigente hasta (opcional)</label>
+              <input type="date" id="pe-vigencia" class="admin-input">
+            </div>
+          </div>
+
+          <div class="pe-form__row">
+            <label class="pe-label">Áreas destinatarias</label>
+            <label class="pe-checkbox-line">
+              <input type="checkbox" id="pe-todas-areas" checked>
+              Todas las áreas
+            </label>
+            <div id="pe-areas-grid" class="pe-areas-grid" style="display:none;"></div>
+          </div>
+
+          <div class="pe-form__actions">
+            <button type="submit" id="pe-submit-btn" class="btn btn--primary">Publicar</button>
+            <button type="button" id="pe-cancel-btn" class="btn btn--secondary" style="display:none;">Cancelar edición</button>
+            <span id="pe-form-status" class="admin-row-status"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- Listado de publicaciones existentes -->
+      <section class="admin-section" aria-labelledby="pe-list-title">
+        <div class="admin-section__header">
+          <h2 id="pe-list-title" class="admin-section__title">Publicaciones</h2>
+          <p class="admin-section__subtitle">Más recientes primero.</p>
+        </div>
+        <div id="pe-list-wrap" class="admin-table-wrap">
+          <p class="admin-loading">Cargando publicaciones…</p>
+        </div>
+      </section>
+
+      <!-- Gestión de categorías: sólo superadmin -->
+      <section id="pe-categorias-section" class="admin-section" style="display:none;" aria-labelledby="pe-categorias-title">
+        <div class="admin-section__header">
+          <h2 id="pe-categorias-title" class="admin-section__title">Categorías</h2>
+          <p class="admin-section__subtitle">El orden define cómo aparecen en el desplegable de arriba.</p>
+        </div>
+        <div id="pe-categorias-wrap" class="admin-table-wrap">
+          <p class="admin-loading">Cargando categorías…</p>
+        </div>
+        <form id="pe-cat-form" class="pe-cat-form">
+          <input type="text" id="pe-cat-nombre" class="admin-input" placeholder="Nombre de la categoría nueva" required maxlength="60">
+          <input type="number" id="pe-cat-orden" class="admin-input" placeholder="Orden" style="width:70px;" value="0">
+          <button type="submit" class="btn btn--secondary">Agregar categoría</button>
+          <span id="pe-cat-status" class="admin-row-status"></span>
+        </form>
+      </section>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/pizarra-editor.js"></script>
+</body>
+</html>
