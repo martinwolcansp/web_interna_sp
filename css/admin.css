@@ -109,10 +109,16 @@
   color: var(--color-blue);
 }
 
-.admin-user-name {
+.admin-name-inputs {
+  display: flex;
+  gap: 5px;
+}
+
+.admin-name-inputs .admin-input {
+  width: 92px;
+  padding: 4px 6px;
   font-weight: var(--font-weight-semibold);
   color: var(--color-navy);
-  line-height: 1.3;
 }
 
 .admin-user-email {

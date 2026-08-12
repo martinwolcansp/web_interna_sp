@@ -145,7 +145,10 @@ function renderRow(u) {
         <div class="admin-user-cell">
           ${avatar}
           <div>
-            <div class="admin-user-name">${escapeHtml(nombreCompleto)}</div>
+            <div class="admin-name-inputs">
+              <input type="text" class="admin-input admin-input--nombre" value="${escapeAttr(u.nombre || '')}" placeholder="Nombre">
+              <input type="text" class="admin-input admin-input--apellido" value="${escapeAttr(u.apellido || '')}" placeholder="Apellido">
+            </div>
             <div class="admin-user-email">${escapeHtml(u.email || '')}</div>
           </div>
           ${statusBadge}
@@ -178,6 +181,8 @@ async function saveRow(tr, userId) {
   const statusEl = tr.querySelector('.admin-row-status');
   const btn = tr.querySelector('.admin-row-save');
 
+  const nombre = tr.querySelector('.admin-input--nombre').value.trim() || null;
+  const apellido = tr.querySelector('.admin-input--apellido').value.trim() || null;
   const legajo = tr.querySelector('.admin-input--legajo').value.trim() || null;
   const areaId = tr.querySelector('.admin-select--area').value || null;
   const nivel = tr.querySelector('.admin-select--nivel').value;
@@ -191,6 +196,8 @@ async function saveRow(tr, userId) {
   const { error } = await window.supabaseClient
     .from('perfiles')
     .update({
+      nombre,
+      apellido,
       legajo,
       area_id: areaId,
       nivel,
