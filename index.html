@@ -258,6 +258,31 @@
       line-height: 1.5;
     }
 
+    .pizarra-pager {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-6);
+      margin-top: var(--space-4);
+    }
+
+    .pizarra-pager .btn {
+      padding: 7px 16px;
+      font-size: var(--font-size-xs);
+    }
+
+    .pizarra-pager .btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .pizarra-pager__label {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      font-weight: var(--font-weight-semibold);
+    }
+
     /* Mensaje de "iniciá sesión" / "cuenta pendiente de aprobación",
        reemplaza a la pizarra + mosaicos hasta que se sepa qué mostrar. */
     .home-gate-message {
@@ -317,6 +342,16 @@
 
       <div id="pizarra-list" class="home-pizarra__list">
         <p class="pizarra-post__excerpt">Cargando novedades…</p>
+      </div>
+
+      <div id="pizarra-pager" class="pizarra-pager" style="display:none;">
+        <button type="button" id="pizarra-pager-prev" class="btn btn--secondary" disabled>
+          <i class="ti ti-chevron-left" aria-hidden="true"></i> Anterior
+        </button>
+        <span id="pizarra-pager-label" class="pizarra-pager__label"></span>
+        <button type="button" id="pizarra-pager-next" class="btn btn--secondary">
+          Siguiente <i class="ti ti-chevron-right" aria-hidden="true"></i>
+        </button>
       </div>
     </section>
 

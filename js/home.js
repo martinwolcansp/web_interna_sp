@@ -14,6 +14,7 @@
 
 const SECCION_IDS_MOSAICOS = ['mapa-servicios', 'sector-comunicaciones', 'organigrama'];
 const PIZARRA_EXCERPT_LEN = 180;
+const PIZARRA_PAGE_SIZE = 10;
 
 document.addEventListener('sp:auth-ready', (e) => {
   handleAuthReady(e.detail.session);
@@ -114,6 +115,11 @@ async function cargarMosaicos(perfil) {
 }
 
 let sp_unreadCount = 0;
+let sp_novedades = [];
+let sp_paginaActual = 1;
+// El pager es HTML fijo (no se regenera con innerHTML como la lista), así
+// que sus botones se enganchan una sola vez, no en cada cargarPizarra().
+let sp_pagerWired = false;
 
 async function cargarPizarra() {
   const list = document.getElementById('pizarra-list');
@@ -128,16 +134,21 @@ async function cargarPizarra() {
     return;
   }
 
-  const novedades = data || [];
-  sp_unreadCount = novedades.filter(n => !n.leida).length;
+  sp_novedades = data || [];
+  sp_unreadCount = sp_novedades.filter(n => !n.leida).length;
   actualizarBadge(badge);
 
-  if (novedades.length === 0) {
+  if (sp_novedades.length === 0) {
     list.innerHTML = '<p class="pizarra-post__excerpt">Todavía no hay publicaciones.</p>';
+    document.getElementById('pizarra-pager').style.display = 'none';
     return;
   }
 
-  list.innerHTML = novedades.map(renderNovedad).join('');
+  const totalPaginas = Math.ceil(sp_novedades.length / PIZARRA_PAGE_SIZE);
+  if (sp_paginaActual > totalPaginas) sp_paginaActual = 1;
+
+  wirePager();
+  renderPaginaActual();
 }
 
 function actualizarBadge(badge) {
@@ -148,6 +159,44 @@ function actualizarBadge(badge) {
   } else {
     badge.style.display = 'none';
   }
+}
+
+function wirePager() {
+  if (sp_pagerWired) return;
+  sp_pagerWired = true;
+  document.getElementById('pizarra-pager-prev').addEventListener('click', () => {
+    if (sp_paginaActual > 1) {
+      sp_paginaActual--;
+      renderPaginaActual();
+    }
+  });
+  document.getElementById('pizarra-pager-next').addEventListener('click', () => {
+    const totalPaginas = Math.ceil(sp_novedades.length / PIZARRA_PAGE_SIZE);
+    if (sp_paginaActual < totalPaginas) {
+      sp_paginaActual++;
+      renderPaginaActual();
+    }
+  });
+}
+
+function renderPaginaActual() {
+  const list = document.getElementById('pizarra-list');
+  const pager = document.getElementById('pizarra-pager');
+  const totalPaginas = Math.ceil(sp_novedades.length / PIZARRA_PAGE_SIZE);
+
+  const inicio = (sp_paginaActual - 1) * PIZARRA_PAGE_SIZE;
+  const pagina = sp_novedades.slice(inicio, inicio + PIZARRA_PAGE_SIZE);
+  list.innerHTML = pagina.map(renderNovedad).join('');
+
+  if (totalPaginas <= 1) {
+    pager.style.display = 'none';
+    return;
+  }
+
+  pager.style.display = '';
+  document.getElementById('pizarra-pager-label').textContent = `Página ${sp_paginaActual} de ${totalPaginas}`;
+  document.getElementById('pizarra-pager-prev').disabled = sp_paginaActual === 1;
+  document.getElementById('pizarra-pager-next').disabled = sp_paginaActual === totalPaginas;
 }
 
 function renderNovedad(n) {
