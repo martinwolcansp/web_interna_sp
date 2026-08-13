@@ -20,7 +20,7 @@ window.MAPA_VERSIONS['v1.4'] = {
       icon: 'ti-home',
       name: 'Hogar',
       desc: 'Seguridad para casas y departamentos. El objetivo es brindar total tranquilidad dentro del hogar pero también en momentos de ausencia. Cada servicio puede contratarse de forma independiente o combinada.',
-      fichaBtn: { type: 'disabled', icon: 'ti-clock', label: 'Ficha Hogar Seguro — Próximamente' },
+      fichaBtn: { type: 'primary', icon: 'ti-file-description', label: 'Ver ficha: Hogar Seguro', id: 'hogar-venta' },
     },
     comercio: {
       icon: 'ti-building-store',
@@ -82,7 +82,7 @@ window.MAPA_VERSIONS['v1.4'] = {
       ],
       billing: 'Cargo de instalación único + abono mensual de monitoreo. Equipamiento en comodato: el mantenimiento es responsabilidad de SP.',
       diff:    'Es un servicio de seguridad que no depende del usuario. La central actúa de forma autónoma ante cualquier emergencia aunque no se pueda ubicar al cliente. El sistema registra con precisión los movimientos, detallando quién activa o desactiva la alarma en cada momento.',
-      ficha:   null,
+      ficha:   'hogar-venta',
     },
     'video-hogar': {
       segment: 'hogar',
