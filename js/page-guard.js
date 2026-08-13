@@ -48,6 +48,13 @@ document.addEventListener('sp:auth-ready', async (e) => {
     return;
   }
 
+  // Los desplegables de versión (mapa, fichas) son para revisión interna,
+  // no para el usuario final: se ocultan salvo que sea superadmin. Mismo
+  // parche de navegador que el resto de este archivo — igual de "no es
+  // seguridad real" (ver nota de arriba), porque el contenido de las
+  // versiones viejas sigue siendo JS estático cargado en la página.
+  if (!perfil.es_superadmin) hideVersionSelectors();
+
   if (perfil.es_superadmin) return; // acceso total, no hace falta chequear permiso puntual
 
   const { data: tienePermiso, error: permisoError } = await window.supabaseClient
@@ -63,6 +70,10 @@ document.addEventListener('sp:auth-ready', async (e) => {
     denyAccess('No tenés permiso para ver esta sección. Pedile a un administrador que te lo habilite.');
   }
 });
+
+function hideVersionSelectors() {
+  document.querySelectorAll('.version-selector').forEach((el) => el.remove());
+}
 
 function denyAccess(mensaje) {
   // Oculta todo el contenido ya insertado en <body> (sea <main> u otra
