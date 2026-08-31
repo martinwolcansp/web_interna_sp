@@ -110,7 +110,7 @@ function renderServiceGrid(segmentId, vd) {
     const s = vd.services[id];
     if (!s) return '';
     return `
-      <article class="service-card" onclick="openServiceModal('${id}')"
+      <article class="service-card${s.featured ? ' service-card--featured' : ''}" onclick="openServiceModal('${id}')"
                role="button" tabindex="0" aria-label="Ver detalle: ${s.name}">
         <header class="service-card__header">
           <div class="service-card__icon" aria-hidden="true"><i class="ti ${s.icon}"></i></div>

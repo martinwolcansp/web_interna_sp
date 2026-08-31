@@ -18,6 +18,11 @@
   margin-bottom: var(--space-6);
 }
 
+.service-card--featured {
+  grid-column: 1 / -1;
+  border: 2px solid var(--color-accent);
+}
+
 .service-grid__empty {
   font-size: var(--font-size-sm);
   color: var(--color-text-subtle);
