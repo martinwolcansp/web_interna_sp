@@ -765,7 +765,7 @@
   padding: var(--font-size-sm) var(--space-6);
   display: flex;
   gap: var(--space-3);
-  align-items: center;
+  align-items: flex-start;
   border-left: 3px solid var(--color-blue);
 }
 
