@@ -26,19 +26,21 @@ function setVersion(versionKey) {
   _currentVersion = vd;
 
   // Heroes de segmento
-  renderSegmentHero('hogar',       vd.segments.hogar);
-  renderSegmentHero('comercio',    vd.segments.comercio);
-  renderSegmentHero('obras',       vd.segments.obras);
-  renderSegmentHero('consorcios',  vd.segments.consorcios);
-  renderSegmentHero('empresas',    vd.segments.empresas);
-  renderSegmentHero('transversal', vd.segments.transversal);
+  renderSegmentHero('hogar',                  vd.segments.hogar);
+  renderSegmentHero('comercio',               vd.segments.comercio);
+  renderSegmentHero('obras',                  vd.segments.obras);
+  renderSegmentHero('consorcios',             vd.segments.consorcios);
+  renderSegmentHero('vigilancia-presencial',  vd.segments['vigilancia-presencial']);
+  renderSegmentHero('empresas',               vd.segments.empresas);
+  renderSegmentHero('transversal',            vd.segments.transversal);
 
   // Grids de servicios
-  renderServiceGrid('hogar',      vd);
-  renderServiceGrid('comercio',   vd);
-  renderServiceGrid('obras',      vd);
-  renderServiceGrid('consorcios', vd);
-  renderServiceGrid('empresas',   vd);
+  renderServiceGrid('hogar',                  vd);
+  renderServiceGrid('comercio',               vd);
+  renderServiceGrid('obras',                  vd);
+  renderServiceGrid('consorcios',             vd);
+  renderServiceGrid('vigilancia-presencial',  vd);
+  renderServiceGrid('empresas',               vd);
 
   // Transversales
   renderTransversals(vd.transversals);

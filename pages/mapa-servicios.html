@@ -70,6 +70,10 @@
         <i class="ti ti-building-community" aria-hidden="true"></i> Consorcios y Edificios
       </button>
       <button class="segment-tab" role="tab" aria-selected="false"
+              onclick="showSegment('vigilancia-presencial', this)">
+        <i class="ti ti-shield-lock" aria-hidden="true"></i> Vigilancia presencial
+      </button>
+      <button class="segment-tab" role="tab" aria-selected="false"
               onclick="showSegment('empresas', this)">
         <i class="ti ti-briefcase" aria-hidden="true"></i> Empresas
       </button>
@@ -119,6 +123,17 @@
       </div>
       <p class="section-label">Servicios disponibles</p>
       <div class="service-grid" id="grid-consorcios">
+        <!-- Renderizado por mapa-servicios.js -->
+      </div>
+    </section>
+
+    <!-- ══ SEGMENTO: VIGILANCIA PRESENCIAL ══ -->
+    <section id="segment-vigilancia-presencial" class="segment-panel" role="tabpanel" aria-label="Vigilancia presencial">
+      <div class="segment-hero" id="hero-vigilancia-presencial">
+        <!-- Renderizado por mapa-servicios.js -->
+      </div>
+      <p class="section-label">Servicios disponibles</p>
+      <div class="service-grid" id="grid-vigilancia-presencial">
         <!-- Renderizado por mapa-servicios.js -->
       </div>
     </section>
@@ -247,6 +262,7 @@
 <script src="../js/versiones/mapa-v1.5.js"></script>
 <script src="../js/versiones/mapa-v1.7.js"></script>
 <script src="../js/versiones/mapa-v1.8.js"></script>
+<script src="../js/versiones/mapa-v1.9.js"></script>
 <!-- Fichas: contenido real desde Supabase (fichas / ficha_versiones) en
      vez de los archivos estáticos de js/fichas/versiones/ — ver
      js/fichas-data-loader.js y supabase/migracion_4_fichas_producto.sql. -->
