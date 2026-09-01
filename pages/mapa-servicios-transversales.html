@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Servicios Transversales — Mapa de Servicios | SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/mapa-servicios.css">
+</head>
+<body>
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Mapa de Servicios","href":"mapa-servicios.html"},{"label":"Servicios Transversales"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'mapa-servicios';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <!-- MODULE NAV — switcher entre las 3 secciones del Mapa de Servicios -->
+  <nav class="module-nav" aria-label="Secciones del Mapa de Servicios">
+    <a class="module-nav__item" href="mapa-servicios-catalogo.html">
+      <i class="ti ti-category-2" aria-hidden="true"></i> Servicios
+    </a>
+    <a class="module-nav__item is-active" href="mapa-servicios-transversales.html">
+      <i class="ti ti-layers-intersect" aria-hidden="true"></i> Servicios Transversales
+    </a>
+    <a class="module-nav__item" href="mapa-servicios-glosario.html">
+      <i class="ti ti-book-2" aria-hidden="true"></i> Glosario
+    </a>
+  </nav>
+
+  <main class="mapa-wrap" role="main">
+
+    <!-- VERSION SELECTOR -->
+    <div class="mapa-topbar">
+      <div class="version-selector" id="version-selector">
+        <button class="version-selector__btn" id="version-btn"
+                onclick="toggleVersionDropdown()"
+                aria-haspopup="listbox" aria-expanded="false"
+                aria-label="Selector de versión del mapa">
+          <i class="ti ti-git-branch" aria-hidden="true"></i>
+          <span id="version-current-label">Cargando…</span>
+          <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
+        </button>
+        <ul class="version-selector__dropdown" id="version-dropdown" role="listbox">
+          <!-- Renderizado por mapa-servicios.js -->
+        </ul>
+      </div>
+    </div>
+
+    <section id="segment-transversal" class="segment-panel is-active">
+      <div class="segment-hero" id="hero-transversal">
+        <!-- Renderizado por mapa-servicios.js -->
+      </div>
+      <p class="section-label">Capacidades de SP</p>
+      <div class="transversal-grid" id="grid-transversal">
+        <!-- Renderizado por mapa-servicios.js -->
+      </div>
+    </section>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+<!-- Versiones del mapa (orden cronológico) -->
+<script src="../js/versiones/mapa-v1.0.js"></script>
+<script src="../js/versiones/mapa-v1.1.js"></script>
+<script src="../js/versiones/mapa-v1.2.js"></script>
+<script src="../js/versiones/mapa-v1.3.js"></script>
+<script src="../js/versiones/mapa-v1.4.js"></script>
+<script src="../js/versiones/mapa-v1.5.js"></script>
+<script src="../js/versiones/mapa-v1.7.js"></script>
+<script src="../js/versiones/mapa-v1.8.js"></script>
+<script src="../js/versiones/mapa-v1.9.js"></script>
+<script src="../js/versiones/mapa-v1.10.js"></script>
+<script src="../js/versiones/mapa-v1.11.js"></script>
+<script src="../js/versiones/mapa-v1.12.js"></script>
+<script src="../js/versiones/mapa-v1.13.js"></script>
+<!-- Lógica del mapa (solo rendering; esta página no usa fichas ni modal
+     de servicio, así que no carga ficha-renderer.js/ficha.js/
+     fichas-data-loader.js) -->
+<script src="../js/mapa-servicios.js"></script>
+
+</body>
+</html>

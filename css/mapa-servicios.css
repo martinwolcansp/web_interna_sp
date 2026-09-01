@@ -48,4 +48,65 @@
   .site-header__right { text-align: left; }
   .service-grid      { grid-template-columns: 1fr; }
   .transversal-grid  { grid-template-columns: 1fr; }
+  .home-grid         { grid-template-columns: 1fr; }
+  .module-nav        { max-width: 100%; }
+}
+
+/* ── MODULE NAV (alinear ancho con .mapa-wrap en las 4 páginas
+   del Mapa de Servicios; en Sector Comunicaciones usa el ancho
+   default de components.css, --max-width-ficha) ── */
+.module-nav {
+  max-width: var(--max-width-content);
+}
+
+/* ── GLOSARIO ── */
+.glosario-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.glosario-item {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4) var(--space-6);
+}
+
+.glosario-item__term {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  margin-bottom: 4px;
+}
+
+.glosario-item__def {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.glosario-list__empty {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
+/* ── MENÚ (mosaico de entrada: Servicios / Transversales / Glosario) ── */
+.mapa-menu-intro {
+  margin-bottom: var(--space-6);
+}
+
+.mapa-menu-intro h1 {
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  letter-spacing: -0.3px;
+}
+
+.mapa-menu-intro p {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+  line-height: var(--line-height-base);
 }

@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/components.css">
-  <link rel="stylesheet" href="../css/ficha.css">
   <link rel="stylesheet" href="../css/mapa-servicios.css">
 </head>
 <body>
@@ -29,138 +28,46 @@
   <script src="/components/header/header.js"></script>
 
 <!-- ══════════════════════════════════════════════════════════
-     VISTA: MAPA DE SERVICIOS
+     MENÚ: MAPA DE SERVICIOS
+     Página de entrada — mosaico con las 3 secciones, cada una en
+     su propia página (ver mapa-servicios-catalogo.html,
+     -transversales.html y -glosario.html).
      ══════════════════════════════════════════════════════════ -->
-<div id="app-mapa">
   <main class="mapa-wrap" role="main">
 
-    <!-- VERSION SELECTOR -->
-    <div class="mapa-topbar">
-      <div class="version-selector" id="version-selector">
-        <button class="version-selector__btn" id="version-btn"
-                onclick="toggleVersionDropdown()"
-                aria-haspopup="listbox" aria-expanded="false"
-                aria-label="Selector de versión del mapa">
-          <i class="ti ti-git-branch" aria-hidden="true"></i>
-          <span id="version-current-label">Cargando…</span>
-          <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
-        </button>
-        <ul class="version-selector__dropdown" id="version-dropdown" role="listbox">
-          <!-- Renderizado por mapa-servicios.js -->
-        </ul>
-      </div>
+    <div class="mapa-menu-intro">
+      <h1>Mapa de Servicios</h1>
+      <p>Elegí qué querés ver: el catálogo de servicios por segmento, las capacidades transversales de SP, o el glosario de términos.</p>
     </div>
 
-    <!-- SEGMENT NAV -->
-    <nav class="segment-nav" role="tablist" aria-label="Segmentos de servicio">
-      <button class="segment-tab is-active" role="tab" aria-selected="true"
-              onclick="showSegment('hogar', this)">
-        <i class="ti ti-home" aria-hidden="true"></i> Hogar
-      </button>
-      <button class="segment-tab" role="tab" aria-selected="false"
-              onclick="showSegment('comercio', this)">
-        <i class="ti ti-building-store" aria-hidden="true"></i> Comercio
-      </button>
-      <button class="segment-tab" role="tab" aria-selected="false"
-              onclick="showSegment('obras', this)">
-        <i class="ti ti-building-warehouse" aria-hidden="true"></i> Obras
-      </button>
-      <button class="segment-tab" role="tab" aria-selected="false"
-              onclick="showSegment('consorcios', this)">
-        <i class="ti ti-building-community" aria-hidden="true"></i> Consorcios y Edificios
-      </button>
-      <button class="segment-tab" role="tab" aria-selected="false"
-              onclick="showSegment('vigilancia-presencial', this)">
-        <i class="ti ti-shield-lock" aria-hidden="true"></i> Vigilancia presencial
-      </button>
-      <button class="segment-tab" role="tab" aria-selected="false"
-              onclick="showSegment('empresas', this)">
-        <i class="ti ti-briefcase" aria-hidden="true"></i> Empresas
-      </button>
-      <button class="segment-tab" role="tab" aria-selected="false"
-              onclick="showSegment('transversal', this)">
-        <i class="ti ti-layers-intersect" aria-hidden="true"></i> Servicios Transversales
-      </button>
+    <nav class="home-grid" aria-label="Secciones del Mapa de Servicios">
+
+      <a class="home-card" href="mapa-servicios-catalogo.html">
+        <div class="home-card__icon" aria-hidden="true"><i class="ti ti-category-2"></i></div>
+        <div>
+          <div class="home-card__name">Servicios</div>
+          <p class="home-card__desc">Hogar, Comercio, Obras, Consorcios y Edificios, Vigilancia presencial y Empresas. Detalle y fichas por segmento.</p>
+        </div>
+      </a>
+
+      <a class="home-card" href="mapa-servicios-transversales.html">
+        <div class="home-card__icon" aria-hidden="true"><i class="ti ti-layers-intersect"></i></div>
+        <div>
+          <div class="home-card__name">Servicios Transversales</div>
+          <p class="home-card__desc">Capacidades de SP presentes en todos los servicios: monitoreo, atención al cliente, mantenimiento y más.</p>
+        </div>
+      </a>
+
+      <a class="home-card" href="mapa-servicios-glosario.html">
+        <div class="home-card__icon" aria-hidden="true"><i class="ti ti-book-2"></i></div>
+        <div>
+          <div class="home-card__name">Glosario</div>
+          <p class="home-card__desc">Términos técnicos y comerciales usados en el Mapa de Servicios.</p>
+        </div>
+      </a>
+
     </nav>
 
-    <!-- ══ SEGMENTO: HOGAR ══ -->
-    <section id="segment-hogar" class="segment-panel is-active" role="tabpanel" aria-label="Hogar">
-      <div class="segment-hero" id="hero-hogar">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-      <p class="section-label">Servicios disponibles</p>
-      <div class="service-grid" id="grid-hogar">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-    </section>
-
-    <!-- ══ SEGMENTO: COMERCIO ══ -->
-    <section id="segment-comercio" class="segment-panel" role="tabpanel" aria-label="Comercio">
-      <div class="segment-hero" id="hero-comercio">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-      <p class="section-label">Servicios disponibles</p>
-      <div class="service-grid" id="grid-comercio">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-    </section>
-
-    <!-- ══ SEGMENTO: OBRAS ══ -->
-    <section id="segment-obras" class="segment-panel" role="tabpanel" aria-label="Obras">
-      <div class="segment-hero" id="hero-obras">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-      <p class="section-label">Servicios disponibles</p>
-      <div class="service-grid" id="grid-obras">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-    </section>
-
-    <!-- ══ SEGMENTO: CONSORCIOS Y EDIFICIOS ══ -->
-    <section id="segment-consorcios" class="segment-panel" role="tabpanel" aria-label="Consorcios y Edificios">
-      <div class="segment-hero" id="hero-consorcios">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-      <p class="section-label">Servicios disponibles</p>
-      <div class="service-grid" id="grid-consorcios">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-    </section>
-
-    <!-- ══ SEGMENTO: VIGILANCIA PRESENCIAL ══ -->
-    <section id="segment-vigilancia-presencial" class="segment-panel" role="tabpanel" aria-label="Vigilancia presencial">
-      <div class="segment-hero" id="hero-vigilancia-presencial">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-      <p class="section-label">Servicios disponibles</p>
-      <div class="service-grid" id="grid-vigilancia-presencial">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-    </section>
-
-    <!-- ══ SEGMENTO: EMPRESAS ══ -->
-    <section id="segment-empresas" class="segment-panel" role="tabpanel" aria-label="Empresas">
-      <div class="segment-hero" id="hero-empresas">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-      <p class="section-label">Servicios disponibles</p>
-      <div class="service-grid" id="grid-empresas">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-    </section>
-
-    <!-- ══ SEGMENTO: TRANSVERSALES ══ -->
-    <section id="segment-transversal" class="segment-panel" role="tabpanel" aria-label="Servicios Transversales">
-      <div class="segment-hero" id="hero-transversal">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-      <p class="section-label">Capacidades de SP</p>
-      <div class="transversal-grid" id="grid-transversal">
-        <!-- Renderizado por mapa-servicios.js -->
-      </div>
-    </section>
-
-    <!-- FOOTER DEL MAPA -->
     <footer class="site-footer" role="contentinfo">
       <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
       <div>
@@ -169,112 +76,7 @@
         <a href="tel:08102224141">0810-222-4141</a>
       </div>
     </footer>
-
   </main>
-</div><!-- /#app-mapa -->
-
-
-<!-- ══════════════════════════════════════════════════════════
-     VISTA: FICHA DE PRODUCTO (inline SPA)
-     ══════════════════════════════════════════════════════════ -->
-<div id="app-ficha" style="display:none;">
-  <div class="ficha-page">
-
-    <!-- VERSION SELECTOR (mismo estilo que el del mapa) -->
-    <div class="mapa-topbar">
-      <div class="version-selector" id="ficha-version-selector">
-        <button class="version-selector__btn" id="ficha-version-btn"
-                onclick="toggleFichaVersionDropdown()"
-                aria-haspopup="listbox" aria-expanded="false"
-                aria-label="Selector de versión de la ficha">
-          <i class="ti ti-git-branch" aria-hidden="true"></i>
-          <span id="ficha-version-current-label">Cargando…</span>
-          <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
-        </button>
-        <ul class="version-selector__dropdown" id="ficha-version-dropdown" role="listbox">
-          <!-- Renderizado por ficha-renderer.js -->
-        </ul>
-      </div>
-    </div>
-
-    <div class="ficha-wrap" id="ficha-container">
-      <!-- renderFichaById() inyecta aquí el contenido -->
-    </div>
-
-  </div>
-</div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     MODAL DE SERVICIO
-     ══════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-overlay"
-     role="dialog" aria-modal="true" aria-labelledby="modal-name"
-     onclick="closeModalOnOverlayClick(event)">
-  <div class="modal" id="modal-box">
-    <header class="modal__header">
-      <div>
-        <div class="modal__segment-badge" id="modal-badge"></div>
-        <h2 class="modal__name" id="modal-name"></h2>
-      </div>
-      <button class="modal__close" onclick="closeModal()" aria-label="Cerrar modal">
-        <i class="ti ti-x" aria-hidden="true"></i>
-      </button>
-    </header>
-    <div class="modal__body" id="modal-body"></div>
-    <footer class="modal__footer" id="modal-footer-bar" style="display:none;">
-      <p class="modal__footer-note" id="modal-footer-note"></p>
-      <button class="btn btn--primary" id="modal-ficha-btn" onclick="goToFicha()">
-        <i class="ti ti-file-description" aria-hidden="true"></i> Ver ficha completa
-      </button>
-    </footer>
-  </div>
-</div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     MODAL DE DETALLE POR ÁREA (ficha de producto → tab Áreas)
-     ══════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="area-modal-overlay"
-     role="dialog" aria-modal="true" aria-labelledby="area-modal-title"
-     onclick="closeAreaDetailOnOverlayClick(event)">
-  <div class="modal" id="area-modal-box">
-    <header class="modal__header">
-      <div>
-        <div class="modal__segment-badge" id="area-modal-badge"></div>
-        <h2 class="modal__name" id="area-modal-title"></h2>
-      </div>
-      <button class="modal__close" onclick="closeAreaDetail()" aria-label="Cerrar detalle de área">
-        <i class="ti ti-x" aria-hidden="true"></i>
-      </button>
-    </header>
-    <div class="modal__body" id="area-modal-body"></div>
-  </div>
-</div>
-
-
-<!-- Versiones del mapa (orden cronológico) -->
-<script src="../js/versiones/mapa-v1.0.js"></script>
-<script src="../js/versiones/mapa-v1.1.js"></script>
-<script src="../js/versiones/mapa-v1.2.js"></script>
-<script src="../js/versiones/mapa-v1.3.js"></script>
-<script src="../js/versiones/mapa-v1.4.js"></script>
-<script src="../js/versiones/mapa-v1.5.js"></script>
-<script src="../js/versiones/mapa-v1.7.js"></script>
-<script src="../js/versiones/mapa-v1.8.js"></script>
-<script src="../js/versiones/mapa-v1.9.js"></script>
-<script src="../js/versiones/mapa-v1.10.js"></script>
-<script src="../js/versiones/mapa-v1.11.js"></script>
-<script src="../js/versiones/mapa-v1.12.js"></script>
-<!-- Fichas: contenido real desde Supabase (fichas / ficha_versiones) en
-     vez de los archivos estáticos de js/fichas/versiones/ — ver
-     js/fichas-data-loader.js y supabase/migracion_4_fichas_producto.sql. -->
-<script src="../js/fichas-data-loader.js"></script>
-<!-- Renderers -->
-<script src="../js/ficha-renderer.js"></script>
-<!-- Lógica del mapa y de la ficha -->
-<script src="../js/mapa-servicios.js"></script>
-<script src="../js/ficha.js"></script>
 
 </body>
 </html>

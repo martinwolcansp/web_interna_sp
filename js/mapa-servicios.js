@@ -45,6 +45,9 @@ function setVersion(versionKey) {
   // Transversales
   renderTransversals(vd.transversals);
 
+  // Glosario (campo nuevo desde V1.13; versiones anteriores no lo tienen)
+  renderGlosario(vd.glosario);
+
   // Selector de versión
   updateVersionSelectorUI(versionKey);
 
@@ -157,6 +160,31 @@ function renderTransversals(transversals) {
         <h3 class="transversal-card__name">${t.name}</h3>
         <p class="transversal-card__desc">${t.desc}</p>
       </div>
+    </div>
+  `).join('');
+}
+
+
+/**
+ * Renderiza la lista de términos del glosario.
+ * Campo nuevo desde V1.13 — versiones anteriores no tienen `glosario`,
+ * en ese caso se muestra un placeholder (mismo patrón que
+ * renderSegmentHero/renderServiceGrid para datos ausentes).
+ * @param {Array} glosario - [{ term, def }]
+ */
+function renderGlosario(glosario) {
+  const list = document.getElementById('grid-glosario');
+  if (!list) return;
+
+  if (!glosario || glosario.length === 0) {
+    list.innerHTML = `<p class="glosario-list__empty">El glosario no está disponible en esta versión del mapa.</p>`;
+    return;
+  }
+
+  list.innerHTML = glosario.map(g => `
+    <div class="glosario-item">
+      <p class="glosario-item__term">${g.term}</p>
+      <p class="glosario-item__def">${g.def}</p>
     </div>
   `).join('');
 }
@@ -291,7 +319,8 @@ function openServiceModal(serviceId) {
 }
 
 function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('is-open');
+  const overlay = document.getElementById('modal-overlay');
+  if (overlay) overlay.classList.remove('is-open');
 }
 
 function closeModalOnOverlayClick(event) {
@@ -329,7 +358,7 @@ function updateBreadcrumb(fichaName) {
 
   if (fichaName) {
     current.outerHTML =
-      `<a class="breadcrumb__link" onclick="showView('mapa')" style="cursor:pointer;">Mapa de Servicios</a>`;
+      `<a class="breadcrumb__link" onclick="showView('mapa')" style="cursor:pointer;">Servicios</a>`;
 
     const sep = document.createElement('span');
     sep.className = 'breadcrumb__sep breadcrumb__dynamic';
@@ -349,7 +378,7 @@ function updateBreadcrumb(fichaName) {
       const span = document.createElement('span');
       span.className = 'breadcrumb__current';
       span.setAttribute('aria-current', 'page');
-      span.textContent = 'Mapa de Servicios';
+      span.textContent = 'Servicios';
       mapaLink.replaceWith(span);
     }
   }
