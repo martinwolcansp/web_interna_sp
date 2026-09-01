@@ -49,14 +49,6 @@
   .service-grid      { grid-template-columns: 1fr; }
   .transversal-grid  { grid-template-columns: 1fr; }
   .home-grid         { grid-template-columns: 1fr; }
-  .module-nav        { max-width: 100%; }
-}
-
-/* ── MODULE NAV (alinear ancho con .mapa-wrap en las 4 páginas
-   del Mapa de Servicios; en Sector Comunicaciones usa el ancho
-   default de components.css, --max-width-ficha) ── */
-.module-nav {
-  max-width: var(--max-width-content);
 }
 
 /* ── GLOSARIO ── */
