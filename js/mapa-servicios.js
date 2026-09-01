@@ -288,7 +288,7 @@ function openServiceModal(serviceId) {
     <div class="modal__row">
       <div class="modal__billing-box">
         <i class="ti ti-credit-card"></i>
-        <div class="modal__billing-text"><strong>¿Cómo se cobra?</strong><br>${service.billing}</div>
+        <div class="modal__billing-text"><strong>Modalidad de venta</strong><br>${service.billing}</div>
       </div>
     </div>
     <div class="modal__row">
