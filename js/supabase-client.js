@@ -14,7 +14,7 @@
  * sí es secreta y jamás debe aparecer en código de frontend.
  */
 
-const SUPABASE_URL = 'https://supabasekong-v110q1hu5ftsmc0zxn2pxrxs.20.0.20.138.sslip.io';
+const SUPABASE_URL = 'https://supabase.200.5.196.50.sslip.io';
 const SUPABASE_ANON_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc4NjM4MTA4MCwiZXhwIjo0OTQyMDU0NjgwLCJyb2xlIjoiYW5vbiJ9.eaoMMz2s1LH_YHn2qHfOV4eKbIHxjdcwUfpd_maoxZc';
 
 window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
