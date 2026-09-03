@@ -15,10 +15,31 @@ async function initAuthArea() {
 
   renderLoading(area);
 
-  const { data: { session } } = await window.supabaseClient.auth.getSession();
+  // getSession() puede tardar mucho o directamente no resolver nunca si
+  // hay un problema de red/certificado al hablar con Supabase -- sin este
+  // try/catch, una falla acá dejaba el header pegado en "Cargando
+  // sesión…" para siempre y, peor, 'sp:auth-ready' nunca se disparaba:
+  // admin.js / pizarra-editor.js / fichas-editor.js se quedaban esperando
+  // ese evento y su página entera quedaba en blanco (ni el mensaje de
+  // "iniciá sesión" ni el contenido) hasta recargar. Ahora, si falla,
+  // se avisa igual (sesión null + error) para que cada página muestre
+  // algo en vez de quedarse colgada.
+  let session = null;
+  let sessionError = null;
+  try {
+    ({ data: { session } } = await window.supabaseClient.auth.getSession());
+  } catch (err) {
+    sessionError = err;
+    console.error('[auth.js] error obteniendo la sesión', err);
+  }
+
   if (session) cleanAuthTokensFromUrl();
-  renderAuthState(area, session);
-  notifyAuthReady(session);
+  if (sessionError) {
+    renderAuthError(area);
+  } else {
+    renderAuthState(area, session);
+  }
+  notifyAuthReady(session, sessionError);
   if (session) loadPerfilExtras(area, session);
 
   // Repinta automáticamente ante login, logout o refresco de token.
@@ -90,12 +111,24 @@ function addHeaderLink(area, className, href, icon, label) {
 
 // Avisa al resto de los scripts de la página (ej. js/home.js) que ya se
 // sabe si hay sesión o no, para que puedan cargar contenido según permisos.
-function notifyAuthReady(session) {
-  document.dispatchEvent(new CustomEvent('sp:auth-ready', { detail: { session } }));
+// "error" viaja aparte de "session": session=null puede significar "no
+// hay nadie logueado" (caso normal) o "no se pudo ni averiguar" (caso de
+// error) -- cada página gateada distingue los dos casos para mostrar un
+// mensaje que tenga sentido ("iniciá sesión" vs. "probá recargar").
+function notifyAuthReady(session, error) {
+  document.dispatchEvent(new CustomEvent('sp:auth-ready', { detail: { session, error: error || null } }));
 }
 
 function renderLoading(area) {
   area.innerHTML = '<span class="auth-loading">Cargando sesión…</span>';
+}
+
+function renderAuthError(area) {
+  area.innerHTML = `
+    <span class="auth-loading">No se pudo conectar</span>
+    <button id="btn-auth-retry" class="btn btn--secondary" type="button">Reintentar</button>
+  `;
+  document.getElementById('btn-auth-retry').addEventListener('click', () => window.location.reload());
 }
 
 function renderAuthState(area, session) {

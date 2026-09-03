@@ -15,6 +15,12 @@ async function handleAuthReady(e) {
   const content = document.getElementById('pa-content');
   if (!gate || !content || !window.supabaseClient) return;
 
+  if (e.detail.error) {
+    showGate('No se pudo verificar tu sesión. Probá recargar la página.');
+    console.error('[panel-admin.js] sp:auth-ready llegó con error', e.detail.error);
+    return;
+  }
+
   const session = e.detail.session;
 
   if (!session) {
@@ -22,29 +28,36 @@ async function handleAuthReady(e) {
     return;
   }
 
-  const { data: perfil, error } = await window.supabaseClient
-    .from('perfiles')
-    .select('activo, es_superadmin')
-    .eq('id', session.user.id)
-    .single();
+  // Ver nota equivalente en admin.js: sin este try/catch, una falla de
+  // red de acá para abajo dejaba la pantalla sin gate y sin contenido.
+  try {
+    const { data: perfil, error } = await window.supabaseClient
+      .from('perfiles')
+      .select('activo, es_superadmin')
+      .eq('id', session.user.id)
+      .single();
 
-  if (error || !perfil) {
-    showGate('No se pudo verificar tu acceso. Probá recargar la página.');
-    console.error('[panel-admin.js] error cargando perfil', error);
-    return;
+    if (error || !perfil) {
+      showGate('No se pudo verificar tu acceso. Probá recargar la página.');
+      console.error('[panel-admin.js] error cargando perfil', error);
+      return;
+    }
+
+    if (!perfil.activo) {
+      showGate('Tu cuenta todavía no fue activada. Pedile a un administrador que te asigne área y permisos.');
+      return;
+    }
+
+    const accesos = await calcularAccesos(perfil);
+
+    gate.style.display = 'none';
+    content.style.display = '';
+
+    renderCards(accesos);
+  } catch (err) {
+    showGate('No se pudo conectar. Probá recargar la página.');
+    console.error('[panel-admin.js] error inesperado', err);
   }
-
-  if (!perfil.activo) {
-    showGate('Tu cuenta todavía no fue activada. Pedile a un administrador que te asigne área y permisos.');
-    return;
-  }
-
-  const accesos = await calcularAccesos(perfil);
-
-  gate.style.display = 'none';
-  content.style.display = '';
-
-  renderCards(accesos);
 }
 
 async function calcularAccesos(perfil) {

@@ -17,4 +17,23 @@
 const SUPABASE_URL = 'https://supabase.200.5.196.50.sslip.io';
 const SUPABASE_ANON_KEY = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc4NjM4MTA4MCwiZXhwIjo0OTQyMDU0NjgwLCJyb2xlIjoiYW5vbiJ9.eaoMMz2s1LH_YHn2qHfOV4eKbIHxjdcwUfpd_maoxZc';
 
-window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Desactiva el "navigator.locks" que supabase-js usa por defecto para
+// serializar getSession()/refresh de token entre pestañas del mismo
+// origen. Es un mecanismo con bugs de deadlock documentados (queda
+// esperando para siempre un lock que nunca se libera si otra pestaña lo
+// tiene tomado y el navegador la puso en pausa por estar en segundo
+// plano) -- ver supabase/supabase-js issues #2013, #2111, #1517. Efecto
+// en este sitio: entrar a Usuarios / Editor de pizarra / Editor de
+// fichas a veces no mostraba nada (se quedaba esperando ese lock) hasta
+// volver a entrar. No hace falta la coordinación entre pestañas para
+// una intranet donde cada usuario normalmente tiene una sola pestaña
+// abierta, así que se reemplaza por un "lock" que no bloquea nada.
+function lockSinCoordinacionEntrePestanas(_name, _acquireTimeout, fn) {
+  return fn();
+}
+
+window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    lock: lockSinCoordinacionEntrePestanas,
+  },
+});

@@ -175,6 +175,17 @@ comment on table novedades_areas is 'Filtro de audiencia por área para una nove
 -- select de "novedades" y disponible para el frontend vía RPC si hace
 -- falta. security definer por el mismo motivo que fn_es_superadmin: evita
 -- reevaluar RLS recursivamente al consultar perfiles/novedades_areas.
+--
+-- El "auth.role() = 'authenticated' and" de acá afuera es a propósito,
+-- no redundante con el de la política de "novedades" (que ya lo repite):
+-- fn_mis_novedades() y fn_novedad_detalle() (rpc_home.sql) son security
+-- definer y llaman a esta función directo, sin pasar por la política de
+-- la tabla -- sin este chequeo, cualquiera con la sólo-pública anon key
+-- podía llamar esas RPCs por fuera del sitio y ver cualquier novedad sin
+-- restricción de área (que son la mayoría, "todas las áreas" es el
+-- comportamiento por defecto), no sólo las que sí tenían un área
+-- asignada. Encontrado y corregido 2026-09-03, ver migracion_6_*.sql
+-- para bases ya desplegadas.
 create or replace function fn_puede_ver_novedad(p_novedad_id uuid)
 returns boolean
 language sql
@@ -183,18 +194,21 @@ security definer
 set search_path = public
 as $$
   select
-    -- superadmin: ve todo
-    exists (select 1 from perfiles where id = auth.uid() and es_superadmin and activo)
-    or
-    -- sin filas en novedades_areas: la novedad es para todas las áreas
-    not exists (select 1 from novedades_areas na where na.novedad_id = p_novedad_id)
-    or
-    -- el área del usuario está entre las áreas destinatarias
-    exists (
-      select 1
-      from perfiles p
-      join novedades_areas na on na.area_id = p.area_id
-      where p.id = auth.uid() and p.activo and na.novedad_id = p_novedad_id
+    auth.role() = 'authenticated'
+    and (
+      -- superadmin: ve todo
+      exists (select 1 from perfiles where id = auth.uid() and es_superadmin and activo)
+      or
+      -- sin filas en novedades_areas: la novedad es para todas las áreas
+      not exists (select 1 from novedades_areas na where na.novedad_id = p_novedad_id)
+      or
+      -- el área del usuario está entre las áreas destinatarias
+      exists (
+        select 1
+        from perfiles p
+        join novedades_areas na on na.area_id = p.area_id
+        where p.id = auth.uid() and p.activo and na.novedad_id = p_novedad_id
+      )
     );
 $$;
 

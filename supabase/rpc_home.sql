@@ -125,6 +125,12 @@ as $$
 $$;
 
 -- Marca una novedad como leída por el usuario logueado (idempotente).
+-- El "where auth.uid() is not null" evita que una llamada anónima (sin
+-- sesión) reviente con un error de not-null en usuario_id -- no era un
+-- hueco de seguridad real (la fila nunca se llegaba a grabar, la
+-- constraint la frenaba), pero sí un error feo e innecesario; de paso
+-- queda simétrico con el resto del endurecimiento de 2026-09-03 sobre
+-- las RPCs de novedades (ver fn_puede_ver_novedad en schema.sql).
 create or replace function fn_marcar_leida(p_novedad_id uuid)
 returns void
 language sql
@@ -132,6 +138,44 @@ security definer
 set search_path = public
 as $$
   insert into novedades_leidas (usuario_id, novedad_id)
-  values (auth.uid(), p_novedad_id)
+  select auth.uid(), p_novedad_id
+  where auth.uid() is not null
   on conflict do nothing;
 $$;
+
+-- Novedades vigentes de categoría "publica", pensadas para mostrarse en
+-- la home aunque no haya sesión iniciada (ver categorias_novedades /
+-- seed_categorias_novedades.sql). Deliberadamente NO reutiliza
+-- fn_mis_novedades / fn_puede_ver_novedad: esas dependen de auth.uid()
+-- y, al ser security definer, ya evalúan fuera de RLS -- exponerlas a
+-- anon devolvería cualquier novedad sin restricción de área (el
+-- comportamiento por defecto para usuarios logueados), no sólo las
+-- pensadas para el público. Esta función sólo puede devolver lo que
+-- tenga categoria_id = 'publica', así que es segura de exponer a anon.
+create or replace function fn_novedades_publicas()
+returns table (
+  id uuid,
+  titulo text,
+  cuerpo text,
+  categoria text,
+  autor_nombre text,
+  publicado_en timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    n.id, n.titulo, n.cuerpo, c.nombre as categoria,
+    p.nombre as autor_nombre,
+    n.publicado_en
+  from novedades n
+  left join perfiles p on p.id = n.autor_id
+  join categorias_novedades c on c.id = n.categoria_id
+  where n.categoria_id = 'publica'
+    and (n.vigente_hasta is null or n.vigente_hasta > now())
+  order by n.publicado_en desc;
+$$;
+
+grant execute on function fn_novedades_publicas() to anon;

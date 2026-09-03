@@ -17,7 +17,7 @@ const PIZARRA_EXCERPT_LEN = 180;
 const PIZARRA_PAGE_SIZE = 10;
 
 document.addEventListener('sp:auth-ready', (e) => {
-  handleAuthReady(e.detail.session);
+  handleAuthReady(e.detail.session, e.detail.error);
 });
 
 // Si el navegador restauró la página desde el bfcache (por ejemplo al
@@ -28,32 +28,48 @@ window.addEventListener('pageshow', (e) => {
   if (e.persisted) cargarPizarra();
 });
 
-async function handleAuthReady(session) {
-  if (!session) {
-    showGateMessage(
-      'Iniciá sesión para ver las novedades y los mosaicos habilitados para tu área.',
-      false
-    );
+async function handleAuthReady(session, authError) {
+  if (authError) {
+    showGateMessage('No se pudo verificar tu sesión. Probá recargar la página.');
+    console.error('[home.js] sp:auth-ready llegó con error', authError);
+    await cargarPizarraPublica();
     return;
   }
 
-  const { data: perfil, error: perfilError } = await window.supabaseClient
-    .from('perfiles')
-    .select('activo, es_superadmin, area_id')
-    .eq('id', session.user.id)
-    .single();
+  if (!session) {
+    // Sin sesión no hay mosaicos que mostrar (dependen del área del
+    // usuario), pero las novedades de categoría "Pública" sí se
+    // muestran igual -- ver supabase/migracion_5_novedades_publicas.sql.
+    showGateMessage(
+      'Iniciá sesión para ver los mosaicos habilitados para tu área. Las novedades públicas se muestran igual, debajo.'
+    );
+    await cargarPizarraPublica();
+    return;
+  }
+
+  let perfil, perfilError;
+  try {
+    ({ data: perfil, error: perfilError } = await window.supabaseClient
+      .from('perfiles')
+      .select('activo, es_superadmin, area_id')
+      .eq('id', session.user.id)
+      .single());
+  } catch (err) {
+    perfilError = err;
+  }
 
   if (perfilError || !perfil) {
-    showGateMessage('No se pudo cargar tu perfil. Probá recargar la página.', false);
+    showGateMessage('No se pudo cargar tu perfil. Probá recargar la página.');
     console.error('[home.js] error cargando perfil', perfilError);
+    await cargarPizarraPublica();
     return;
   }
 
   if (!perfil.activo) {
     showGateMessage(
-      'Tu cuenta todavía no fue activada. Pedile a un administrador que te asigne área y permisos.',
-      false
+      'Tu cuenta todavía no fue activada. Pedile a un administrador que te asigne área y permisos.'
     );
+    await cargarPizarraPublica();
     return;
   }
 
@@ -64,14 +80,14 @@ async function handleAuthReady(session) {
   ]);
 }
 
-function showGateMessage(texto, mostrarBotonLogin) {
+function showGateMessage(texto) {
   const msg = document.getElementById('home-gate-message');
-  const pizarra = document.getElementById('pizarra-section');
   const mosaicosWrap = document.getElementById('mosaicos-wrap');
-  // Sin sesión (o cuenta pendiente) no se sabe qué mosaico corresponde
-  // mostrar, así que se oculta toda la sección "Productos y servicios"
-  // (incluidos los "Próximamente"), no solo los mosaicos con permiso.
-  if (pizarra) pizarra.style.display = 'none';
+  // Sin sesión completa (o cuenta pendiente) no se sabe qué mosaico
+  // corresponde mostrar, así que se oculta toda la sección "Productos y
+  // servicios" (incluidos los "Próximamente"). La pizarra NO se oculta
+  // acá -- en este estado muestra las novedades públicas en vez de las
+  // personalizadas, ver cargarPizarraPublica().
   if (mosaicosWrap) mosaicosWrap.style.display = 'none';
   if (msg) {
     msg.textContent = texto;
@@ -81,11 +97,9 @@ function showGateMessage(texto, mostrarBotonLogin) {
 
 function hideGateMessage() {
   const msg = document.getElementById('home-gate-message');
-  const pizarra = document.getElementById('pizarra-section');
   const mosaicosWrap = document.getElementById('mosaicos-wrap');
   if (mosaicosWrap) mosaicosWrap.style.display = '';
   if (msg) msg.style.display = 'none';
-  if (pizarra) pizarra.style.display = '';
 }
 
 async function cargarMosaicos(perfil) {
@@ -120,6 +134,52 @@ let sp_paginaActual = 1;
 // El pager es HTML fijo (no se regenera con innerHTML como la lista), así
 // que sus botones se enganchan una sola vez, no en cada cargarPizarra().
 let sp_pagerWired = false;
+
+// Novedades de categoría "Pública" (supabase/migracion_5_novedades_publicas.sql),
+// para cuando no hay sesión iniciada o todavía no se sabe si el perfil
+// tiene permisos. A diferencia de cargarPizarra(), no hay indicador de
+// "no leídas" (no hay a quién asociarlo) ni paginado (se espera que sean
+// pocas), y las tarjetas no linkean a pages/novedad.html porque esa
+// pantalla sí requiere sesión.
+async function cargarPizarraPublica() {
+  const list = document.getElementById('pizarra-list');
+  const badge = document.getElementById('pizarra-unread-badge');
+  const pager = document.getElementById('pizarra-pager');
+  if (!list) return;
+
+  if (badge) badge.style.display = 'none';
+  if (pager) pager.style.display = 'none';
+
+  const { data, error } = await window.supabaseClient.rpc('fn_novedades_publicas');
+
+  if (error) {
+    list.innerHTML = '<p class="pizarra-post__excerpt">No se pudieron cargar las novedades.</p>';
+    console.error('[home.js] error cargando novedades públicas', error);
+    return;
+  }
+
+  const novedades = data || [];
+  if (novedades.length === 0) {
+    list.innerHTML = '<p class="pizarra-post__excerpt">Todavía no hay novedades públicas.</p>';
+    return;
+  }
+
+  list.innerHTML = novedades.map(renderNovedadPublica).join('');
+}
+
+function renderNovedadPublica(n) {
+  const meta = [formatFecha(n.publicado_en), n.autor_nombre].filter(Boolean).join(' · ');
+  return `
+    <div class="pizarra-post">
+      <div class="pizarra-post__meta">
+        <span class="tag">${escapeHtml(n.categoria)}</span>
+        <span class="pizarra-post__date">${escapeHtml(meta)}</span>
+      </div>
+      <h3 class="pizarra-post__title">${escapeHtml(n.titulo)}</h3>
+      <p class="pizarra-post__excerpt">${escapeHtml(truncar(n.cuerpo, PIZARRA_EXCERPT_LEN))}</p>
+    </div>
+  `;
+}
 
 async function cargarPizarra() {
   const list = document.getElementById('pizarra-list');

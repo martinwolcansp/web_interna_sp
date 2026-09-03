@@ -132,6 +132,34 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-body);
   line-height: 1.5;
+  white-space: pre-line;
+}
+
+/* Novedades largas: se recortan a 3 líneas por defecto con un "Ver más"
+   (ver pizarra-editor.js renderPost/wireList) para que el listado de
+   publicaciones no se vuelva interminable de scrollear. */
+.pe-post__excerpt--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pe-post__toggle {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-blue);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.pe-post__toggle:hover,
+.pe-post__toggle:focus-visible {
+  text-decoration: underline;
 }
 
 .pe-cat-form {

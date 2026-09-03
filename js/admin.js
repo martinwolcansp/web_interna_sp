@@ -20,6 +20,12 @@ async function handleAuthReady(e) {
   const content = document.getElementById('admin-content');
   if (!gate || !content || !window.supabaseClient) return;
 
+  if (e.detail.error) {
+    showGate('No se pudo verificar tu sesión. Probá recargar la página.');
+    console.error('[admin.js] sp:auth-ready llegó con error', e.detail.error);
+    return;
+  }
+
   const session = e.detail.session;
 
   if (!session) {
@@ -27,28 +33,38 @@ async function handleAuthReady(e) {
     return;
   }
 
-  const { data: perfil, error } = await window.supabaseClient
-    .from('perfiles')
-    .select('activo, es_superadmin')
-    .eq('id', session.user.id)
-    .single();
+  // Cualquier llamada de acá para abajo puede fallar por red (no sólo
+  // con {error}, alguna vez tira una excepción real) -- sin este
+  // try/catch, esa falla dejaba la pantalla pegada en "Cargando
+  // usuarios…" sin gate ni contenido visible, forzando a recargar para
+  // que ande. Ahora siempre termina mostrando algo.
+  try {
+    const { data: perfil, error } = await window.supabaseClient
+      .from('perfiles')
+      .select('activo, es_superadmin')
+      .eq('id', session.user.id)
+      .single();
 
-  if (error || !perfil) {
-    showGate('No se pudo verificar tu acceso. Probá recargar la página.');
-    console.error('[admin.js] error cargando perfil', error);
-    return;
+    if (error || !perfil) {
+      showGate('No se pudo verificar tu acceso. Probá recargar la página.');
+      console.error('[admin.js] error cargando perfil', error);
+      return;
+    }
+
+    if (!perfil.activo || !perfil.es_superadmin) {
+      showGate('Este panel es sólo para superadministradores.');
+      return;
+    }
+
+    gate.style.display = 'none';
+    content.style.display = '';
+
+    await loadAreas();
+    await loadUsers();
+  } catch (err) {
+    showGate('No se pudo conectar. Probá recargar la página.');
+    console.error('[admin.js] error inesperado', err);
   }
-
-  if (!perfil.activo || !perfil.es_superadmin) {
-    showGate('Este panel es sólo para superadministradores.');
-    return;
-  }
-
-  gate.style.display = 'none';
-  content.style.display = '';
-
-  await loadAreas();
-  await loadUsers();
 }
 
 function showGate(mensaje) {

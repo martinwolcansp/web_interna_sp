@@ -50,6 +50,12 @@ async function handleAuthReady(e) {
   const content = document.getElementById('fe-content');
   if (!gate || !content || !window.supabaseClient) return;
 
+  if (e.detail.error) {
+    showGate('No se pudo verificar tu sesión. Probá recargar la página.');
+    console.error('[fichas-editor.js] sp:auth-ready llegó con error', e.detail.error);
+    return;
+  }
+
   const session = e.detail.session;
 
   if (!session) {
@@ -57,50 +63,58 @@ async function handleAuthReady(e) {
     return;
   }
 
-  const { data: perfil, error } = await window.supabaseClient
-    .from('perfiles')
-    .select('activo, es_superadmin')
-    .eq('id', session.user.id)
-    .single();
+  // Ver nota equivalente en admin.js / pizarra-editor.js: cualquier falla
+  // de red de acá para abajo dejaba la pantalla sin gate y sin contenido,
+  // colgada en blanco hasta recargar la página.
+  try {
+    const { data: perfil, error } = await window.supabaseClient
+      .from('perfiles')
+      .select('activo, es_superadmin')
+      .eq('id', session.user.id)
+      .single();
 
-  if (error || !perfil) {
-    showGate('No se pudo verificar tu acceso. Probá recargar la página.');
-    console.error('[fichas-editor.js] error cargando perfil', error);
-    return;
-  }
-
-  if (!perfil.activo) {
-    showGate('Tu cuenta todavía no fue activada. Pedile a un administrador que te asigne área y permisos.');
-    return;
-  }
-
-  fe_isSuperadmin = perfil.es_superadmin;
-
-  if (!fe_isSuperadmin) {
-    const { data: secciones, error: seccionesError } = await window.supabaseClient
-      .rpc('fn_mis_secciones_editables');
-    if (seccionesError) {
-      showGate('No se pudo verificar tu permiso. Probá recargar la página.');
-      console.error('[fichas-editor.js] error cargando secciones editables', seccionesError);
+    if (error || !perfil) {
+      showGate('No se pudo verificar tu acceso. Probá recargar la página.');
+      console.error('[fichas-editor.js] error cargando perfil', error);
       return;
     }
-    fe_seccionesEditablesIds = (secciones || []).map(s => s.id);
-    if (fe_seccionesEditablesIds.length === 0) {
-      showGate('No tenés permiso para editar fichas de producto. Pedile a un administrador que te lo habilite.');
+
+    if (!perfil.activo) {
+      showGate('Tu cuenta todavía no fue activada. Pedile a un administrador que te asigne área y permisos.');
       return;
     }
+
+    fe_isSuperadmin = perfil.es_superadmin;
+
+    if (!fe_isSuperadmin) {
+      const { data: secciones, error: seccionesError } = await window.supabaseClient
+        .rpc('fn_mis_secciones_editables');
+      if (seccionesError) {
+        showGate('No se pudo verificar tu permiso. Probá recargar la página.');
+        console.error('[fichas-editor.js] error cargando secciones editables', seccionesError);
+        return;
+      }
+      fe_seccionesEditablesIds = (secciones || []).map(s => s.id);
+      if (fe_seccionesEditablesIds.length === 0) {
+        showGate('No tenés permiso para editar fichas de producto. Pedile a un administrador que te lo habilite.');
+        return;
+      }
+    }
+
+    gate.style.display = 'none';
+    content.style.display = '';
+
+    if (!fe_wired) {
+      fe_wired = true;
+      wireOnce();
+    }
+
+    await loadSeccionesParaAltaFicha();
+    await loadFichas();
+  } catch (err) {
+    showGate('No se pudo conectar. Probá recargar la página.');
+    console.error('[fichas-editor.js] error inesperado', err);
   }
-
-  gate.style.display = 'none';
-  content.style.display = '';
-
-  if (!fe_wired) {
-    fe_wired = true;
-    wireOnce();
-  }
-
-  await loadSeccionesParaAltaFicha();
-  await loadFichas();
 }
 
 function showGate(mensaje) {

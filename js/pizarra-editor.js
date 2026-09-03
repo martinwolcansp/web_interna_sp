@@ -22,6 +22,10 @@ let pe_currentUserId = null;
 // HTML, no se regeneran) más de una vez. Las recargas de datos sí son
 // seguras de repetir.
 let pe_wired = false;
+// Umbral (en caracteres) a partir del cual el cuerpo de una novedad se
+// recorta a 3 líneas con un botón "Ver más" en el listado del editor —
+// ver renderPost() / pe-post__excerpt--clamped en pizarra-editor.css.
+const PE_EXCERPT_CLAMP_THRESHOLD = 220;
 
 document.addEventListener('sp:auth-ready', handleAuthReady);
 
@@ -30,6 +34,12 @@ async function handleAuthReady(e) {
   const content = document.getElementById('pe-content');
   if (!gate || !content || !window.supabaseClient) return;
 
+  if (e.detail.error) {
+    showGate('No se pudo verificar tu sesión. Probá recargar la página.');
+    console.error('[pizarra-editor.js] sp:auth-ready llegó con error', e.detail.error);
+    return;
+  }
+
   const session = e.detail.session;
 
   if (!session) {
@@ -37,62 +47,71 @@ async function handleAuthReady(e) {
     return;
   }
 
-  const { data: perfil, error } = await window.supabaseClient
-    .from('perfiles')
-    .select('activo, es_superadmin')
-    .eq('id', session.user.id)
-    .single();
+  // Ver nota equivalente en admin.js: cualquier falla de red de acá para
+  // abajo (no sólo un {error} de supabase-js, alguna vez es una excepción
+  // real) dejaba la pantalla sin gate y sin contenido, colgada en
+  // "Cargando…", hasta recargar la página.
+  try {
+    const { data: perfil, error } = await window.supabaseClient
+      .from('perfiles')
+      .select('activo, es_superadmin')
+      .eq('id', session.user.id)
+      .single();
 
-  if (error || !perfil) {
-    showGate('No se pudo verificar tu acceso. Probá recargar la página.');
-    console.error('[pizarra-editor.js] error cargando perfil', error);
-    return;
-  }
-
-  if (!perfil.activo) {
-    showGate('Tu cuenta todavía no fue activada. Pedile a un administrador que te asigne área y permisos.');
-    return;
-  }
-
-  let puedeEditar = perfil.es_superadmin;
-  if (!puedeEditar) {
-    const { data: tienePermiso, error: permisoError } = await window.supabaseClient
-      .rpc('fn_tiene_permiso', { p_seccion_id: 'pizarra', p_nivel: 'editar' });
-    if (permisoError) {
-      showGate('No se pudo verificar tu permiso. Probá recargar la página.');
-      console.error('[pizarra-editor.js] error chequeando permiso', permisoError);
+    if (error || !perfil) {
+      showGate('No se pudo verificar tu acceso. Probá recargar la página.');
+      console.error('[pizarra-editor.js] error cargando perfil', error);
       return;
     }
-    puedeEditar = !!tienePermiso;
-  }
 
-  if (!puedeEditar) {
-    showGate('No tenés permiso para editar la pizarra. Pedile a un administrador que te lo habilite.');
-    return;
-  }
-
-  pe_isSuperadmin = perfil.es_superadmin;
-  pe_currentUserId = session.user.id;
-
-  gate.style.display = 'none';
-  content.style.display = '';
-
-  if (pe_isSuperadmin) {
-    document.getElementById('pe-categorias-section').style.display = '';
-  }
-
-  if (!pe_wired) {
-    pe_wired = true;
-    wireForm();
-    if (pe_isSuperadmin) {
-      document.getElementById('pe-cat-form').addEventListener('submit', onAddCategoria);
+    if (!perfil.activo) {
+      showGate('Tu cuenta todavía no fue activada. Pedile a un administrador que te asigne área y permisos.');
+      return;
     }
-  }
 
-  await loadAreas();
-  await loadCategorias();
-  await loadList();
-  if (pe_isSuperadmin) await loadCategoriasList();
+    let puedeEditar = perfil.es_superadmin;
+    if (!puedeEditar) {
+      const { data: tienePermiso, error: permisoError } = await window.supabaseClient
+        .rpc('fn_tiene_permiso', { p_seccion_id: 'pizarra', p_nivel: 'editar' });
+      if (permisoError) {
+        showGate('No se pudo verificar tu permiso. Probá recargar la página.');
+        console.error('[pizarra-editor.js] error chequeando permiso', permisoError);
+        return;
+      }
+      puedeEditar = !!tienePermiso;
+    }
+
+    if (!puedeEditar) {
+      showGate('No tenés permiso para editar la pizarra. Pedile a un administrador que te lo habilite.');
+      return;
+    }
+
+    pe_isSuperadmin = perfil.es_superadmin;
+    pe_currentUserId = session.user.id;
+
+    gate.style.display = 'none';
+    content.style.display = '';
+
+    if (pe_isSuperadmin) {
+      document.getElementById('pe-categorias-section').style.display = '';
+    }
+
+    if (!pe_wired) {
+      pe_wired = true;
+      wireForm();
+      if (pe_isSuperadmin) {
+        document.getElementById('pe-cat-form').addEventListener('submit', onAddCategoria);
+      }
+    }
+
+    await loadAreas();
+    await loadCategorias();
+    await loadList();
+    if (pe_isSuperadmin) await loadCategoriasList();
+  } catch (err) {
+    showGate('No se pudo conectar. Probá recargar la página.');
+    console.error('[pizarra-editor.js] error inesperado', err);
+  }
 }
 
 function showGate(mensaje) {
@@ -426,6 +445,15 @@ async function loadList() {
     const id = el.dataset.novedadId;
     el.querySelector('.pe-post-edit').addEventListener('click', () => editNovedad(id));
     el.querySelector('.pe-post-delete').addEventListener('click', () => deleteNovedad(id));
+
+    const toggleBtn = el.querySelector('.pe-post__toggle');
+    if (toggleBtn) {
+      const excerpt = el.querySelector('.pe-post__excerpt');
+      toggleBtn.addEventListener('click', () => {
+        const expandido = excerpt.classList.toggle('pe-post__excerpt--clamped') === false;
+        toggleBtn.textContent = expandido ? 'Ver menos' : 'Ver más';
+      });
+    }
   });
 }
 
@@ -460,7 +488,8 @@ function renderPost(n) {
         <span>·</span>
         <span>${escapeHtml(vigenciaLabel)}</span>
       </div>
-      <p class="pe-post__excerpt">${escapeHtml(n.cuerpo)}</p>
+      <p class="pe-post__excerpt${(n.cuerpo || '').length > PE_EXCERPT_CLAMP_THRESHOLD ? ' pe-post__excerpt--clamped' : ''}">${escapeHtml(n.cuerpo)}</p>
+      ${(n.cuerpo || '').length > PE_EXCERPT_CLAMP_THRESHOLD ? '<button type="button" class="pe-post__toggle">Ver más</button>' : ''}
     </article>
   `;
 }
