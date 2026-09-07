@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informe mensual MKT — Clientes que compraron (agosto 2026)</title>
+<style>
+:root {
+  --navy: #1F3864; --ink: #202124; --second: #52514E; --muted: #6B6B6B;
+  --rule: #DEDCD3; --light-fill: #EEF1F6; --blue: #2a78d6; --orange: #eb6834;
+  --page: #F7F8FA; --surface: #FFFFFF;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: Calibri, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15.5px; line-height: 1.55;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 28px 24px 64px; }
+header.report-header {
+  border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 22px;
+}
+header.report-header .eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .02em; margin-bottom: 6px; }
+header.report-header h1 { color: var(--navy); font-size: 28px; margin: 0 0 6px; font-weight: 700; }
+header.report-header .sub { color: var(--second); font-size: 15.5px; }
+nav.tabs {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px;
+  border-bottom: 1px solid var(--rule); padding-bottom: 0;
+}
+.tab-btn {
+  appearance: none; border: 1px solid transparent; background: transparent;
+  color: var(--second); font: inherit; font-size: 14px; padding: 9px 14px;
+  cursor: pointer; border-radius: 6px 6px 0 0; margin-bottom: -1px;
+}
+.tab-btn:hover { background: var(--light-fill); color: var(--navy); }
+.tab-btn.active {
+  color: var(--navy); font-weight: 700; border: 1px solid var(--rule);
+  border-bottom-color: var(--surface); background: var(--surface);
+}
+main { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 28px 28px; }
+.tab-panel { display: none; padding-top: 18px; }
+.tab-panel.active { display: block; }
+.tab-panel h2 {
+  color: var(--navy); font-size: 21px; margin: 0 0 16px; padding-left: 12px;
+  border-left: 4px solid var(--navy);
+}
+.tab-panel h3 { color: var(--navy); font-size: 16px; margin: 22px 0 8px; }
+.tab-panel p { margin: 0 0 12px; color: var(--ink); }
+.data-table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14.5px; }
+.data-table th {
+  background: var(--navy); color: #fff; text-align: left; padding: 9px 12px; font-weight: 600;
+}
+.data-table td { padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+.data-table tr:last-child td { border-bottom: none; }
+.note-box {
+  background: var(--light-fill); border-left: 4px solid var(--navy);
+  padding: 12px 16px; margin: 10px 0 18px; border-radius: 0 6px 6px 0;
+}
+.note-box p { margin: 0; color: var(--ink); font-size: 14.5px; }
+.chart-wrap { margin: 14px 0 4px; }
+.chart-svg { display: block; width: 100%; height: auto; }
+.chart-legend { display: flex; gap: 18px; margin-bottom: 8px; font-size: 13px; color: var(--second); }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+.chart-caption { text-align: center; font-size: 13px; color: var(--muted); font-style: italic; margin: 4px 0 26px; }
+.axis-label { font-size: 11px; fill: var(--second); }
+.cat-label { font-size: 12.5px; fill: var(--ink); }
+.val-label { font-size: 11.5px; fill: var(--second); }
+footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 22px; }
+@media (max-width: 640px) {
+  .wrap { padding: 16px 12px 40px; }
+  main { padding: 4px 14px 20px; }
+  header.report-header h1 { font-size: 22px; }
+}
+@media print {
+  nav.tabs { display: none; }
+  .tab-panel { display: block !important; page-break-before: always; }
+  main { border: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="report-header">
+    <div class="eyebrow">SP Seguridad Privada · Informe mensual para MKT</div>
+    <h1>Clientes que concretaron una venta</h1>
+    <div class="sub">Período: 2026-08-01 a 2026-08-31 · Perfil de clientes y proceso de cruce de datos GHL × Presupuestos</div>
+  </header>
+  <nav class="tabs" role="tablist"><button class="tab-btn active" data-tab="resumen" role="tab" aria-selected="true" id="tab-resumen">Resumen ejecutivo</button><button class="tab-btn" data-tab="metodologia" role="tab" aria-selected="false" id="tab-metodologia">Metodología y fuentes</button><button class="tab-btn" data-tab="panorama" role="tab" aria-selected="false" id="tab-panorama">Panorama general</button><button class="tab-btn" data-tab="nuevos" role="tab" aria-selected="false" id="tab-nuevos">Leads nuevos del período</button><button class="tab-btn" data-tab="cartera" role="tab" aria-selected="false" id="tab-cartera">Clientes de cartera</button><button class="tab-btn" data-tab="comparativa" role="tab" aria-selected="false" id="tab-comparativa">Comparativa entre segmentos</button><button class="tab-btn" data-tab="canal" role="tab" aria-selected="false" id="tab-canal">Canal de adquisición</button><button class="tab-btn" data-tab="calidad" role="tab" aria-selected="false" id="tab-calidad">Calidad de datos</button><button class="tab-btn" data-tab="recomendaciones" role="tab" aria-selected="false" id="tab-recomendaciones">Recomendaciones</button><button class="tab-btn" data-tab="anexo" role="tab" aria-selected="false" id="tab-anexo">Anexo</button></nav>
+  <main><section class="tab-panel active" id="panel-resumen" role="tabpanel" aria-labelledby="tab-resumen"><h2>Resumen ejecutivo</h2>
+<p>En agosto de 2026 se concretaron 80 ventas correspondientes a 64 clientes únicos.
+De ellos, 29 (45%) son leads que se generaron y se convirtieron en venta
+dentro del propio mes — el segmento donde el canal de adquisición y el tiempo de respuesta son datos confiables. El otro
+55% (35 clientes) son clientes de cartera: la venta de agosto cierra un contacto
+que en la mayoría de los casos comenzó hace años (mediana de 1594 días desde la creación del lead).</p>
+<p>Esta distinción es la base de todo el informe: mezclar ambos grupos sin separarlos generaría lecturas erróneas
+(por ejemplo, parecería que los canales pagos de Facebook e Instagram no generan ninguna venta, cuando en realidad
+la mayoría de los compradores del mes no son leads nuevos de agosto).</p>
+<p>Los hallazgos de calidad de datos más relevantes: el 48.8% de las oportunidades no tiene cargada la
+"Forma de Contacto con SP", y 2 oportunidades no tienen ID CRM cargado (no se pueden cruzar con GHL).
+Se detallan en la pestaña "Calidad de datos".</p>
+</section><section class="tab-panel" id="panel-metodologia" role="tabpanel" aria-labelledby="tab-metodologia"><h2>Metodología y fuentes</h2>
+<p>Se cruzaron dos fuentes correspondientes al mismo período:</p>
+<table class="data-table"><thead><tr><th>Fuente</th><th>Contenido</th><th>Clave de cruce</th></tr></thead><tbody><tr><td>Detalle de presupuestos/oportunidades (Excel, ERP)</td><td>80 oportunidades cerradas (nivel artículo)</td><td>&quot;ID CLIENTE CRM&quot;</td></tr><tr><td>Detalle de conversaciones GHL (JSON)</td><td>547 conversaciones con actividad en el período</td><td>&quot;contactId&quot;</td></tr></tbody></table>
+<p>El cruce se hizo por ID CRM del cliente. El archivo de conversaciones está filtrado por actividad dentro del período,
+no por cliente — un cliente que compró en agosto pero cuya última interacción registrada fue anterior a agosto no
+aparece en ese archivo (ver pestaña "Calidad de datos").</p>
+<h3>Segmentación aplicada</h3>
+<p>Cada oportunidad se clasificó según la fecha de creación del lead ("Creación cliente potencial") en el ERP:</p>
+<table class="data-table"><thead><tr><th>Segmento</th><th>Definición</th><th>Oportunidades</th></tr></thead><tbody><tr><td>Lead nuevo del período</td><td>Lead creado y convertido en venta dentro del mismo mes</td><td>33</td></tr><tr><td>Cliente de cartera</td><td>La venta corresponde a un lead creado en un período anterior</td><td>47</td></tr></tbody></table>
+</section><section class="tab-panel" id="panel-panorama" role="tabpanel" aria-labelledby="tab-panorama"><h2>Panorama general</h2>
+<table class="data-table"><thead><tr><th>Indicador</th><th>Valor</th></tr></thead><tbody><tr><td>Oportunidades cerradas</td><td>80</td></tr><tr><td>Clientes únicos</td><td>64</td></tr><tr><td>Leads nuevos del período (compradores)</td><td>29</td></tr><tr><td>Clientes de cartera (compradores)</td><td>35</td></tr><tr><td>Conversaciones GHL con actividad en el período</td><td>547</td></tr></tbody></table>
+</section><section class="tab-panel" id="panel-nuevos" role="tabpanel" aria-labelledby="tab-nuevos"><h2>Leads nuevos del período</h2>
+<p>29 clientes compraron el mismo mes en que se generó su lead (33 oportunidades).
+Es el segmento de "conversión rápida": la mediana entre creación del lead y cierre de la venta es de 1 día.
+El 89.7% tiene conversación registrada en GHL, con un promedio de 52 mensajes
+por conversación (mediana 50).</p>
+<table class="data-table"><thead><tr><th>Unidad de negocio</th><th>Oportunidades</th></tr></thead><tbody><tr><td>Alarmas : Nuevas</td><td>21</td></tr><tr><td>Alarmas : Comodato</td><td>12</td></tr></tbody></table>
+<h3>Representante de ventas</h3>
+<table class="data-table"><thead><tr><th>Representante</th><th>Oportunidades</th></tr></thead><tbody><tr><td>Gonzalo  De Castro</td><td>15</td></tr><tr><td>Gustavo Duarte</td><td>11</td></tr><tr><td>Martín German Ramos</td><td>7</td></tr></tbody></table>
+</section><section class="tab-panel" id="panel-cartera" role="tabpanel" aria-labelledby="tab-cartera"><h2>Clientes de cartera</h2>
+<p>35 clientes compraron en agosto pero su lead original es de un período muy anterior
+(mediana de 1594 días, ~4 años).
+Solo el 45.7% tiene alguna conversación con actividad en agosto — el resto compró sin que quede
+rastro de conversación reciente en GHL (probablemente gestionado por teléfono o en forma presencial, sin registrarse ahí).</p>
+<table class="data-table"><thead><tr><th>Unidad de negocio</th><th>Oportunidades</th></tr></thead><tbody><tr><td>Alarmas : Nuevas</td><td>27</td></tr><tr><td>Alarmas : Comodato</td><td>15</td></tr><tr><td>Proyectos Especiales</td><td>3</td></tr><tr><td>Sin dato</td><td>2</td></tr></tbody></table>
+<h3>Representante de ventas</h3>
+<table class="data-table"><thead><tr><th>Representante</th><th>Oportunidades</th></tr></thead><tbody><tr><td>Gonzalo  De Castro</td><td>24</td></tr><tr><td>Gustavo Duarte</td><td>13</td></tr><tr><td>Martín German Ramos</td><td>7</td></tr><tr><td>Federico Ordoqui</td><td>3</td></tr></tbody></table>
+</section><section class="tab-panel" id="panel-comparativa" role="tabpanel" aria-labelledby="tab-comparativa"><h2>Comparativa entre segmentos</h2>
+<div class="chart-wrap"><div class="chart-legend"><span class="legend-item"><span class="swatch" style="background:#2a78d6"></span>Lead nuevo del período (n=33)</span><span class="legend-item"><span class="swatch" style="background:#eb6834"></span>Cliente de cartera (n=47)</span></div><svg viewBox="0 0 680 268" width="100%" role="img" aria-label="Tipo de proyecto por segmento" class="chart-svg"><line x1="168.0" y1="28" x2="168.0" y2="238" stroke="#DEDCD3" stroke-width="1"/><text x="168.0" y="256" text-anchor="middle" class="axis-label">0</text><line x1="252.7" y1="28" x2="252.7" y2="238" stroke="#DEDCD3" stroke-width="1"/><text x="252.7" y="256" text-anchor="middle" class="axis-label">4</text><line x1="337.5" y1="28" x2="337.5" y2="238" stroke="#DEDCD3" stroke-width="1"/><text x="337.5" y="256" text-anchor="middle" class="axis-label">8</text><line x1="422.2" y1="28" x2="422.2" y2="238" stroke="#DEDCD3" stroke-width="1"/><text x="422.2" y="256" text-anchor="middle" class="axis-label">12</text><line x1="506.9" y1="28" x2="506.9" y2="238" stroke="#DEDCD3" stroke-width="1"/><text x="506.9" y="256" text-anchor="middle" class="axis-label">16</text><line x1="591.6" y1="28" x2="591.6" y2="238" stroke="#DEDCD3" stroke-width="1"/><text x="591.6" y="256" text-anchor="middle" class="axis-label">20</text><text x="158" y="55.0" text-anchor="end" class="cat-label">Alarma Nueva</text><rect x="168" y="38.5" width="381.3" height="11" rx="3" fill="#2a78d6"><title>Alarma Nueva · Lead nuevo del período (n=33): 18</title></rect><text x="554.3" y="47.5" class="val-label">18</text><rect x="168" y="52.5" width="466.0" height="11" rx="3" fill="#eb6834"><title>Alarma Nueva · Cliente de cartera (n=47): 22</title></rect><text x="639.0" y="61.5" class="val-label">22</text><text x="158" y="89.0" text-anchor="end" class="cat-label">SP Comercio Seguro</text><rect x="168" y="72.5" width="254.2" height="11" rx="3" fill="#2a78d6"><title>SP Comercio Seguro · Lead nuevo del período (n=33): 12</title></rect><text x="427.2" y="81.5" class="val-label">12</text><rect x="168" y="86.5" width="381.3" height="11" rx="3" fill="#eb6834"><title>SP Comercio Seguro · Cliente de cartera (n=47): 18</title></rect><text x="554.3" y="95.5" class="val-label">18</text><text x="158" y="123.0" text-anchor="end" class="cat-label">Alarma Reprogramación</text><rect x="168" y="106.5" width="63.5" height="11" rx="3" fill="#2a78d6"><title>Alarma Reprogramación · Lead nuevo del período (n=33): 3</title></rect><text x="236.5" y="115.5" class="val-label">3</text><rect x="168" y="120.5" width="21.2" height="11" rx="3" fill="#eb6834"><title>Alarma Reprogramación · Cliente de cartera (n=47): 1</title></rect><text x="194.2" y="129.5" class="val-label">1</text><text x="158" y="157.0" text-anchor="end" class="cat-label">Proyecto Especial</text><rect x="168" y="154.5" width="63.5" height="11" rx="3" fill="#eb6834"><title>Proyecto Especial · Cliente de cartera (n=47): 3</title></rect><text x="236.5" y="163.5" class="val-label">3</text><text x="158" y="191.0" text-anchor="end" class="cat-label">Alarma Traslado</text><rect x="168" y="188.5" width="42.4" height="11" rx="3" fill="#eb6834"><title>Alarma Traslado · Cliente de cartera (n=47): 2</title></rect><text x="215.4" y="197.5" class="val-label">2</text><text x="158" y="225.0" text-anchor="end" class="cat-label">Alarma Ampliación</text><rect x="168" y="222.5" width="21.2" height="11" rx="3" fill="#eb6834"><title>Alarma Ampliación · Cliente de cartera (n=47): 1</title></rect><text x="194.2" y="231.5" class="val-label">1</text><line x1="168" y1="238" x2="634" y2="238" stroke="#6B6B6B" stroke-width="1"/></svg></div>
+<p class="chart-caption">Tipo de proyecto por segmento</p>
+<div class="chart-wrap"><div class="chart-legend"><span class="legend-item"><span class="swatch" style="background:#2a78d6"></span>Lead nuevo del período</span><span class="legend-item"><span class="swatch" style="background:#eb6834"></span>Cliente de cartera</span></div><svg viewBox="0 0 680 300" width="100%" role="img" aria-label="Forma de contacto por segmento" class="chart-svg"><line x1="40" y1="254.0" x2="664" y2="254.0" stroke="#DEDCD3" stroke-width="1"/><text x="32" y="258.0" text-anchor="end" class="axis-label">0</text><line x1="40" y1="208.9" x2="664" y2="208.9" stroke="#DEDCD3" stroke-width="1"/><text x="32" y="212.9" text-anchor="end" class="axis-label">8</text><line x1="40" y1="163.9" x2="664" y2="163.9" stroke="#DEDCD3" stroke-width="1"/><text x="32" y="167.9" text-anchor="end" class="axis-label">16</text><line x1="40" y1="118.8" x2="664" y2="118.8" stroke="#DEDCD3" stroke-width="1"/><text x="32" y="122.8" text-anchor="end" class="axis-label">24</text><line x1="40" y1="73.8" x2="664" y2="73.8" stroke="#DEDCD3" stroke-width="1"/><text x="32" y="77.8" text-anchor="end" class="axis-label">32</text><rect x="72.4" y="180.8" width="28.0" height="73.2" rx="3" fill="#2a78d6"><title>Teléfono · Lead nuevo del período: 13</title></rect><text x="86.4" y="175.8" text-anchor="middle" class="val-label">13</text><rect x="104.4" y="225.8" width="28.0" height="28.2" rx="3" fill="#eb6834"><title>Teléfono · Cliente de cartera: 5</title></rect><text x="118.4" y="220.8" text-anchor="middle" class="val-label">5</text><text x="102.4" y="272.0" text-anchor="middle" class="cat-label">Teléfono</text><rect x="197.2" y="192.1" width="28.0" height="61.9" rx="3" fill="#2a78d6"><title>WhatsApp Business · Lead nuevo del período: 11</title></rect><text x="211.2" y="187.1" text-anchor="middle" class="val-label">11</text><rect x="229.2" y="248.4" width="28.0" height="5.6" rx="3" fill="#eb6834"><title>WhatsApp Business · Cliente de cartera: 1</title></rect><text x="243.2" y="243.4" text-anchor="middle" class="val-label">1</text><text x="227.2" y="272.0" text-anchor="middle" class="cat-label">WhatsApp Business</text><rect x="322.0" y="225.8" width="28.0" height="28.2" rx="3" fill="#2a78d6"><title>Otro · Lead nuevo del período: 5</title></rect><text x="336.0" y="220.8" text-anchor="middle" class="val-label">5</text><rect x="354.0" y="237.1" width="28.0" height="16.9" rx="3" fill="#eb6834"><title>Otro · Cliente de cartera: 3</title></rect><text x="368.0" y="232.1" text-anchor="middle" class="val-label">3</text><text x="352.0" y="272.0" text-anchor="middle" class="cat-label">Otro</text><rect x="446.8" y="237.1" width="28.0" height="16.9" rx="3" fill="#2a78d6"><title>Presencial en SP · Lead nuevo del período: 3</title></rect><text x="460.8" y="232.1" text-anchor="middle" class="val-label">3</text><text x="476.8" y="272.0" text-anchor="middle" class="cat-label">Presencial en SP</text><rect x="571.6" y="248.4" width="28.0" height="5.6" rx="3" fill="#2a78d6"><title>Sin dato · Lead nuevo del período: 1</title></rect><text x="585.6" y="243.4" text-anchor="middle" class="val-label">1</text><rect x="603.6" y="40.0" width="28.0" height="214.0" rx="3" fill="#eb6834"><title>Sin dato · Cliente de cartera: 38</title></rect><text x="617.6" y="35.0" text-anchor="middle" class="val-label">38</text><text x="601.6" y="272.0" text-anchor="middle" class="cat-label">Sin dato</text><line x1="40" y1="254" x2="664" y2="254" stroke="#6B6B6B" stroke-width="1"/></svg></div>
+<p class="chart-caption">Forma de contacto con SP por segmento ("Sin dato" = campo no cargado en el ERP)</p>
+</section><section class="tab-panel" id="panel-canal" role="tabpanel" aria-labelledby="tab-canal"><h2>Canal de adquisición</h2>
+<div class="note-box"><p>El canal de adquisición (Facebook Ads, Instagram Ads, etc.) solo es interpretable sobre el segmento &quot;Lead nuevo del período&quot;. Para clientes de cartera no tiene sentido: su lead es de otro momento y esa etiqueta no refleja la campaña de agosto.</p></div>
+<p>Tomando solo los 29 leads nuevos del período (la única cohorte donde lead y venta caen en el mismo mes),
+la tasa de conversión aproximada por canal es:</p>
+<table class="data-table"><thead><tr><th>Canal</th><th>Leads del período</th><th>Compradores</th><th>Tasa</th></tr></thead><tbody><tr><td>Sin clasificar</td><td>237</td><td>24</td><td>10.1%</td></tr><tr><td>Instagram Ads</td><td>44</td><td>0</td><td>0.0%</td></tr><tr><td>Facebook Ads</td><td>217</td><td>0</td><td>0.0%</td></tr><tr><td>Formulario Web</td><td>29</td><td>2</td><td>6.9%</td></tr><tr><td>Organico</td><td>20</td><td>0</td><td>0.0%</td></tr></tbody></table>
+<p>El resultado en 0% para Facebook e Instagram Ads es llamativo y merece una lectura cuidadosa: las etiquetas
+"fb-ad-lead-whatsapp" / "instagram-ad-lead-whatsapp" solo se aplican a conversaciones iniciadas por WhatsApp.
+De los 33 leads nuevos que compraron, 13 se gestionaron por teléfono
+y 3 de forma presencial — canales donde esa etiqueta nunca se aplicaría aunque el
+cliente haya llegado originalmente por un anuncio. No se puede concluir todavía que los canales pagos no conviertan;
+lo que sí se puede afirmar es que el etiquetado actual no permite medirlo con confiabilidad. Queda como punto de
+mejora en la pestaña "Recomendaciones".</p>
+</section><section class="tab-panel" id="panel-calidad" role="tabpanel" aria-labelledby="tab-calidad"><h2>Calidad de datos</h2>
+<table class="data-table"><thead><tr><th>Hallazgo</th><th>Magnitud</th></tr></thead><tbody><tr><td>Oportunidades sin &quot;Forma de Contacto con SP&quot; cargada</td><td>39 de 80 (48.8%)</td></tr><tr><td>Oportunidades sin ID CLIENTE CRM (no cruzables con GHL)</td><td>2</td></tr><tr><td>Clientes de cartera sin conversación reciente en GHL</td><td>19 de 35 (54.3%)</td></tr><tr><td>Oportunidades con fecha de venta anterior a la fecha de creación del lead (dato inconsistente)</td><td>11</td></tr></tbody></table>
+</section><section class="tab-panel" id="panel-recomendaciones" role="tabpanel" aria-labelledby="tab-recomendaciones"><h2>Recomendaciones</h2>
+<h3>1 — Automatizar el cruce</h3>
+<p>Se entrega junto con este informe un script (analisis_mensual_mkt.py) que hace el cruce, la segmentación y las
+tablas automáticamente a partir de los dos archivos de origen. Reduce el análisis manual a correr el script y
+revisar los resultados.</p>
+<h3>2 — Estandarizar la carga de "Forma de Contacto con SP"</h3>
+<p>Casi la mitad de las oportunidades no la tiene cargada. Es un campo clave para MKT y hoy depende de la carga
+manual del vendedor al cerrar la oportunidad.</p>
+<h3>3 — Exigir ID CLIENTE CRM en el 100% de las oportunidades</h3>
+<p>Sin ese campo, la oportunidad queda fuera de cualquier análisis conjunto con GHL.</p>
+<h3>4 — Pedir el archivo de conversaciones por cliente comprador, no solo por ventana de fecha</h3>
+<p>Hoy se pierde una buena parte de los compradores (clientes de cartera) porque su conversación no tuvo actividad
+en el mes. Un export adicional acotado a los contactId de los compradores del mes, sin filtro de fecha, permitiría
+reconstruir el historial completo de esos clientes.</p>
+<h3>5 — Revisar el etiquetado de canal de origen</h3>
+<p>Encontrar una forma de registrar el canal de adquisición original del cliente aunque el contacto final sea
+telefónico o presencial (hoy la etiqueta se pierde apenas el canal deja de ser WhatsApp), para poder medir de
+verdad el aporte de cada canal pago.</p>
+<h3>6 — Evaluar pasar este informe a un tablero vivo</h3>
+<p>Dado que es un proceso mensual repetible, podría integrarse a un dashboard (Power BI) que se actualice
+automáticamente en vez de regenerar un documento cada mes.</p>
+</section><section class="tab-panel" id="panel-anexo" role="tabpanel" aria-labelledby="tab-anexo"><h2>Anexo</h2>
+<table class="data-table"><thead><tr><th>Archivo</th><th>Contenido</th></tr></thead><tbody><tr><td>analisis_mensual_mkt.py</td><td>Script reutilizable: repite este análisis para cualquier período nuevo</td></tr><tr><td>salida_2026-08/resumen.json</td><td>Todos los números de este informe, en formato estructurado</td></tr><tr><td>salida_2026-08/tablas_dinamicas.xlsx</td><td>Tablas para revisar o filtrar a mano en Excel</td></tr><tr><td>Informe_MKT_Agosto2026.docx</td><td>Versión Word de este mismo informe</td></tr></tbody></table>
+</section></main>
+  <footer class="report-footer">Informe generado a partir del cruce automatizado GHL × ERP por ID CLIENTE CRM.</footer>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var btns = document.querySelectorAll(".tab-btn");
+  btns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = btn.getAttribute("data-tab");
+      document.querySelectorAll(".tab-btn").forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+        b.setAttribute("aria-selected", b === btn ? "true" : "false");
+      });
+      document.querySelectorAll(".tab-panel").forEach(function (p) {
+        p.classList.toggle("active", p.id === "panel-" + id);
+      });
+      window.scrollTo({ top: main.offsetTop - 12, behavior: "smooth" });
+    });
+  });
+  var main = document.querySelector("main");
+});
+</script>
+</body>
+</html>

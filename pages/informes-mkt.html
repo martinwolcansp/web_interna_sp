@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informes e indicadores de MKT — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/informes-mkt.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Informes e indicadores de MKT"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'informes-mkt';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <main class="informes-mkt-wrap" role="main">
+
+    <div class="mapa-topbar">
+      <div class="version-selector" id="periodo-selector">
+        <button class="version-selector__btn" id="periodo-btn"
+                onclick="toggleInformesMktDropdown()"
+                aria-haspopup="listbox" aria-expanded="false"
+                aria-label="Selector de período del informe">
+          <i class="ti ti-calendar" aria-hidden="true"></i>
+          <span id="periodo-current-label">Cargando…</span>
+          <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
+        </button>
+        <ul class="version-selector__dropdown" id="periodo-dropdown" role="listbox">
+          <!-- Renderizado por js/informes-mkt.js -->
+        </ul>
+      </div>
+    </div>
+
+    <div class="informes-mkt-frame-wrap">
+      <iframe id="informes-mkt-frame" class="informes-mkt-frame"
+              title="Informe mensual de MKT"></iframe>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Períodos disponibles (orden cronológico inverso: agregar acá arriba) -->
+  <script src="../js/versiones/informes-mkt.js"></script>
+  <script src="../js/informes-mkt.js"></script>
+
+</body>
+</html>

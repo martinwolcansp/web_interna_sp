@@ -1,13 +1,14 @@
--- Secciones actuales del sitio: los 3 mosaicos ya construidos y la
+-- Secciones actuales del sitio: los 4 mosaicos ya construidos y la
 -- sección general (pizarra institucional). Agregar un mosaico nuevo a
 -- futuro (Normativas Técnicas, Procesos Operativos, hoy "Próximamente"
 -- en index.html) es simplemente insertar una fila más acá.
 
 insert into secciones (id, nombre, tipo) values
-  ('mapa-servicios',        'Mapa de Servicios',        'mosaico'),
-  ('sector-comunicaciones', 'Sector Comunicaciones',    'mosaico'),
-  ('organigrama',           'Directorio de Áreas',      'mosaico'),
-  ('pizarra',               'Pizarra institucional',    'general')
+  ('mapa-servicios',        'Mapa de Servicios',              'mosaico'),
+  ('sector-comunicaciones', 'Sector Comunicaciones',          'mosaico'),
+  ('organigrama',           'Directorio de Áreas',            'mosaico'),
+  ('informes-mkt',          'Informes e indicadores de MKT',  'mosaico'),
+  ('pizarra',               'Pizarra institucional',          'general')
 on conflict (id) do update set
   nombre = excluded.nombre,
   tipo   = excluded.tipo;

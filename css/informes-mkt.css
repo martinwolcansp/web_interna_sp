@@ -1,0 +1,27 @@
+/* ============================================================
+   informes-mkt.css — Estilos específicos de la página
+   "Informes e indicadores de MKT". El selector de período reutiliza
+   .mapa-topbar / .version-selector (definidos en components.css).
+   ============================================================ */
+
+.informes-mkt-wrap {
+  max-width: var(--max-width-content);
+  margin: var(--space-10) auto;
+  padding: 0 var(--space-6) 3rem;
+}
+
+.informes-mkt-frame-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.informes-mkt-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  /* Alto inicial mientras carga; js/informes-mkt.js lo ajusta al
+     contenido real una vez que el informe termina de cargar. */
+  height: 600px;
+}
