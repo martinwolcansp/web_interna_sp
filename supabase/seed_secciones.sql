@@ -8,6 +8,7 @@ insert into secciones (id, nombre, tipo) values
   ('sector-comunicaciones', 'Sector Comunicaciones',          'mosaico'),
   ('organigrama',           'Directorio de Áreas',            'mosaico'),
   ('informes-mkt',          'Informes e indicadores de MKT',  'mosaico'),
+  ('comunicacion-receptoras', 'Comunicación Receptoras',      'mosaico'),
   ('pizarra',               'Pizarra institucional',          'general')
 on conflict (id) do update set
   nombre = excluded.nombre,
