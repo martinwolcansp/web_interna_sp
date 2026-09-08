@@ -13,6 +13,7 @@
 
 let sp_areasCache = [];
 let sp_currentUserId = null;
+let sp_ultimosIngresos = {};
 
 document.addEventListener('sp:auth-ready', handleAuthReady);
 
@@ -63,6 +64,7 @@ async function handleAuthReady(e) {
     sp_currentUserId = session.user.id;
 
     await loadAreas();
+    await loadUltimosIngresos();
     await loadUsers();
   } catch (err) {
     showGate('No se pudo conectar. Probá recargar la página.');
@@ -79,6 +81,23 @@ function showGate(mensaje) {
     <p>${escapeHtml(mensaje)}</p>
     <a href="/index.html" class="btn btn--secondary" style="display:inline-flex;margin-top:1rem;">Volver al inicio</a>
   `;
+}
+
+async function loadUltimosIngresos() {
+  // Best-effort: si esto falla, el panel sigue andando sin la columna
+  // de último ingreso en vez de romper toda la carga de usuarios.
+  const { data, error } = await window.supabaseClient.rpc('fn_admin_ultimos_ingresos');
+
+  if (error) {
+    console.error('[admin.js] error cargando ultimos ingresos', error);
+    sp_ultimosIngresos = {};
+    return;
+  }
+
+  sp_ultimosIngresos = {};
+  (data || []).forEach(row => {
+    sp_ultimosIngresos[row.id] = row.ultimo_ingreso;
+  });
 }
 
 async function loadAreas() {
@@ -133,6 +152,7 @@ function renderTable(users) {
           <th>Nivel</th>
           <th>Activo</th>
           <th>Superadmin</th>
+          <th>Último ingreso</th>
           <th></th>
         </tr>
       </thead>
@@ -183,6 +203,7 @@ function renderRow(u) {
       </td>
       <td><input type="checkbox" class="admin-checkbox admin-checkbox--activo"${u.activo ? ' checked' : ''}></td>
       <td><input type="checkbox" class="admin-checkbox admin-checkbox--superadmin"${u.es_superadmin ? ' checked' : ''}></td>
+      <td class="admin-ultimo-ingreso">${formatFechaHora(sp_ultimosIngresos[u.id])}</td>
       <td>
         <button type="button" class="btn btn--primary admin-row-save">Guardar</button>
         <button type="button" class="btn btn--secondary admin-row-delete"${
@@ -287,6 +308,17 @@ async function deleteUser(tr, userId, nombreCompleto) {
   const wrap = document.getElementById('admin-users-table-wrap');
   if (wrap && !wrap.querySelector('tbody tr')) {
     wrap.innerHTML = '<p class="admin-empty">Todavía no hay usuarios que hayan iniciado sesión.</p>';
+  }
+}
+
+function formatFechaHora(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('es-AR', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  } catch (e) {
+    return iso;
   }
 }
 
