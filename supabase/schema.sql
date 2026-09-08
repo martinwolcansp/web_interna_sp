@@ -341,6 +341,8 @@ create policy "perfiles: superadmin ve todos" on perfiles
   for select using (fn_es_superadmin());
 create policy "perfiles: superadmin edita todos" on perfiles
   for update using (fn_es_superadmin());
+create policy "perfiles: superadmin elimina" on perfiles
+  for delete using (fn_es_superadmin() and id <> auth.uid());
 
 -- novedades (pizarra): ver depende de novedades_areas (sin filas = todas
 -- las áreas, comportamiento por defecto; ver fn_puede_ver_novedad más

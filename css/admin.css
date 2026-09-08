@@ -158,9 +158,19 @@
   cursor: pointer;
 }
 
-.admin-row-save {
+.admin-row-save,
+.admin-row-delete {
   padding: 6px 14px;
   font-size: 10px;
+}
+
+.admin-row-delete {
+  margin-left: 6px;
+}
+
+.admin-row-delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .admin-row-status {

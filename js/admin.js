@@ -12,6 +12,7 @@
  */
 
 let sp_areasCache = [];
+let sp_currentUserId = null;
 
 document.addEventListener('sp:auth-ready', handleAuthReady);
 
@@ -58,6 +59,8 @@ async function handleAuthReady(e) {
 
     gate.style.display = 'none';
     content.style.display = '';
+
+    sp_currentUserId = session.user.id;
 
     await loadAreas();
     await loadUsers();
@@ -115,7 +118,7 @@ async function loadUsers() {
   wrap.innerHTML = renderTable(data);
 
   const rows = wrap.querySelectorAll('tbody tr');
-  rows.forEach((tr, i) => wireRow(tr, data[i].id));
+  rows.forEach((tr, i) => wireRow(tr, data[i].id, [data[i].nombre, data[i].apellido].filter(Boolean).join(' ') || data[i].email || '(sin nombre)'));
 }
 
 function renderTable(users) {
@@ -182,15 +185,25 @@ function renderRow(u) {
       <td><input type="checkbox" class="admin-checkbox admin-checkbox--superadmin"${u.es_superadmin ? ' checked' : ''}></td>
       <td>
         <button type="button" class="btn btn--primary admin-row-save">Guardar</button>
+        <button type="button" class="btn btn--secondary admin-row-delete"${
+          u.id === sp_currentUserId
+            ? ' disabled title="No podés eliminar tu propio usuario"'
+            : ''
+        }>Eliminar</button>
         <span class="admin-row-status"></span>
       </td>
     </tr>
   `;
 }
 
-function wireRow(tr, userId) {
+function wireRow(tr, userId, nombreCompleto) {
   const btn = tr.querySelector('.admin-row-save');
   btn.addEventListener('click', () => saveRow(tr, userId));
+
+  const deleteBtn = tr.querySelector('.admin-row-delete');
+  if (deleteBtn && !deleteBtn.disabled) {
+    deleteBtn.addEventListener('click', () => deleteUser(tr, userId, nombreCompleto));
+  }
 }
 
 async function saveRow(tr, userId) {
@@ -238,6 +251,42 @@ async function saveRow(tr, userId) {
   if (badge) {
     badge.className = activo ? 'status-badge status-badge--ok' : 'status-badge status-badge--prog';
     badge.textContent = activo ? 'Activo' : 'Pendiente';
+  }
+}
+
+async function deleteUser(tr, userId, nombreCompleto) {
+  if (!confirm(`¿Eliminar a ${nombreCompleto}? Pierde acceso al sitio de inmediato. No se puede deshacer, y si vuelve a iniciar sesión con Google no se le recrea el perfil solo.`)) {
+    return;
+  }
+
+  const deleteBtn = tr.querySelector('.admin-row-delete');
+  const saveBtn = tr.querySelector('.admin-row-save');
+  const statusEl = tr.querySelector('.admin-row-status');
+
+  deleteBtn.disabled = true;
+  saveBtn.disabled = true;
+  statusEl.textContent = 'Eliminando…';
+  statusEl.className = 'admin-row-status';
+
+  const { error } = await window.supabaseClient
+    .from('perfiles')
+    .delete()
+    .eq('id', userId);
+
+  if (error) {
+    deleteBtn.disabled = false;
+    saveBtn.disabled = false;
+    statusEl.textContent = 'Error al eliminar';
+    statusEl.className = 'admin-row-status admin-row-status--error';
+    console.error('[admin.js] error eliminando perfil', error);
+    return;
+  }
+
+  tr.remove();
+
+  const wrap = document.getElementById('admin-users-table-wrap');
+  if (wrap && !wrap.querySelector('tbody tr')) {
+    wrap.innerHTML = '<p class="admin-empty">Todavía no hay usuarios que hayan iniciado sesión.</p>';
   }
 }
 
