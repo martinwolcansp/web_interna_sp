@@ -158,14 +158,18 @@
   cursor: pointer;
 }
 
+.admin-row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .admin-row-save,
 .admin-row-delete {
   padding: 6px 14px;
   font-size: 10px;
-}
-
-.admin-row-delete {
-  margin-left: 6px;
 }
 
 .admin-row-delete:disabled {

@@ -204,7 +204,7 @@ function renderRow(u) {
       <td><input type="checkbox" class="admin-checkbox admin-checkbox--activo"${u.activo ? ' checked' : ''}></td>
       <td><input type="checkbox" class="admin-checkbox admin-checkbox--superadmin"${u.es_superadmin ? ' checked' : ''}></td>
       <td class="admin-ultimo-ingreso">${formatFechaHora(sp_ultimosIngresos[u.id])}</td>
-      <td>
+      <td class="admin-row-actions">
         <button type="button" class="btn btn--primary admin-row-save">Guardar</button>
         <button type="button" class="btn btn--secondary admin-row-delete"${
           u.id === sp_currentUserId
