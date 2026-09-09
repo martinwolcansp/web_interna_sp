@@ -1,8 +1,138 @@
 /* ============================================================
-   comunicacion-receptoras.css — Estilos específicos de la página
-   "Comunicación Receptoras". Análisis puntual (sin selector de
-   período): un único informe autocontenido embebido en un iframe.
+   comunicacion-receptoras.css — Estilos del mosaico "Comunicación
+   Receptoras": la vista general (grilla de tarjetas, una por
+   receptora) y el wrap del iframe que usan las páginas individuales
+   (bosch.html, nanocomm.html, y las que se agreguen).
    ============================================================ */
+
+/* ---- Vista general (pages/comunicacion-receptoras.html) ---- */
+
+.comunicacion-receptoras-overview {
+  max-width: var(--max-width-content);
+  margin: var(--space-10) auto;
+  padding: 0 var(--space-6) 3rem;
+}
+
+.cr-intro {
+  margin-bottom: var(--space-8);
+}
+
+.cr-intro__eyebrow {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: var(--space-2);
+}
+
+.cr-intro__title {
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  letter-spacing: -0.3px;
+}
+
+.cr-intro__desc {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+  line-height: var(--line-height-base);
+  max-width: 640px;
+}
+
+.cr-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-5);
+}
+
+.cr-card {
+  display: block;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  border-top: 3px solid var(--color-blue);
+  padding: var(--space-5) var(--space-6);
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.cr-card:hover,
+.cr-card:focus-visible {
+  border-color: var(--color-blue);
+  box-shadow: var(--shadow-sm, var(--shadow-xs));
+  color: inherit;
+}
+
+.cr-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.cr-card__nombre {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+}
+
+.cr-card__via {
+  font-size: 10.5px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.cr-card__periodo {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.cr-card__stats {
+  display: flex;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+.cr-stat__value {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-weight: var(--font-weight-bold);
+  font-size: 18px;
+  color: var(--color-navy);
+}
+
+.cr-stat__label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 1px;
+}
+
+.cr-card__link {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue);
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cr-empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ---- Informe individual embebido (bosch.html, nanocomm.html, ...) ---- */
 
 .comunicacion-receptoras-wrap {
   max-width: var(--max-width-content);
@@ -21,7 +151,7 @@
   display: block;
   width: 100%;
   border: 0;
-  /* Alto inicial mientras carga; js/comunicacion-receptoras.js lo
+  /* Alto inicial mientras carga; js/comunicacion-receptoras-frame.js lo
      ajusta al contenido real una vez que el informe termina de cargar. */
   height: 600px;
 }

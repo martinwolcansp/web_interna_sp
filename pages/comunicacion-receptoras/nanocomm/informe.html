@@ -1,0 +1,579 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>Comunicación Telefónica/IP Nanocomm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f9f9f7; --surface:#fcfcfb; --surface-2:#f2f1ee; --border:#e1e0d9;
+    --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781; --baseline:#c3c2b7;
+    --navy:#0f2942; --navy-2:#16344f; --on-navy:#eaf1f8; --on-navy-muted:#9fc4ea;
+    --accent:#2a78d6;
+    --cat-test:#2a78d6; --cat-ap:#eb6834; --cat-anu:#4a3aa7; --cat-alarma:#e34948;
+    --cat-fcom:#eda100; --cat-fenerg:#e87ba4; --cat-rest:#008300; --cat-otros:#1baf7a;
+    --recept-nano:#2a78d6;
+    --good:#0ca30c; --warning:#b8790a; --critical:#d03b3b;
+    --good-bg:#e4f5e1; --warning-bg:#fbead0; --critical-bg:#fbe3e1;
+    --shadow: 0 1px 2px rgba(11,11,11,0.06), 0 1px 1px rgba(11,11,11,0.04);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg:#0d0d0d; --surface:#1a1a19; --surface-2:#222220; --border:#2c2c2a;
+      --ink:#ffffff; --ink-2:#c3c2b7; --muted:#8f8d86; --baseline:#383835;
+      --navy:#0a1c2e; --navy-2:#122840; --on-navy:#eaf1f8; --on-navy-muted:#8fb8de;
+      --accent:#3987e5;
+      --cat-test:#3987e5; --cat-ap:#d95926; --cat-anu:#9085e9; --cat-alarma:#e66767;
+      --cat-fcom:#c98500; --cat-fenerg:#d55181; --cat-rest:#1f9e1f; --cat-otros:#199e70;
+      --recept-nano:#3987e5;
+      --good:#3fc23f; --warning:#fab219; --critical:#e66767;
+      --good-bg:#123018; --warning-bg:#3a2c0d; --critical-bg:#3a1414;
+      --shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#0d0d0d; --surface:#1a1a19; --surface-2:#222220; --border:#2c2c2a;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#8f8d86; --baseline:#383835;
+    --navy:#0a1c2e; --navy-2:#122840; --on-navy:#eaf1f8; --on-navy-muted:#8fb8de;
+    --accent:#3987e5;
+    --cat-test:#3987e5; --cat-ap:#d95926; --cat-anu:#9085e9; --cat-alarma:#e66767;
+    --cat-fcom:#c98500; --cat-fenerg:#d55181; --cat-rest:#1f9e1f; --cat-otros:#199e70;
+    --recept-nano:#3987e5;
+    --good:#3fc23f; --warning:#fab219; --critical:#e66767;
+    --good-bg:#123018; --warning-bg:#3a2c0d; --critical-bg:#3a1414;
+    --shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--ink); font-family:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-weight:600; text-wrap:balance; margin:0;}
+  .mono{font-family:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; font-variant-numeric:tabular-nums;}
+  a{color:var(--accent);}
+
+  .app{max-width:1180px; margin:0 auto; padding-bottom:64px;}
+
+  .console{background:linear-gradient(165deg, var(--navy) 0%, var(--navy-2) 100%); color:var(--on-navy); padding:28px 32px 24px; border-radius:0 0 14px 14px;}
+  .eyebrow{font-size:12px; letter-spacing:.09em; text-transform:uppercase; color:var(--on-navy-muted); font-weight:600;}
+  .console h1{font-size:24px; margin-top:6px; color:var(--on-navy); max-width:760px;}
+  .subtitle{margin:8px 0 0; color:var(--on-navy-muted); font-size:14px; max-width:640px; line-height:1.5;}
+  .kpi-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:22px;}
+  .kpi{background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:12px 18px; min-width:150px; flex:1 1 150px;}
+  .kpi.kpi-muted{background:rgba(255,255,255,0.03); border-color:rgba(255,255,255,0.08);}
+  .kpi-value{display:block; font-family:"IBM Plex Mono"; font-weight:600; font-size:22px; font-variant-numeric:tabular-nums; color:var(--on-navy);}
+  .kpi.kpi-muted .kpi-value{color:var(--on-navy-muted); font-size:18px;}
+  .kpi-label{display:block; font-size:12.5px; color:var(--on-navy-muted); margin-top:2px;}
+
+  main{padding:24px 32px 0;}
+
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:stretch;}
+  @media (max-width:860px){ .grid-2{grid-template-columns:1fr;} }
+
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 22px; box-shadow:var(--shadow); display:flex; flex-direction:column;}
+  .card h2{font-size:15px; margin-bottom:14px;}
+
+  .bar-row{display:grid; grid-template-columns:150px 1fr 70px; align-items:center; gap:10px; margin-bottom:9px;}
+  .bar-row .label{font-size:12.5px; color:var(--ink-2); text-align:right;}
+  .bar-track{background:var(--surface-2); border-radius:4px; height:16px; overflow:hidden; position:relative;}
+  .bar-fill{display:block; height:100%; border-radius:4px 0 0 4px; min-width:2px;}
+  .bar-row .count{font-family:"IBM Plex Mono"; font-size:12.5px; color:var(--ink-2); font-variant-numeric:tabular-nums;}
+
+  .line-chart-wrap{position:relative; flex:1;}
+  #trend-svg{width:100%; height:220px; display:block; overflow:visible;}
+  .axis-label{font-size:10px; fill:var(--muted); font-family:"IBM Plex Mono";}
+  .gridline{stroke:var(--border); stroke-width:1;}
+  .legend{display:flex; gap:16px; margin-top:10px; font-size:12.5px; color:var(--ink-2);}
+  .legend-item{display:flex; align-items:center; gap:6px;}
+  .legend-swatch{width:10px; height:10px; border-radius:2px;}
+  .chart-tooltip{position:absolute; pointer-events:none; background:var(--navy); color:var(--on-navy); font-size:11.5px; padding:6px 9px; border-radius:6px; line-height:1.5; box-shadow:var(--shadow); white-space:nowrap; transform:translate(-50%,-115%); z-index:5;}
+  .note{font-size:12px; color:var(--muted); margin-top:12px; line-height:1.5;}
+
+  .table-card{margin-top:16px;}
+  .table-header{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:4px;}
+  .table-header h2{margin-bottom:0;}
+  .filters{display:flex; flex-wrap:wrap; gap:8px;}
+  .filters input, .filters select{
+    font-family:inherit; font-size:13px; padding:7px 10px; border-radius:7px; border:1px solid var(--border);
+    background:var(--surface-2); color:var(--ink); outline:none;
+  }
+  .filters input{width:220px;}
+  .filters input:focus, .filters select:focus{border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);}
+  .btn-export{
+    display:inline-flex; align-items:center; gap:7px; font-family:inherit; font-size:13px; font-weight:500;
+    padding:7px 13px 7px 11px; border-radius:7px; border:1px solid var(--accent); background:var(--accent); color:#fff;
+    cursor:pointer; white-space:nowrap;
+  }
+  .btn-export:hover{filter:brightness(1.07);}
+  .btn-export:disabled{opacity:0.45; cursor:default; filter:none;}
+  .btn-export svg{flex:none;}
+  .export-msg{font-size:12px; color:var(--muted); margin:8px 0 0;}
+  .export-msg.is-error{color:var(--critical);}
+  .export-msg.is-ok{color:var(--good);}
+  .result-count{font-size:12.5px; color:var(--muted); margin:10px 0; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+
+  .table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:10px;}
+  table{width:100%; border-collapse:collapse; font-size:13px; min-width:720px;}
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);
+    font-weight:600; padding:10px 12px; border-bottom:1px solid var(--border); background:var(--surface-2);
+    position:sticky; top:0; cursor:pointer; user-select:none; white-space:nowrap;
+  }
+  thead th[data-sortable]:hover{color:var(--ink);}
+  thead th .arrow{opacity:0.5; font-size:10px; margin-left:3px;}
+  tbody td{padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.client-row{cursor:pointer;}
+  tbody tr.client-row:hover{background:var(--surface-2);}
+  .name-cell .name{font-weight:500;}
+  .name-cell .sub{font-size:11.5px; color:var(--muted); font-family:"IBM Plex Mono"; margin-top:1px;}
+  .status-pill{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:3px 9px; border-radius:99px; font-weight:500; white-space:nowrap;}
+  .status-dot{width:7px; height:7px; border-radius:50%; flex:none;}
+  .status-good{background:var(--good-bg); color:var(--good);}
+  .status-warning{background:var(--warning-bg); color:var(--warning);}
+  .status-critical{background:var(--critical-bg); color:var(--critical);}
+  .num-cell{font-family:"IBM Plex Mono"; font-variant-numeric:tabular-nums; text-align:right;}
+  .detail-row td{background:var(--surface-2); padding:16px 20px;}
+  .detail-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px;}
+  .detail-stat .k{font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);}
+  .detail-stat .v{font-family:"IBM Plex Mono"; font-size:14px; margin-top:2px; font-variant-numeric:tabular-nums;}
+  .chev{display:inline-block; transition:transform .15s ease; color:var(--muted); font-size:11px;}
+  tr.expanded .chev{transform:rotate(90deg);}
+
+  .pagination{display:flex; align-items:center; justify-content:center; gap:6px; margin-top:14px; font-size:13px;}
+  .pagination button{
+    font-family:"IBM Plex Mono"; border:1px solid var(--border); background:var(--surface); color:var(--ink-2);
+    padding:5px 11px; border-radius:6px; cursor:pointer;
+  }
+  .pagination button:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+  .pagination button:disabled{opacity:0.35; cursor:default;}
+  .pagination .pg-info{color:var(--muted); font-family:"IBM Plex Mono"; padding:0 6px;}
+
+  .notes{margin:28px 0 8px; padding:18px 22px; background:var(--surface); border:1px solid var(--border); border-radius:12px;}
+  .notes h3{font-size:13px; margin-bottom:10px;}
+  .notes ul{margin:0; padding-left:18px; color:var(--ink-2); font-size:12.5px; line-height:1.7;}
+  .notes li{margin-bottom:4px;}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+</style>
+
+<div class="app">
+  <header class="console">
+    <span class="eyebrow">ByKom · Vía GPRS/IP</span>
+    <h1>Comunicación de clientes — Receptora Nanocomm</h1>
+    <p class="subtitle">Señales recibidas por la receptora Nanocomm (ByKom), vía GPRS/IP. Período 01/08/2026 – 31/08/2026. Elaborado a partir del reporte de eventos exportado de ByKom.</p>
+    <div class="kpi-row" id="kpi-row"></div>
+  </header>
+
+  <main>
+    <section class="grid-2">
+      <div class="card">
+        <h2>Señales por tipo de evento</h2>
+        <div id="cat-chart"></div>
+      </div>
+      <div class="card">
+        <h2>Clientes comunicados por día</h2>
+        <div class="line-chart-wrap">
+          <svg id="trend-svg" viewBox="0 0 560 220" preserveAspectRatio="none"></svg>
+          <div class="chart-tooltip" id="trend-tooltip" hidden></div>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--recept-nano)"></span>Nanocomm</span>
+        </div>
+        <p class="note" id="trend-note"></p>
+      </div>
+    </section>
+
+    <section class="card table-card">
+      <div class="table-header">
+        <h2>Detalle por cliente</h2>
+        <div class="filters">
+          <input id="search" type="text" placeholder="Buscar por nombre, cuenta o código…" />
+          <select id="filter-estado">
+            <option value="">Todos los estados</option>
+            <option value="good">Comunicando</option>
+            <option value="warning">Atención</option>
+            <option value="critical">Sin señal reciente</option>
+          </select>
+        </div>
+      </div>
+      <div class="result-count">
+        <span id="result-count-text"></span>
+        <button id="export-xlsx" class="btn-export" type="button">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1.5v8.5m0 0L5 7m3 3 3-3M2.5 11v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Exportar a Excel
+        </button>
+      </div>
+      <p class="export-msg" id="export-msg" hidden></p>
+      <div class="table-scroll">
+        <table id="client-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th data-sort="nombre_abo" data-sortable>Cliente <span class="arrow"></span></th>
+              <th data-sort="total" data-sortable style="text-align:right">Señales <span class="arrow"></span></th>
+              <th data-sort="test" data-sortable style="text-align:right">Tests <span class="arrow"></span></th>
+              <th data-sort="dias_con_senal" data-sortable style="text-align:right">Días con señal <span class="arrow"></span></th>
+              <th data-sort="ultima" data-sortable>Última señal <span class="arrow"></span></th>
+              <th data-sort="estado" data-sortable>Estado <span class="arrow"></span></th>
+            </tr>
+          </thead>
+          <tbody id="client-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </section>
+
+    <footer class="notes">
+      <h3>Notas metodológicas</h3>
+      <ul>
+        <li><strong>Universo:</strong> este informe cuenta clientes que efectivamente emitieron al menos una señal vía Nanocomm (GPRS/IP) en el período exportado; no representa el total de abonados configurados para esa vía.</li>
+        <li><strong>Período:</strong> 01/08/2026 – 31/08/2026, según el reporte de eventos exportado de ByKom.</li>
+        <li><strong>Señales excluidas:</strong> se descartaron <span id="note-noise-count"></span> señales de error con cuenta "99-99999/0" (NO IDENTIFICADO), que no corresponden a abonados reales sino a intentos de comunicación sin cuenta válida.</li>
+        <li><strong>Categorías de eventos:</strong> se agruparon los códigos de evento de ByKom (evt_codigo) en las mismas 8 categorías usadas en el informe de Bosch, para que ambos sean comparables. Algunos códigos propios de Nanocomm (ej. E81/E82/E83 = falla/restitución de línea o GPRS, RES/E71 = restablecimiento de zona, SGE/E99/EPG/SPG/E10 = eventos de sistema sin categoría clara) se clasificaron por interpretación del texto de detalle — si algún código quedó mal agrupado, avisar para corregirlo.</li>
+        <li><strong>Estado de señal:</strong> se calcula según los días transcurridos entre la última señal del cliente y el último dato disponible del período (31/08/2026), no respecto a la fecha de hoy — así el estado refleja comportamiento dentro del mes exportado y no queda todo en "sin señal reciente" simplemente porque pasó el tiempo desde la exportación.</li>
+        <li><strong>Fuente:</strong> reporte de eventos de la receptora Nanocomm (NANOCOMM BYKOM) exportado de ByKom, vía de comunicación GPRS/IP.</li>
+      </ul>
+    </footer>
+  </main>
+</div>
+
+<script>
+const SUMMARY = {"total_rows_raw": 8566, "total_rows_clean": 4828, "noise_rows": 3738, "total_clients": 71, "cat_counts": {"test": 1940, "falla_energia": 102, "apertura_cierre": 2374, "falla_comunicacion": 284, "alarma": 76, "otros": 7, "restauracion": 43, "anulacion": 2}, "top_detalle": {"test": {"TEST TELEFONICO/IP": 1940}, "falla_energia": {"CORTE DE 220V.": 44, "REST. DE 220V.": 35, "BATERIA BAJA DE PANEL": 16, "REST. BATERIA": 4, "[SEÑAL DESACTIVADA] BATERIA BAJA DE PANEL": 2, "[SEÑAL DESACTIVADA] REST. BATERIA": 1}, "apertura_cierre": {"CIERRE": 1178, "APERTURA": 1174, "CIERRE PARCIAL": 21, "CIERRE RECIENTE": 1}, "falla_comunicacion": {"GPRS/LAN: RESTITUCION LINEA TELEFONICA": 112, "GPRS/LAN: FALTA DE LINEA TELEFONICA": 108, "GPRS: RESTITUCION GPRS": 64}, "alarma": {"GPRS: DISPARO SIRENA POR GPRS": 29, "ROBO INF. ENTRADA  1  SEG *": 25, "DESACTIVACION DESPUES DE": 8, "ROBO INF. MESA ENTRADA  2  SEG": 2, "ROBO TAMPER DE SIRENA": 2, "ROBO INF. ENTRADA  1  30/30": 2}, "otros": {"GPRS/LAN: ENCENDIDO": 2, "[SEÑAL DESACTIVADA] INGRESO A PROGRAMACION": 2, "[SEÑAL DESACTIVADA] SALIDA DE PROGRAMACION": 2, "[SEÑAL DESACTIVADA] GPRS/LAN: ENCENDIDO": 1}, "restauracion": {"GPRS: RESTABLECIMIENTO DISPARO SIRENA": 31, "RESTABLECIMIENTO TAMPER DE SIRENA": 2, "RESTABLECIMIENTO BATERIA BAJA DE PANEL": 2, "RESTABLECIMIENTO INF. ENTRADA  1  30/30": 2, "[SEÑAL DESACTIVADA] RESTABLECIMIENTO EMERGENCIA MEDICA": 1, "[SEÑAL DESACTIVADA] RESTABLECIMIENTO ALARMA POR PANICO": 1}, "anulacion": {"ANULACION DE ZONA INF. ENTRADA  1  SEG *": 1, "ANULACION DE ZONA INF. HABITACION  1  *": 1}}, "periodo": {"inicio": "2026-08-01", "fin": "2026-08-31"}, "daily_total": {"2026-08-01": 72, "2026-08-02": 73, "2026-08-03": 209, "2026-08-04": 199, "2026-08-05": 188, "2026-08-06": 245, "2026-08-07": 277, "2026-08-08": 81, "2026-08-09": 66, "2026-08-10": 213, "2026-08-11": 194, "2026-08-12": 197, "2026-08-13": 199, "2026-08-14": 217, "2026-08-15": 92, "2026-08-16": 81, "2026-08-17": 81, "2026-08-18": 198, "2026-08-19": 201, "2026-08-20": 192, "2026-08-21": 186, "2026-08-22": 76, "2026-08-23": 75, "2026-08-24": 183, "2026-08-25": 175, "2026-08-26": 181, "2026-08-27": 176, "2026-08-28": 182, "2026-08-29": 78, "2026-08-30": 65, "2026-08-31": 176}, "daily_clients": {"2026-08-01": 63, "2026-08-02": 64, "2026-08-03": 71, "2026-08-04": 69, "2026-08-05": 70, "2026-08-06": 70, "2026-08-07": 71, "2026-08-08": 63, "2026-08-09": 63, "2026-08-10": 71, "2026-08-11": 71, "2026-08-12": 71, "2026-08-13": 69, "2026-08-14": 71, "2026-08-15": 64, "2026-08-16": 60, "2026-08-17": 64, "2026-08-18": 71, "2026-08-19": 69, "2026-08-20": 71, "2026-08-21": 69, "2026-08-22": 63, "2026-08-23": 65, "2026-08-24": 70, "2026-08-25": 68, "2026-08-26": 70, "2026-08-27": 70, "2026-08-28": 69, "2026-08-29": 63, "2026-08-30": 63, "2026-08-31": 67}};
+const CLIENTS_RAW = [{"cuenta_id": "100028846", "codigo_abo": "42-D737/0", "nombre_abo": "P JUD*JUZ PAZ GUERNICA, SUPREMA CORTE-ADMINIST DE JUSTICIA", "total": 344, "dias_con_senal": 31, "primera": "2026-08-01T12:13:50", "ultima": "2026-08-31T14:35:36", "gap_dias": 0.39, "test": 31, "apertura_cierre": 46, "anulacion": 0, "alarma": 2, "falla_comunicacion": 262, "falla_energia": 0, "restauracion": 3, "otros": 0}, {"cuenta_id": "100029835", "codigo_abo": "42-F026/0", "nombre_abo": "ARBA - GENERAL MADARIAGA, CENTRO SERVICIO LOCAL", "total": 115, "dias_con_senal": 31, "primera": "2026-08-01T01:36:26", "ultima": "2026-08-31T17:40:59", "gap_dias": 0.26, "test": 31, "apertura_cierre": 84, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100027658", "codigo_abo": "42-C549/0", "nombre_abo": "GIERGOFF, MIRTA", "total": 110, "dias_con_senal": 26, "primera": "2026-08-02T01:56:31", "ultima": "2026-08-30T21:40:07", "gap_dias": 1.09, "test": 25, "apertura_cierre": 6, "anulacion": 2, "alarma": 50, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 25, "otros": 0}, {"cuenta_id": "100029915", "codigo_abo": "42-F106/0", "nombre_abo": "ARBA - CARHUE ADOLFO ALSINA, CENTRO DE SERVICIO LOCAL", "total": 107, "dias_con_senal": 31, "primera": "2026-08-01T00:34:04", "ultima": "2026-08-31T14:24:46", "gap_dias": 0.39, "test": 31, "apertura_cierre": 76, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029933", "codigo_abo": "42-F124/0", "nombre_abo": "ARBA - PILAR, CENTRO DE SERVICIO LOCAL", "total": 107, "dias_con_senal": 31, "primera": "2026-08-01T08:21:34", "ultima": "2026-08-31T17:53:05", "gap_dias": 0.25, "test": 31, "apertura_cierre": 73, "anulacion": 0, "alarma": 2, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 1, "otros": 0}, {"cuenta_id": "100029826", "codigo_abo": "42-F017/0", "nombre_abo": "ARBA - PINAMAR, CENTRO SERVICIO LOCAL", "total": 103, "dias_con_senal": 31, "primera": "2026-08-01T02:34:20", "ultima": "2026-08-31T14:31:24", "gap_dias": 0.39, "test": 31, "apertura_cierre": 72, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029848", "codigo_abo": "42-F039/0", "nombre_abo": "ARBA - SAN PEDRO, CENTRO DE SERVICIO LOCAL", "total": 98, "dias_con_senal": 31, "primera": "2026-08-01T00:59:37", "ultima": "2026-08-31T14:23:48", "gap_dias": 0.39, "test": 31, "apertura_cierre": 63, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 4, "restauracion": 0, "otros": 0}, {"cuenta_id": "100028652", "codigo_abo": "42-D543/0", "nombre_abo": "P JUD  CONTROL DE GESTION, SUPREMA CORTE-ADMINIST DE JUSTICIA", "total": 98, "dias_con_senal": 31, "primera": "2026-08-01T03:58:59", "ultima": "2026-08-31T14:30:40", "gap_dias": 0.39, "test": 32, "apertura_cierre": 45, "anulacion": 0, "alarma": 0, "falla_comunicacion": 17, "falla_energia": 3, "restauracion": 1, "otros": 0}, {"cuenta_id": "100028494", "codigo_abo": "42-D385/0", "nombre_abo": "P JUD - JUZPAZ MAGDALENA, SUPREMA CORTE-ADMINIST DE JUSTICIA", "total": 95, "dias_con_senal": 31, "primera": "2026-08-01T14:27:21", "ultima": "2026-08-31T14:29:19", "gap_dias": 0.39, "test": 31, "apertura_cierre": 52, "anulacion": 0, "alarma": 5, "falla_comunicacion": 4, "falla_energia": 0, "restauracion": 3, "otros": 0}, {"cuenta_id": "100029893", "codigo_abo": "42-F084/0", "nombre_abo": "ARBA - OLAVARRIA, CENTRO DE SERVICIO LOCAL", "total": 87, "dias_con_senal": 21, "primera": "2026-08-02T12:03:45", "ultima": "2026-08-31T18:42:24", "gap_dias": 0.21, "test": 0, "apertura_cierre": 85, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029927", "codigo_abo": "42-F118/0", "nombre_abo": "ARBA - MERLO, CENTRO DE SERVICIO LOCAL", "total": 85, "dias_con_senal": 31, "primera": "2026-08-01T10:21:08", "ultima": "2026-08-31T14:45:40", "gap_dias": 0.38, "test": 31, "apertura_cierre": 46, "anulacion": 0, "alarma": 4, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 2, "otros": 0}, {"cuenta_id": "100031689", "codigo_abo": "42-C726/0", "nombre_abo": "UNLP - FAC. PSICOLOGÍA - EDIFI, CIO CENTRAL", "total": 84, "dias_con_senal": 31, "primera": "2026-08-01T02:42:57", "ultima": "2026-08-31T22:19:01", "gap_dias": 0.06, "test": 31, "apertura_cierre": 47, "anulacion": 0, "alarma": 3, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 1, "otros": 0}, {"cuenta_id": "100029866", "codigo_abo": "42-F057/0", "nombre_abo": "ARBA - LANUS, CENTRO DE SERVICIO LOCAL", "total": 79, "dias_con_senal": 31, "primera": "2026-08-01T09:14:09", "ultima": "2026-08-31T14:48:06", "gap_dias": 0.38, "test": 31, "apertura_cierre": 42, "anulacion": 0, "alarma": 4, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 2, "otros": 0}, {"cuenta_id": "100029821", "codigo_abo": "42-F012/0", "nombre_abo": "ARBA - GENERAL GUIDO, CENTRO SERVICIO LOCAL*VER REF*", "total": 79, "dias_con_senal": 31, "primera": "2026-08-01T15:58:02", "ultima": "2026-08-31T15:56:53", "gap_dias": 0.33, "test": 33, "apertura_cierre": 42, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 4, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029822", "codigo_abo": "42-F013/0", "nombre_abo": "ARBA - MAR DEL PLATA, SUBGERENCIA COORDINACION", "total": 78, "dias_con_senal": 31, "primera": "2026-08-01T01:32:32", "ultima": "2026-08-31T15:59:18", "gap_dias": 0.33, "test": 31, "apertura_cierre": 45, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029824", "codigo_abo": "42-F015/0", "nombre_abo": "ARBA - MAR CHIQUITA, CENTRO SERVICIO LOCAL", "total": 77, "dias_con_senal": 31, "primera": "2026-08-01T01:51:15", "ultima": "2026-08-31T17:24:30", "gap_dias": 0.27, "test": 31, "apertura_cierre": 46, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029823", "codigo_abo": "42-F014/0", "nombre_abo": "ARBA - MAR DEL PLATA, DPTO DE INSPECCIONES", "total": 77, "dias_con_senal": 31, "primera": "2026-08-01T13:41:59", "ultima": "2026-08-31T13:40:31", "gap_dias": 0.42, "test": 31, "apertura_cierre": 46, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029853", "codigo_abo": "42-F044/0", "nombre_abo": "ARBA - MERCEDES, CENTRO DE SERVICIO LOCAL", "total": 76, "dias_con_senal": 30, "primera": "2026-08-01T03:33:22", "ultima": "2026-08-31T16:53:14", "gap_dias": 0.29, "test": 26, "apertura_cierre": 50, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029920", "codigo_abo": "42-F111/0", "nombre_abo": "ARBA - LOBOS, CENTRO DE SERVICIO LOCAL", "total": 75, "dias_con_senal": 31, "primera": "2026-08-01T01:28:42", "ultima": "2026-08-31T13:59:12", "gap_dias": 0.41, "test": 31, "apertura_cierre": 44, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029923", "codigo_abo": "42-F114/0", "nombre_abo": "ARBA - SAN JUSTO, DPTO INSPECIONES LA MATANZA", "total": 75, "dias_con_senal": 31, "primera": "2026-08-01T01:55:50", "ultima": "2026-08-31T16:05:44", "gap_dias": 0.32, "test": 31, "apertura_cierre": 44, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029820", "codigo_abo": "42-F011/0", "nombre_abo": "ARBA - MAIPU, CENTRO SERVICIO LOCAL", "total": 74, "dias_con_senal": 31, "primera": "2026-08-01T01:51:23", "ultima": "2026-08-31T15:37:25", "gap_dias": 0.34, "test": 31, "apertura_cierre": 41, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029940", "codigo_abo": "42-F131/0", "nombre_abo": "ARBA - SAN ISIDRO, CENTRO DE SERVICIO LOCAL", "total": 74, "dias_con_senal": 31, "primera": "2026-08-01T09:53:12", "ultima": "2026-08-31T14:56:07", "gap_dias": 0.37, "test": 31, "apertura_cierre": 41, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029897", "codigo_abo": "42-F088/0", "nombre_abo": "ARBA - CHACABUCO, CENTRO DE SERVICIO LOCAL", "total": 73, "dias_con_senal": 31, "primera": "2026-08-01T01:16:44", "ultima": "2026-08-31T15:33:09", "gap_dias": 0.35, "test": 31, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029934", "codigo_abo": "42-F125/0", "nombre_abo": "ARBA - CASEROS - 3 DE FEBRERO, CENTRO DE SERVICIO LOCAL", "total": 73, "dias_con_senal": 31, "primera": "2026-08-01T01:39:07", "ultima": "2026-08-31T14:41:40", "gap_dias": 0.38, "test": 31, "apertura_cierre": 42, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029872", "codigo_abo": "42-F063/0", "nombre_abo": "ARBA - AYACUCHO, CENTRO DE SERVICIO LOCAL", "total": 73, "dias_con_senal": 30, "primera": "2026-08-01T08:15:22", "ultima": "2026-08-31T16:13:22", "gap_dias": 0.32, "test": 30, "apertura_cierre": 41, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029811", "codigo_abo": "42-F002/0", "nombre_abo": "ARBA - CITY BELL, CENTRO SERVICIO LOCAL CITY BELL", "total": 72, "dias_con_senal": 28, "primera": "2026-08-01T01:24:00", "ultima": "2026-08-31T14:34:04", "gap_dias": 0.39, "test": 27, "apertura_cierre": 30, "anulacion": 0, "alarma": 2, "falla_comunicacion": 0, "falla_energia": 6, "restauracion": 2, "otros": 5}, {"cuenta_id": "100029935", "codigo_abo": "42-F126/0", "nombre_abo": "ARBA - SAN MARTIN, CENTRO DE SERVICIO LOCAL", "total": 72, "dias_con_senal": 31, "primera": "2026-08-01T02:04:31", "ultima": "2026-08-31T15:41:46", "gap_dias": 0.34, "test": 31, "apertura_cierre": 41, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029882", "codigo_abo": "42-F073/0", "nombre_abo": "ARBA - ADOLFO GONZALEZ CHAVEZ, CENTRO DE SERVICIO LOCAL", "total": 72, "dias_con_senal": 31, "primera": "2026-08-01T11:04:46", "ultima": "2026-08-31T17:50:23", "gap_dias": 0.25, "test": 31, "apertura_cierre": 39, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029809", "codigo_abo": "42-F000/0", "nombre_abo": "ARBA - ENSENADA, CENTRO SERVICIO LOCAL ENSENADA", "total": 72, "dias_con_senal": 31, "primera": "2026-08-01T11:21:54", "ultima": "2026-08-31T14:30:32", "gap_dias": 0.39, "test": 30, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029885", "codigo_abo": "42-F076/0", "nombre_abo": "ARBA - MONTE HERMOSO, CENTRO DE SERVICIO LOCAL", "total": 72, "dias_con_senal": 31, "primera": "2026-08-01T23:13:25", "ultima": "2026-08-31T15:19:42", "gap_dias": 0.35, "test": 30, "apertura_cierre": 42, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029840", "codigo_abo": "42-F031/0", "nombre_abo": "ARBA - BERAZATEGUI, CENTRO DE SERVICIO LOCAL", "total": 71, "dias_con_senal": 31, "primera": "2026-08-01T02:13:57", "ultima": "2026-08-31T16:26:27", "gap_dias": 0.31, "test": 31, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029858", "codigo_abo": "42-F049/0", "nombre_abo": "ARBA - BRAGADO, CENTRO DE SERVICIO LOCAL", "total": 71, "dias_con_senal": 28, "primera": "2026-08-01T02:21:50", "ultima": "2026-08-31T23:50:24", "gap_dias": 0.0, "test": 24, "apertura_cierre": 24, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 21, "restauracion": 0, "otros": 2}, {"cuenta_id": "100029876", "codigo_abo": "42-F067/0", "nombre_abo": "ARBA - LOBERIA, CENTRO DE SERVICIO LOCAL", "total": 71, "dias_con_senal": 31, "primera": "2026-08-01T03:19:29", "ultima": "2026-08-31T16:30:53", "gap_dias": 0.31, "test": 31, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029851", "codigo_abo": "42-F042/0", "nombre_abo": "ARBA - PERGAMINO, CENTRO DE SERVICIO LOCAL", "total": 71, "dias_con_senal": 31, "primera": "2026-08-01T09:40:49", "ultima": "2026-08-31T16:17:59", "gap_dias": 0.31, "test": 31, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029867", "codigo_abo": "42-F058/0", "nombre_abo": "ARBA - LOMAS DE ZAMORA, CENTRO DE SERVICIO LOCAL", "total": 71, "dias_con_senal": 31, "primera": "2026-08-01T11:23:19", "ultima": "2026-08-31T16:10:56", "gap_dias": 0.32, "test": 31, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029901", "codigo_abo": "42-F092/0", "nombre_abo": "ARBA - GENERAL ARENALES, CENTRO DE SERVICIO LOCAL", "total": 71, "dias_con_senal": 31, "primera": "2026-08-01T13:17:24", "ultima": "2026-08-31T15:56:25", "gap_dias": 0.33, "test": 31, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029845", "codigo_abo": "42-F036/0", "nombre_abo": "ARBA - CAMPANA, CENTRO DE SERVICIO LOCAL", "total": 70, "dias_con_senal": 31, "primera": "2026-08-01T00:21:27", "ultima": "2026-08-31T19:24:49", "gap_dias": 0.18, "test": 31, "apertura_cierre": 39, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029881", "codigo_abo": "42-F072/0", "nombre_abo": "ARBA - BENITO JUAREZ, CENTRO DE SERVICIO LOCAL", "total": 70, "dias_con_senal": 31, "primera": "2026-08-01T01:00:55", "ultima": "2026-08-31T16:33:38", "gap_dias": 0.3, "test": 31, "apertura_cierre": 39, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029939", "codigo_abo": "42-F130/0", "nombre_abo": "ARBA - VICENTE LOPEZ, CENTRO DE SERVICIO LOCAL", "total": 69, "dias_con_senal": 31, "primera": "2026-08-01T00:44:10", "ultima": "2026-08-31T16:23:34", "gap_dias": 0.31, "test": 30, "apertura_cierre": 39, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029855", "codigo_abo": "42-F046/0", "nombre_abo": "ARBA - SUIPACHA, CENTRO DE SERVICIO LOCAL", "total": 69, "dias_con_senal": 30, "primera": "2026-08-02T00:54:22", "ultima": "2026-08-31T15:57:01", "gap_dias": 0.33, "test": 25, "apertura_cierre": 44, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029873", "codigo_abo": "42-F064/0", "nombre_abo": "ARBA - TANDIL, CENTRO DE SERVICIO LOCAL", "total": 68, "dias_con_senal": 30, "primera": "2026-08-01T00:34:01", "ultima": "2026-08-31T18:34:18", "gap_dias": 0.22, "test": 30, "apertura_cierre": 38, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029922", "codigo_abo": "42-F113/0", "nombre_abo": "ARBA - SAN JUSTO, CENTRO DE SERVICIO LOCAL", "total": 68, "dias_con_senal": 31, "primera": "2026-08-01T01:14:48", "ultima": "2026-08-31T14:47:35", "gap_dias": 0.38, "test": 31, "apertura_cierre": 37, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029828", "codigo_abo": "42-F019/0", "nombre_abo": "ARBA - SAN CLEMENTE DEL TUYU, CENTRO SERVICIO LOCAL", "total": 68, "dias_con_senal": 31, "primera": "2026-08-01T02:03:29", "ultima": "2026-08-31T14:52:19", "gap_dias": 0.37, "test": 31, "apertura_cierre": 37, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029906", "codigo_abo": "42-F097/0", "nombre_abo": "ARBA - ROQUE PEREZ, CENTRO DE SERVICIO LOCAL", "total": 67, "dias_con_senal": 28, "primera": "2026-08-01T17:05:11", "ultima": "2026-08-28T17:03:55", "gap_dias": 3.28, "test": 28, "apertura_cierre": 37, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029859", "codigo_abo": "42-F050/0", "nombre_abo": "ARBA - 9 DE JULIO, CENTRO DE SERVICIO LOCAL", "total": 66, "dias_con_senal": 29, "primera": "2026-08-01T13:51:23", "ultima": "2026-08-31T15:49:54", "gap_dias": 0.33, "test": 26, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029937", "codigo_abo": "42-F128/0", "nombre_abo": "ARBA - URDAMPILLETA - BOLIVAR, CENTRO DE SERVICIO LOCAL", "total": 66, "dias_con_senal": 31, "primera": "2026-08-01T20:00:24", "ultima": "2026-08-31T19:59:12", "gap_dias": 0.16, "test": 31, "apertura_cierre": 35, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029891", "codigo_abo": "42-F082/0", "nombre_abo": "ARBA - CORONEL SUAREZ, CENTRO DE SERVICIO LOCAL", "total": 64, "dias_con_senal": 30, "primera": "2026-08-01T00:45:10", "ultima": "2026-08-31T14:54:42", "gap_dias": 0.37, "test": 30, "apertura_cierre": 34, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029936", "codigo_abo": "42-F127/0", "nombre_abo": "ARBA - LOS POLVORINES, MALVINAS ARG CENTRO DE SERVICIO LOCAL", "total": 56, "dias_con_senal": 31, "primera": "2026-08-01T01:41:18", "ultima": "2026-08-31T07:52:26", "gap_dias": 0.67, "test": 31, "apertura_cierre": 25, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100027937", "codigo_abo": "42-C828/0", "nombre_abo": "SUAREZ ALEJANDRO, GARDELLA NATALIA", "total": 54, "dias_con_senal": 30, "primera": "2026-08-01T01:58:27", "ultima": "2026-08-31T01:57:31", "gap_dias": 0.91, "test": 30, "apertura_cierre": 23, "anulacion": 0, "alarma": 0, "falla_comunicacion": 1, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029832", "codigo_abo": "42-F023/0", "nombre_abo": "ARBA - LA PLATA, CENTRO SERVICIO LOCAL", "total": 54, "dias_con_senal": 31, "primera": "2026-08-01T02:11:42", "ultima": "2026-08-31T02:10:17", "gap_dias": 0.9, "test": 31, "apertura_cierre": 13, "anulacion": 0, "alarma": 4, "falla_comunicacion": 0, "falla_energia": 4, "restauracion": 2, "otros": 0}, {"cuenta_id": "100029887", "codigo_abo": "42-F078/0", "nombre_abo": "ARBA - MAYOR BURATOVICH, VILLARINO - CENTRO DE SERVICIO LOCAL", "total": 44, "dias_con_senal": 20, "primera": "2026-08-03T08:22:05", "ultima": "2026-08-31T18:59:42", "gap_dias": 0.2, "test": 0, "apertura_cierre": 38, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 6, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029908", "codigo_abo": "42-F099/0", "nombre_abo": "ARBA - SALADILLO, CENTRO DE SERVICIO LOCAL", "total": 43, "dias_con_senal": 21, "primera": "2026-08-03T07:01:59", "ultima": "2026-08-31T15:45:09", "gap_dias": 0.34, "test": 0, "apertura_cierre": 43, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029921", "codigo_abo": "42-F112/0", "nombre_abo": "ARBA - NAVARRO, CENTRO DE SERVICIO LOCAL", "total": 42, "dias_con_senal": 20, "primera": "2026-08-03T08:20:36", "ultima": "2026-08-31T14:35:28", "gap_dias": 0.39, "test": 0, "apertura_cierre": 38, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 4, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029943", "codigo_abo": "42-F134/0", "nombre_abo": "ARBA - ESCOBAR, CENTRO DE SERVICIO LOCAL", "total": 40, "dias_con_senal": 20, "primera": "2026-08-03T07:47:48", "ultima": "2026-08-31T14:32:50", "gap_dias": 0.39, "test": 0, "apertura_cierre": 40, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100027854", "codigo_abo": "42-C745/0", "nombre_abo": "LACIAR PERRY, ALFREDO", "total": 39, "dias_con_senal": 31, "primera": "2026-08-01T01:17:57", "ultima": "2026-08-31T01:17:22", "gap_dias": 0.94, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 7, "restauracion": 1, "otros": 0}, {"cuenta_id": "100029842", "codigo_abo": "42-F033/0", "nombre_abo": "ARBA - CAPILLA DEL SEÑOR, CENTRO DE SERVICIO LOCAL", "total": 37, "dias_con_senal": 31, "primera": "2026-08-01T01:05:19", "ultima": "2026-08-31T01:03:55", "gap_dias": 0.95, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 6, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029896", "codigo_abo": "42-F087/0", "nombre_abo": "ARBA - CARMEN DE ARECO, CENTRO DE SERVICIO LOCAL", "total": 35, "dias_con_senal": 31, "primera": "2026-08-01T00:58:20", "ultima": "2026-08-31T00:56:48", "gap_dias": 0.95, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 4, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029942", "codigo_abo": "42-F133/0", "nombre_abo": "ARBA - TIGRE, CENTRO DE SERVICIO LOCAL", "total": 35, "dias_con_senal": 19, "primera": "2026-08-03T08:16:34", "ultima": "2026-08-31T14:47:49", "gap_dias": 0.38, "test": 0, "apertura_cierre": 35, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029856", "codigo_abo": "42-F047/0", "nombre_abo": "ARBA - CHIVILCOY, CENTRO DE SERVICIO LOCAL", "total": 33, "dias_con_senal": 31, "primera": "2026-08-01T01:29:13", "ultima": "2026-08-31T21:27:58", "gap_dias": 0.1, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029865", "codigo_abo": "42-F056/0", "nombre_abo": "ARBA - FLORENTINO AMEGHINO, CENTRO DE DISTRIBUCION", "total": 33, "dias_con_senal": 31, "primera": "2026-08-01T09:43:54", "ultima": "2026-08-31T09:42:47", "gap_dias": 0.59, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029924", "codigo_abo": "42-F115/0", "nombre_abo": "ARBA - RAMOS MEJIA, CENTRO DE SERVICIO LOCAL", "total": 33, "dias_con_senal": 31, "primera": "2026-08-01T09:56:24", "ultima": "2026-08-31T10:28:35", "gap_dias": 0.56, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029911", "codigo_abo": "42-F102/0", "nombre_abo": "ARBA - PIROVANO, CENTRO DE SERVICIO LOCAL", "total": 33, "dias_con_senal": 31, "primera": "2026-08-01T17:45:04", "ultima": "2026-08-31T17:43:49", "gap_dias": 0.25, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 2, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029899", "codigo_abo": "42-F090/0", "nombre_abo": "ARBA - JUNIN, CENTRO DE SERVICIO LOCAL", "total": 31, "dias_con_senal": 31, "primera": "2026-08-01T00:57:50", "ultima": "2026-08-31T00:56:14", "gap_dias": 0.95, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029913", "codigo_abo": "42-F104/0", "nombre_abo": "ARBA - DAIREAUX, CENTRO DE SERVICIO LOCAL", "total": 31, "dias_con_senal": 31, "primera": "2026-08-01T01:12:34", "ultima": "2026-08-31T01:11:16", "gap_dias": 0.94, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029877", "codigo_abo": "42-F068/0", "nombre_abo": "ARBA - SAN CAYETANO, CENTRO DE SERVICIO LOCAL", "total": 31, "dias_con_senal": 31, "primera": "2026-08-01T01:53:22", "ultima": "2026-08-31T01:52:13", "gap_dias": 0.92, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029850", "codigo_abo": "42-F041/0", "nombre_abo": "ARBA - SAN NICOLAS, CENTRO DE SERVICIO LOCAL", "total": 31, "dias_con_senal": 31, "primera": "2026-08-01T10:04:02", "ultima": "2026-08-31T10:02:41", "gap_dias": 0.57, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029843", "codigo_abo": "42-F034/0", "nombre_abo": "ARBA - EZEIZA, CENTRO DE SERVICIO LOCAL EZEIZA", "total": 31, "dias_con_senal": 31, "primera": "2026-08-01T10:37:36", "ultima": "2026-08-31T10:36:27", "gap_dias": 0.55, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029938", "codigo_abo": "42-F129/0", "nombre_abo": "ARBA - CABA, CENTRO DE SERVICIO LOCAL", "total": 31, "dias_con_senal": 31, "primera": "2026-08-01T16:32:43", "ultima": "2026-08-31T16:30:10", "gap_dias": 0.31, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100022555", "codigo_abo": "42-7564/0", "nombre_abo": "MINISTERIO PUBLICO, DEP. AUTOMOTORES", "total": 31, "dias_con_senal": 31, "primera": "2026-08-01T23:17:03", "ultima": "2026-08-31T23:15:48", "gap_dias": 0.02, "test": 31, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029819", "codigo_abo": "42-F010/0", "nombre_abo": "ARBA - DOLORES, DPTO INSPECCIONES", "total": 27, "dias_con_senal": 15, "primera": "2026-08-01T18:07:54", "ultima": "2026-08-20T07:42:07", "gap_dias": 11.67, "test": 1, "apertura_cierre": 25, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 1, "restauracion": 0, "otros": 0}, {"cuenta_id": "100029857", "codigo_abo": "42-F048/0", "nombre_abo": "ARBA - ALBERTI, CENTRO DE SERVICIO LOCAL", "total": 26, "dias_con_senal": 26, "primera": "2026-08-01T00:03:08", "ultima": "2026-08-30T23:50:53", "gap_dias": 1.0, "test": 26, "apertura_cierre": 0, "anulacion": 0, "alarma": 0, "falla_comunicacion": 0, "falla_energia": 0, "restauracion": 0, "otros": 0}];
+
+const CAT_META = {
+  test:            {label:'Test periódico',        color:'var(--cat-test)'},
+  apertura_cierre: {label:'Apertura / Cierre',      color:'var(--cat-ap)'},
+  anulacion:       {label:'Anulación de zona',      color:'var(--cat-anu)'},
+  alarma:          {label:'Alarma',                 color:'var(--cat-alarma)'},
+  falla_comunicacion: {label:'Falla de comunicación', color:'var(--cat-fcom)'},
+  falla_energia:   {label:'Falla de energía / batería', color:'var(--cat-fenerg)'},
+  restauracion:    {label:'Restauración',           color:'var(--cat-rest)'},
+  otros:           {label:'Otros',                  color:'var(--cat-otros)'},
+};
+const CAT_ORDER = ['apertura_cierre','test','falla_comunicacion','alarma','restauracion','falla_energia','anulacion','otros'];
+
+function fmt(n){ return new Intl.NumberFormat('es-AR').format(n); }
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) + ' ' + d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+function estadoOf(gap){
+  if(gap <= 1) return 'good';
+  if(gap <= 3) return 'warning';
+  return 'critical';
+}
+const ESTADO_LABEL = {good:'Comunicando', warning:'Atención', critical:'Sin señal reciente'};
+
+const CLIENTS = CLIENTS_RAW.map(c => ({ ...c, estado: estadoOf(c.gap_dias) }));
+
+(function renderKPIs(){
+  const el = document.getElementById('kpi-row');
+  const items = [
+    [fmt(SUMMARY.total_clients), 'clientes comunicados'],
+    [fmt(SUMMARY.total_rows_clean), 'señales registradas'],
+  ];
+  el.innerHTML = items.map(([v,l]) => `<div class="kpi"><span class="kpi-value">${v}</span><span class="kpi-label">${l}</span></div>`).join('')
+    + `<div class="kpi kpi-muted"><span class="kpi-value">${fmt(SUMMARY.noise_rows)}</span><span class="kpi-label">señales sin identificar (excluidas)</span></div>`;
+  const noiseEl = document.getElementById('note-noise-count');
+  if(noiseEl) noiseEl.textContent = fmt(SUMMARY.noise_rows);
+})();
+
+(function renderCatChart(){
+  const el = document.getElementById('cat-chart');
+  const max = Math.max(...CAT_ORDER.map(k => SUMMARY.cat_counts[k] || 0));
+  el.innerHTML = CAT_ORDER.map(key => {
+    const meta = CAT_META[key];
+    const count = SUMMARY.cat_counts[key] || 0;
+    const pct = Math.max((count/max)*100, 0.5);
+    return `<div class="bar-row">
+      <span class="label">${meta.label}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${meta.color}"></span></span>
+      <span class="count">${fmt(count)}</span>
+    </div>`;
+  }).join('');
+})();
+
+(function renderTrend(){
+  const dates = Object.keys(SUMMARY.daily_clients).sort();
+  const series = dates.map(d => SUMMARY.daily_clients[d] || 0);
+  const W = 560, H = 220, padL = 34, padR = 10, padT = 12, padB = 22;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxY = Math.max(...series) * 1.15;
+  const n = dates.length;
+  const x = i => padL + (i/(n-1)) * plotW;
+  const y = v => padT + plotH - (v/maxY)*plotH;
+
+  function path(arr){
+    return arr.map((v,i) => (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  }
+  function areaPath(arr){
+    return path(arr) + ` L ${x(n-1).toFixed(1)} ${(padT+plotH).toFixed(1)} L ${x(0).toFixed(1)} ${(padT+plotH).toFixed(1)} Z`;
+  }
+
+  const svg = document.getElementById('trend-svg');
+  const gridY = [0,0.25,0.5,0.75,1].map(f => {
+    const val = Math.round(maxY*f);
+    return `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${y(val).toFixed(1)}" y2="${y(val).toFixed(1)}"/>
+            <text class="axis-label" x="${padL-6}" y="${(y(val)+3).toFixed(1)}" text-anchor="end">${fmt(val)}</text>`;
+  }).join('');
+
+  const monthTicks = [];
+  let lastMonth = '';
+  dates.forEach((d,i) => {
+    const m = d.slice(0,7);
+    if(m !== lastMonth){ monthTicks.push(i); lastMonth = m; }
+  });
+  const xTicks = monthTicks.map(i => {
+    const d = new Date(dates[i]);
+    const label = d.toLocaleDateString('es-AR',{day:'2-digit',month:'short'});
+    return `<text class="axis-label" x="${x(i).toFixed(1)}" y="${H-4}" text-anchor="start">${label}</text>`;
+  }).join('') + `<text class="axis-label" x="${x(n-1).toFixed(1)}" y="${H-4}" text-anchor="end">${new Date(dates[n-1]).toLocaleDateString('es-AR',{day:'2-digit',month:'short'})}</text>`;
+
+  svg.innerHTML = `
+    ${gridY}
+    <path d="${areaPath(series)}" fill="var(--recept-nano)" opacity="0.12" stroke="none"/>
+    <path d="${path(series)}" fill="none" stroke="var(--recept-nano)" stroke-width="2" stroke-linejoin="round"/>
+    <line class="gridline" x1="${padL}" x2="${W-padR}" y1="${(padT+plotH).toFixed(1)}" y2="${(padT+plotH).toFixed(1)}" style="stroke:var(--baseline)"/>
+    ${xTicks}
+    <g id="hover-layer"></g>
+  `;
+
+  const hoverLayer = document.getElementById('hover-layer');
+  const tooltip = document.getElementById('trend-tooltip');
+  const hitRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  hitRect.setAttribute('x', padL); hitRect.setAttribute('y', padT);
+  hitRect.setAttribute('width', plotW); hitRect.setAttribute('height', plotH);
+  hitRect.setAttribute('fill','transparent');
+  svg.appendChild(hitRect);
+
+  const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  dot.setAttribute('r','3.5'); dot.setAttribute('fill','var(--recept-nano)'); dot.setAttribute('stroke','var(--surface)'); dot.setAttribute('stroke-width','1.5'); dot.style.display='none';
+  hoverLayer.appendChild(dot);
+
+  svg.addEventListener('mousemove', (e) => {
+    const rect = svg.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width * W;
+    let i = Math.round(((relX - padL) / plotW) * (n-1));
+    i = Math.max(0, Math.min(n-1, i));
+    dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(series[i])); dot.style.display='block';
+    const d = new Date(dates[i]);
+    const dLabel = d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    tooltip.innerHTML = `<strong>${dLabel}</strong><br>Nanocomm: ${fmt(series[i])}`;
+    tooltip.style.left = (x(i)/W*100) + '%';
+    tooltip.style.top = (y(series[i])/H*100) + '%';
+    tooltip.hidden = false;
+  });
+  svg.addEventListener('mouseleave', () => { tooltip.hidden = true; dot.style.display='none'; });
+
+  document.getElementById('trend-note').textContent =
+    'Clientes únicos que emitieron al menos una señal cada día, período 01/08/2026 – 31/08/2026.';
+})();
+
+const state = { search:'', estado:'', sortKey:'total', sortDir:-1, page:1, pageSize:50, expanded:new Set() };
+
+function applyFilters(){
+  let rows = CLIENTS;
+  if(state.estado) rows = rows.filter(c => c.estado === state.estado);
+  if(state.search){
+    const q = state.search.toLowerCase();
+    rows = rows.filter(c => (c.nombre_abo||'').toLowerCase().includes(q) || (c.codigo_abo||'').toLowerCase().includes(q) || (c.cuenta_id||'').includes(q));
+  }
+  rows = rows.slice().sort((a,b) => {
+    let av = a[state.sortKey], bv = b[state.sortKey];
+    if(typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); return av < bv ? -state.sortDir : av > bv ? state.sortDir : 0; }
+    return (av - bv) * state.sortDir;
+  });
+  return rows;
+}
+
+function renderTable(){
+  const rows = applyFilters();
+  document.getElementById('result-count-text').textContent = `${fmt(rows.length)} de ${fmt(CLIENTS.length)} clientes`;
+  const totalPages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+  state.page = Math.min(state.page, totalPages);
+  const start = (state.page-1)*state.pageSize;
+  const pageRows = rows.slice(start, start+state.pageSize);
+
+  const tbody = document.getElementById('client-tbody');
+  tbody.innerHTML = pageRows.map(c => {
+    const rid = c.cuenta_id;
+    const expanded = state.expanded.has(rid);
+    const mainRow = `<tr class="client-row ${expanded?'expanded':''}" data-id="${rid}">
+      <td><span class="chev">▸</span></td>
+      <td class="name-cell"><div class="name">${escapeHtml(c.nombre_abo||'—')}</div><div class="sub">${escapeHtml(c.codigo_abo||'')}</div></td>
+      <td class="num-cell">${fmt(c.total)}</td>
+      <td class="num-cell">${fmt(c.test)}</td>
+      <td class="num-cell">${fmt(c.dias_con_senal)}</td>
+      <td class="mono" style="font-size:12.5px">${fmtDate(c.ultima)}</td>
+      <td><span class="status-pill status-${c.estado}"><span class="status-dot" style="background:currentColor"></span>${ESTADO_LABEL[c.estado]}</span></td>
+    </tr>`;
+    let detailRow = '';
+    if(expanded){
+      const stats = [
+        ['Cuenta', c.cuenta_id],
+        ['Días con señal', fmt(c.dias_con_senal)],
+        ['Primera señal', fmtDate(c.primera)],
+        ['Apertura/Cierre', fmt(c.apertura_cierre)],
+        ['Anulación de zona', fmt(c.anulacion)],
+        ['Alarma', fmt(c.alarma)],
+        ['Falla comunicación', fmt(c.falla_comunicacion)],
+        ['Falla energía/batería', fmt(c.falla_energia)],
+        ['Restauración', fmt(c.restauracion)],
+        ['Otros', fmt(c.otros)],
+      ];
+      detailRow = `<tr class="detail-row"><td colspan="7"><div class="detail-grid">${
+        stats.map(([k,v]) => `<div class="detail-stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')
+      }</div></td></tr>`;
+    }
+    return mainRow + detailRow;
+  }).join('');
+
+  tbody.querySelectorAll('tr.client-row').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const id = tr.getAttribute('data-id');
+      if(state.expanded.has(id)) state.expanded.delete(id); else state.expanded.add(id);
+      renderTable();
+    });
+  });
+
+  renderPagination(totalPages);
+  updateSortArrows();
+}
+
+function renderPagination(totalPages){
+  const el = document.getElementById('pagination');
+  el.innerHTML = `
+    <button id="pg-prev" ${state.page<=1?'disabled':''}>‹ Anterior</button>
+    <span class="pg-info">Página ${state.page} de ${totalPages}</span>
+    <button id="pg-next" ${state.page>=totalPages?'disabled':''}>Siguiente ›</button>
+  `;
+  document.getElementById('pg-prev').addEventListener('click', () => { state.page--; renderTable(); });
+  document.getElementById('pg-next').addEventListener('click', () => { state.page++; renderTable(); });
+}
+
+function updateSortArrows(){
+  document.querySelectorAll('th[data-sortable]').forEach(th => {
+    const arrow = th.querySelector('.arrow');
+    if(th.getAttribute('data-sort') === state.sortKey){ arrow.textContent = state.sortDir === 1 ? '↑' : '↓'; }
+    else { arrow.textContent = ''; }
+  });
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+document.getElementById('search').addEventListener('input', e => { state.search = e.target.value; state.page = 1; renderTable(); });
+document.getElementById('filter-estado').addEventListener('change', e => { state.estado = e.target.value; state.page = 1; renderTable(); });
+document.querySelectorAll('th[data-sortable]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.getAttribute('data-sort');
+    if(state.sortKey === key){ state.sortDir *= -1; } else { state.sortKey = key; state.sortDir = key==='nombre_abo'||key==='ultima'?1:-1; }
+    renderTable();
+  });
+});
+
+const EXPORT_COLUMNS = [
+  ['Cliente', c => c.nombre_abo || ''],
+  ['Código', c => c.codigo_abo || ''],
+  ['Cuenta', c => c.cuenta_id || ''],
+  ['Señales totales', c => c.total],
+  ['Test periódico', c => c.test],
+  ['Apertura/Cierre', c => c.apertura_cierre],
+  ['Anulación de zona', c => c.anulacion],
+  ['Alarma', c => c.alarma],
+  ['Falla comunicación', c => c.falla_comunicacion],
+  ['Falla energía/batería', c => c.falla_energia],
+  ['Restauración', c => c.restauracion],
+  ['Otros', c => c.otros],
+  ['Días con señal', c => c.dias_con_senal],
+  ['Primera señal', c => fmtDate(c.primera)],
+  ['Última señal', c => fmtDate(c.ultima)],
+  ['Estado', c => ESTADO_LABEL[c.estado]],
+];
+
+function buildExportFilenameParts(){
+  const parts = [];
+  if(state.estado) parts.push(state.estado === 'good' ? 'comunicando' : state.estado === 'warning' ? 'atencion' : 'sin-senal');
+  if(state.search) parts.push('busqueda');
+  return parts;
+}
+
+let exportMsgTimer = null;
+function showExportMsg(text, kind){
+  const el = document.getElementById('export-msg');
+  el.textContent = text;
+  el.className = 'export-msg' + (kind ? ' is-'+kind : '');
+  el.hidden = false;
+  clearTimeout(exportMsgTimer);
+  exportMsgTimer = setTimeout(() => { el.hidden = true; }, 5000);
+}
+
+async function exportToExcel(){
+  const btn = document.getElementById('export-xlsx');
+  const rows = applyFilters();
+  if(rows.length === 0){
+    showExportMsg('No hay clientes para exportar con los filtros actuales.', 'error');
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const aoa = [EXPORT_COLUMNS.map(c => c[0])].concat(
+      rows.map(c => EXPORT_COLUMNS.map(col => col[1](c)))
+    );
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [
+      {wch:26},{wch:12},{wch:11},{wch:12},{wch:12},{wch:14},{wch:14},{wch:9},
+      {wch:14},{wch:16},{wch:12},{wch:9},{wch:12},{wch:16},{wch:16},{wch:16}
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Detalle por cliente');
+    const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    const blob = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+
+    const today = new Date().toISOString().slice(0,10);
+    const parts = buildExportFilenameParts();
+    const filename = ['detalle_clientes_nanocomm', ...parts, today].join('_') + '.xlsx';
+
+    let handled = false;
+    if(typeof claude !== 'undefined' && claude.use){
+      try {
+        const downloads = await claude.use('downloads');
+        if(downloads){
+          handled = true;
+          try {
+            await downloads.save({filename, data: blob});
+            showExportMsg(`Se exportaron ${fmt(rows.length)} clientes a "${filename}".`, 'ok');
+          } catch(err){
+            if(!(err && err.code === 'declined')){
+              showExportMsg('No se pudo exportar el archivo. Probá de nuevo.', 'error');
+            }
+          }
+        }
+      } catch(e) { /* capability unavailable, fall through to direct download */ }
+    }
+    if(!handled){
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      showExportMsg(`Se exportaron ${fmt(rows.length)} clientes a "${filename}".`, 'ok');
+    }
+  } catch(e){
+    showExportMsg('No se pudo generar el archivo Excel.', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('export-xlsx').addEventListener('click', exportToExcel);
+
+renderTable();
+</script>
+
+</body></html>

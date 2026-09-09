@@ -27,12 +27,20 @@
   <script src="/js/page-guard.js"></script>
   <script src="/components/header/header.js"></script>
 
-  <main class="comunicacion-receptoras-wrap" role="main">
+  <main class="comunicacion-receptoras-overview" role="main">
 
-    <div class="comunicacion-receptoras-frame-wrap">
-      <iframe id="comunicacion-receptoras-frame" class="comunicacion-receptoras-frame"
-              src="comunicacion-receptoras/informe.html"
-              title="Comunicación telefónica de clientes vía receptoras Bosch D6600"></iframe>
+    <div class="cr-intro">
+      <p class="cr-intro__eyebrow">Análisis por receptora</p>
+      <h1 class="cr-intro__title">Comunicación de clientes por receptora</h1>
+      <p class="cr-intro__desc">
+        Cada receptora tiene su propio informe, elaborado a partir de los reportes de eventos
+        exportados de ByKom. Elegí una para ver el detalle completo por cliente.
+      </p>
+    </div>
+
+    <div id="cr-cards" class="cr-cards">
+      <!-- Renderizado por js/comunicacion-receptoras.js a partir de
+           js/versiones/comunicacion-receptoras.js -->
     </div>
 
     <footer class="site-footer" role="contentinfo">
@@ -45,6 +53,7 @@
     </footer>
   </main>
 
+  <script src="../js/versiones/comunicacion-receptoras.js"></script>
   <script src="../js/comunicacion-receptoras.js"></script>
 
 </body>

@@ -1,36 +1,45 @@
 /* ============================================================
-   comunicacion-receptoras.js — Lógica de "Comunicación Receptoras".
-   Análisis puntual, sin selector de período (a diferencia de
-   informes-mkt.js): un único iframe con ajuste automático de alto.
-   Si en el futuro este informe pasa a actualizarse periódicamente,
-   migrar a un manifiesto tipo js/versiones/informes-mkt.js.
+   comunicacion-receptoras.js — Vista general del mosaico
+   "Comunicación Receptoras": arma una tarjeta de resumen por cada
+   receptora listada en js/versiones/comunicacion-receptoras.js,
+   con sus datos básicos (clientes, señales, período) y un link al
+   informe completo de esa receptora.
    ============================================================ */
 
 'use strict';
 
-// El informe es un HTML propio (mismo origen), así que se puede leer su
-// altura real y ajustar el iframe para que no quede con scroll interno
-// ni espacio vacío. Se reintenta en 'load' y en un resize del contenido
-// vía ResizeObserver, por si el informe carga contenido asincrónico.
-function ajustarAltoIframeComunicacionReceptoras() {
-  const frame = document.getElementById('comunicacion-receptoras-frame');
-  if (!frame || !frame.contentDocument) return;
-  const alto = frame.contentDocument.documentElement.scrollHeight;
-  if (alto) frame.style.height = alto + 'px';
+function fmtNumeroCR(n) {
+  return new Intl.NumberFormat('es-AR').format(n);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const frame = document.getElementById('comunicacion-receptoras-frame');
-  if (!frame) return;
+  const el = document.getElementById('cr-cards');
+  if (!el) return;
 
-  frame.addEventListener('load', () => {
-    ajustarAltoIframeComunicacionReceptoras();
-    try {
-      new ResizeObserver(ajustarAltoIframeComunicacionReceptoras).observe(frame.contentDocument.body);
-    } catch (e) {
-      // Si el navegador no puede observar (raro, cross-origin ya
-      // descartado porque es mismo origen), no rompe nada: el informe
-      // sigue viéndose, sólo sin auto-ajuste ante cambios posteriores.
-    }
-  });
+  const receptoras = window.COMUNICACION_RECEPTORAS || [];
+  if (receptoras.length === 0) {
+    el.innerHTML = '<p class="cr-empty">Todavía no hay informes cargados.</p>';
+    return;
+  }
+
+  el.innerHTML = receptoras.map(r => `
+    <a class="cr-card" href="${r.href}">
+      <div class="cr-card__header">
+        <span class="cr-card__nombre">${r.nombre}</span>
+        <span class="cr-card__via">${r.via}</span>
+      </div>
+      <p class="cr-card__periodo">${r.periodo}</p>
+      <div class="cr-card__stats">
+        <div class="cr-stat">
+          <span class="cr-stat__value">${fmtNumeroCR(r.clientes)}</span>
+          <span class="cr-stat__label">clientes comunicados</span>
+        </div>
+        <div class="cr-stat">
+          <span class="cr-stat__value">${fmtNumeroCR(r.senales)}</span>
+          <span class="cr-stat__label">señales registradas</span>
+        </div>
+      </div>
+      <p class="cr-card__link">Ver informe completo <i class="ti ti-arrow-right" aria-hidden="true"></i></p>
+    </a>
+  `).join('');
 });
