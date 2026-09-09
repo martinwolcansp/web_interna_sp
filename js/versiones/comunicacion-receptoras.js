@@ -77,4 +77,23 @@ window.COMUNICACION_RECEPTORAS = [
       otros: 7,
     },
   },
+  {
+    id: 'dx',
+    nombre: 'DX',
+    via: 'Vía telefónica (Radio, Internet y Receptora)',
+    periodo: '01/08/2026 – 31/08/2026',
+    clientes: 1925,
+    senales: 1105656,
+    href: 'comunicacion-receptoras/dx.html',
+    cat_counts: {
+      test: 706807,
+      apertura_cierre: 214034,
+      anulacion: 142008,
+      restauracion: 18952,
+      falla_energia: 11661,
+      falla_comunicacion: 5424,
+      alarma: 4688,
+      otros: 2082,
+    },
+  },
 ];
