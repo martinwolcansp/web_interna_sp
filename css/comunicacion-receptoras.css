@@ -155,3 +155,114 @@
      ajusta al contenido real una vez que el informe termina de cargar. */
   height: 600px;
 }
+
+/* ---- Resumen general (arriba de las tarjetas) ---- */
+
+.cr-summary {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  border-top: 3px solid var(--color-navy);
+  padding: var(--space-6);
+  margin-bottom: var(--space-8);
+  box-shadow: var(--shadow-xs);
+
+  /* Paleta local de categorías (misma que usan los informes
+     individuales, tema claro) para que el resumen y cada informe se
+     lean como un mismo sistema visual. */
+  --cr-cat-test: #2a78d6;
+  --cr-cat-ap: #eb6834;
+  --cr-cat-anu: #4a3aa7;
+  --cr-cat-alarma: #e34948;
+  --cr-cat-fcom: #eda100;
+  --cr-cat-fenerg: #e87ba4;
+  --cr-cat-rest: #008300;
+  --cr-cat-otros: #1baf7a;
+}
+
+.cr-summary__eyebrow {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: var(--space-4);
+}
+
+.cr-summary__kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.cr-kpi {
+  min-width: 160px;
+  flex: 1 1 160px;
+}
+
+.cr-kpi__value {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-weight: var(--font-weight-bold);
+  font-size: 22px;
+  color: var(--color-navy);
+}
+
+.cr-kpi__label {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.cr-summary__chart-wrap {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-5);
+}
+
+.cr-summary__chart-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-navy);
+  margin-bottom: var(--space-4);
+}
+
+.cr-bar-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 70px;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.cr-bar-row__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.cr-bar-row__track {
+  background: var(--color-bg-soft, var(--color-border));
+  border-radius: 4px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.cr-bar-row__fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px 0 0 4px;
+  min-width: 2px;
+}
+
+.cr-bar-row__count {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .cr-bar-row { grid-template-columns: 110px 1fr 54px; }
+}
