@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Comunicación Telefónica Bosch</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -216,6 +216,12 @@
             <option value="warning">Atención</option>
             <option value="critical">Sin señal reciente</option>
           </select>
+          <select id="filter-cliente">
+            <option value="">Todos los clientes</option>
+            <option value="atempo">ATEMPO (AT-)</option>
+            <option value="sp">SP (42-)</option>
+            <option value="otro">Otros</option>
+          </select>
         </div>
       </div>
       <div class="result-count">
@@ -288,10 +294,19 @@ function estadoOf(gap){
 }
 const ESTADO_LABEL = {good:'Comunicando', warning:'Atención', critical:'Sin señal reciente'};
 
+function grupoOf(codigo){
+  if(!codigo) return 'otro';
+  if(codigo.startsWith('AT')) return 'atempo';
+  if(codigo.startsWith('42')) return 'sp';
+  return 'otro';
+}
+const GRUPO_LABEL = {atempo:'ATEMPO', sp:'SP', otro:'Otro'};
+
 const CLIENTS = CLIENTS_RAW.map(c => ({
   ...c,
   estado: estadoOf(c.gap_dias),
   receptorasLabel: c.receptoras.map(r => r==='BOSCH 1'?'Bosch 1':'Bosch 2').join(' + '),
+  grupo: grupoOf(c.codigo_abo),
 }));
 
 /* ---------------- KPI row ---------------- */
@@ -306,9 +321,15 @@ const CLIENTS = CLIENTS_RAW.map(c => ({
     [fmt(b2.clients), 'Bosch 2 · 01/08–31/08'],
   ];
   const panasonicCount = CLIENTS.filter(c => c.via_panasonic).length;
+  const atempoCount = CLIENTS.filter(c => c.grupo === 'atempo').length;
+  const spCount = CLIENTS.filter(c => c.grupo === 'sp').length;
+  const otroCount = CLIENTS.filter(c => c.grupo === 'otro').length;
   el.innerHTML = items.map(([v,l]) => `<div class="kpi"><span class="kpi-value">${v}</span><span class="kpi-label">${l}</span></div>`).join('')
+    + `<div class="kpi"><span class="kpi-value">${fmt(atempoCount)}</span><span class="kpi-label">clientes ATEMPO (AT-)</span></div>`
+    + `<div class="kpi"><span class="kpi-value">${fmt(spCount)}</span><span class="kpi-label">clientes SP (42-)</span></div>`
     + `<div class="kpi kpi-muted"><span class="kpi-value">${fmt(SUMMARY.noise_rows)}</span><span class="kpi-label">señales sin identificar (excluidas)</span></div>`
-    + `<div class="kpi kpi-muted"><span class="kpi-value">${fmt(panasonicCount)}</span><span class="kpi-label">clientes vía central Panasonic (antes de Bosch)</span></div>`;
+    + `<div class="kpi kpi-muted"><span class="kpi-value">${fmt(panasonicCount)}</span><span class="kpi-label">clientes vía central Panasonic (antes de Bosch)</span></div>`
+    + (otroCount ? `<div class="kpi kpi-muted"><span class="kpi-value">${fmt(otroCount)}</span><span class="kpi-label">clientes con otro código (no AT/42)</span></div>` : '');
   const noiseEl = document.getElementById('note-noise-count');
   if(noiseEl) noiseEl.textContent = fmt(SUMMARY.noise_rows);
 })();
@@ -410,7 +431,7 @@ const CLIENTS = CLIENTS_RAW.map(c => ({
 })();
 
 /* ---------------- client table ---------------- */
-const state = { search:'', receptora:'', estado:'', panasonic:'', sortKey:'total', sortDir:-1, page:1, pageSize:50, expanded:new Set() };
+const state = { search:'', receptora:'', estado:'', panasonic:'', cliente:'', sortKey:'total', sortDir:-1, page:1, pageSize:50, expanded:new Set() };
 
 function applyFilters(){
   let rows = CLIENTS;
@@ -420,6 +441,7 @@ function applyFilters(){
   if(state.estado) rows = rows.filter(c => c.estado === state.estado);
   if(state.panasonic === 'yes') rows = rows.filter(c => c.via_panasonic);
   else if(state.panasonic === 'no') rows = rows.filter(c => !c.via_panasonic);
+  if(state.cliente) rows = rows.filter(c => c.grupo === state.cliente);
   if(state.search){
     const q = state.search.toLowerCase();
     rows = rows.filter(c => (c.nombre_abo||'').toLowerCase().includes(q) || (c.codigo_abo||'').toLowerCase().includes(q) || (c.cuenta_id||'').includes(q));
@@ -460,6 +482,7 @@ function renderTable(){
     if(expanded){
       const stats = [
         ['Cuenta', c.cuenta_id],
+        ['Grupo', GRUPO_LABEL[c.grupo] || '—'],
         ['Vía Panasonic', c.via_panasonic ? 'Sí — central Panasonic antes de Bosch' : 'No'],
         ['Días con señal', fmt(c.dias_con_senal)],
         ['Primera señal', fmtDate(c.primera)],
@@ -517,6 +540,7 @@ document.getElementById('search').addEventListener('input', e => { state.search 
 document.getElementById('filter-receptora').addEventListener('change', e => { state.receptora = e.target.value; state.page = 1; renderTable(); });
 document.getElementById('filter-estado').addEventListener('change', e => { state.estado = e.target.value; state.page = 1; renderTable(); });
 document.getElementById('filter-panasonic').addEventListener('change', e => { state.panasonic = e.target.value; state.page = 1; renderTable(); });
+document.getElementById('filter-cliente').addEventListener('change', e => { state.cliente = e.target.value; state.page = 1; renderTable(); });
 document.querySelectorAll('th[data-sortable]').forEach(th => {
   th.addEventListener('click', () => {
     const key = th.getAttribute('data-sort');
@@ -529,6 +553,7 @@ document.querySelectorAll('th[data-sortable]').forEach(th => {
 const EXPORT_COLUMNS = [
   ['Cliente', c => c.nombre_abo || ''],
   ['Código', c => c.codigo_abo || ''],
+  ['Grupo', c => GRUPO_LABEL[c.grupo] || ''],
   ['Cuenta', c => c.cuenta_id || ''],
   ['Receptora(s)', c => c.receptorasLabel],
   ['Señales totales', c => c.total],
@@ -554,6 +579,7 @@ function buildExportFilenameParts(){
   else if(state.receptora === 'BOSCH 1') parts.push('bosch1');
   else if(state.receptora === 'BOSCH 2') parts.push('bosch2');
   if(state.estado) parts.push(state.estado === 'good' ? 'comunicando' : state.estado === 'warning' ? 'atencion' : 'sin-senal');
+  if(state.cliente) parts.push(state.cliente);
   if(state.search) parts.push('busqueda');
   return parts;
 }
@@ -582,7 +608,7 @@ async function exportToExcel(){
     );
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [
-      {wch:26},{wch:12},{wch:11},{wch:16},{wch:12},{wch:12},{wch:14},{wch:14},{wch:9},
+      {wch:26},{wch:12},{wch:10},{wch:11},{wch:16},{wch:12},{wch:12},{wch:14},{wch:14},{wch:9},
       {wch:14},{wch:16},{wch:12},{wch:9},{wch:12},{wch:16},{wch:16},{wch:16},{wch:14}
     ];
     const wb = XLSX.utils.book_new();
