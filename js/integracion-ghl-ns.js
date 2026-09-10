@@ -331,6 +331,15 @@ async function onSubmitContacto(ev) {
     origen_lead: document.getElementById('ig-c-origen').value.trim() || null,
     fecha_creacion_ghl: datetimeLocalToIso(document.getElementById('ig-c-fecha-creacion-ghl').value),
     fecha_creacion_ns: datetimeLocalToIso(document.getElementById('ig-c-fecha-creacion-ns').value),
+    // El Contacto siempre corresponde a un contacto YA existente en GHL (no
+    // hay ni va a haber un paso que lo cree allá desde acá — ver Plan de
+    // Migración): por eso se guarda directamente como "sincronizado", en
+    // vez de quedar en "pendiente" para siempre (eso hacía aparecer
+    // "registros pendientes de sincronizar" en el resumen que nunca se
+    // iban a resolver, aunque la oportunidad sí se hubiera sincronizado).
+    sync_estado: 'sincronizado',
+    sync_mensaje: null,
+    sync_actualizado_en: new Date().toISOString(),
   };
 
   if (!payload.ghl_contact_id) {
