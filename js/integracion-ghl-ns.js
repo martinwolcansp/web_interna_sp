@@ -487,12 +487,32 @@ async function onSubmitOportunidad(ev) {
     return;
   }
 
+  const ghlIdIngresado = document.getElementById('ig-o-ghl-id').value.trim() || null;
+
+  // Si es una oportunidad NUEVA (no edición) y el campo "ID de oportunidad
+  // GHL" tiene algo cargado, confirmamos: ese ID marca la oportunidad como
+  // "ya existente en GHL" y el sync automático NO la va a crear (bug
+  // reportado: quedaba en "Sincronizado" sin haberse creado realmente,
+  // porque este campo había quedado con un valor cargado a mano).
+  if (!editingId && ghlIdIngresado) {
+    const seguir = confirm(
+      '¿Esta oportunidad YA existe en GHL con el ID "' + ghlIdIngresado + '"?\n\n' +
+      'Aceptar: se guarda con ese ID y NO se crea de nuevo en GHL.\n' +
+      'Cancelar: dejá el campo vacío y guardá de nuevo para que se cree sola en GHL.'
+    );
+    if (!seguir) {
+      statusEl.textContent = 'Guardado cancelado — vaciá el campo "ID de oportunidad GHL" y volvé a guardar.';
+      statusEl.className = 'admin-row-status admin-row-status--error';
+      return;
+    }
+  }
+
   const montoRaw = document.getElementById('ig-o-monto').value;
 
   const payload = {
     contacto_id: contactoId,
     ns_opportunity_id: document.getElementById('ig-o-ns-id').value.trim() || null,
-    ghl_opportunity_id: document.getElementById('ig-o-ghl-id').value.trim() || null,
+    ghl_opportunity_id: ghlIdIngresado,
     titulo: document.getElementById('ig-o-titulo').value.trim() || null,
     unidad_comercial: document.getElementById('ig-o-unidad').value.trim() || null,
     estado: document.getElementById('ig-o-estado').value,
