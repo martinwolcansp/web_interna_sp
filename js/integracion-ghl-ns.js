@@ -154,10 +154,14 @@ async function reintentarSyncOportunidad(id) {
   const wrap = document.getElementById('ig-oportunidad-list-wrap');
   if (wrap) wrap.classList.add('admin-table-wrap--busy');
 
-  await sincronizarOportunidadConGHL(id);
+  const resultado = await sincronizarOportunidadConGHL(id);
   await loadOportunidades();
 
   if (wrap) wrap.classList.remove('admin-table-wrap--busy');
+
+  if (!resultado.ok) {
+    alert(`No se pudo sincronizar con GHL: ${resultado.detail || 'error desconocido'}`);
+  }
 }
 
 
@@ -525,6 +529,12 @@ async function onSubmitOportunidad(ev) {
   // de arriba) y al terminar refresca la fila con el sync_estado real.
   const idParaSync = editingId || data?.[0]?.id;
   if (idParaSync) {
-    sincronizarOportunidadConGHL(idParaSync).then(loadOportunidades);
+    sincronizarOportunidadConGHL(idParaSync).then((resultado) => {
+      if (!resultado.ok) {
+        statusEl.textContent = `Guardado, pero no se pudo sincronizar con GHL: ${resultado.detail || 'error desconocido'}`;
+        statusEl.className = 'admin-row-status admin-row-status--error';
+      }
+      loadOportunidades();
+    });
   }
 }
