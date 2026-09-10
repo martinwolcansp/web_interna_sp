@@ -1,0 +1,83 @@
+/* ============================================================
+   integracion-ghl-ns.css — Sección "Integración NetSuite ↔ GHL"
+   (prueba piloto, Plan de Migración v1.1)
+   Complementa admin.css (comparte .admin-section, .admin-table,
+   .admin-input/select, .admin-row-status, etc.) — mismo patrón que
+   pizarra-editor.css.
+   ============================================================ */
+
+.ig-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-10);
+}
+
+.ig-summary__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ig-summary__value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+}
+
+.ig-summary__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.ig-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.ig-form__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ig-form__row-group {
+  display: flex;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.ig-form__row-group .ig-form__row {
+  flex: 1;
+  min-width: 180px;
+}
+
+.ig-label {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.ig-input-wide {
+  width: 100%;
+}
+
+.ig-form__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+/* Variante roja del badge de estado (components.css sólo trae ok/prog/rev) */
+.status-badge--err {
+  background: var(--color-red-light);
+  color: var(--color-red);
+}
+
+.ig-table-actions {
+  display: flex;
+  gap: var(--space-2);
+  white-space: nowrap;
+}

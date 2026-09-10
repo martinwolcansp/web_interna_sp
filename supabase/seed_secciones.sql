@@ -9,6 +9,7 @@ insert into secciones (id, nombre, tipo) values
   ('organigrama',           'Directorio de Áreas',            'mosaico'),
   ('informes-mkt',          'Informes e indicadores de MKT',  'mosaico'),
   ('comunicacion-receptoras', 'Comunicación Receptoras',      'mosaico'),
+  ('integracion-ghl-ns',    'Integración NetSuite ↔ GHL',      'mosaico'),
   ('pizarra',               'Pizarra institucional',          'general')
 on conflict (id) do update set
   nombre = excluded.nombre,

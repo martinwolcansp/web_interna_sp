@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integración NetSuite ↔ GHL — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → admin (form/tabla compartidos) → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/integracion-ghl-ns.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Integración NetSuite ↔ GHL"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'integracion-ghl-ns';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Prueba piloto (Plan de Migración v1.1): carga manual de
+       Contacto/Oportunidad + estado de sincronización por registro.
+       El acceso lo resuelve page-guard.js con el nivel 'ver'; el nivel
+       'editar' (mostrar formularios de alta/edición) se chequea acá
+       mismo vía fn_tiene_permiso, porque puede haber usuarios con sólo
+       'ver' (consulta de datos globales) más adelante.
+       ══════════════════════════════════════════════════════════ -->
+  <main class="admin-wrap" role="main">
+
+    <div class="admin-page-header">
+      <p class="section-label">Prueba piloto — Plan de Migración v1.1</p>
+      <h1 class="admin-page-title">Integración NetSuite ↔ GHL</h1>
+      <p class="admin-page-subtitle">Contactos y oportunidades de la integración, con estado de sincronización por registro. La carga es manual por ahora — todavía no está conectado el envío automático hacia GHL ni la recepción desde NetSuite.</p>
+    </div>
+
+    <!-- Resumen -->
+    <section class="admin-section" aria-labelledby="ig-summary-title">
+      <div class="admin-section__header">
+        <h2 id="ig-summary-title" class="admin-section__title">Resumen</h2>
+      </div>
+      <div id="ig-summary" class="ig-summary">
+        <p class="admin-loading">Cargando…</p>
+      </div>
+    </section>
+
+    <!-- Alta / edición de Contacto -->
+    <section id="ig-contacto-form-section" class="admin-section" aria-labelledby="ig-contacto-form-title" style="display:none;">
+      <div class="admin-section__header">
+        <h2 id="ig-contacto-form-title" class="admin-section__title">Nuevo contacto</h2>
+        <p class="admin-section__subtitle">El ID de contacto GHL es la clave de enlace con NetSuite (mismo valor que <code>custentity_ghl_contact_id</code>).</p>
+      </div>
+
+      <form id="ig-contacto-form" class="ig-form">
+        <input type="hidden" id="ig-c-editing-id" value="">
+
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-ghl-id">ID de contacto GHL *</label>
+            <input type="text" id="ig-c-ghl-id" class="admin-input" required>
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-ns-id">ID de cliente NetSuite</label>
+            <input type="text" id="ig-c-ns-id" class="admin-input" placeholder="Se completa cuando exista en NS">
+          </div>
+        </div>
+
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-nombre">Nombre</label>
+            <input type="text" id="ig-c-nombre" class="admin-input">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-apellido">Apellido</label>
+            <input type="text" id="ig-c-apellido" class="admin-input">
+          </div>
+        </div>
+
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-email">Email</label>
+            <input type="email" id="ig-c-email" class="admin-input">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-telefono">Teléfono</label>
+            <input type="text" id="ig-c-telefono" class="admin-input">
+          </div>
+        </div>
+
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-interesado">Interesado en</label>
+            <input type="text" id="ig-c-interesado" class="admin-input">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-forma-contacto">Forma de contacto</label>
+            <input type="text" id="ig-c-forma-contacto" class="admin-input">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-origen">Origen del lead</label>
+            <input type="text" id="ig-c-origen" class="admin-input" placeholder="google, referido, ex-cliente…">
+          </div>
+        </div>
+
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-fecha-creacion-ghl">Fecha de creación en GHL</label>
+            <input type="datetime-local" id="ig-c-fecha-creacion-ghl" class="admin-input">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-c-fecha-creacion-ns">Fecha de creación en NS</label>
+            <input type="datetime-local" id="ig-c-fecha-creacion-ns" class="admin-input">
+          </div>
+        </div>
+
+        <div class="ig-form__actions">
+          <button type="submit" id="ig-c-submit-btn" class="btn btn--primary">Guardar contacto</button>
+          <button type="button" id="ig-c-cancel-btn" class="btn btn--secondary" style="display:none;">Cancelar edición</button>
+          <span id="ig-c-form-status" class="admin-row-status"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- Listado de Contactos -->
+    <section class="admin-section" aria-labelledby="ig-contacto-list-title">
+      <div class="admin-section__header">
+        <h2 id="ig-contacto-list-title" class="admin-section__title">Contactos</h2>
+        <p class="admin-section__subtitle">Más recientes primero.</p>
+      </div>
+      <div id="ig-contacto-list-wrap" class="admin-table-wrap">
+        <p class="admin-loading">Cargando contactos…</p>
+      </div>
+    </section>
+
+    <!-- Alta / edición de Oportunidad -->
+    <section id="ig-oportunidad-form-section" class="admin-section" aria-labelledby="ig-oportunidad-form-title" style="display:none;">
+      <div class="admin-section__header">
+        <h2 id="ig-oportunidad-form-title" class="admin-section__title">Nueva oportunidad</h2>
+        <p class="admin-section__subtitle">Se asocia a un contacto ya cargado.</p>
+      </div>
+
+      <form id="ig-oportunidad-form" class="ig-form">
+        <input type="hidden" id="ig-o-editing-id" value="">
+
+        <div class="ig-form__row">
+          <label class="ig-label" for="ig-o-contacto">Contacto *</label>
+          <select id="ig-o-contacto" class="admin-select ig-input-wide" required></select>
+        </div>
+
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-ns-id">ID de oportunidad NetSuite</label>
+            <input type="text" id="ig-o-ns-id" class="admin-input">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-ghl-id">ID de oportunidad GHL</label>
+            <input type="text" id="ig-o-ghl-id" class="admin-input" placeholder="Se completa cuando exista en GHL">
+          </div>
+        </div>
+
+        <div class="ig-form__row">
+          <label class="ig-label" for="ig-o-titulo">Título</label>
+          <input type="text" id="ig-o-titulo" class="admin-input ig-input-wide">
+        </div>
+
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-unidad">Unidad comercial</label>
+            <input type="text" id="ig-o-unidad" class="admin-input" placeholder="Hogar Seguro, Comercio Seguro…">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-estado">Estado</label>
+            <select id="ig-o-estado" class="admin-select">
+              <option value="open">Abierta</option>
+              <option value="won">Ganada</option>
+              <option value="lost">Perdida</option>
+            </select>
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-monto">Monto</label>
+            <input type="number" id="ig-o-monto" class="admin-input" step="0.01">
+          </div>
+        </div>
+
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-fecha-creacion-ns">Fecha de creación en NS</label>
+            <input type="datetime-local" id="ig-o-fecha-creacion-ns" class="admin-input">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-fecha-cierre">Fecha de cierre</label>
+            <input type="datetime-local" id="ig-o-fecha-cierre" class="admin-input">
+          </div>
+        </div>
+
+        <div class="ig-form__actions">
+          <button type="submit" id="ig-o-submit-btn" class="btn btn--primary">Guardar oportunidad</button>
+          <button type="button" id="ig-o-cancel-btn" class="btn btn--secondary" style="display:none;">Cancelar edición</button>
+          <span id="ig-o-form-status" class="admin-row-status"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- Listado de Oportunidades -->
+    <section class="admin-section" aria-labelledby="ig-oportunidad-list-title">
+      <div class="admin-section__header">
+        <h2 id="ig-oportunidad-list-title" class="admin-section__title">Oportunidades</h2>
+        <p class="admin-section__subtitle">Más recientes primero.</p>
+      </div>
+      <div id="ig-oportunidad-list-wrap" class="admin-table-wrap">
+        <p class="admin-loading">Cargando oportunidades…</p>
+      </div>
+    </section>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/integracion-ghl-ns.js"></script>
+
+</body>
+</html>
