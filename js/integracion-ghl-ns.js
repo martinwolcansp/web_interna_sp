@@ -4,9 +4,19 @@
 
    Carga manual de Contacto/Oportunidad contra Supabase (tablas
    'contacto' y 'oportunidad', ver supabase/migracion_10_integracion_
-   ghl_ns.sql). Todavía NO hay envío hacia GHL ni recepción desde
-   NetSuite: sync_estado queda en 'pendiente' hasta que exista ese
-   endpoint — es el paso siguiente del piloto.
+   ghl_ns.sql). La recepción automática desde NetSuite queda para la
+   segunda etapa: acá el contacto ya existe en GHL de antes y se carga
+   a mano en la base local.
+
+   Al guardar una Oportunidad (alta o edición) se llama a
+   POST /admin/sync-oportunidad/{id} en el servicio FastAPI de la
+   integración (ghl-netsuite-api-opportunities — ver SYNC_API_BASE_URL
+   más abajo), pasándole el access token del usuario logueado. Ese
+   servicio reenvía el token a Supabase (RLS decide si puede leer/editar
+   esa fila) y, si todavía no tiene ghl_opportunity_id, la crea en GHL.
+   Es idempotente: si ya está sincronizada, no hace nada — por eso es
+   seguro llamarlo tanto en alta como en cada edición, y también como
+   "reintentar" manual desde la tabla.
 
    page-guard.js ya resuelve el nivel 'ver' (si no lo tiene, ni carga
    esta página). Acá se chequea además 'editar' para decidir si se
@@ -16,6 +26,12 @@
    ============================================================ */
 
 'use strict';
+
+// Servicio FastAPI de la integración (Etapa 2 — Oportunidad), migrado
+// al servidor local (Coolify) siguiendo el mismo esquema de subdominio
+// sslip.io que ya usa Supabase. Si en Coolify se termina usando otro
+// dominio, actualizar acá.
+const SYNC_API_BASE_URL = 'https://ghl-ns-opportunities.200.5.196.50.sslip.io';
 
 let ig_puedeEditar = false;
 let ig_contactosCache = [];
@@ -103,6 +119,48 @@ function nombreContacto(c) {
   return nombre || c.ghl_contact_id;
 }
 
+/* ── Sincronización con GHL (POST /admin/sync-oportunidad/{id}) ────────── */
+
+async function sincronizarOportunidadConGHL(oportunidadId) {
+  const { data: sessionData } = await window.supabaseClient.auth.getSession();
+  const token = sessionData?.session?.access_token;
+
+  if (!token) {
+    console.error('[integracion-ghl-ns.js] no hay sesión activa para sincronizar con GHL');
+    return { ok: false, detail: 'No hay sesión activa.' };
+  }
+
+  try {
+    const resp = await fetch(`${SYNC_API_BASE_URL}/admin/sync-oportunidad/${oportunidadId}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const body = await resp.json().catch(() => ({}));
+
+    if (!resp.ok) {
+      console.error('[integracion-ghl-ns.js] error sincronizando con GHL', resp.status, body);
+      return { ok: false, detail: body.detail || `Error ${resp.status}` };
+    }
+
+    return { ok: true, ...body };
+  } catch (err) {
+    console.error('[integracion-ghl-ns.js] fallo de red sincronizando con GHL', err);
+    return { ok: false, detail: 'No se pudo conectar con el servicio de integración.' };
+  }
+}
+
+async function reintentarSyncOportunidad(id) {
+  const wrap = document.getElementById('ig-oportunidad-list-wrap');
+  if (wrap) wrap.classList.add('admin-table-wrap--busy');
+
+  await sincronizarOportunidadConGHL(id);
+  await loadOportunidades();
+
+  if (wrap) wrap.classList.remove('admin-table-wrap--busy');
+}
+
+
 /* ── Resumen ─────────────────────────────────────────────────────────── */
 
 function renderResumen(contactos, oportunidades) {
@@ -174,7 +232,10 @@ async function loadContactos() {
               <td>${fmtFecha(c.fecha_creacion_ghl)}</td>
               <td>${fmtFecha(c.fecha_creacion_ns)}</td>
               <td>${syncBadge(c.sync_estado, c.sync_mensaje)}</td>
-              ${ig_puedeEditar ? `<td class="ig-table-actions"><button type="button" class="btn btn--secondary" onclick="editarContacto('${c.id}')">Editar</button></td>` : ''}
+              ${ig_puedeEditar ? `<td class="ig-table-actions">
+                <button type="button" class="btn btn--secondary" onclick="editarContacto('${c.id}')">Editar</button>
+                <button type="button" class="btn btn--secondary" onclick="borrarContacto('${c.id}')">Borrar</button>
+              </td>` : ''}
             </tr>
           `).join('')}
         </tbody>
@@ -225,6 +286,27 @@ function resetContactoForm() {
   document.getElementById('ig-c-cancel-btn').style.display = 'none';
   document.getElementById('ig-c-form-status').textContent = '';
   document.getElementById('ig-c-form-status').className = 'admin-row-status';
+}
+
+async function borrarContacto(id) {
+  const c = ig_contactosCache.find(x => x.id === id);
+  const tieneOportunidades = ig_oportunidadesCache.some(o => o.contacto_id === id);
+  const advertencia = tieneOportunidades
+    ? ' Este contacto tiene oportunidades cargadas: se borran junto con él.'
+    : '';
+
+  if (!confirm(`¿Borrar el contacto ${c ? nombreContacto(c) : ''}?${advertencia} No se puede deshacer.`)) return;
+
+  const { error } = await window.supabaseClient.from('contacto').delete().eq('id', id);
+
+  if (error) {
+    alert('No se pudo borrar el contacto.');
+    console.error('[integracion-ghl-ns.js] error borrando contacto', error);
+    return;
+  }
+
+  await loadContactos();
+  await loadOportunidades();
 }
 
 async function onSubmitContacto(ev) {
@@ -322,7 +404,11 @@ async function loadOportunidades() {
               <td>${fmtMonto(o.monto)}</td>
               <td>${fmtFecha(o.fecha_cierre)}</td>
               <td>${syncBadge(o.sync_estado, o.sync_mensaje)}</td>
-              ${ig_puedeEditar ? `<td class="ig-table-actions"><button type="button" class="btn btn--secondary" onclick="editarOportunidad('${o.id}')">Editar</button></td>` : ''}
+              ${ig_puedeEditar ? `<td class="ig-table-actions">
+                <button type="button" class="btn btn--secondary" onclick="editarOportunidad('${o.id}')">Editar</button>
+                ${o.sync_estado !== 'sincronizado' ? `<button type="button" class="btn btn--secondary" onclick="reintentarSyncOportunidad('${o.id}')">${o.sync_estado === 'error' ? 'Reintentar' : 'Sincronizar'}</button>` : ''}
+                <button type="button" class="btn btn--secondary" onclick="borrarOportunidad('${o.id}')">Borrar</button>
+              </td>` : ''}
             </tr>
           `).join('')}
         </tbody>
@@ -364,6 +450,25 @@ function resetOportunidadForm() {
   document.getElementById('ig-o-form-status').className = 'admin-row-status';
 }
 
+async function borrarOportunidad(id) {
+  const o = ig_oportunidadesCache.find(x => x.id === id);
+  const advertencia = o?.ghl_opportunity_id
+    ? ' Ya está sincronizada con GHL — esto no la borra allá, sólo acá.'
+    : '';
+
+  if (!confirm(`¿Borrar esta oportunidad?${advertencia} No se puede deshacer.`)) return;
+
+  const { error } = await window.supabaseClient.from('oportunidad').delete().eq('id', id);
+
+  if (error) {
+    alert('No se pudo borrar la oportunidad.');
+    console.error('[integracion-ghl-ns.js] error borrando oportunidad', error);
+    return;
+  }
+
+  await loadOportunidades();
+}
+
 async function onSubmitOportunidad(ev) {
   ev.preventDefault();
   const statusEl = document.getElementById('ig-o-form-status');
@@ -397,10 +502,10 @@ async function onSubmitOportunidad(ev) {
   statusEl.className = 'admin-row-status';
 
   const query = editingId
-    ? window.supabaseClient.from('oportunidad').update(payload).eq('id', editingId)
-    : window.supabaseClient.from('oportunidad').insert(payload);
+    ? window.supabaseClient.from('oportunidad').update(payload).eq('id', editingId).select('id')
+    : window.supabaseClient.from('oportunidad').insert(payload).select('id');
 
-  const { error } = await query;
+  const { data, error } = await query;
   submitBtn.disabled = false;
 
   if (error) {
@@ -414,4 +519,12 @@ async function onSubmitOportunidad(ev) {
   statusEl.className = 'admin-row-status admin-row-status--ok';
   resetOportunidadForm();
   await loadOportunidades();
+
+  // Idempotente: si ya tenía ghl_opportunity_id no hace nada. Si no,
+  // la crea en GHL ahora. Se dispara solo (no bloquea el "Creada ✓"
+  // de arriba) y al terminar refresca la fila con el sync_estado real.
+  const idParaSync = editingId || data?.[0]?.id;
+  if (idParaSync) {
+    sincronizarOportunidadConGHL(idParaSync).then(loadOportunidades);
+  }
 }

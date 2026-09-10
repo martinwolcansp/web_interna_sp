@@ -81,3 +81,9 @@
   gap: var(--space-2);
   white-space: nowrap;
 }
+
+/* Estado ocupado mientras se llama al endpoint de sincronización con GHL */
+.admin-table-wrap--busy {
+  opacity: 0.5;
+  pointer-events: none;
+}
