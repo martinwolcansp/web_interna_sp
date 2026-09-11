@@ -115,4 +115,23 @@ window.COMUNICACION_RECEPTORAS = [
       falla_energia: 0,
     },
   },
+  {
+    id: 'siap',
+    nombre: 'SIAP',
+    via: 'Vía GPRS/IP (4G y WiFi)',
+    periodo: '01/08/2026 – 31/08/2026',
+    clientes: 3062,
+    senales: 1408042,
+    href: 'comunicacion-receptoras/siap.html',
+    cat_counts: {
+      apertura_cierre: 275217,
+      test: 879304,
+      anulacion: 173805,
+      alarma: 16241,
+      restauracion: 35821,
+      falla_energia: 16699,
+      falla_comunicacion: 8845,
+      otros: 2110,
+    },
+  },
 ];
