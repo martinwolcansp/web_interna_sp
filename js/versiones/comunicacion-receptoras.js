@@ -96,4 +96,23 @@ window.COMUNICACION_RECEPTORAS = [
       otros: 2082,
     },
   },
+  {
+    id: 'garnet',
+    nombre: 'Garnet',
+    via: 'Vía GPRS/IP (3G/4G, WiFi y Botón)',
+    periodo: '01/08/2026 – 31/08/2026',
+    clientes: 4088,
+    senales: 1948374,
+    href: 'comunicacion-receptoras/garnet.html',
+    cat_counts: {
+      apertura_cierre: 737446,
+      restauracion: 491196,
+      anulacion: 377931,
+      test: 236121,
+      falla_comunicacion: 76300,
+      alarma: 24395,
+      otros: 4985,
+      falla_energia: 0,
+    },
+  },
 ];
