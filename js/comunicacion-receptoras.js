@@ -39,9 +39,13 @@ function renderResumenGeneral(receptoras) {
   if (!kpisEl || !chartEl) return;
 
   const totalReceptoras = receptoras.length;
-  const totalEsperado = window.COMUNICACION_RECEPTORAS_TOTAL_ESPERADO || null;
   const totalClientes = receptoras.reduce((sum, r) => sum + (r.clientes || 0), 0);
   const totalSenales = receptoras.reduce((sum, r) => sum + (r.senales || 0), 0);
+  const totalBykom = receptoras.reduce((sum, r) => sum + (r.bykom_subreceptoras || 0), 0);
+  const bykomDesglose = receptoras
+    .filter(r => r.bykom_subreceptoras)
+    .map(r => `${r.nombre}: ${r.bykom_subreceptoras}`)
+    .join(' · ');
 
   const catTotals = {};
   CR_CAT_ORDER.forEach(k => { catTotals[k] = 0; });
@@ -51,14 +55,15 @@ function renderResumenGeneral(receptoras) {
   });
 
   const kpis = [
-    [totalEsperado ? `${totalReceptoras} de ~${totalEsperado}` : String(totalReceptoras), 'receptoras cargadas'],
-    [fmtNumeroCR(totalClientes), 'clientes comunicados (todas las receptoras)'],
-    [fmtNumeroCR(totalSenales), 'señales registradas (todas las receptoras)'],
+    [String(totalReceptoras), 'receptoras cargadas', totalBykom ? `${totalBykom} receptoras en ByKom (${bykomDesglose})` : ''],
+    [fmtNumeroCR(totalClientes), 'clientes comunicados (todas las receptoras)', ''],
+    [fmtNumeroCR(totalSenales), 'señales registradas (todas las receptoras)', ''],
   ];
-  kpisEl.innerHTML = kpis.map(([v,l]) => `
+  kpisEl.innerHTML = kpis.map(([v,l,sub]) => `
     <div class="cr-kpi">
       <span class="cr-kpi__value">${v}</span>
       <span class="cr-kpi__label">${l}</span>
+      ${sub ? `<span class="cr-kpi__sub">${sub}</span>` : ''}
     </div>
   `).join('');
 

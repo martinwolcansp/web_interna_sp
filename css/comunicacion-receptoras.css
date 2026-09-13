@@ -216,6 +216,14 @@
   margin-top: 2px;
 }
 
+.cr-kpi__sub {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
 .cr-summary__chart-wrap {
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-5);

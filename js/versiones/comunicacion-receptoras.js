@@ -24,7 +24,11 @@
  *      más el desglose por categoría (cat_counts), que también se
  *      muestra dentro de cada informe individual ("Señales por tipo de
  *      evento") — mismas 8 claves siempre, para que el resumen general
- *      sea comparable entre receptoras.
+ *      sea comparable entre receptoras. Sumar también bykom_subreceptoras
+ *      (cantidad de sub-receptoras en las que ByKom separa esta marca,
+ *      por ejemplo DX = 3 [Radio/Internet/Receptora]) — se usa para la
+ *      aclaración debajo del KPI de "receptoras cargadas" en el resumen
+ *      general.
  *
  * No hace falta tocar las demás receptoras ni ningún otro archivo del
  * sitio (el mosaico y sus permisos no cambian, ya que todas viven bajo
@@ -32,11 +36,6 @@
  */
 
 'use strict';
-
-// Cantidad aproximada de receptoras que se espera terminar cargando en
-// total (informativo, para el "X de ~15" del resumen general). Ajustar
-// si cambia la previsión — no afecta ninguna otra lógica del sitio.
-window.COMUNICACION_RECEPTORAS_TOTAL_ESPERADO = 15;
 
 window.COMUNICACION_RECEPTORAS = [
   {
@@ -47,6 +46,7 @@ window.COMUNICACION_RECEPTORAS = [
     clientes: 2006,
     senales: 187873,
     href: 'comunicacion-receptoras/bosch.html',
+    bykom_subreceptoras: 2,
     cat_counts: {
       apertura_cierre: 74049,
       test: 60613,
@@ -66,6 +66,7 @@ window.COMUNICACION_RECEPTORAS = [
     clientes: 71,
     senales: 4828,
     href: 'comunicacion-receptoras/nanocomm.html',
+    bykom_subreceptoras: 1,
     cat_counts: {
       apertura_cierre: 2374,
       test: 1940,
@@ -85,6 +86,7 @@ window.COMUNICACION_RECEPTORAS = [
     clientes: 1925,
     senales: 1105656,
     href: 'comunicacion-receptoras/dx.html',
+    bykom_subreceptoras: 3,
     cat_counts: {
       test: 706807,
       apertura_cierre: 214034,
@@ -104,6 +106,7 @@ window.COMUNICACION_RECEPTORAS = [
     clientes: 4088,
     senales: 1948374,
     href: 'comunicacion-receptoras/garnet.html',
+    bykom_subreceptoras: 5,
     cat_counts: {
       apertura_cierre: 737446,
       restauracion: 491196,
@@ -117,12 +120,13 @@ window.COMUNICACION_RECEPTORAS = [
   },
   {
     id: 'siap',
-    nombre: 'SIAP',
+    nombre: 'SIAip',
     via: 'Vía GPRS/IP (4G y WiFi)',
     periodo: '01/08/2026 – 31/08/2026',
     clientes: 3062,
     senales: 1408042,
     href: 'comunicacion-receptoras/siap.html',
+    bykom_subreceptoras: 2,
     cat_counts: {
       apertura_cierre: 275217,
       test: 879304,
