@@ -59,6 +59,8 @@ function renderResumenGeneral(receptoras) {
     .filter(r => r.bykom_subreceptoras)
     .map(r => `${r.nombre}: ${r.bykom_subreceptoras}`)
     .join(' · ');
+  const receptorasConSinSenal = receptoras.filter(r => typeof r.sin_senal === 'number');
+  const totalSinSenal = receptorasConSinSenal.reduce((sum, r) => sum + (r.sin_senal || 0), 0);
 
   const catTotals = {};
   CR_CAT_ORDER.forEach(k => { catTotals[k] = 0; });
@@ -71,6 +73,7 @@ function renderResumenGeneral(receptoras) {
     [String(totalReceptoras), 'receptoras cargadas', totalBykom ? `${totalBykom} receptoras en ByKom (${bykomDesglose})` : ''],
     [fmtNumeroCR(totalClientes), 'clientes comunicados (todas las receptoras)', ''],
     [fmtNumeroCR(totalSenales), 'señales registradas (todas las receptoras)', ''],
+    [fmtNumeroCR(totalSinSenal), 'clientes sin señal reciente (todas las receptoras)', ''],
   ];
   kpisEl.innerHTML = kpis.map(([v,l,sub]) => `
     <div class="cr-kpi">

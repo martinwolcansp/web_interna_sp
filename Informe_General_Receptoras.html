@@ -205,13 +205,13 @@
 
     <div class="card">
       <h2>Clientes sin señal reciente</h2>
-      <p class="card-sub">126 clientes de Bosch + AJAX (cruzados por código de abonado), de un total de 2.239, no emitieron señal en los últimos 3 días del corte (31/08). Abajo, el mismo criterio (3+ días sin señal contra el último dato del propio período) aplicado a cada una de las 6 receptoras por separado — no deduplicado entre receptoras, ya que el cruce por cliente sólo está hecho entre Bosch y AJAX. El estado es orientativo: algunos paneles testean en ciclos semanales, así que conviene verificar antes de tratarlo como una falla real. El listado por cliente no se incluye acá — está disponible en los informes individuales de cada receptora.</p>
+      <p class="card-sub">126 clientes de Bosch + AJAX (cruzados por código de abonado), de un total de 2.239, no emitieron señal en los últimos 3 días del corte (31/08). Abajo, el mismo criterio (3+ días sin señal contra el último dato del propio período) aplicado a cada una de las 7 receptoras por separado — no deduplicado entre receptoras, ya que el cruce por cliente sólo está hecho entre Bosch y AJAX. El estado es orientativo: algunos paneles testean en ciclos semanales, así que conviene verificar antes de tratarlo como una falla real. El listado por cliente no se incluye acá — está disponible en los informes individuales de cada receptora.</p>
 
-      <p class="card-sub" style="margin-bottom:10px;">Incomunicados por receptora (las 6, sin deduplicar entre sí)</p>
+      <p class="card-sub" style="margin-bottom:10px;">Incomunicados por receptora (las 7, sin deduplicar entre sí)</p>
       <div class="sinsenal-kpis" id="sinsenal-por-receptora"></div>
 
       <div style="margin-top:6px;">
-        <p class="card-sub" style="margin-bottom:10px;">Por tiempo sin comunicar — todas las receptoras (359 casos)</p>
+        <p class="card-sub" style="margin-bottom:10px;">Por tiempo sin comunicar — todas las receptoras (380 casos)</p>
         <div id="sinsenal-dias"></div>
       </div>
     </div>
@@ -225,7 +225,7 @@
         <li>No incluye el desglose ATEMPO/SP ni la detección de vía Panasonic (específicos de Bosch) — están en el informe individual de esa receptora.</li>
         <li>El período de Bosch trae "Test periódico" (60.613 señales); AJAX no registra un código equivalente en este export.</li>
         <li>"Días sin comunicar" se calcula contra el último dato del propio período exportado (31/08/2026 23:59), no contra la fecha real de hoy.</li>
-        <li>El bloque "Incomunicados por receptora" es la única parte del informe que suma las 6 receptoras del sitio (Bosch, Nanocomm, DX, Garnet, SIAip, AJAX), cada una contra el corte de su propio período — el resto del informe (KPIs, señales por tipo de evento, tendencia) sigue siendo específico de Bosch + AJAX. Al no estar deduplicado entre receptoras, un mismo cliente con más de una tecnología instalada puede contarse en más de una.</li>
+        <li>El bloque "Incomunicados por receptora" es la única parte del informe que suma las 7 receptoras del sitio (Bosch, Nanocomm, DX, Garnet, SIAip, AJAX, HIK), cada una contra el corte de su propio período — el resto del informe (KPIs, señales por tipo de evento, tendencia) sigue siendo específico de Bosch + AJAX. Al no estar deduplicado entre receptoras, un mismo cliente con más de una tecnología instalada puede contarse en más de una.</li>
         <li>Garnet clasifica sus clientes con su propio criterio de 3 estados (Comunicando / Atención / Sin señal reciente, con cortes distintos a los 3 días usados acá); el número que se muestra en este informe usa el mismo corte de 3 días que el resto de las receptoras, así que no coincide con el "Sin señal reciente" de su informe individual.</li>
       </ul>
     </div>
@@ -237,7 +237,7 @@
         <li>→ <a href="Informe_Comunicacion_Receptoras_Bosch.html">Comunicación Telefónica Bosch D6600</a></li>
         <li>→ <a href="Informe_Comunicacion_Receptora_AJAX.html">Comunicación AJAX Traslator Pro</a></li>
         <li>→ <a href="Informe_Comunicacion_Receptoras_Garnet.html">Comunicación Garnet</a></li>
-        <li>→ Nanocomm, DX y SIAip — en el mosaico "Comunicación Receptoras" del sitio</li>
+        <li>→ Nanocomm, DX, SIAip y HIK-IP RECEIVER PRO — en el mosaico "Comunicación Receptoras" del sitio</li>
       </ul>
     </div>
 
@@ -296,12 +296,12 @@ const CAT_DATA = [
 })();
 
 /* ---------------- clientes sin señal reciente — desglose agregado ---------------- */
-/* Ahora sobre las 6 receptoras combinadas (359 casos), no sólo Bosch+AJAX. */
+/* Ahora sobre las 7 receptoras combinadas (380 casos), no sólo Bosch+AJAX. */
 const SINSENAL_DIAS = [
-  {label:'3–6 días',   value:89, color:'var(--warning)'},
-  {label:'7–13 días',  value:99, color:'var(--warning)'},
-  {label:'14–20 días', value:74, color:'var(--critical)'},
-  {label:'21+ días',   value:97, color:'var(--critical)'},
+  {label:'3–6 días',   value:104, color:'var(--warning)'},
+  {label:'7–13 días',  value:100, color:'var(--warning)'},
+  {label:'14–20 días', value:77,  color:'var(--critical)'},
+  {label:'21+ días',   value:99,  color:'var(--critical)'},
 ];
 function renderMiniBars(elId, data){
   const el = document.getElementById(elId);
@@ -323,6 +323,7 @@ renderMiniBars('sinsenal-dias', SINSENAL_DIAS);
    abonado sólo está hecho entre Bosch y AJAX), así que la suma de las 6
    (359) no coincide con el KPI general de arriba (126, sólo Bosch+AJAX). */
 const INCOMUNICADOS_POR_RECEPTORA = [
+  {nombre:'HIK-IP RECEIVER PRO', incomunicados:21,  total:140,  color:'var(--cat-rest)'},
   {nombre:'AJAX Traslator Pro', incomunicados:23,  total:237,  color:'var(--via-ip)'},
   {nombre:'DX',                 incomunicados:158, total:1925, color:'var(--cat-alarma)'},
   {nombre:'Bosch D6600',        incomunicados:104, total:2004, color:'var(--via-tel)'},
