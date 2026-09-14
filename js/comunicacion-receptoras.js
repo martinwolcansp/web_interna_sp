@@ -36,6 +36,7 @@ function fmtNumeroCR(n) {
 function renderResumenGeneral(receptoras) {
   const kpisEl = document.getElementById('cr-summary-kpis');
   const chartEl = document.getElementById('cr-summary-chart');
+  const highlightsEl = document.getElementById('cr-summary-highlights');
   if (!kpisEl || !chartEl) return;
 
   const totalReceptoras = receptoras.length;
@@ -66,6 +67,22 @@ function renderResumenGeneral(receptoras) {
       ${sub ? `<span class="cr-kpi__sub">${sub}</span>` : ''}
     </div>
   `).join('');
+
+  if (highlightsEl) {
+    const totalCatSenales = CR_CAT_ORDER.reduce((sum, k) => sum + catTotals[k], 0);
+    const topCatKey = CR_CAT_ORDER.reduce((best, k) => catTotals[k] > catTotals[best] ? k : best, CR_CAT_ORDER[0]);
+    const topCatPct = totalCatSenales > 0 ? Math.round((catTotals[topCatKey] / totalCatSenales) * 100) : 0;
+    const topReceptora = receptoras.reduce((best, r) => (!best || (r.clientes || 0) > (best.clientes || 0)) ? r : best, null);
+
+    const partes = [];
+    if (topCatPct > 0) {
+      partes.push(`<strong>${CR_CAT_META[topCatKey].label}</strong> es el tipo de señal más frecuente (${topCatPct}% del total)`);
+    }
+    if (topReceptora) {
+      partes.push(`<strong>${topReceptora.nombre}</strong> es la receptora con más clientes comunicados (${fmtNumeroCR(topReceptora.clientes)})`);
+    }
+    highlightsEl.innerHTML = partes.join(' · ') + '.';
+  }
 
   const max = Math.max(...CR_CAT_ORDER.map(k => catTotals[k]));
   chartEl.innerHTML = CR_CAT_ORDER.map(key => {

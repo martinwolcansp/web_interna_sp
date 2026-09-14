@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AJAX Traslator Pro — Comunicación Receptoras — SP Seguridad</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <link rel="stylesheet" href="../../css/tokens.css">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/comunicacion-receptoras.css">
+</head>
+<body>
+
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Comunicación Receptoras","href":"/pages/comunicacion-receptoras.html"},{"label":"AJAX Traslator Pro"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'comunicacion-receptoras';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <main class="comunicacion-receptoras-wrap" role="main">
+
+    <div class="comunicacion-receptoras-frame-wrap">
+      <iframe id="receptora-frame" class="comunicacion-receptoras-frame"
+              src="ajax/informe.html"
+              title="Comunicación de clientes vía receptora AJAX Traslator Pro"></iframe>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../../js/comunicacion-receptoras-frame.js"></script>
+
+</body>
+</html>

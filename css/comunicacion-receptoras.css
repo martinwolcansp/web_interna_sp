@@ -224,6 +224,21 @@
   opacity: 0.8;
 }
 
+.cr-summary__highlights {
+  font-size: var(--font-size-xs);
+  color: var(--color-navy);
+  background: var(--color-blue-light);
+  border: 1px solid var(--color-blue-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-6);
+  line-height: 1.5;
+}
+
+.cr-summary__highlights strong {
+  font-weight: var(--font-weight-semibold);
+}
+
 .cr-summary__chart-wrap {
   border-top: 1px solid var(--color-border);
   padding-top: var(--space-5);
