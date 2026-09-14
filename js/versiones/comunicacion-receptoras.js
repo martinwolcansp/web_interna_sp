@@ -28,7 +28,11 @@
  *      (cantidad de sub-receptoras en las que ByKom separa esta marca,
  *      por ejemplo DX = 3 [Radio/Internet/Receptora]) — se usa para la
  *      aclaración debajo del KPI de "receptoras cargadas" en el resumen
- *      general.
+ *      general. Opcionalmente sumar también sin_senal (clientes sin
+ *      señal en los últimos 3+ días contra el corte del propio período
+ *      de esa receptora) para que aparezca en el bloque "Clientes sin
+ *      señal reciente" del resumen general — si no está presente,
+ *      esa receptora simplemente no aparece en ese bloque.
  *
  * No hace falta tocar las demás receptoras ni ningún otro archivo del
  * sitio (el mosaico y sus permisos no cambian, ya que todas viven bajo
@@ -47,6 +51,7 @@ window.COMUNICACION_RECEPTORAS = [
     senales: 187873,
     href: 'comunicacion-receptoras/bosch.html',
     bykom_subreceptoras: 2,
+    sin_senal: 104,
     cat_counts: {
       apertura_cierre: 74049,
       test: 60613,
@@ -67,6 +72,7 @@ window.COMUNICACION_RECEPTORAS = [
     senales: 4828,
     href: 'comunicacion-receptoras/nanocomm.html',
     bykom_subreceptoras: 1,
+    sin_senal: 2,
     cat_counts: {
       apertura_cierre: 2374,
       test: 1940,
@@ -87,6 +93,7 @@ window.COMUNICACION_RECEPTORAS = [
     senales: 1105656,
     href: 'comunicacion-receptoras/dx.html',
     bykom_subreceptoras: 3,
+    sin_senal: 158,
     cat_counts: {
       test: 706807,
       apertura_cierre: 214034,
@@ -107,6 +114,7 @@ window.COMUNICACION_RECEPTORAS = [
     senales: 1948374,
     href: 'comunicacion-receptoras/garnet.html',
     bykom_subreceptoras: 5,
+    sin_senal: 43,
     cat_counts: {
       apertura_cierre: 737446,
       restauracion: 491196,
@@ -127,6 +135,7 @@ window.COMUNICACION_RECEPTORAS = [
     senales: 1408042,
     href: 'comunicacion-receptoras/siap.html',
     bykom_subreceptoras: 2,
+    sin_senal: 29,
     cat_counts: {
       apertura_cierre: 275217,
       test: 879304,
@@ -147,6 +156,7 @@ window.COMUNICACION_RECEPTORAS = [
     senales: 39832,
     href: 'comunicacion-receptoras/ajax.html',
     bykom_subreceptoras: 1,
+    sin_senal: 23,
     cat_counts: {
       apertura_cierre: 28920,
       test: 0,

@@ -37,7 +37,19 @@ function renderResumenGeneral(receptoras) {
   const kpisEl = document.getElementById('cr-summary-kpis');
   const chartEl = document.getElementById('cr-summary-chart');
   const highlightsEl = document.getElementById('cr-summary-highlights');
+  const periodoEl = document.getElementById('cr-summary-periodo');
   if (!kpisEl || !chartEl) return;
+
+  if (periodoEl) {
+    const periodos = [...new Set(receptoras.map(r => r.periodo).filter(Boolean))];
+    if (periodos.length === 1) {
+      periodoEl.textContent = `Período de análisis: ${periodos[0]}`;
+    } else if (periodos.length > 1) {
+      periodoEl.textContent = `Períodos de análisis: ${periodos.join(' · ')}`;
+    } else {
+      periodoEl.textContent = '';
+    }
+  }
 
   const totalReceptoras = receptoras.length;
   const totalClientes = receptoras.reduce((sum, r) => sum + (r.clientes || 0), 0);
@@ -97,6 +109,26 @@ function renderResumenGeneral(receptoras) {
   }).join('');
 }
 
+function renderSinSenal(receptoras) {
+  const el = document.getElementById('cr-summary-sinsenal');
+  if (!el) return;
+
+  const conDato = receptoras.filter(r => typeof r.sin_senal === 'number');
+  if (conDato.length === 0) {
+    el.innerHTML = '<p class="cr-empty">Sin datos.</p>';
+    return;
+  }
+
+  const ordenadas = [...conDato].sort((a, b) => (b.sin_senal || 0) - (a.sin_senal || 0));
+
+  el.innerHTML = ordenadas.map(r => `
+    <div class="cr-sinsenal-item">
+      <span class="cr-sinsenal-item__v">${fmtNumeroCR(r.sin_senal)}</span>
+      <span class="cr-sinsenal-item__l">${r.nombre}</span>
+    </div>
+  `).join('');
+}
+
 function renderTarjetas(receptoras) {
   const el = document.getElementById('cr-cards');
   if (!el) return;
@@ -135,5 +167,6 @@ function renderTarjetas(receptoras) {
 document.addEventListener('DOMContentLoaded', () => {
   const receptoras = window.COMUNICACION_RECEPTORAS || [];
   renderResumenGeneral(receptoras);
+  renderSinSenal(receptoras);
   renderTarjetas(receptoras);
 });
