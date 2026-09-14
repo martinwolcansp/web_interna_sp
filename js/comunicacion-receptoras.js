@@ -106,7 +106,11 @@ function renderTarjetas(receptoras) {
     return;
   }
 
-  el.innerHTML = receptoras.map(r => `
+  // Ordenadas por cantidad de clientes comunicados (descendente) — no
+  // altera el orden del manifiesto, sólo el de las tarjetas.
+  const ordenadas = [...receptoras].sort((a, b) => (b.clientes || 0) - (a.clientes || 0));
+
+  el.innerHTML = ordenadas.map(r => `
     <a class="cr-card" href="${r.href}">
       <div class="cr-card__header">
         <span class="cr-card__nombre">${r.nombre}</span>

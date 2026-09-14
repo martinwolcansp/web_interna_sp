@@ -204,16 +204,14 @@
 
     <div class="card">
       <h2>Clientes sin señal reciente</h2>
-      <p class="card-sub">126 clientes, de un total de 2.239, no emitieron señal en los últimos 3 días del corte (31/08). El estado es orientativo: algunos paneles testean en ciclos semanales, así que conviene verificar antes de tratarlo como una falla real. El listado por cliente no se incluye acá — está disponible en los informes individuales de cada receptora.</p>
-      <div class="sinsenal-grid">
-        <div>
-          <p class="card-sub" style="margin-bottom:10px;">Por tiempo sin comunicar</p>
-          <div id="sinsenal-dias"></div>
-        </div>
-        <div>
-          <p class="card-sub" style="margin-bottom:10px;">Por vía</p>
-          <div id="sinsenal-via"></div>
-        </div>
+      <p class="card-sub">126 clientes, de un total de 2.239, no emitieron señal en los últimos 3 días del corte (31/08) — cada receptora medida contra el último dato de su propio período. El estado es orientativo: algunos paneles testean en ciclos semanales, así que conviene verificar antes de tratarlo como una falla real. El listado por cliente no se incluye acá — está disponible en los informes individuales de cada receptora.</p>
+
+      <p class="card-sub" style="margin-bottom:10px;">Incomunicados por receptora</p>
+      <div class="sinsenal-kpis" id="sinsenal-por-receptora"></div>
+
+      <div style="margin-top:6px;">
+        <p class="card-sub" style="margin-bottom:10px;">Por tiempo sin comunicar (combinado)</p>
+        <div id="sinsenal-dias"></div>
       </div>
     </div>
 
@@ -299,11 +297,6 @@ const SINSENAL_DIAS = [
   {label:'14–20 días', value:22, color:'var(--critical)'},
   {label:'21+ días',   value:34, color:'var(--critical)'},
 ];
-const SINSENAL_VIA = [
-  {label:'Telefónica (Bosch)', value:103, color:'var(--via-tel)'},
-  {label:'IP/GPRS (AJAX)',     value:22,  color:'var(--via-ip)'},
-  {label:'Ambas vías',         value:1,   color:'var(--cat-anu)'},
-];
 function renderMiniBars(elId, data){
   const el = document.getElementById(elId);
   const max = Math.max(...data.map(d => d.value));
@@ -317,7 +310,25 @@ function renderMiniBars(elId, data){
   }).join('');
 }
 renderMiniBars('sinsenal-dias', SINSENAL_DIAS);
-renderMiniBars('sinsenal-via', SINSENAL_VIA);
+
+/* Incomunicados por receptora — cada una medida contra el último dato de
+   su propio período (no un corte combinado), por eso 104 + 23 = 127 en vez
+   de los 126 del KPI general (el cliente con ambas vías se cuenta una vez
+   en cada receptora si está incomunicado en las dos). */
+const INCOMUNICADOS_POR_RECEPTORA = [
+  {nombre:'Bosch D6600',      incomunicados:104, total:2004, color:'var(--via-tel)'},
+  {nombre:'AJAX Traslator Pro', incomunicados:23,  total:237,  color:'var(--via-ip)'},
+];
+(function renderIncomunicadosPorReceptora(){
+  const el = document.getElementById('sinsenal-por-receptora');
+  el.innerHTML = INCOMUNICADOS_POR_RECEPTORA.map(r => {
+    const pct = ((r.incomunicados / r.total) * 100).toFixed(1).replace('.', ',');
+    return `<div class="sinsenal-kpi" style="border-left:3px solid ${r.color}">
+      <span class="v">${fmt(r.incomunicados)}</span>
+      <span class="l">${r.nombre} — ${pct}% de sus ${fmt(r.total)} clientes</span>
+    </div>`;
+  }).join('');
+})();
 
 /* ---------------- tendencia diaria de clientes comunicados ---------------- */
 const TEL_DAILY = [1717,1695,1718,1688,1716,1686,1719,1686,1709,1670,1702,1678,1699,1680,1685,1672,1657,1643,1697,1672,1716,1659,1702,1666,1693,1665,1704,1649,1697,1653,1707];
