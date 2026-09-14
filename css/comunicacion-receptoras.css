@@ -244,6 +244,27 @@
   padding-top: var(--space-5);
 }
 
+.cr-summary__cta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue);
+  text-decoration: none;
+}
+
+.cr-summary__cta:hover {
+  color: var(--color-navy);
+}
+
+.cr-summary__cta i {
+  font-size: 14px;
+}
+
 .cr-summary__chart-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
