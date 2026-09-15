@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Permisos por Área — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/permisos-area.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Permisos por Área"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'permisos-area';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <main class="permisos-area-wrap" role="main">
+
+    <div class="permisos-area-intro">
+      <p class="home-section-label">Permisos por Área</p>
+      <p class="permisos-area-desc">
+        Vista de solo lectura de qué área puede ver o editar cada sección del sitio,
+        tal como está cargado hoy en la base. Para dar de alta o modificar un
+        permiso, se sigue usando <code>Permisos_por_Area_WebInternaSP.xlsx</code> y
+        aplicando el SQL correspondiente — esta pantalla todavía no permite editar
+        desde acá.
+      </p>
+      <div class="permisos-area-legend">
+        <span class="tag tag--ver">Ver</span>
+        <span class="tag tag--editar">Editar</span>
+        <span class="permisos-area-legend__note">"Editar" incluye "Ver".</span>
+      </div>
+    </div>
+
+    <div id="permisos-area-status" class="permisos-area-status">Cargando matriz de permisos…</div>
+
+    <div class="permisos-area-table-wrap" id="permisos-area-table-wrap" style="display:none;">
+      <table class="permisos-area-table" id="permisos-area-table">
+        <thead><tr id="permisos-area-thead-row"><th>Área</th></tr></thead>
+        <tbody id="permisos-area-tbody"></tbody>
+      </table>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/permisos-area.js"></script>
+
+</body>
+</html>

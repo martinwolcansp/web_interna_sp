@@ -1,0 +1,115 @@
+/* ============================================================
+   permisos-area.css — Estilos de "Permisos por Área"
+   Tabla tipo planilla: primera columna (área) y encabezado quedan fijos
+   al hacer scroll, para poder recorrer las 40+ áreas cómodamente. Los
+   tags Ver/Editar reutilizan .tag de components.css con dos modificadores
+   de color nuevos.
+   ============================================================ */
+
+.permisos-area-wrap {
+  max-width: var(--max-width-content);
+  margin: var(--space-10) auto;
+  padding: 0 var(--space-6) 3rem;
+}
+
+.permisos-area-intro {
+  margin-bottom: var(--space-8);
+}
+
+.permisos-area-desc {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-base);
+  max-width: 640px;
+  margin-top: var(--space-2);
+}
+
+.permisos-area-desc code {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+  background: var(--color-bg-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.permisos-area-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.permisos-area-legend__note {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.permisos-area-status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  padding: var(--space-6) 0;
+}
+
+.permisos-area-table-wrap {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+  overflow: auto;
+  max-height: 70vh;
+}
+
+.permisos-area-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.permisos-area-table th,
+.permisos-area-cell {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+  text-align: center;
+}
+
+.permisos-area-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-bg-soft);
+  color: var(--color-navy);
+  font-weight: var(--font-weight-semibold);
+  z-index: 2;
+  white-space: normal;
+  vertical-align: bottom;
+}
+
+.permisos-area-table thead th:first-child {
+  left: 0;
+  z-index: 3;
+}
+
+.permisos-area-cell--area {
+  position: sticky;
+  left: 0;
+  background: var(--color-bg);
+  text-align: left;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  z-index: 1;
+}
+
+.permisos-area-cell--vacia {
+  color: var(--color-text-subtle);
+}
+
+.tag--ver {
+  background: var(--color-pill-bg);
+  color: var(--color-pill-text);
+  border: 1px solid var(--color-pill-border);
+}
+
+.tag--editar {
+  background: var(--color-status-ok-bg);
+  color: var(--color-status-ok-text);
+}

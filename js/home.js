@@ -12,7 +12,7 @@
  * js/novedad.js. Este archivo no marca nada como leído por su cuenta.
  */
 
-const SECCION_IDS_MOSAICOS = ['mapa-servicios', 'sector-comunicaciones', 'organigrama', 'informes-mkt', 'comunicacion-receptoras', 'integracion-ghl-ns'];
+const SECCION_IDS_MOSAICOS = ['mapa-servicios', 'sector-comunicaciones', 'organigrama', 'informes-mkt', 'comunicacion-receptoras', 'integracion-ghl-ns', 'permisos-area'];
 const PIZARRA_EXCERPT_LEN = 180;
 const PIZARRA_PAGE_SIZE = 10;
 
