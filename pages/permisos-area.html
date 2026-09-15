@@ -28,6 +28,12 @@
   <script src="/js/page-guard.js"></script>
   <script src="/components/header/header.js"></script>
 
+  <!-- ExcelJS: lee y genera el .xlsx enteramente en el navegador (no hay
+       backend en este sitio -- el archivo nunca se sube ni se guarda en
+       ningún servidor; sólo su contenido, ya convertido a filas de
+       permisos, viaja a Supabase vía RPC al confirmar). -->
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+
   <!-- ══════════════════════════════════════════════════════════
        PERMISOS POR ÁREA — pantalla dentro del Panel de administración
        (no un mosaico público, no aparece en el home). A diferencia de
@@ -39,23 +45,40 @@
        de admin.css (admin-wrap / admin-page-header / admin-section) para
        verse consistente con Usuarios, Editor de pizarra y Editor de
        fichas.
+
+       Import/export (migracion_12_import_export_permisos.sql):
+       - Descargar: siempre visible para quien puede ver esta pantalla.
+         Arma el .xlsx en el navegador con ExcelJS a partir de los datos
+         ya cargados (areas/secciones/matriz), y dispara la descarga
+         local -- no pasa por ningún servidor.
+       - Actualizar desde Excel: sólo superadmin (accesos.permisos en
+         panel-admin.js sólo exige "ver", pero escribir permisos es más
+         sensible que verlos). Lee el archivo elegido con ExcelJS
+         (tampoco se sube a ningún lado), calcula el diff contra el
+         estado real vía fn_matriz_permisos(), y exige confirmar un
+         preview de altas/bajas antes de aplicar -- nunca pisa la tabla
+         entera a ciegas. Aplica todo en una sola llamada RPC
+         (fn_aplicar_matriz_permisos, atómica y superadmin-gated).
        ══════════════════════════════════════════════════════════ -->
   <main class="admin-wrap" role="main">
 
     <div class="admin-page-header">
       <p class="section-label">Administración</p>
       <h1 class="admin-page-title">Permisos por Área</h1>
-      <p class="admin-page-subtitle">Vista de solo lectura de qué área puede ver o editar cada sección del sitio.</p>
+      <p class="admin-page-subtitle">Qué área puede ver o editar cada sección del sitio — consultá, exportá o actualizá en lote desde un Excel.</p>
     </div>
 
     <section class="admin-section" aria-labelledby="permisos-area-title">
       <div class="admin-section__header">
-        <h2 id="permisos-area-title" class="admin-section__title">Matriz de permisos</h2>
-        <p class="admin-section__subtitle">
-          Tal como está cargado hoy en la base. Para dar de alta o modificar un permiso, se
-          sigue usando <code>Permisos_por_Area_WebInternaSP.xlsx</code> y aplicando el SQL
-          correspondiente — esta pantalla todavía no permite editar desde acá.
-        </p>
+        <div class="permisos-area-section-toprow">
+          <div>
+            <h2 id="permisos-area-title" class="admin-section__title">Matriz de permisos</h2>
+            <p class="admin-section__subtitle">Tal como está cargado hoy en la base.</p>
+          </div>
+          <button type="button" id="permisos-area-btn-exportar" class="btn btn--secondary" disabled>
+            <i class="ti ti-download" aria-hidden="true"></i> Descargar Excel
+          </button>
+        </div>
         <div class="permisos-area-legend">
           <span class="tag tag--ver">Ver</span>
           <span class="tag tag--editar">Editar</span>
@@ -70,6 +93,42 @@
           <thead><tr id="permisos-area-thead-row"><th>Área</th></tr></thead>
           <tbody id="permisos-area-tbody"></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- Sólo superadmin -- inyectado/mostrado por permisos-area.js -->
+    <section class="admin-section" id="permisos-area-import-section" style="display:none;" aria-labelledby="permisos-area-import-title">
+      <div class="admin-section__header">
+        <h2 id="permisos-area-import-title" class="admin-section__title">Actualizar desde Excel</h2>
+        <p class="admin-section__subtitle">
+          Descargá la matriz, editá las celdas Ver/Editar en la hoja "Matriz de permisos"
+          (no toques la fila de IDs técnicos ni la columna A) y subila acá. Antes de aplicar
+          nada se muestra qué cambiaría.
+        </p>
+      </div>
+
+      <label class="btn btn--secondary permisos-area-upload-btn">
+        <i class="ti ti-upload" aria-hidden="true"></i> Elegir archivo .xlsx
+        <input type="file" id="permisos-area-file-input" accept=".xlsx" style="display:none;">
+      </label>
+      <span id="permisos-area-file-name" class="permisos-area-file-name"></span>
+
+      <div id="permisos-area-import-status" class="permisos-area-import-status" style="display:none;"></div>
+
+      <div id="permisos-area-preview" class="permisos-area-preview" style="display:none;">
+        <p class="permisos-area-preview__summary" id="permisos-area-preview-summary"></p>
+        <div class="permisos-area-table-wrap permisos-area-table-wrap--preview">
+          <table class="admin-table">
+            <thead>
+              <tr><th>Cambio</th><th>Área</th><th>Sección</th><th>Antes</th><th>Después</th></tr>
+            </thead>
+            <tbody id="permisos-area-preview-tbody"></tbody>
+          </table>
+        </div>
+        <div class="permisos-area-preview__actions">
+          <button type="button" id="permisos-area-btn-confirmar" class="btn btn--primary">Confirmar y aplicar</button>
+          <button type="button" id="permisos-area-btn-cancelar" class="btn btn--secondary">Cancelar</button>
+        </div>
       </div>
     </section>
 

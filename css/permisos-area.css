@@ -8,11 +8,71 @@
    modificadores de color nuevos).
    ============================================================ */
 
+.permisos-area-section-toprow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
 .permisos-area-legend {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   margin-top: var(--space-4);
+}
+
+.permisos-area-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.permisos-area-file-name {
+  margin-left: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.permisos-area-import-status {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-sm);
+}
+
+.permisos-area-import-status--ok {
+  background: var(--color-status-ok-bg);
+  color: var(--color-status-ok-text);
+}
+
+.permisos-area-import-status--error {
+  background: var(--color-red-light);
+  color: var(--color-red);
+  border: 1px solid var(--color-red-border);
+}
+
+.permisos-area-preview {
+  margin-top: var(--space-6);
+}
+
+.permisos-area-preview__summary {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-navy);
+  margin-bottom: var(--space-3);
+}
+
+.permisos-area-table-wrap--preview {
+  max-height: 320px;
+}
+
+.permisos-area-preview__actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
 }
 
 .permisos-area-legend__note {
