@@ -55,10 +55,11 @@ async function initAuthArea() {
 // sin esperar a la base), completa/corrige lo que depende de la tabla
 // perfiles: 1) el nombre mostrado, con nombre/apellido tal como los haya
 // cargado el superadmin desde el panel (pueden no coincidir con lo que
-// manda Google — ver Adenda 2); 2) si tiene algún permiso de edición
-// (usuarios, pizarra o fichas), suma el acceso al panel de administración
-// — un único botón que agrupa las tres pantallas; adentro
-// (pages/panel-admin.html) se filtra de nuevo cuál de las tres puede usar.
+// manda Google — ver Adenda 2); 2) si tiene algún acceso de administración
+// (edición de usuarios, pizarra o fichas, o sólo lectura de Permisos por
+// Área), suma el acceso al panel de administración — un único botón que
+// agrupa las cuatro pantallas; adentro (pages/panel-admin.html) se filtra
+// de nuevo cuál de las cuatro puede usar.
 async function loadPerfilExtras(area, session) {
   const { data: perfil, error } = await window.supabaseClient
     .from('perfiles')
@@ -76,21 +77,25 @@ async function loadPerfilExtras(area, session) {
 
   if (!perfil.activo) return;
 
-  const tieneAlgunAccesoDeAdmin = perfil.es_superadmin || await tienePermisoDeEdicion();
+  const tieneAlgunAccesoDeAdmin = perfil.es_superadmin || await tieneAlgunAccesoAdmin();
   if (tieneAlgunAccesoDeAdmin) {
     addHeaderLink(area, 'auth-admin-link', '/pages/panel-admin.html', 'ti-settings', 'Administración');
   }
 }
 
-// true si puede editar la pizarra o al menos una ficha de producto —
-// mismos chequeos que hace pages/panel-admin.html para decidir qué
-// tarjetas mostrar, acá sólo hace falta saber si mostrar el botón o no.
-async function tienePermisoDeEdicion() {
-  const [pizarraRes, seccionesRes] = await Promise.all([
+// true si puede editar la pizarra, al menos una ficha de producto, o ver
+// la matriz de Permisos por Área (ese último es de sólo lectura -- no es
+// "edición", pero igual vive dentro del panel de administración, así que
+// también tiene que prender el botón del header). Mismos chequeos que
+// hace pages/panel-admin.html para decidir qué tarjetas mostrar; acá sólo
+// hace falta saber si mostrar el botón o no.
+async function tieneAlgunAccesoAdmin() {
+  const [pizarraRes, seccionesRes, permisosAreaRes] = await Promise.all([
     window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'pizarra', p_nivel: 'editar' }),
-    window.supabaseClient.rpc('fn_mis_secciones_editables')
+    window.supabaseClient.rpc('fn_mis_secciones_editables'),
+    window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'permisos-area', p_nivel: 'ver' })
   ]);
-  return !!pizarraRes.data || !!(seccionesRes.data && seccionesRes.data.length > 0);
+  return !!pizarraRes.data || !!(seccionesRes.data && seccionesRes.data.length > 0) || !!permisosAreaRes.data;
 }
 
 function addHeaderLink(area, className, href, icon, label) {

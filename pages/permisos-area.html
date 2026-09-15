@@ -12,13 +12,14 @@
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/admin.css">
   <link rel="stylesheet" href="../css/permisos-area.css">
 </head>
 <body>
 
   <!-- HEADER compartido -->
   <div id="site-header"
-    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Permisos por Área"}]'>
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Panel de administración","href":"/pages/panel-admin.html"},{"label":"Permisos por Área"}]'>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabase-client.js"></script>
@@ -27,32 +28,50 @@
   <script src="/js/page-guard.js"></script>
   <script src="/components/header/header.js"></script>
 
-  <main class="permisos-area-wrap" role="main">
+  <!-- ══════════════════════════════════════════════════════════
+       PERMISOS POR ÁREA — pantalla dentro del Panel de administración
+       (no un mosaico público, no aparece en el home). A diferencia de
+       admin.html (Usuarios), que es superadmin-only hardcodeado, acá el
+       acceso SÍ depende de permisos_area_seccion vía page-guard.js +
+       fn_tiene_permiso, porque es justamente lo que esta pantalla
+       muestra. Acceso hoy: superadmin + Gerencia General, sólo "ver"
+       (ver supabase/permisos_area_seccion_v7.sql). Reusa el shell visual
+       de admin.css (admin-wrap / admin-page-header / admin-section) para
+       verse consistente con Usuarios, Editor de pizarra y Editor de
+       fichas.
+       ══════════════════════════════════════════════════════════ -->
+  <main class="admin-wrap" role="main">
 
-    <div class="permisos-area-intro">
-      <p class="home-section-label">Permisos por Área</p>
-      <p class="permisos-area-desc">
-        Vista de solo lectura de qué área puede ver o editar cada sección del sitio,
-        tal como está cargado hoy en la base. Para dar de alta o modificar un
-        permiso, se sigue usando <code>Permisos_por_Area_WebInternaSP.xlsx</code> y
-        aplicando el SQL correspondiente — esta pantalla todavía no permite editar
-        desde acá.
-      </p>
-      <div class="permisos-area-legend">
-        <span class="tag tag--ver">Ver</span>
-        <span class="tag tag--editar">Editar</span>
-        <span class="permisos-area-legend__note">"Editar" incluye "Ver".</span>
+    <div class="admin-page-header">
+      <p class="section-label">Administración</p>
+      <h1 class="admin-page-title">Permisos por Área</h1>
+      <p class="admin-page-subtitle">Vista de solo lectura de qué área puede ver o editar cada sección del sitio.</p>
+    </div>
+
+    <section class="admin-section" aria-labelledby="permisos-area-title">
+      <div class="admin-section__header">
+        <h2 id="permisos-area-title" class="admin-section__title">Matriz de permisos</h2>
+        <p class="admin-section__subtitle">
+          Tal como está cargado hoy en la base. Para dar de alta o modificar un permiso, se
+          sigue usando <code>Permisos_por_Area_WebInternaSP.xlsx</code> y aplicando el SQL
+          correspondiente — esta pantalla todavía no permite editar desde acá.
+        </p>
+        <div class="permisos-area-legend">
+          <span class="tag tag--ver">Ver</span>
+          <span class="tag tag--editar">Editar</span>
+          <span class="permisos-area-legend__note">"Editar" incluye "Ver".</span>
+        </div>
       </div>
-    </div>
 
-    <div id="permisos-area-status" class="permisos-area-status">Cargando matriz de permisos…</div>
+      <p id="permisos-area-status" class="admin-loading">Cargando matriz de permisos…</p>
 
-    <div class="permisos-area-table-wrap" id="permisos-area-table-wrap" style="display:none;">
-      <table class="permisos-area-table" id="permisos-area-table">
-        <thead><tr id="permisos-area-thead-row"><th>Área</th></tr></thead>
-        <tbody id="permisos-area-tbody"></tbody>
-      </table>
-    </div>
+      <div class="permisos-area-table-wrap" id="permisos-area-table-wrap" style="display:none;">
+        <table class="permisos-area-table" id="permisos-area-table">
+          <thead><tr id="permisos-area-thead-row"><th>Área</th></tr></thead>
+          <tbody id="permisos-area-tbody"></tbody>
+        </table>
+      </div>
+    </section>
 
     <footer class="site-footer" role="contentinfo">
       <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>

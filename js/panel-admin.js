@@ -1,11 +1,13 @@
 /**
  * panel-admin.js — Punto de entrada único a las pantallas de
- * administración (Usuarios, Editor de la pizarra, Editor de fichas).
+ * administración (Usuarios, Editor de la pizarra, Editor de fichas,
+ * Permisos por Área).
  *
  * Sólo decide qué tarjetas mostrar según permiso — cada pantalla sigue
  * teniendo su propio chequeo de acceso (admin.js / pizarra-editor.js /
- * fichas-editor.js) para el caso de que alguien entre directo por URL
- * sin pasar por acá. La seguridad real la da RLS, como siempre.
+ * fichas-editor.js / page-guard.js en permisos-area.html) para el caso de
+ * que alguien entre directo por URL sin pasar por acá. La seguridad real
+ * la da RLS, como siempre.
  */
 
 document.addEventListener('sp:auth-ready', handleAuthReady);
@@ -62,18 +64,20 @@ async function handleAuthReady(e) {
 
 async function calcularAccesos(perfil) {
   if (perfil.es_superadmin) {
-    return { usuarios: true, pizarra: true, fichas: true };
+    return { usuarios: true, pizarra: true, fichas: true, permisos: true };
   }
 
-  const [pizarraRes, seccionesRes] = await Promise.all([
+  const [pizarraRes, seccionesRes, permisosAreaRes] = await Promise.all([
     window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'pizarra', p_nivel: 'editar' }),
-    window.supabaseClient.rpc('fn_mis_secciones_editables')
+    window.supabaseClient.rpc('fn_mis_secciones_editables'),
+    window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'permisos-area', p_nivel: 'ver' })
   ]);
 
   return {
     usuarios: false, // sólo superadmin
     pizarra: !!pizarraRes.data,
-    fichas: !!(seccionesRes.data && seccionesRes.data.length > 0)
+    fichas: !!(seccionesRes.data && seccionesRes.data.length > 0),
+    permisos: !!permisosAreaRes.data
   };
 }
 
@@ -102,6 +106,13 @@ function renderCards(accesos) {
       icon: 'ti-file-description',
       title: 'Editor de fichas de producto',
       desc: 'Contenido de las fichas de Mapa de Servicios y Sector Comunicaciones, por versión.'
+    },
+    {
+      permitido: accesos.permisos,
+      href: '/pages/permisos-area.html',
+      icon: 'ti-shield-lock',
+      title: 'Permisos por Área',
+      desc: 'Vista de solo lectura de qué área puede ver o editar cada sección del sitio.'
     }
   ].filter(t => t.permitido);
 

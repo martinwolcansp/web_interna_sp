@@ -1,36 +1,12 @@
 /* ============================================================
    permisos-area.css — Estilos de "Permisos por Área"
-   Tabla tipo planilla: primera columna (área) y encabezado quedan fijos
-   al hacer scroll, para poder recorrer las 40+ áreas cómodamente. Los
-   tags Ver/Editar reutilizan .tag de components.css con dos modificadores
-   de color nuevos.
+   Complementa admin.css (admin-wrap / admin-page-header / admin-section
+   ya cubren el shell de la página, igual que Usuarios). Acá sólo lo
+   específico de la tabla-matriz: primera columna (área) y encabezado
+   fijos al hacer scroll, para recorrer las 40+ áreas cómodamente, más
+   los tags Ver/Editar (reutilizan .tag de components.css con dos
+   modificadores de color nuevos).
    ============================================================ */
-
-.permisos-area-wrap {
-  max-width: var(--max-width-content);
-  margin: var(--space-10) auto;
-  padding: 0 var(--space-6) 3rem;
-}
-
-.permisos-area-intro {
-  margin-bottom: var(--space-8);
-}
-
-.permisos-area-desc {
-  font-size: var(--font-size-base);
-  color: var(--color-text-muted);
-  line-height: var(--line-height-base);
-  max-width: 640px;
-  margin-top: var(--space-2);
-}
-
-.permisos-area-desc code {
-  font-family: var(--font-mono);
-  font-size: 0.95em;
-  background: var(--color-bg-soft);
-  padding: 1px 5px;
-  border-radius: 4px;
-}
 
 .permisos-area-legend {
   display: flex;
@@ -42,12 +18,6 @@
 .permisos-area-legend__note {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-}
-
-.permisos-area-status {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  padding: var(--space-6) 0;
 }
 
 .permisos-area-table-wrap {
