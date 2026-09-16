@@ -328,8 +328,16 @@ create policy "secciones: lectura autenticados" on secciones
 create policy "secciones: escritura superadmin" on secciones
   for all using (exists (select 1 from perfiles where id = auth.uid() and es_superadmin and activo));
 
-create policy "permisos: lectura autenticados" on permisos_area_seccion
-  for select using (auth.role() = 'authenticated');
+-- A diferencia de areas/secciones (catálogos inofensivos), esta tabla es
+-- la matriz de permisos en sí -- lectura restringida a quien tiene 'ver'
+-- sobre la sección 'permisos-area' (superadmin + las áreas que se le
+-- otorguen, ver permisos_area_seccion_v7.sql), no a cualquier autenticado.
+-- fn_tiene_permiso es security definer, así que su propia consulta a esta
+-- tabla no reevalúa esta política (mismo mecanismo que fn_es_superadmin
+-- sobre "perfiles"). Endurecido en migracion_13_endurecer_lectura_permisos.sql
+-- (2026-09-16) -- ver ese archivo para el porqué y qué se verificó antes.
+create policy "permisos: lectura segun permiso de permisos-area" on permisos_area_seccion
+  for select using (fn_tiene_permiso('permisos-area', 'ver'));
 create policy "permisos: escritura superadmin" on permisos_area_seccion
   for all using (exists (select 1 from perfiles where id = auth.uid() and es_superadmin and activo));
 

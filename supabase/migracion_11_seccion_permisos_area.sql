@@ -15,19 +15,18 @@
 -- acceso a nadie todavía (ni siquiera Gerencia General). Ver
 -- permisos_area_seccion_v7.sql para el alta de permisos.
 --
--- Nota de seguridad -- IMPORTANTE: las tablas "areas" y "secciones" ya son
--- de lectura libre para cualquier autenticado (políticas "lectura
--- autenticados" en schema.sql), y lo mismo pasa hoy con
--- "permisos_area_seccion" -- cualquier usuario logueado ya podía leer la
--- matriz completa consultando esa tabla directo por la API de Supabase,
--- aunque hasta ahora ninguna pantalla se la mostrara. Por eso
--- fn_matriz_permisos() NO se apoya en esa política existente: repite el
--- chequeo de permiso puntual sobre la sección 'permisos-area' adentro de
--- su propio WHERE (mismo criterio que fn_puede_ver_novedad, ver la
--- lección documentada en el Adenda de Fase 5 sobre funciones security
--- definer). Si en algún momento se quiere cerrar también el acceso
--- directo a la tabla permisos_area_seccion para no-superadmins, es un
--- cambio de política RLS aparte, no incluido acá.
+-- Nota de seguridad -- las tablas "areas" y "secciones" son de lectura
+-- libre para cualquier autenticado (políticas "lectura autenticados" en
+-- schema.sql) -- son catálogos inofensivos. "permisos_area_seccion" tenía
+-- la misma política heredada, lo cual SÍ era un problema (cualquier
+-- logueado podía leer la matriz completa por la API, sin pasar por
+-- ninguna pantalla). Por eso fn_matriz_permisos() no se apoyaba en esa
+-- política: repite el chequeo de permiso puntual sobre 'permisos-area'
+-- adentro de su propio WHERE (mismo criterio que fn_puede_ver_novedad).
+-- RESUELTO 2026-09-16 en migracion_13_endurecer_lectura_permisos.sql:
+-- la política de lectura de permisos_area_seccion ahora exige
+-- fn_tiene_permiso('permisos-area', 'ver') en vez de "autenticado" a
+-- secas -- ver ese archivo para el detalle y qué se verificó antes.
 -- =========================================================================
 
 begin;
