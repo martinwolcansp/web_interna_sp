@@ -87,3 +87,18 @@
   opacity: 0.5;
   pointer-events: none;
 }
+
+/* ig-o-form-status / ig-c-form-status pueden mostrar el detalle completo
+   de un error de sincronización (por ejemplo la excepción de conexión a
+   GHL de oportunidad_sync_service.py), mucho más largo que los mensajes
+   cortos ("Guardado ✓", etc.) para los que admin.css puso
+   .admin-row-status en white-space: nowrap. Sin este override el texto
+   largo desborda el <span> dentro de .ig-form__actions (flex) y arrastra
+   un scroll horizontal a toda la página.
+   */
+.ig-form__actions .admin-row-status {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
