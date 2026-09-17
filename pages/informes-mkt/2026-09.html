@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Informe mensual MKT — Origenes de leads y conversaciones (GHL)</title>
 <style>
+
 :root {
   --navy: #1F3864; --navy-solid: #1F3864; --ink: #202124; --second: #52514E; --muted: #6B6B6B;
   --rule: #DEDCD3; --light-fill: #EEF1F6; --blue: #2a78d6; --orange: #eb6834;
@@ -89,14 +90,12 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .detail-grid .dg-value { color: var(--ink); }
 .detail-grid .dg-full { grid-column: 1 / -1; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: #fff; }
-.thread { margin-top: 6px; border: 1px solid var(--rule); border-radius: 6px; max-height: 260px; overflow-y: auto; background: #fff; padding: 8px 10px; }
-.thread .msg { font-size: 12.5px; margin: 0 0 6px; padding-bottom: 6px; border-bottom: 1px dashed var(--rule); }
-.thread .msg:last-child { border-bottom: none; margin-bottom: 0; }
-.thread .msg .meta { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
-.thread .msg.inbound .meta { color: #2a78d6; }
-.thread .msg.outbound .meta { color: #2a9d5c; }
+.conv-summary { margin-top: 4px; border-left: 3px solid var(--navy-solid); border-radius: 4px; background: var(--light-fill); padding: 10px 14px; }
+.conv-summary .dg-label { margin-bottom: 4px; }
+.conv-summary .dg-value { font-size: 13.5px; line-height: 1.5; }
 @media (max-width: 640px) { .wrap { padding: 16px 12px 40px; } main { padding: 4px 14px 20px; } header.report-header h1 { font-size: 20px; } .explorer-search { width: 140px; } }
 @media print { nav.tabs { display: none; } .tab-panel { display: block !important; page-break-before: always; } main { border: none; } }
+
 </style>
 </head>
 <body>
@@ -104,9 +103,9 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   <header class="report-header">
     <div class="eyebrow">SP Seguridad Privada &middot; Informe mensual para MKT</div>
     <h1>Origenes de leads y resumen de conversaciones</h1>
-    <div class="sub">Periodo: 2026-09-01 a 2026-09-16 &middot; Datos de GHL (contactos, campos personalizados, oportunidades y conversaciones) &middot; sin cruce con NetSuite (etapa futura) &middot; graficos y tabla interactivos &mdash; click en un grafico para filtrar el detalle</div>
+    <div class="sub">Periodo: 2026-09-01 a 2026-09-16 &middot; Datos de GHL (contactos, campos personalizados, oportunidades y conversaciones) &middot; sin cruce con NetSuite (etapa futura) &middot; graficos y tabla interactivos — click en un grafico para filtrar el detalle</div>
   </header>
-  <div class="note-box"><p><strong>Nota sobre esta version:</strong> los 48 contactos y sus campos personalizados (Origen del Cliente, Forma de Contacto, Interesado en) son la poblacion completa de la corrida. El detalle de conversacion y el estado de oportunidad en GHL estan disponibles para 13 de ellos por ahora; a medida que el proceso se automatice esto va a cubrir el 100% de los contactos del periodo.</p></div>
+  <div class="note-box"><p><strong>Nota sobre esta version:</strong> los 48 contactos y sus campos personalizados (Origen del Cliente, Forma de Contacto, Interesado en) son la poblacion completa de la corrida. El detalle de conversacion y el estado de oportunidad en GHL estan disponibles para 13 de ellos por ahora, porque en esta corrida esos dos endpoints se pidieron unicamente para los contactos que en ese momento tenian una oportunidad abierta segun NetSuite. Cuando el backend de actualizacion automatica este funcionando, esto va a cubrir el 100% de los contactos del periodo.</p></div>
   <nav class="tabs" role="tablist">
     <button class="tab-btn active" data-tab="resumen" role="tab" aria-selected="true" id="tab-resumen">Resumen ejecutivo</button>
     <button class="tab-btn" data-tab="conversaciones" role="tab" aria-selected="false" id="tab-conversaciones">Resumen de conversaciones</button>
@@ -154,7 +153,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       
 <div class="explorer" id="explorer-conversaciones">
   <div class="explorer-bar">
-    <div class="explorer-title">Contactos con conversacion disponible (13) — click para ver el hilo completo</div>
+    <div class="explorer-title">Contactos con conversacion disponible (13) — click para ver el resumen</div>
     <div class="explorer-chips" id="conversaciones-chips"></div>
     <input class="explorer-search" placeholder="Buscar por nombre..." oninput="setSearch('conversaciones', this.value)">
     <button class="explorer-clear" onclick="clearFilter('conversaciones')">Limpiar filtros</button>
@@ -281,14 +280,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return pill(c.ghl_estado, ESTADO_COLORS[c.ghl_estado] || "#9AA0A6");
   }
 
-  function threadHtml(c) {
-    if (!c.hilo_mensajes || !c.hilo_mensajes.length) return "";
-    var rows = c.hilo_mensajes.map(function (m) {
-      return '<div class="msg ' + (m.direccion || "") + '"><div class="meta">' + esc(fmtDateTime(m.fecha)) + " &middot; " + esc(m.direccion) + '</div><div>' + esc(m.texto) + "</div></div>";
-    }).join("");
-    return '<div class="dg-full"><div class="dg-label">Hilo completo (' + c.hilo_mensajes.length + ' mensajes)</div><div class="thread">' + rows + "</div></div>";
-  }
-
   function detailGrid(c) {
     var rows = [
       ["Origen del Cliente", c.origen_cliente],
@@ -306,11 +297,12 @@ document.addEventListener("DOMContentLoaded", function () {
       html += '<div><div class="dg-label">Ultimo mensaje</div><div class="dg-value">' + esc(fmtDateTime(c.ultimo_mensaje)) + "</div></div>";
     }
     if (c.resumen_conversacion) {
-      html += '<div class="dg-full"><div class="dg-label">Resumen de conversacion' + (c.ghl_estado && c.ghl_estado !== "won" ? " (no cerrada)" : "") + '</div><div class="dg-value">' + esc(c.resumen_conversacion) + "</div></div>";
-    } else if (!c.tiene_datos_conversacion) {
+      html += '<div class="dg-full conv-summary"><div class="dg-label">Resumen de conversacion' + (c.ghl_estado && c.ghl_estado !== "won" ? " (no cerrada)" : "") + '</div><div class="dg-value">' + esc(c.resumen_conversacion) + "</div></div>";
+    } else if (c.tiene_datos_conversacion) {
+      html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">Hay conversacion registrada pero todavia no se redacto un resumen.</div></div>';
+    } else {
       html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">Sin datos de conversacion en esta corrida (no se incluyo en el subconjunto consultado a GHL).</div></div>';
     }
-    html += threadHtml(c);
     html += "</div>";
     return html;
   }
