@@ -21,7 +21,7 @@ function setInformesMktPeriodo(periodoId) {
   closeInformesMktDropdown();
 
   const frame = document.getElementById('informes-mkt-frame');
-  if (frame) frame.src = 'informes-mkt/' + periodo.archivo;
+  if (frame) frame.src = 'informes-mkt/' + periodo.archivo + '?v=' + Date.now();
 }
 
 function updateInformesMktSelectorUI(activeId) {
