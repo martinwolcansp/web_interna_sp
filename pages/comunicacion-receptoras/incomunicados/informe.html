@@ -3,7 +3,9 @@
 <title>Incomunicados — Estado de comunicación de cuentas ByKom</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{color-scheme:light;--bg:#f9f9f7;--surface:#fcfcfb;--surface-2:#f2f1ee;--border:#e1e0d9;--ink:#0b0b0b;--ink-2:#52514e;--muted:#898781;
@@ -36,6 +38,9 @@ th{position:sticky;top:0;background:var(--surface-2);cursor:pointer;font-weight:
 tbody tr{cursor:pointer}tbody tr:hover{background:var(--surface-2)}
 .tw{max-height:460px;overflow:auto;border:1px solid var(--border);border-radius:8px}
 .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+#map{background:#e9ecef}
+.cl{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;color:#fff;font-weight:700;line-height:1.05;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.cl b{font-size:13px}.cl small{font-size:9px;font-weight:600;opacity:.95}
 .leaflet-popup-content{font:13px/1.4 'IBM Plex Sans',sans-serif;color:#111}
 ul.m{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--ink-2)}
 @media(max-width:700px){.bar{grid-template-columns:110px 1fr 90px}.wrap{padding:12px}}
@@ -85,19 +90,23 @@ document.getElementById('bars').innerHTML=ORDER.filter(k=>k!=='desh').map(k=>`<d
 document.getElementById('bnote').textContent='Los días se cuentan hasta la fecha de la exportación. Las deshabilitadas no entran en este cálculo.';
 // ---- mapa
 const map=L.map('map',{preferCanvas:true}).setView([-34.92,-57.95],11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
 const canvas=L.canvas({padding:.5});const layers={};const on=Object.fromEntries(ORDER.map(k=>[k,k!=='desh']));
 const markers=new Map();
-R.forEach(r=>{if(r.lat==null)return;const m=L.circleMarker([r.lat,r.lon],{renderer:canvas,radius:r.b==='com'?4:6,weight:r.b==='com'?0:1.5,color:'#fff',fillColor:css(B[r.b].c),fillOpacity:r.b==='com'?.6:.9});
+R.forEach(r=>{if(r.lat==null)return;const m=L.circleMarker([r.lat,r.lon],{renderer:canvas,radius:r.b==='com'?6:9,weight:2,color:'#fff',fillColor:css(B[r.b].c),fillOpacity:1});m.b=r.b;
  m.bindPopup(()=>`<b>${esc(r.nombre)}</b><br>Cuenta ${esc(r.cuenta)}<br>${esc(r.dom)}, ${esc(r.ciudad)}<br>Último mensaje: ${r.fecha?esc(r.fecha):'sin registro'}${r.dias>0?` (hace ${r.dias} d)`:''}<br><i>${B[r.b].l}</i>`);markers.set(r.i,m)});
-const grp=L.layerGroup().addTo(map);
+const SEV={old:4,s90:3,s7:2,com:1,desh:0};
+const grp=L.markerClusterGroup({chunkedLoading:true,showCoverageOnHover:false,maxClusterRadius:55,spiderfyOnMaxZoom:true,
+ iconCreateFunction:c=>{const ms=c.getAllChildMarkers();let w='desh',inc=0;ms.forEach(m=>{if(SEV[m.b]>SEV[w])w=m.b;if(m.b==='s7'||m.b==='s90'||m.b==='old')inc++});
+  const n=ms.length,sz=n<50?38:n<500?46:56;
+  return L.divIcon({className:'',iconSize:[sz,sz],html:`<div class="cl" style="background:${css(B[w].c)}"><b>${fmt(n)}</b>${inc?`<small>${fmt(inc)} inc.</small>`:''}</div>`})}}).addTo(map);
 document.getElementById('chips').innerHTML=ORDER.map(k=>`<span class="chip${k==='desh'?' off':''}" data-k="${k}"><i style="background:var(${B[k].c})"></i>${B[k].l} (${fmt(cnt(k))})</span>`).join('');
 const cities=[...new Set(R.map(r=>r.ciudad))].sort();
 document.getElementById('city').innerHTML='<option value="">Todas las ciudades</option>'+cities.map(c=>`<option>${esc(c)}</option>`).join('');
 let q='',city='',sk='dias',sd=-1,shown=200;
 const match=r=>on[r.b]&&(!city||r.ciudad===city)&&(!q||(r.nombre+' '+r.cuenta+' '+r.dom).toLowerCase().includes(q));
-function draw(){grp.clearLayers();let n=0;[...R].sort((a,b)=>ORDER.indexOf(a.b)-ORDER.indexOf(b.b)).forEach(r=>{if(r.lat!=null&&match(r)){grp.addLayer(markers.get(r.i));n++}});
- const f=R.filter(match);document.getElementById('mnote').textContent=`${fmt(n)} clientes en el mapa. ${fmt(R.length-conCoord)} cuentas (${((R.length-conCoord)/R.length*100).toFixed(1)}%) no tienen coordenadas válidas en ByKom y sólo aparecen en la tabla.`;
+function draw(){grp.clearLayers();let n=0;const arr=[];R.forEach(r=>{if(r.lat!=null&&match(r)){arr.push(markers.get(r.i));n++}});grp.addLayers(arr);
+ const f=R.filter(match);document.getElementById('mnote').textContent=`${fmt(n)} clientes en el mapa (agrupados por cercanía; acercá el zoom para ver cada cuenta; el color del grupo indica la peor situación que contiene). ${fmt(R.length-conCoord)} cuentas (${((R.length-conCoord)/R.length*100).toFixed(1)}%) no tienen coordenadas válidas en ByKom y sólo aparecen en la tabla.`;
  table(f)}
 function table(f){const k=sk;f=[...f].sort((a,b)=>{let x=a[k],y=b[k];if(x==null)x=k==='dias'?1e9:'';if(y==null)y=k==='dias'?1e9:'';return(x>y?1:x<y?-1:0)*sd});window._f=f;
  document.getElementById('tcount').textContent=`${fmt(f.length)} cuentas según los filtros`;
@@ -109,7 +118,7 @@ document.getElementById('city').onchange=e=>{city=e.target.value;shown=200;draw(
 document.getElementById('more').onclick=()=>{shown+=300;table(window._f)};
 document.querySelector('thead').onclick=e=>{const k=e.target.dataset.k;if(!k)return;sd=(sk===k)?-sd:1;sk=k;table(window._f)};
 document.getElementById('tb').onclick=e=>{const tr=e.target.closest('tr');if(!tr)return;const m=markers.get(+tr.dataset.i);if(!m)return;
- if(!grp.hasLayer(m))grp.addLayer(m);map.setView(m.getLatLng(),17);m.openPopup();document.getElementById('map').scrollIntoView({behavior:'smooth',block:'center'})};
+ if(!grp.hasLayer(m))grp.addLayer(m);grp.zoomToShowLayer(m,()=>m.openPopup());document.getElementById('map').scrollIntoView({behavior:'smooth',block:'center'})};
 document.getElementById('fit').onclick=()=>{const pts=R.filter(r=>r.lat!=null&&match(r)).map(r=>[r.lat,r.lon]);if(pts.length)map.fitBounds(pts,{padding:[20,20]})};
 document.getElementById('xls').onclick=()=>{const rows=window._f.map(r=>({Cuenta:r.cuenta,Cliente:r.nombre,Domicilio:r.dom,Ciudad:r.ciudad,'Último mensaje':r.fecha||'','Días sin mensaje':r.dias==null?'':r.dias,Estado:B[r.b].l,Latitud:r.lat??'',Longitud:r.lon??''}));
  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Cuentas');XLSX.writeFile(wb,'Incomunicados_'+CORTE+'.xlsx')};
