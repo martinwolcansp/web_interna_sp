@@ -51,11 +51,10 @@ ul.m{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--ink-2)}
 <div class="card"><h2>Antigüedad del último mensaje (cuentas habilitadas)</h2><div id="bars"></div>
 <p class="note" id="bnote"></p></div>
 <div class="card"><h2>Mapa de clientes</h2>
-<div class="ctl" id="chips"></div>
 <div class="ctl"><input type="search" id="q" placeholder="Buscar por nombre, cuenta o domicilio"><select id="city"></select><button id="fit">Ver todo</button></div>
 <div id="map"></div><p class="note" id="mnote"></p></div>
 <div class="card"><h2>Detalle por cuenta</h2>
-<div class="ctl"><span id="tcount" class="note" style="margin:0"></span><button id="xls" style="margin-left:auto">Exportar a Excel</button></div>
+<div class="ctl"><select id="st"><option value="">Todos los estados</option><option value="inc">Solo incomunicadas</option><option value="com">Comunicaron el 18/09</option><option value="s7">Sin mensaje 1–7 días</option><option value="s90">Sin mensaje 8–90 días</option><option value="old">Sin mensaje +90 días o nunca</option><option value="desh">Deshabilitadas</option></select><span id="tcount" class="note" style="margin:0"></span><button id="xls" style="margin-left:auto">Exportar a Excel</button></div>
 <div class="tw"><table><thead><tr><th data-k="cuenta">Cuenta</th><th data-k="nombre">Cliente</th><th data-k="dom">Domicilio</th><th data-k="ciudad">Ciudad</th><th data-k="fecha">Último mensaje</th><th data-k="dias">Días sin mensaje</th><th data-k="b">Estado</th></tr></thead><tbody id="tb"></tbody></table></div>
 <p class="note"><button id="more" style="display:none">Mostrar más</button> Hacé clic en una fila para ubicar al cliente en el mapa.</p></div>
 <div class="card"><h2>Criterios y limitaciones</h2><ul class="m" id="meth"></ul></div>
@@ -96,33 +95,32 @@ L.control.layers({'Mapa gris (referencial)':baseGris,'Calles (OpenStreetMap)':ba
 let tileErr=0;baseGris.on('tileerror',()=>{if(++tileErr===8&&map.hasLayer(baseGris)){map.removeLayer(baseGris);baseCalles.addTo(map)}}); // si el gris no carga, cae a OpenStreetMap
 const canvas=L.canvas({padding:.5});const layers={};const on=Object.fromEntries(ORDER.map(k=>[k,k!=='desh']));
 const markers=new Map();
-R.forEach(r=>{if(r.lat==null)return;const m=L.circleMarker([r.lat,r.lon],{renderer:canvas,radius:r.b==='com'?6:9,weight:2,color:'#fff',fillColor:css(B[r.b].c),fillOpacity:1});m.b=r.b;
+R.forEach(r=>{if(r.lat==null)return;const m=L.circleMarker([r.lat,r.lon],{renderer:canvas,radius:7,weight:2,color:'#fff',fillColor:css('--c-com'),fillOpacity:1});
  m.bindPopup(()=>`<b>${esc(r.nombre)}</b><br>Cuenta ${esc(r.cuenta)}<br>${esc(r.dom)}, ${esc(r.ciudad)}<br>Último mensaje: ${r.fecha?esc(r.fecha):'sin registro'}${r.dias>0?` (hace ${r.dias} d)`:''}<br><i>${B[r.b].l}</i>`);markers.set(r.i,m)});
-const SEV={old:4,s90:3,s7:2,com:1,desh:0};
 const grp=L.markerClusterGroup({chunkedLoading:true,showCoverageOnHover:false,maxClusterRadius:55,spiderfyOnMaxZoom:true,
- iconCreateFunction:c=>{const ms=c.getAllChildMarkers();let w='desh',inc=0;ms.forEach(m=>{if(SEV[m.b]>SEV[w])w=m.b;if(m.b==='s7'||m.b==='s90'||m.b==='old')inc++});
-  const n=ms.length,sz=n<50?38:n<500?46:56;
-  return L.divIcon({className:'',iconSize:[sz,sz],html:`<div class="cl" style="background:${css(B[w].c)}"><b>${fmt(n)}</b>${inc?`<small>${fmt(inc)} inc.</small>`:''}</div>`})}}).addTo(map);
-document.getElementById('chips').innerHTML=ORDER.map(k=>`<span class="chip${k==='desh'?' off':''}" data-k="${k}"><i style="background:var(${B[k].c})"></i>${B[k].l} (${fmt(cnt(k))})</span>`).join('');
+ iconCreateFunction:c=>{const n=c.getChildCount(),sz=n<50?38:n<500?46:56;
+  return L.divIcon({className:'',iconSize:[sz,sz],html:`<div class="cl" style="background:${css('--c-com')}"><b>${fmt(n)}</b></div>`})}}).addTo(map);
 const cities=[...new Set(R.map(r=>r.ciudad))].sort();
 document.getElementById('city').innerHTML='<option value="">Todas las ciudades</option>'+cities.map(c=>`<option>${esc(c)}</option>`).join('');
-let q='',city='',sk='dias',sd=-1,shown=200;
-const match=r=>on[r.b]&&(!city||r.ciudad===city)&&(!q||(r.nombre+' '+r.cuenta+' '+r.dom).toLowerCase().includes(q));
-function draw(){grp.clearLayers();let n=0;const arr=[];R.forEach(r=>{if(r.lat!=null&&match(r)){arr.push(markers.get(r.i));n++}});grp.addLayers(arr);
- const f=R.filter(match);document.getElementById('mnote').textContent=`${fmt(n)} clientes en el mapa (agrupados por cercanía; acercá el zoom para ver cada cuenta; el color del grupo indica la peor situación que contiene). ${fmt(R.length-conCoord)} cuentas (${((R.length-conCoord)/R.length*100).toFixed(1)}%) no tienen coordenadas válidas en ByKom y sólo aparecen en la tabla.`;
+let q='',city='',st='',sk='dias',sd=-1,shown=200;
+const base=r=>(!city||r.ciudad===city)&&(!q||(r.nombre+' '+r.cuenta+' '+r.dom).toLowerCase().includes(q));
+const matchMap=r=>r.b!=='desh'&&base(r);
+const match=r=>base(r)&&(!st||(st==='inc'?(r.b==='s7'||r.b==='s90'||r.b==='old'):r.b===st));
+function draw(){grp.clearLayers();let n=0;const arr=[];R.forEach(r=>{if(r.lat!=null&&matchMap(r)){arr.push(markers.get(r.i));n++}});grp.addLayers(arr);
+ const f=R.filter(match);document.getElementById('mnote').textContent=`${fmt(n)} clientes en el mapa (cuentas habilitadas, agrupadas por cercanía; acercá el zoom y hacé clic en una cuenta para ver sus datos). ${fmt(R.length-conCoord)} cuentas (${((R.length-conCoord)/R.length*100).toFixed(1)}%) no tienen coordenadas válidas en ByKom y sólo aparecen en la tabla.`;
  table(f)}
 function table(f){const k=sk;f=[...f].sort((a,b)=>{let x=a[k],y=b[k];if(x==null)x=k==='dias'?1e9:'';if(y==null)y=k==='dias'?1e9:'';return(x>y?1:x<y?-1:0)*sd});window._f=f;
  document.getElementById('tcount').textContent=`${fmt(f.length)} cuentas según los filtros`;
  document.getElementById('tb').innerHTML=f.slice(0,shown).map(r=>`<tr data-i="${r.i}"><td>${esc(r.cuenta)}</td><td>${esc(r.nombre)}</td><td>${esc(r.dom)}</td><td>${esc(r.ciudad)}</td><td>${r.fecha?esc(r.fecha):'—'}</td><td>${r.dias==null?'—':r.dias}</td><td><span class="pill" style="background:var(${B[r.b].c})">${B[r.b].l}</span></td></tr>`).join('');
  document.getElementById('more').style.display=f.length>shown?'inline-block':'none'}
-document.getElementById('chips').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;on[c.dataset.k]=!on[c.dataset.k];c.classList.toggle('off',!on[c.dataset.k]);shown=200;draw()};
+document.getElementById('st').onchange=e=>{st=e.target.value;shown=200;draw()};
 document.getElementById('q').oninput=e=>{q=e.target.value.trim().toLowerCase();shown=200;draw()};
 document.getElementById('city').onchange=e=>{city=e.target.value;shown=200;draw()};
 document.getElementById('more').onclick=()=>{shown+=300;table(window._f)};
 document.querySelector('thead').onclick=e=>{const k=e.target.dataset.k;if(!k)return;sd=(sk===k)?-sd:1;sk=k;table(window._f)};
 document.getElementById('tb').onclick=e=>{const tr=e.target.closest('tr');if(!tr)return;const m=markers.get(+tr.dataset.i);if(!m)return;
  if(!grp.hasLayer(m))grp.addLayer(m);grp.zoomToShowLayer(m,()=>m.openPopup());document.getElementById('map').scrollIntoView({behavior:'smooth',block:'center'})};
-document.getElementById('fit').onclick=()=>{const pts=R.filter(r=>r.lat!=null&&match(r)).map(r=>[r.lat,r.lon]);if(pts.length)map.fitBounds(pts,{padding:[20,20]})};
+document.getElementById('fit').onclick=()=>{const pts=R.filter(r=>r.lat!=null&&matchMap(r)).map(r=>[r.lat,r.lon]);if(pts.length)map.fitBounds(pts,{padding:[20,20]})};
 document.getElementById('xls').onclick=()=>{const rows=window._f.map(r=>({Cuenta:r.cuenta,Cliente:r.nombre,Domicilio:r.dom,Ciudad:r.ciudad,'Último mensaje':r.fecha||'','Días sin mensaje':r.dias==null?'':r.dias,Estado:B[r.b].l,Latitud:r.lat??'',Longitud:r.lon??''}));
  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Cuentas');XLSX.writeFile(wb,'Incomunicados_'+CORTE+'.xlsx')};
 document.getElementById('meth').innerHTML=[
