@@ -29,12 +29,14 @@
 
   <main class="comunicacion-receptoras-overview" role="main">
 
+    <nav id="cr-subnav" class="cr-subnav" data-active="general"></nav>
+
     <div class="cr-intro">
       <p class="cr-intro__eyebrow">Análisis por receptora</p>
-      <h1 class="cr-intro__title">Comunicación de clientes por receptora</h1>
+      <h1 class="cr-intro__title">Informe general de receptoras</h1>
       <p class="cr-intro__desc">
-        Cada receptora tiene su propio informe, elaborado a partir de los reportes de eventos
-        exportados de ByKom. Elegí una para ver el detalle completo por cliente.
+        Resumen consolidado de todas las receptoras, elaborado a partir de los reportes de eventos
+        exportados de ByKom.
       </p>
     </div>
 
@@ -53,11 +55,6 @@
       </div>
     </section>
 
-    <div id="cr-cards" class="cr-cards">
-      <!-- Renderizado por js/comunicacion-receptoras.js a partir de
-           js/versiones/comunicacion-receptoras.js -->
-    </div>
-
     <footer class="site-footer" role="contentinfo">
       <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
       <div>
@@ -70,6 +67,7 @@
 
   <script src="../js/versiones/comunicacion-receptoras.js"></script>
   <script src="../js/comunicacion-receptoras.js"></script>
+  <script src="/js/comunicacion-receptoras-nav.js"></script>
 
 </body>
 </html>

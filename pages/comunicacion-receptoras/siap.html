@@ -15,7 +15,7 @@
 <body>
 
   <div id="site-header"
-    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Comunicación Receptoras","href":"/pages/comunicacion-receptoras.html"},{"label":"SIAip"}]'>
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Comunicación Receptoras","href":"/pages/comunicacion-receptoras.html"},{"label":"Receptoras","href":"/pages/comunicacion-receptoras/receptoras.html"},{"label":"SIAip"}]'>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabase-client.js"></script>
@@ -25,6 +25,8 @@
   <script src="/components/header/header.js"></script>
 
   <main class="comunicacion-receptoras-wrap" role="main">
+
+    <nav id="cr-subnav" class="cr-subnav" data-active="receptoras"></nav>
 
     <div class="comunicacion-receptoras-frame-wrap">
       <iframe id="receptora-frame" class="comunicacion-receptoras-frame"
@@ -43,6 +45,7 @@
   </main>
 
   <script src="../../js/comunicacion-receptoras-frame.js"></script>
+  <script src="/js/comunicacion-receptoras-nav.js"></script>
 
 </body>
 </html>

@@ -146,7 +146,7 @@ function renderTarjetas(receptoras) {
   const ordenadas = [...receptoras].sort((a, b) => (b.clientes || 0) - (a.clientes || 0));
 
   el.innerHTML = ordenadas.map(r => `
-    <a class="cr-card" href="${r.href}">
+    <a class="cr-card" href="/pages/${r.href}">
       <div class="cr-card__header">
         <span class="cr-card__nombre">${r.nombre}</span>
         <span class="cr-card__via">${r.via}</span>

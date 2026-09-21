@@ -325,3 +325,33 @@
 @media (max-width: 640px) {
   .cr-bar-row { grid-template-columns: 110px 1fr 54px; }
 }
+
+/* ---- Menú de subsecciones (Informe general · Receptoras · Incomunicados) ---- */
+
+.cr-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-6, 24px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cr-subnav__link {
+  padding: 10px 16px;
+  margin-bottom: -1px;
+  font-size: var(--font-size-base, 13px);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+}
+
+.cr-subnav__link:hover {
+  color: var(--color-navy);
+}
+
+.cr-subnav__link.is-active {
+  color: var(--color-navy);
+  border-bottom-color: var(--color-navy);
+  font-weight: 600;
+}

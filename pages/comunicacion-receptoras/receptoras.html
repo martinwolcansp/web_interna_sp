@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Garnet — Comunicación Receptoras — SP Seguridad</title>
+  <title>Receptoras — Comunicación Receptoras — SP Seguridad</title>
 
+  <!-- Iconografía -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 
+  <!-- Estilos: tokens → base → componentes → página -->
   <link rel="stylesheet" href="../../css/tokens.css">
   <link rel="stylesheet" href="../../css/base.css">
   <link rel="stylesheet" href="../../css/components.css">
@@ -14,8 +16,9 @@
 </head>
 <body>
 
+  <!-- HEADER compartido -->
   <div id="site-header"
-    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Comunicación Receptoras","href":"/pages/comunicacion-receptoras.html"},{"label":"Receptoras","href":"/pages/comunicacion-receptoras/receptoras.html"},{"label":"Garnet"}]'>
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Comunicación Receptoras","href":"/pages/comunicacion-receptoras.html"},{"label":"Receptoras"}]'>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/js/supabase-client.js"></script>
@@ -24,14 +27,22 @@
   <script src="/js/page-guard.js"></script>
   <script src="/components/header/header.js"></script>
 
-  <main class="comunicacion-receptoras-wrap" role="main">
+  <main class="comunicacion-receptoras-overview" role="main">
 
     <nav id="cr-subnav" class="cr-subnav" data-active="receptoras"></nav>
 
-    <div class="comunicacion-receptoras-frame-wrap">
-      <iframe id="receptora-frame" class="comunicacion-receptoras-frame"
-              src="garnet/informe.html"
-              title="Comunicación de clientes vía receptora Garnet"></iframe>
+    <div class="cr-intro">
+      <p class="cr-intro__eyebrow">Análisis por receptora</p>
+      <h1 class="cr-intro__title">Comunicación de clientes por receptora</h1>
+      <p class="cr-intro__desc">
+        Cada receptora tiene su propio informe, elaborado a partir de los reportes de eventos
+        exportados de ByKom. Elegí una para ver el detalle completo por cliente.
+      </p>
+    </div>
+
+    <div id="cr-cards" class="cr-cards">
+      <!-- Renderizado por js/comunicacion-receptoras.js a partir de
+           js/versiones/comunicacion-receptoras.js -->
     </div>
 
     <footer class="site-footer" role="contentinfo">
@@ -44,7 +55,8 @@
     </footer>
   </main>
 
-  <script src="../../js/comunicacion-receptoras-frame.js"></script>
+  <script src="../../js/versiones/comunicacion-receptoras.js"></script>
+  <script src="../../js/comunicacion-receptoras.js"></script>
   <script src="/js/comunicacion-receptoras-nav.js"></script>
 
 </body>
