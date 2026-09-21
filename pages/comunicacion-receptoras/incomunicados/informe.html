@@ -31,7 +31,7 @@ h2{font-size:15px;font-weight:600;margin:0 0 10px}
 input[type=search],select{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink)}
 input[type=search]{min-width:230px}
 button{font:inherit;font-size:13px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);cursor:pointer}button:hover{border-color:var(--accent)}
-#map{height:560px;border-radius:8px;border:1px solid var(--border);z-index:0}
+#map{height:780px;border-radius:8px;border:1px solid var(--border);z-index:0}
 .note{font-size:12px;color:var(--muted);margin:8px 0 0}
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
 th{position:sticky;top:0;background:var(--surface-2);cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap}
@@ -51,10 +51,10 @@ ul.m{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--ink-2)}
 <div class="card"><h2>Antigüedad del último mensaje (cuentas habilitadas)</h2><div id="bars"></div>
 <p class="note" id="bnote"></p></div>
 <div class="card"><h2>Mapa de clientes</h2>
-<div class="ctl"><input type="search" id="q" placeholder="Buscar por nombre, cuenta o domicilio"><select id="city"></select><button id="fit">Ver todo</button></div>
+<div class="ctl"><label class="note" style="margin:0">Estado:</label><select id="st"><option value="">Todas las habilitadas</option><option value="inc">Solo incomunicadas</option><option value="com">Comunicaron el 18/09</option><option value="s7">Sin mensaje 1–7 días</option><option value="s90">Sin mensaje 8–90 días</option><option value="old">Sin mensaje +90 días o nunca</option><option value="desh">Deshabilitadas</option></select><input type="search" id="q" placeholder="Buscar por nombre, cuenta o domicilio"><select id="city"></select><button id="fit">Ver todo</button></div>
 <div id="map"></div><p class="note" id="mnote"></p></div>
 <div class="card"><h2>Detalle por cuenta</h2>
-<div class="ctl"><select id="st"><option value="">Todos los estados</option><option value="inc">Solo incomunicadas</option><option value="com">Comunicaron el 18/09</option><option value="s7">Sin mensaje 1–7 días</option><option value="s90">Sin mensaje 8–90 días</option><option value="old">Sin mensaje +90 días o nunca</option><option value="desh">Deshabilitadas</option></select><span id="tcount" class="note" style="margin:0"></span><button id="xls" style="margin-left:auto">Exportar a Excel</button></div>
+<div class="ctl"><span id="tcount" class="note" style="margin:0"></span><button id="xls" style="margin-left:auto">Exportar a Excel</button></div>
 <div class="tw"><table><thead><tr><th data-k="cuenta">Cuenta</th><th data-k="nombre">Cliente</th><th data-k="dom">Domicilio</th><th data-k="ciudad">Ciudad</th><th data-k="fecha">Último mensaje</th><th data-k="dias">Días sin mensaje</th><th data-k="b">Estado</th></tr></thead><tbody id="tb"></tbody></table></div>
 <p class="note"><button id="more" style="display:none">Mostrar más</button> Hacé clic en una fila para ubicar al cliente en el mapa.</p></div>
 <div class="card"><h2>Criterios y limitaciones</h2><ul class="m" id="meth"></ul></div>
@@ -104,13 +104,14 @@ const cities=[...new Set(R.map(r=>r.ciudad))].sort();
 document.getElementById('city').innerHTML='<option value="">Todas las ciudades</option>'+cities.map(c=>`<option>${esc(c)}</option>`).join('');
 let q='',city='',st='',sk='dias',sd=-1,shown=200;
 const base=r=>(!city||r.ciudad===city)&&(!q||(r.nombre+' '+r.cuenta+' '+r.dom).toLowerCase().includes(q));
-const matchMap=r=>r.b!=='desh'&&base(r);
-const match=r=>base(r)&&(!st||(st==='inc'?(r.b==='s7'||r.b==='s90'||r.b==='old'):r.b===st));
+const okSt=r=>st?(st==='inc'?(r.b==='s7'||r.b==='s90'||r.b==='old'):r.b===st):r.b!=='desh';
+const match=r=>okSt(r)&&base(r);
+const matchMap=match;
 function draw(){grp.clearLayers();let n=0;const arr=[];R.forEach(r=>{if(r.lat!=null&&matchMap(r)){arr.push(markers.get(r.i));n++}});grp.addLayers(arr);
- const f=R.filter(match);document.getElementById('mnote').textContent=`${fmt(n)} clientes en el mapa (cuentas habilitadas, agrupadas por cercanía; acercá el zoom y hacé clic en una cuenta para ver sus datos). ${fmt(R.length-conCoord)} cuentas (${((R.length-conCoord)/R.length*100).toFixed(1)}%) no tienen coordenadas válidas en ByKom y sólo aparecen en la tabla.`;
+ const f=R.filter(match);document.getElementById('mnote').textContent=`${fmt(n)} clientes en el mapa (según el estado elegido, agrupadas por cercanía; acercá el zoom y hacé clic en una cuenta para ver sus datos). ${fmt(R.length-conCoord)} cuentas (${((R.length-conCoord)/R.length*100).toFixed(1)}%) no tienen coordenadas válidas en ByKom y sólo aparecen en la tabla.`;
  table(f)}
 function table(f){const k=sk;f=[...f].sort((a,b)=>{let x=a[k],y=b[k];if(x==null)x=k==='dias'?1e9:'';if(y==null)y=k==='dias'?1e9:'';return(x>y?1:x<y?-1:0)*sd});window._f=f;
- document.getElementById('tcount').textContent=`${fmt(f.length)} cuentas según los filtros`;
+ document.getElementById('tcount').textContent=`${fmt(f.length)} cuentas según los filtros (mapa y tabla)`;
  document.getElementById('tb').innerHTML=f.slice(0,shown).map(r=>`<tr data-i="${r.i}"><td>${esc(r.cuenta)}</td><td>${esc(r.nombre)}</td><td>${esc(r.dom)}</td><td>${esc(r.ciudad)}</td><td>${r.fecha?esc(r.fecha):'—'}</td><td>${r.dias==null?'—':r.dias}</td><td><span class="pill" style="background:var(${B[r.b].c})">${B[r.b].l}</span></td></tr>`).join('');
  document.getElementById('more').style.display=f.length>shown?'inline-block':'none'}
 document.getElementById('st').onchange=e=>{st=e.target.value;shown=200;draw()};
