@@ -394,7 +394,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var keyLabel = CHIP_KEY_LABELS[k] || k;
       var valLabel = k === "ghl_estado" ? estadoLabel(v) : v;
       out.push('<span class="chip">' + esc(keyLabel) + ": " + esc(valLabel) +
-        '<button onclick="applyFilter(\'' + explorerId + "', " + JSON.stringify(st.filters).replace(/'/g, "&#39;") + ')">&times;</button></span>');
+        '<button onclick="applyFilter(\'' + explorerId + "', " + JSON.stringify(st.filters).replace(/"/g, "&quot;").replace(/'/g, "&#39;") + ')">&times;</button></span>');
     });
     if (st.dateFrom || st.dateTo) {
       var dateLabel = "Alta: " + (st.dateFrom || "sin limite") + " a " + (st.dateTo || "sin limite");
