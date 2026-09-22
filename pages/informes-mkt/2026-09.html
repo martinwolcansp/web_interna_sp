@@ -20,7 +20,7 @@ body {
   font-family: Calibri, "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 15.5px; line-height: 1.55;
 }
-.wrap { max-width: 1080px; margin: 0 auto; padding: 28px 24px 64px; }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 28px 24px 64px; }
 header.report-header { border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 22px; }
 header.report-header .eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .02em; margin-bottom: 6px; }
 header.report-header h1 { color: var(--navy); font-size: 26px; margin: 0 0 6px; font-weight: 700; }
@@ -182,6 +182,8 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 <div class="kpi-row">
   <div class="kpi-card"><div class="kpi-num" id="contactos-hoy-kpi-num">&nbsp;</div><div class="kpi-label">Contactos cargados hoy</div></div>
 </div>
+
+<div class="donut-row donut-row-single" id="contactos-hoy-donut-row"></div>
 
 <div class="explorer" id="explorer-contactos">
   <div class="explorer-bar">
@@ -387,7 +389,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return filtered;
   }
 
-  var CHIP_KEY_LABELS = { "ghl_estado": "Estado de oportunidad", "vendedor": "Vendedor", "grupo_venta": "Grupo" };
+  var CHIP_KEY_LABELS = { "ghl_estado": "Estado de oportunidad", "vendedor": "Vendedor", "grupo_venta": "Grupo", "canal_tag": "Origen (tag)" };
   function chips(explorerId) {
     var st = getState(explorerId);
     var out = [];
@@ -536,7 +538,7 @@ document.addEventListener("DOMContentLoaded", function () {
     } else if (explorerId === "oportunidades") {
       cols = ["Contacto", "Vendedor", "Origen del Cliente", "Cantidad", "Estado GHL", "Grupo", "Fecha de creacion", "Nro cliente (NetSuite)", "Monto", "Etapa de pipeline", "Fecha de cierre"];
     } else {
-      cols = ["Contacto", "Origen del Cliente", "Forma de Contacto", "Estado GHL", "Conversacion"];
+      cols = ["Contacto", "Origen (tag)"];
     }
     thead.innerHTML = "<tr>" + cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr>";
   }
@@ -548,7 +550,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (explorerId === "oportunidades") {
       return [esc(c.nombre), esc(c.vendedor), esc(c.origen_cliente), c.n_oportunidades, estadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(c.nro_cliente_netsuite || "Sin dato"), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), esc(fmtDate(c.fecha_cierre))];
     }
-    return [esc(c.nombre), esc(c.origen_cliente), esc(c.forma_contacto), estadoPill(c), c.tiene_datos_conversacion ? (c.mensajes_total + " mensajes") : "Sin datos"];
+    return [esc(c.nombre), esc(c.canal_tag || "Sin dato")];
   }
 
   function render(explorerId) {
@@ -591,7 +593,7 @@ document.addEventListener("DOMContentLoaded", function () {
       countEl.textContent = countText;
     }
     renderThead(explorerId);
-    var colCount = (explorerId === "oportunidades") ? 11 : 5;
+    var colCount = (explorerId === "oportunidades") ? 11 : 2;
 
     var htmlOut = "";
     rows.forEach(function (c, i) {
@@ -618,10 +620,56 @@ document.addEventListener("DOMContentLoaded", function () {
     el.textContent = n;
   }
 
+  var DONUT_PALETTE = ["#1F3864", "#2a78d6", "#2a9d5c", "#8e6bb0", "#eb6834", "#9AA0A6", "#c9a227", "#6b6b6b"];
+
+  function contarJs(items, getField) {
+    var counts = {};
+    items.forEach(function (c) {
+      var v = getField(c) || "Sin dato";
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    return Object.keys(counts)
+      .map(function (k) { return [k, counts[k]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+  }
+
+  function donutSvgJs(counterItems, total, filtroCampo, explorerId, nLabel) {
+    var r = 76.0, cx = 90.0, cy = 90.0;
+    var circunf = 2 * Math.PI * r;
+    var segments = "", legend = "", offset = 0;
+    counterItems.forEach(function (item, i) {
+      var label = item[0], count = item[1];
+      if (!count) return;
+      var color = DONUT_PALETTE[i % DONUT_PALETTE.length];
+      var pct = total ? (100 * count / total) : 0;
+      var largo = total ? (circunf * count / total) : 0;
+      var resto = circunf - largo;
+      var onclickStr = 'applyFilter("' + explorerId + '", {"' + filtroCampo + '": ' + JSON.stringify(label) + "})";
+      segments += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="28" class="donut-seg clickable" stroke-dasharray="' + largo.toFixed(2) + " " + resto.toFixed(2) + '" stroke-dashoffset="-' + offset.toFixed(2) + '" transform="rotate(-90 ' + cx + " " + cy + ')" onclick=\'' + onclickStr + "'><title>" + esc(label) + ": " + count + " (" + pct.toFixed(1) + "%)</title></circle>";
+      legend += '<span class="legend-item clickable" onclick=\'' + onclickStr + '\'><span class="swatch" style="background:' + color + '"></span>' + esc(label) + ": <strong>" + count + "</strong> (" + pct.toFixed(1) + "%)</span>";
+      offset += largo;
+    });
+    var svg = '<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="grafico de torta" class="donut-svg"><circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#DEDCD3" stroke-width="28"/>' + segments +
+      '<text x="' + cx + '" y="87.0" text-anchor="middle" class="donut-center-num">' + total + '</text>' +
+      '<text x="' + cx + '" y="106.0" text-anchor="middle" class="donut-center-sub">' + esc(nLabel) + "</text></svg>";
+    return '<div class="donut-flex">' + svg + '<div class="chart-legend chart-legend-wrap">' + legend + "</div></div>";
+  }
+
+  function renderContactosHoyDonut() {
+    var el = document.getElementById("contactos-hoy-donut-row");
+    if (!el) return;
+    var hoy = todayStr();
+    var rows = CONTACTS.filter(function (c) { return c.date_added && c.date_added.slice(0, 10) === hoy; });
+    var counts = contarJs(rows, function (c) { return c.canal_tag; });
+    el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados hoy &middot; n=' + rows.length + "</div>" +
+      donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
+  }
+
   ["contactos", "oportunidades"].forEach(function (id) {
     if (document.getElementById(id + "-table")) render(id);
   });
   renderContactosHoyKpi();
+  renderContactosHoyDonut();
 })();
 </script>
 </body>
