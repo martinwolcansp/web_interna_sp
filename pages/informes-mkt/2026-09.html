@@ -85,7 +85,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .explorer { margin: 16px 0 8px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
 .explorer-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; background: var(--light-fill); border-bottom: 1px solid var(--rule); }
 .explorer-title { font-weight: 700; color: var(--navy); font-size: 13.5px; margin-right: auto; }
-.explorer-search { border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; width: 180px; }
+.explorer-search { border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; width: 180px; } .explorer-date { border: 1px solid var(--rule); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px; background: var(--surface); color: var(--ink); } .explorer-date-label { font-size: 12.5px; color: var(--muted); white-space: nowrap; } .explorer-date-group { display: inline-flex; align-items: center; gap: 6px; }
 .explorer-select { border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; background: var(--surface); color: var(--ink); }
 .explorer-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--navy-solid); color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 999px; }
@@ -157,6 +157,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     <div class="explorer-chips" id="oportunidades-chips"></div>
     <select class="explorer-select" id="oportunidades-estado-select" onchange="setEstadoFilter('oportunidades', this.value)"></select>
     <select class="explorer-select" id="oportunidades-vendedor-select" onchange="setVendedorFilter('oportunidades', this.value)"></select>
+    <span class="explorer-date-group"><span class="explorer-date-label">Alta desde</span><input type="date" class="explorer-date" id="oportunidades-date-from" onchange="setDateFilter('oportunidades','from', this.value)" title="Filtra por fecha de alta del contacto"><span class="explorer-date-label">hasta</span><input type="date" class="explorer-date" id="oportunidades-date-to" onchange="setDateFilter('oportunidades','to', this.value)" title="Filtra por fecha de alta del contacto"></span>
     <input class="explorer-search" placeholder="Buscar por nombre..." oninput="setSearch('oportunidades', this.value)">
     <button class="explorer-clear" onclick="clearFilter('oportunidades')">Limpiar filtros</button>
     <span class="explorer-count" id="oportunidades-count"></span>
@@ -189,6 +190,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     <div class="explorer-chips" id="contactos-chips"></div>
     <select class="explorer-select" id="contactos-estado-select" onchange="setEstadoFilter('contactos', this.value)"></select>
 
+    <span class="explorer-date-group"><span class="explorer-date-label">Alta desde</span><input type="date" class="explorer-date" id="contactos-date-from" onchange="setDateFilter('contactos','from', this.value)" title="Filtra por fecha de alta del contacto"><span class="explorer-date-label">hasta</span><input type="date" class="explorer-date" id="contactos-date-to" onchange="setDateFilter('contactos','to', this.value)" title="Filtra por fecha de alta del contacto"></span>
     <input class="explorer-search" placeholder="Buscar por nombre..." oninput="setSearch('contactos', this.value)">
     <button class="explorer-clear" onclick="clearFilter('contactos')">Limpiar filtros</button>
     <span class="explorer-count" id="contactos-count"></span>
@@ -220,6 +222,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     <div class="explorer-chips" id="conversaciones-chips"></div>
     
     
+    <span class="explorer-date-group"><span class="explorer-date-label">Alta desde</span><input type="date" class="explorer-date" id="conversaciones-date-from" onchange="setDateFilter('conversaciones','from', this.value)" title="Filtra por fecha de alta del contacto"><span class="explorer-date-label">hasta</span><input type="date" class="explorer-date" id="conversaciones-date-to" onchange="setDateFilter('conversaciones','to', this.value)" title="Filtra por fecha de alta del contacto"></span>
     <input class="explorer-search" placeholder="Buscar por nombre..." oninput="setSearch('conversaciones', this.value)">
     <button class="explorer-clear" onclick="clearFilter('conversaciones')">Limpiar filtros</button>
     <span class="explorer-count" id="conversaciones-count"></span>
@@ -273,7 +276,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function getState(id) {
-    if (!STATE[id]) STATE[id] = { filters: {}, search: "" };
+    if (!STATE[id]) STATE[id] = { filters: {}, search: "", dateFrom: null, dateTo: null };
     return STATE[id];
   }
 
@@ -287,8 +290,30 @@ document.addEventListener("DOMContentLoaded", function () {
     var st = getState(explorerId);
     st.filters = {};
     st.search = "";
+    st.dateFrom = null;
+    st.dateTo = null;
     var input = document.querySelector('#explorer-' + explorerId + ' .explorer-search');
     if (input) input.value = "";
+    var fromEl = document.getElementById(explorerId + "-date-from");
+    if (fromEl) fromEl.value = "";
+    var toEl = document.getElementById(explorerId + "-date-to");
+    if (toEl) toEl.value = "";
+    render(explorerId);
+  };
+  window.setDateFilter = function (explorerId, which, value) {
+    var st = getState(explorerId);
+    if (which === "from") st.dateFrom = value || null;
+    else st.dateTo = value || null;
+    render(explorerId);
+  };
+  window.clearDateFilter = function (explorerId) {
+    var st = getState(explorerId);
+    st.dateFrom = null;
+    st.dateTo = null;
+    var fromEl = document.getElementById(explorerId + "-date-from");
+    if (fromEl) fromEl.value = "";
+    var toEl = document.getElementById(explorerId + "-date-to");
+    if (toEl) toEl.value = "";
     render(explorerId);
   };
   window.setSearch = function (explorerId, value) {
@@ -343,6 +368,15 @@ document.addEventListener("DOMContentLoaded", function () {
         return (c.nombre || "").toLowerCase().indexOf(st.search) !== -1;
       });
     }
+    if (st.dateFrom || st.dateTo) {
+      filtered = filtered.filter(function (c) {
+        if (!c.date_added) return false;
+        var d = c.date_added.slice(0, 10);
+        if (st.dateFrom && d < st.dateFrom) return false;
+        if (st.dateTo && d > st.dateTo) return false;
+        return true;
+      });
+    }
     filtered.sort(function (a, b) {
       return (b.mensajes_total || 0) - (a.mensajes_total || 0) || (a.nombre || "").localeCompare(b.nombre || "");
     });
@@ -360,6 +394,10 @@ document.addEventListener("DOMContentLoaded", function () {
       out.push('<span class="chip">' + esc(keyLabel) + ": " + esc(valLabel) +
         '<button onclick="applyFilter(\'' + explorerId + "', " + JSON.stringify(st.filters).replace(/'/g, "&#39;") + ')">&times;</button></span>');
     });
+    if (st.dateFrom || st.dateTo) {
+      var dateLabel = "Alta: " + (st.dateFrom || "sin limite") + " a " + (st.dateTo || "sin limite");
+      out.push('<span class="chip">' + esc(dateLabel) + '<button onclick="clearDateFilter(\'' + explorerId + '\')">&times;</button></span>');
+    }
     return out.join("");
   }
 
@@ -435,11 +473,15 @@ document.addEventListener("DOMContentLoaded", function () {
       ["Forma de Contacto", c.forma_contacto],
       ["Interesado en", c.interesado_en],
       ["Vendedor", c.vendedor],
-      ["Fecha de alta", c.contacto_del_periodo ? fmtDateTime(c.date_added) : "Anterior a septiembre"],
+      ["Fecha de alta", fmtDateTime(c.date_added)],
     ];
     var html = '<div class="detail-grid">';
     if (!c.contacto_del_periodo) {
-      html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">Contacto creado antes de septiembre -- aparece aca porque su oportunidad se actualizo este mes. No se volvio a pedir su ficha completa a GHL, por eso Origen del Cliente / Forma de Contacto figuran como "Sin dato".</div></div>';
+      var sinDatos = c.origen_cliente === "Sin dato" && c.forma_contacto === "Sin dato";
+      var nota = sinDatos
+        ? 'Contacto creado antes de septiembre -- aparece aca porque su oportunidad se actualizo este mes. Todavia no se completaron sus datos de Origen del Cliente / Forma de Contacto.'
+        : 'Contacto creado antes de septiembre -- aparece aca porque su oportunidad se actualizo este mes.';
+      html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">' + esc(nota) + '</div></div>';
     }
     rows.forEach(function (r) {
       html += '<div><div class="dg-label">' + esc(r[0]) + '</div><div class="dg-value">' + esc(r[1]) + "</div></div>";
@@ -502,6 +544,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (vendedorSelEl) {
       vendedorSelEl.value = st.filters.hasOwnProperty("vendedor") ? st.filters.vendedor : "";
     }
+    var fromSyncEl = document.getElementById(explorerId + "-date-from");
+    if (fromSyncEl) fromSyncEl.value = st.dateFrom || "";
+    var toSyncEl = document.getElementById(explorerId + "-date-to");
+    if (toSyncEl) toSyncEl.value = st.dateTo || "";
     var rows = applyFiltersAndSearch(baseRows(explorerId), st);
     var tbody = document.getElementById(explorerId + "-tbody");
     var countEl = document.getElementById(explorerId + "-count");
