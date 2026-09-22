@@ -142,6 +142,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 </div>
 <div class="kpi-row">
   <div class="kpi-card"><div class="kpi-num">138</div><div class="kpi-label">Contactos con al menos una oportunidad este mes</div></div>
+  <div class="kpi-card"><div class="kpi-num">39</div><div class="kpi-label">Contactos con al menos una oportunidad ganada</div></div>
 </div>
 
 <div class="donut-row">
@@ -160,7 +161,9 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     <div class="explorer-title">Contactos con oportunidad actualizada este mes (138) &mdash; click para ver el detalle</div>
     <div class="explorer-chips" id="oportunidades-chips"></div>
     <select class="explorer-select" id="oportunidades-estado-select" onchange="setEstadoFilter('oportunidades', this.value)"></select>
+    <select class="explorer-select" id="oportunidades-grupo-select" onchange="setGrupoFilter('oportunidades', this.value)"></select>
     <select class="explorer-select" id="oportunidades-vendedor-select" onchange="setVendedorFilter('oportunidades', this.value)"></select>
+    <span class="explorer-date-group"><span class="explorer-date-label">Alta desde</span><input type="date" class="explorer-date" id="oportunidades-date-from" onchange="setDateFilter('oportunidades','from', this.value)" title="Filtra por fecha de alta del contacto"><span class="explorer-date-label">hasta</span><input type="date" class="explorer-date" id="oportunidades-date-to" onchange="setDateFilter('oportunidades','to', this.value)" title="Filtra por fecha de alta del contacto"></span>
     <input class="explorer-search" placeholder="Buscar por nombre..." oninput="setSearch('oportunidades', this.value)">
     <button class="explorer-clear" onclick="clearFilter('oportunidades')">Limpiar filtros</button>
     <span class="explorer-count" id="oportunidades-count"></span>
@@ -192,7 +195,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     <div class="explorer-title">Contactos creados en septiembre 2026 (478) &mdash; click en una fila para ver el detalle</div>
     <div class="explorer-chips" id="contactos-chips"></div>
     <select class="explorer-select" id="contactos-estado-select" onchange="setEstadoFilter('contactos', this.value)"></select>
-
+    <span class="explorer-date-group"><span class="explorer-date-label">Alta desde</span><input type="date" class="explorer-date" id="contactos-date-from" onchange="setDateFilter('contactos','from', this.value)" title="Filtra por fecha de alta del contacto"><span class="explorer-date-label">hasta</span><input type="date" class="explorer-date" id="contactos-date-to" onchange="setDateFilter('contactos','to', this.value)" title="Filtra por fecha de alta del contacto"></span>
     <input class="explorer-search" placeholder="Buscar por nombre..." oninput="setSearch('contactos', this.value)">
     <button class="explorer-clear" onclick="clearFilter('contactos')">Limpiar filtros</button>
     <span class="explorer-count" id="contactos-count"></span>
@@ -343,6 +346,15 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     render(explorerId);
   };
+  window.setGrupoFilter = function (explorerId, value) {
+    var st = getState(explorerId);
+    if (!value) {
+      delete st.filters.grupo_venta;
+    } else {
+      st.filters.grupo_venta = value;
+    }
+    render(explorerId);
+  };
   window.toggleDetail = function (rowId) {
     var row = document.getElementById(rowId);
     if (row) row.classList.toggle("open");
@@ -385,7 +397,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return filtered;
   }
 
-  var CHIP_KEY_LABELS = { "ghl_estado": "Estado de oportunidad", "vendedor": "Vendedor" };
+  var CHIP_KEY_LABELS = { "ghl_estado": "Estado de oportunidad", "vendedor": "Vendedor", "grupo_venta": "Grupo" };
   function chips(explorerId) {
     var st = getState(explorerId);
     var out = [];
@@ -456,6 +468,24 @@ document.addEventListener("DOMContentLoaded", function () {
       return a.localeCompare(b);
     });
     var optHtml = '<option value="">Vendedor: todos</option>';
+    values.forEach(function (v) {
+      optHtml += '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+    });
+    sel.innerHTML = optHtml;
+    sel.dataset.built = "1";
+  }
+
+  function renderGrupoFilter(explorerId) {
+    var sel = document.getElementById(explorerId + "-grupo-select");
+    if (!sel || sel.dataset.built) return;
+    var seen = {};
+    var values = [];
+    baseRows(explorerId).forEach(function (c) {
+      var v = c.grupo_venta || "Sin dato";
+      if (!seen[v]) { seen[v] = true; values.push(v); }
+    });
+    values.sort();
+    var optHtml = '<option value="">Grupo: todos</option>';
     values.forEach(function (v) {
       optHtml += '<option value="' + esc(v) + '">' + esc(v) + '</option>';
     });
@@ -545,6 +575,11 @@ document.addEventListener("DOMContentLoaded", function () {
     var vendedorSelEl = document.getElementById(explorerId + "-vendedor-select");
     if (vendedorSelEl) {
       vendedorSelEl.value = st.filters.hasOwnProperty("vendedor") ? st.filters.vendedor : "";
+    }
+    renderGrupoFilter(explorerId);
+    var grupoSelEl = document.getElementById(explorerId + "-grupo-select");
+    if (grupoSelEl) {
+      grupoSelEl.value = st.filters.hasOwnProperty("grupo_venta") ? st.filters.grupo_venta : "";
     }
     var fromSyncEl = document.getElementById(explorerId + "-date-from");
     if (fromSyncEl) fromSyncEl.value = st.dateFrom || "";
