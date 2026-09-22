@@ -179,6 +179,10 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 
       <h3>Contactos cargados hoy</h3>
 
+<div class="kpi-row">
+  <div class="kpi-card"><div class="kpi-num" id="contactos-hoy-kpi-num">&nbsp;</div><div class="kpi-label">Contactos cargados hoy</div></div>
+</div>
+
 <div class="explorer" id="explorer-contactos">
   <div class="explorer-bar">
     <div class="explorer-bar-top">
@@ -604,9 +608,20 @@ document.addEventListener("DOMContentLoaded", function () {
     tbody.innerHTML = htmlOut;
   }
 
+  function renderContactosHoyKpi() {
+    var el = document.getElementById("contactos-hoy-kpi-num");
+    if (!el) return;
+    var hoy = todayStr();
+    var n = CONTACTS.filter(function (c) {
+      return c.date_added && c.date_added.slice(0, 10) === hoy;
+    }).length;
+    el.textContent = n;
+  }
+
   ["contactos", "oportunidades"].forEach(function (id) {
     if (document.getElementById(id + "-table")) render(id);
   });
+  renderContactosHoyKpi();
 })();
 </script>
 </body>
