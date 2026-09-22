@@ -366,7 +366,18 @@ document.addEventListener("DOMContentLoaded", function () {
   function applyFiltersAndSearch(rows, st) {
     var filtered = rows.filter(function (c) {
       return Object.keys(st.filters).every(function (k) {
-        return String(c[k]) === String(st.filters[k]);
+        var want = st.filters[k];
+        var have = c[k];
+        // "Sin dato" significa "sin valor real", pero cada campo lo
+        // representa distinto: los campos que pasan por el cruce con
+        // NetSuite (origen_cliente, forma_contacto, vendedor) ya guardan
+        // el string literal "Sin dato"; los campos crudos de GHL (como
+        // canal_tag) quedan null/undefined/"" y solo se etiquetan "Sin
+        // dato" al mostrarlos o contarlos (ver contar()/contarJs()). Hay
+        // que aceptar las dos formas, si no el click en ese segmento del
+        // grafico no trae resultados.
+        if (want === "Sin dato") return !have || String(have) === "Sin dato";
+        return String(have) === String(want);
       });
     });
     if (st.search) {
