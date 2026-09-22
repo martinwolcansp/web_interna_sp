@@ -20,7 +20,7 @@ body {
   font-family: Calibri, "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 15.5px; line-height: 1.55;
 }
-.wrap { max-width: 1440px; margin: 0 auto; padding: 28px 24px 64px; }
+.wrap { max-width: 1600px; margin: 0 auto; padding: 28px 24px 64px; }
 header.report-header { border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 22px; }
 header.report-header .eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .02em; margin-bottom: 6px; }
 header.report-header h1 { color: var(--navy); font-size: 26px; margin: 0 0 6px; font-weight: 700; }
@@ -39,6 +39,11 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .data-table th { background: var(--navy-solid); color: #fff; text-align: left; padding: 9px 12px; font-weight: 600; position: sticky; top: 0; }
 .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--rule); }
 .data-table tr:last-child td { border-bottom: none; }
+#oportunidades-table th, #oportunidades-table td { padding: 7px 8px; font-size: 13px; }
+.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.th-sort:hover { background: #16294d; }
+.sort-arrow { font-size: 10px; opacity: .6; margin-left: 3px; }
+.th-sort-active .sort-arrow { opacity: 1; }
 .note-box { background: var(--light-fill); border-left: 4px solid var(--navy); padding: 12px 16px; margin: 10px 0 18px; border-radius: 0 6px 6px 0; }
 .note-box p { margin: 0; color: var(--ink); font-size: 14.5px; }
 .note-box--warn { border-left-color: var(--orange); background: var(--warn-bg); }
@@ -266,12 +271,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function getState(id) {
     if (!STATE[id]) {
       if (id === "oportunidades") {
-        STATE[id] = { filters: { grupo_venta: "Cerrada (venta)" }, search: "", dateFrom: null, dateTo: null };
+        STATE[id] = { filters: { grupo_venta: "Cerrada (venta)" }, search: "", dateFrom: null, dateTo: null, sortKey: null, sortDir: "asc" };
       } else if (id === "contactos") {
         var hoy = todayStr();
-        STATE[id] = { filters: {}, search: "", dateFrom: hoy, dateTo: hoy };
+        STATE[id] = { filters: {}, search: "", dateFrom: hoy, dateTo: hoy, sortKey: null, sortDir: "asc" };
       } else {
-        STATE[id] = { filters: {}, search: "", dateFrom: null, dateTo: null };
+        STATE[id] = { filters: {}, search: "", dateFrom: null, dateTo: null, sortKey: null, sortDir: "asc" };
       }
     }
     return STATE[id];
@@ -347,6 +352,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     render(explorerId);
   };
+  window.setSort = function (explorerId, key) {
+    var st = getState(explorerId);
+    if (st.sortKey === key) {
+      st.sortDir = st.sortDir === "asc" ? "desc" : "asc";
+    } else {
+      st.sortKey = key;
+      st.sortDir = "asc";
+    }
+    render(explorerId);
+  };
   window.toggleDetail = function (rowId) {
     var row = document.getElementById(rowId);
     if (row) row.classList.toggle("open");
@@ -394,10 +409,31 @@ document.addEventListener("DOMContentLoaded", function () {
         return true;
       });
     }
-    filtered.sort(function (a, b) {
-      return (b.mensajes_total || 0) - (a.mensajes_total || 0) || (a.nombre || "").localeCompare(b.nombre || "");
-    });
+    if (st.sortKey) {
+      filtered.sort(function (a, b) {
+        var cmp = compareForSort(a, b, st.sortKey);
+        return st.sortDir === "desc" ? -cmp : cmp;
+      });
+    } else {
+      filtered.sort(function (a, b) {
+        return (b.mensajes_total || 0) - (a.mensajes_total || 0) || (a.nombre || "").localeCompare(b.nombre || "");
+      });
+    }
     return filtered;
+  }
+
+  var SORT_TYPES = { n_oportunidades: "number", monto: "number", fecha_creacion_oportunidad: "date", fecha_cierre: "date" };
+  function isEmptyForSort(v) {
+    return v === null || v === undefined || v === "" || v === "Sin dato";
+  }
+  function compareForSort(a, b, key) {
+    var va = a[key], vb = b[key];
+    var aEmpty = isEmptyForSort(va), bEmpty = isEmptyForSort(vb);
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
+    if (SORT_TYPES[key] === "number") return va - vb;
+    return String(va).localeCompare(String(vb), "es", { sensitivity: "base" });
   }
 
   var CHIP_KEY_LABELS = { "ghl_estado": "Estado de oportunidad", "vendedor": "Vendedor", "grupo_venta": "Grupo", "canal_tag": "Origen (tag)" };
@@ -541,13 +577,34 @@ document.addEventListener("DOMContentLoaded", function () {
     return html;
   }
 
+  var OPORTUNIDADES_COLUMNS = [
+    { label: "Nro cliente (NetSuite)", key: "nro_cliente_netsuite" },
+    { label: "Contacto", key: "nombre" },
+    { label: "Vendedor", key: "vendedor" },
+    { label: "Origen del Cliente", key: "origen_cliente" },
+    { label: "Cantidad", key: "n_oportunidades" },
+    { label: "Estado GHL", key: "ghl_estado" },
+    { label: "Grupo", key: "grupo_venta" },
+    { label: "Fecha de creacion", key: "fecha_creacion_oportunidad" },
+    { label: "Monto", key: "monto" },
+    { label: "Etapa de pipeline", key: "etapa_pipeline" },
+    { label: "Fecha de cierre", key: "fecha_cierre" }
+  ];
+
   function renderThead(explorerId) {
     var thead = document.getElementById(explorerId + "-thead");
     var cols;
+    if (explorerId === "oportunidades") {
+      var st = getState("oportunidades");
+      thead.innerHTML = "<tr>" + OPORTUNIDADES_COLUMNS.map(function (col) {
+        var active = st.sortKey === col.key;
+        var arrow = active ? (st.sortDir === "desc" ? "\u25bc" : "\u25b2") : "\u2195";
+        return '<th class="th-sort' + (active ? " th-sort-active" : "") + '" onclick="setSort(\'oportunidades\', \'' + col.key + '\')">' + esc(col.label) + ' <span class="sort-arrow">' + arrow + "</span></th>";
+      }).join("") + "</tr>";
+      return;
+    }
     if (explorerId === "conversaciones") {
       cols = ["Contacto", "Grupo", "Mensajes", "Origen del Cliente", "Ultimo mensaje"];
-    } else if (explorerId === "oportunidades") {
-      cols = ["Contacto", "Vendedor", "Origen del Cliente", "Cantidad", "Estado GHL", "Grupo", "Fecha de creacion", "Nro cliente (NetSuite)", "Monto", "Etapa de pipeline", "Fecha de cierre"];
     } else {
       cols = ["Contacto", "Origen (tag)"];
     }
@@ -559,7 +616,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return [esc(c.nombre), grupoPill(c), c.mensajes_total, esc(c.origen_cliente), esc(fmtDateTime(c.ultimo_mensaje))];
     }
     if (explorerId === "oportunidades") {
-      return [esc(c.nombre), esc(c.vendedor), esc(c.origen_cliente), c.n_oportunidades, estadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(c.nro_cliente_netsuite || "Sin dato"), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), esc(fmtDate(c.fecha_cierre))];
+      return [esc(c.nro_cliente_netsuite || "Sin dato"), esc(c.nombre), esc(c.vendedor), esc(c.origen_cliente), c.n_oportunidades, estadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), esc(fmtDate(c.fecha_cierre))];
     }
     return [esc(c.nombre), esc(c.canal_tag || "Sin dato")];
   }
