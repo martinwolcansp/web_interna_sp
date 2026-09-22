@@ -555,7 +555,16 @@ document.addEventListener("DOMContentLoaded", function () {
     var countEl = document.getElementById(explorerId + "-count");
     var chipsEl = document.getElementById(explorerId + "-chips");
     if (chipsEl) chipsEl.innerHTML = chips(explorerId);
-    if (countEl) countEl.textContent = rows.length + " de " + baseRows(explorerId).length;
+    if (countEl) {
+      var countText = rows.length + " de " + baseRows(explorerId).length;
+      if (explorerId === "oportunidades") {
+        var totalOps = rows.reduce(function (sum, c) { return sum + (c.n_oportunidades || 0); }, 0);
+        var totalGanadas = rows.reduce(function (sum, c) { return sum + (c.n_ganadas || 0); }, 0);
+        countText += " \u00b7 " + totalOps + " oportunidad" + (totalOps === 1 ? "" : "es") +
+          (totalGanadas ? " (" + totalGanadas + " ganada" + (totalGanadas === 1 ? "" : "s") + ")" : "");
+      }
+      countEl.textContent = countText;
+    }
     renderThead(explorerId);
 
     var htmlOut = "";
