@@ -29,19 +29,20 @@
   <script src="/components/header/header.js"></script>
 
   <!-- ══════════════════════════════════════════════════════════
-       Prueba piloto (Plan de Migración v1.1): carga manual de
-       Contacto/Oportunidad + estado de sincronización por registro.
+       Consola de la integración NetSuite ↔ GHL (migración 15).
+       Consulta de contactos y oportunidades con paginación, búsqueda
+       y filtros del lado del servidor. Los registros que llegan desde
+       GHL o NetSuite son de sólo lectura; sólo los cargados a mano
+       acá ("local") se pueden editar o borrar.
        El acceso lo resuelve page-guard.js con el nivel 'ver'; el nivel
-       'editar' (mostrar formularios de alta/edición) se chequea acá
-       mismo vía fn_tiene_permiso, porque puede haber usuarios con sólo
-       'ver' (consulta de datos globales) más adelante.
+       'editar' (carga manual) se chequea en integracion-ghl-ns.js.
        ══════════════════════════════════════════════════════════ -->
-  <main class="admin-wrap" role="main">
+  <main class="admin-wrap ig-wrap" role="main">
 
     <div class="admin-page-header">
-      <p class="section-label">Prueba piloto — Plan de Migración v1.1</p>
+      <p class="section-label">Consola de la integración</p>
       <h1 class="admin-page-title">Integración NetSuite ↔ GHL</h1>
-      <p class="admin-page-subtitle">Contactos y oportunidades de la integración, con estado de sincronización por registro. La carga es manual por ahora — todavía no está conectado el envío automático hacia GHL ni la recepción desde NetSuite.</p>
+      <p class="admin-page-subtitle">Contactos y oportunidades de la integración, con sus IDs en GHL y en NetSuite. Los registros que vienen de GHL o de NetSuite son de consulta; la carga manual queda para casos puntuales.</p>
     </div>
 
     <!-- Resumen -->
@@ -54,11 +55,96 @@
       </div>
     </section>
 
-    <!-- Alta / edición de Contacto -->
+    <!-- ── Contactos ─────────────────────────────────────────── -->
+    <section class="admin-section" aria-labelledby="ig-contacto-list-title">
+      <div class="admin-section__header ig-section-header">
+        <div>
+          <h2 id="ig-contacto-list-title" class="admin-section__title">Contactos</h2>
+          <p class="admin-section__subtitle">Ordenados por fecha de alta en GHL, más recientes primero.</p>
+        </div>
+        <button type="button" id="ig-c-nuevo-btn" class="btn btn--secondary ig-edit-only" style="display:none;"><i class="ti ti-plus"></i> Carga manual</button>
+      </div>
+
+      <form id="ig-c-filtros" class="ig-toolbar" autocomplete="off">
+        <input type="search" id="ig-c-q" class="admin-input ig-toolbar__search" placeholder="Buscar por nombre, email o ID (GHL / NetSuite)">
+        <select id="ig-c-f-origen" class="admin-select" aria-label="Origen">
+          <option value="">Origen: todos</option>
+          <option value="ghl">GHL</option>
+          <option value="netsuite">NetSuite</option>
+          <option value="local">Carga manual</option>
+        </select>
+        <select id="ig-c-f-ns" class="admin-select" aria-label="Vínculo con NetSuite">
+          <option value="">NetSuite: todos</option>
+          <option value="si">Con cliente NetSuite</option>
+          <option value="no">Sin cliente NetSuite</option>
+        </select>
+        <select id="ig-c-f-vendedor" class="admin-select" aria-label="Vendedor"></select>
+        <select id="ig-c-f-dato" class="admin-select" aria-label="Completitud">
+          <option value="">Datos: todos</option>
+          <option value="incompleto">Sólo incompletos</option>
+        </select>
+        <label class="ig-toolbar__date">Alta GHL desde <input type="date" id="ig-c-f-desde" class="admin-input"></label>
+        <label class="ig-toolbar__date">hasta <input type="date" id="ig-c-f-hasta" class="admin-input"></label>
+        <button type="button" id="ig-c-limpiar" class="btn btn--secondary">Limpiar</button>
+      </form>
+
+      <div id="ig-contacto-list-wrap" class="admin-table-wrap">
+        <p class="admin-loading">Cargando contactos…</p>
+      </div>
+      <div id="ig-c-pager" class="ig-pager"></div>
+    </section>
+
+    <!-- ── Oportunidades ─────────────────────────────────────── -->
+    <section class="admin-section" aria-labelledby="ig-oportunidad-list-title">
+      <div class="admin-section__header ig-section-header">
+        <div>
+          <h2 id="ig-oportunidad-list-title" class="admin-section__title">Oportunidades</h2>
+          <p class="admin-section__subtitle">Ordenadas por fecha de alta en GHL, más recientes primero.</p>
+        </div>
+        <button type="button" id="ig-o-nuevo-btn" class="btn btn--secondary ig-edit-only" style="display:none;"><i class="ti ti-plus"></i> Carga manual</button>
+      </div>
+
+      <form id="ig-o-filtros" class="ig-toolbar" autocomplete="off">
+        <input type="search" id="ig-o-q" class="admin-input ig-toolbar__search" placeholder="Buscar por contacto, título o ID (GHL / NetSuite / presupuesto)">
+        <select id="ig-o-f-estado" class="admin-select" aria-label="Estado">
+          <option value="">Estado: todos</option>
+          <option value="open">Abierta</option>
+          <option value="won">Ganada</option>
+          <option value="lost">Perdida</option>
+        </select>
+        <select id="ig-o-f-origen" class="admin-select" aria-label="Origen">
+          <option value="">Origen: todos</option>
+          <option value="ghl">GHL</option>
+          <option value="netsuite">NetSuite</option>
+          <option value="local">Carga manual</option>
+        </select>
+        <select id="ig-o-f-ns" class="admin-select" aria-label="Vínculo con NetSuite">
+          <option value="">NetSuite: todas</option>
+          <option value="si">Con ID NetSuite</option>
+          <option value="no">Sin ID NetSuite</option>
+        </select>
+        <select id="ig-o-f-sync" class="admin-select" aria-label="Sincronización">
+          <option value="">Sincronización: todas</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="error">Error</option>
+          <option value="sincronizado">Sincronizada</option>
+        </select>
+        <label class="ig-toolbar__date">Alta GHL desde <input type="date" id="ig-o-f-desde" class="admin-input"></label>
+        <label class="ig-toolbar__date">hasta <input type="date" id="ig-o-f-hasta" class="admin-input"></label>
+        <button type="button" id="ig-o-limpiar" class="btn btn--secondary">Limpiar</button>
+      </form>
+
+      <div id="ig-oportunidad-list-wrap" class="admin-table-wrap">
+        <p class="admin-loading">Cargando oportunidades…</p>
+      </div>
+      <div id="ig-o-pager" class="ig-pager"></div>
+    </section>
+
+    <!-- ── Carga manual: Contacto ─────────────────────────────── -->
     <section id="ig-contacto-form-section" class="admin-section" aria-labelledby="ig-contacto-form-title" style="display:none;">
       <div class="admin-section__header">
-        <h2 id="ig-contacto-form-title" class="admin-section__title">Nuevo contacto</h2>
-        <p class="admin-section__subtitle">El ID de contacto GHL es la clave de enlace con NetSuite (mismo valor que <code>custentity_ghl_contact_id</code>).</p>
+        <h2 id="ig-contacto-form-title" class="admin-section__title">Nuevo contacto (carga manual)</h2>
+        <p class="admin-section__subtitle">Sólo para casos puntuales: los contactos de GHL llegan solos. El ID de contacto GHL es la clave de enlace con NetSuite (mismo valor que <code>custentity_ghl_contact_id</code>).</p>
       </div>
 
       <form id="ig-contacto-form" class="ig-form">
@@ -125,36 +211,31 @@
 
         <div class="ig-form__actions">
           <button type="submit" id="ig-c-submit-btn" class="btn btn--primary">Guardar contacto</button>
-          <button type="button" id="ig-c-cancel-btn" class="btn btn--secondary" style="display:none;">Cancelar edición</button>
+          <button type="button" id="ig-c-cancel-btn" class="btn btn--secondary">Cancelar</button>
           <span id="ig-c-form-status" class="admin-row-status"></span>
         </div>
       </form>
     </section>
 
-    <!-- Listado de Contactos -->
-    <section class="admin-section" aria-labelledby="ig-contacto-list-title">
-      <div class="admin-section__header">
-        <h2 id="ig-contacto-list-title" class="admin-section__title">Contactos</h2>
-        <p class="admin-section__subtitle">Más recientes primero.</p>
-      </div>
-      <div id="ig-contacto-list-wrap" class="admin-table-wrap">
-        <p class="admin-loading">Cargando contactos…</p>
-      </div>
-    </section>
-
-    <!-- Alta / edición de Oportunidad -->
+    <!-- ── Carga manual: Oportunidad ──────────────────────────── -->
     <section id="ig-oportunidad-form-section" class="admin-section" aria-labelledby="ig-oportunidad-form-title" style="display:none;">
       <div class="admin-section__header">
-        <h2 id="ig-oportunidad-form-title" class="admin-section__title">Nueva oportunidad</h2>
-        <p class="admin-section__subtitle">Se asocia a un contacto ya cargado.</p>
+        <h2 id="ig-oportunidad-form-title" class="admin-section__title">Nueva oportunidad (carga manual)</h2>
+        <p class="admin-section__subtitle">Se asocia a un contacto ya cargado y, al guardar, se crea en GHL.</p>
       </div>
 
       <form id="ig-oportunidad-form" class="ig-form">
         <input type="hidden" id="ig-o-editing-id" value="">
 
-        <div class="ig-form__row">
-          <label class="ig-label" for="ig-o-contacto">Contacto *</label>
-          <select id="ig-o-contacto" class="admin-select ig-input-wide" required></select>
+        <div class="ig-form__row-group">
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-contacto-buscar">Buscar contacto</label>
+            <input type="search" id="ig-o-contacto-buscar" class="admin-input" placeholder="Nombre, email o ID de GHL" autocomplete="off">
+          </div>
+          <div class="ig-form__row">
+            <label class="ig-label" for="ig-o-contacto">Contacto *</label>
+            <select id="ig-o-contacto" class="admin-select ig-input-wide" required></select>
+          </div>
         </div>
 
         <div class="ig-form__row-group">
@@ -205,21 +286,10 @@
 
         <div class="ig-form__actions">
           <button type="submit" id="ig-o-submit-btn" class="btn btn--primary">Guardar oportunidad</button>
-          <button type="button" id="ig-o-cancel-btn" class="btn btn--secondary" style="display:none;">Cancelar edición</button>
+          <button type="button" id="ig-o-cancel-btn" class="btn btn--secondary">Cancelar</button>
           <span id="ig-o-form-status" class="admin-row-status"></span>
         </div>
       </form>
-    </section>
-
-    <!-- Listado de Oportunidades -->
-    <section class="admin-section" aria-labelledby="ig-oportunidad-list-title">
-      <div class="admin-section__header">
-        <h2 id="ig-oportunidad-list-title" class="admin-section__title">Oportunidades</h2>
-        <p class="admin-section__subtitle">Más recientes primero.</p>
-      </div>
-      <div id="ig-oportunidad-list-wrap" class="admin-table-wrap">
-        <p class="admin-loading">Cargando oportunidades…</p>
-      </div>
     </section>
 
     <footer class="site-footer" role="contentinfo">

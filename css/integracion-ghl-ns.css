@@ -1,21 +1,42 @@
 /* ============================================================
    integracion-ghl-ns.css — Sección "Integración NetSuite ↔ GHL"
-   (prueba piloto, Plan de Migración v1.1)
+   Consola de la integración (migración 15).
    Complementa admin.css (comparte .admin-section, .admin-table,
    .admin-input/select, .admin-row-status, etc.) — mismo patrón que
    pizarra-editor.css.
    ============================================================ */
 
+/* Las tablas de la consola tienen más columnas que el resto del panel. */
+.ig-wrap {
+  max-width: 1360px;
+}
+
+/* ── Resumen ─────────────────────────────────────────────── */
+
 .ig-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-10);
+  gap: var(--space-6) var(--space-10);
 }
 
 .ig-summary__item {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  text-align: left;
+}
+
+.ig-summary__item--link {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ig-summary__item--link:hover .ig-summary__label {
+  color: var(--color-blue);
+  text-decoration: underline;
 }
 
 .ig-summary__value {
@@ -28,6 +49,255 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
+
+/* ── Encabezado de sección con botón a la derecha ───────── */
+
+.ig-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+/* ── Barra de búsqueda y filtros ────────────────────────── */
+
+.ig-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.ig-toolbar__search {
+  flex: 1 1 280px;
+  min-width: 220px;
+}
+
+.ig-toolbar__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.ig-toolbar .admin-select,
+.ig-toolbar .admin-input {
+  font-size: var(--font-size-sm);
+}
+
+.ig-filter-note {
+  font-size: var(--font-size-sm);
+  color: var(--color-alert-text);
+  background: var(--color-alert-bg);
+  border: 1px solid var(--color-alert-border);
+  border-radius: var(--radius-xs);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.ig-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--color-blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Tabla ──────────────────────────────────────────────── */
+
+.ig-table td {
+  vertical-align: top;
+}
+
+.ig-cell-main {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.ig-cell-sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.ig-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--font-size-xs);
+  word-break: break-all;
+}
+
+.ig-num {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.ig-row--open td {
+  background: var(--color-bg-soft);
+}
+
+.ig-actions-cell {
+  width: 1%;
+}
+
+.ig-table-actions {
+  display: flex;
+  gap: var(--space-1);
+  white-space: nowrap;
+  justify-content: flex-end;
+}
+
+.btn--sm {
+  padding: 5px 10px;
+  font-size: var(--font-size-xs);
+}
+
+/* Estado ocupado mientras se consulta o se llama a la sincronización */
+.admin-table-wrap--busy {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Variante roja del badge de estado (components.css sólo trae ok/prog/rev) */
+.status-badge--err {
+  background: var(--color-red-light);
+  color: var(--color-red);
+}
+
+/* Origen del registro */
+.ig-origen {
+  display: inline-block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.ig-origen--ghl {
+  background: var(--color-pill-bg);
+  color: var(--color-pill-text);
+  border-color: var(--color-pill-border);
+}
+
+.ig-origen--ns {
+  background: var(--color-blue-light);
+  color: var(--color-navy);
+  border-color: var(--color-blue-border);
+}
+
+.ig-origen--local {
+  background: var(--color-status-rev-bg);
+  color: var(--color-status-rev-text);
+}
+
+/* Tags de GHL */
+.ig-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.ig-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-body);
+  white-space: nowrap;
+}
+
+.ig-tag--more {
+  color: var(--color-text-muted);
+}
+
+/* ── Detalle expandido ──────────────────────────────────── */
+
+.ig-detail-row > td {
+  background: var(--color-bg-soft);
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.ig-detail {
+  font-size: var(--font-size-sm);
+}
+
+.ig-dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+}
+
+.ig-dl dt {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.ig-dl dd {
+  margin: 2px 0 0;
+  color: var(--color-text);
+}
+
+.ig-dl__wide {
+  grid-column: 1 / -1;
+}
+
+.ig-detail__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+.ig-detail__empty {
+  color: var(--color-text-muted);
+}
+
+.ig-table--inner {
+  background: var(--color-bg);
+}
+
+/* ── Paginador ──────────────────────────────────────────── */
+
+.ig-pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.ig-pager:empty {
+  display: none;
+}
+
+.ig-pager__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ig-pager .btn[disabled] {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ── Formularios de carga manual ────────────────────────── */
 
 .ig-form {
   display: flex;
@@ -70,32 +340,11 @@
   gap: var(--space-6);
 }
 
-/* Variante roja del badge de estado (components.css sólo trae ok/prog/rev) */
-.status-badge--err {
-  background: var(--color-red-light);
-  color: var(--color-red);
-}
-
-.ig-table-actions {
-  display: flex;
-  gap: var(--space-2);
-  white-space: nowrap;
-}
-
-/* Estado ocupado mientras se llama al endpoint de sincronización con GHL */
-.admin-table-wrap--busy {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
 /* ig-o-form-status / ig-c-form-status pueden mostrar el detalle completo
-   de un error de sincronización (por ejemplo la excepción de conexión a
-   GHL de oportunidad_sync_service.py), mucho más largo que los mensajes
-   cortos ("Guardado ✓", etc.) para los que admin.css puso
-   .admin-row-status en white-space: nowrap. Sin este override el texto
-   largo desborda el <span> dentro de .ig-form__actions (flex) y arrastra
-   un scroll horizontal a toda la página.
-   */
+   de un error de sincronización, mucho más largo que los mensajes cortos
+   para los que admin.css puso .admin-row-status en white-space: nowrap.
+   Sin este override el texto largo desborda y arrastra un scroll
+   horizontal a toda la página. */
 .ig-form__actions .admin-row-status {
   white-space: normal;
   overflow-wrap: break-word;
