@@ -1,0 +1,407 @@
+/* ============================================================
+   procesos.css — Mosaico "Procesos Operativos"
+   (página índice + página de cada proceso)
+   ============================================================ */
+
+.proc-wrap {
+  max-width: var(--max-width-content);
+  margin: 2rem auto;
+  padding: 0 1.5rem 3rem;
+}
+
+.proc-loading {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+/* ── Encabezado ── */
+.proc-intro {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-red);
+  border-radius: var(--radius);
+  padding: 1.75rem 2.25rem;
+  margin-bottom: var(--space-10);
+  box-shadow: var(--shadow-xs);
+}
+
+.proc-intro__eyebrow {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-red);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: var(--space-2);
+}
+
+.proc-intro__title {
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  letter-spacing: -0.3px;
+  line-height: var(--line-height-tight);
+}
+
+.proc-intro__desc {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+  line-height: var(--line-height-base);
+}
+
+.proc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.proc-meta .status-badge { margin-left: 0; }
+
+.proc-meta__item {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.proc-section-label {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: var(--space-3);
+}
+
+.proc-wrap .site-footer { margin-top: 2rem; }
+
+/* ── Tarjetas de contenido ── */
+.proc-panel { display: block; }
+.proc-panel[hidden] { display: none; }
+
+.proc-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: var(--space-6);
+}
+
+.proc-card--flush { padding: 0; overflow-x: auto; }
+
+.proc-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.proc-card__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  border-left: 3px solid var(--color-red);
+  padding-left: var(--space-3);
+  margin: var(--space-6) 0 var(--space-2);
+  line-height: var(--line-height-tight);
+}
+
+.proc-card > .proc-card__title:first-child,
+.proc-card__head .proc-card__title { margin-top: 0; }
+.proc-card__head .proc-card__title { margin-bottom: 0; }
+
+.proc-card__count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.proc-text {
+  font-size: var(--font-size-base);
+  color: var(--color-text-body);
+  line-height: var(--line-height-base);
+}
+
+.proc-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--space-2) 0;
+}
+
+.proc-list {
+  list-style: disc;
+  padding-left: 1.25rem;
+  font-size: var(--font-size-base);
+  color: var(--color-text-body);
+  line-height: var(--line-height-base);
+  margin-top: var(--space-2);
+}
+
+.proc-list li + li { margin-top: 3px; }
+
+/* ── Tablas ── */
+.proc-table {
+  font-size: var(--font-size-base);
+  color: var(--color-text-body);
+}
+
+.proc-table th {
+  text-align: left;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-soft);
+}
+
+.proc-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: top;
+}
+
+.proc-table tr:last-child td { border-bottom: none; }
+.proc-table .status-badge { margin-left: 0; }
+.proc-table__num { font-weight: var(--font-weight-bold); color: var(--color-navy); width: 40px; }
+.proc-nowrap { white-space: nowrap; }
+
+.proc-doc__name { font-weight: var(--font-weight-semibold); color: var(--color-navy); }
+.proc-doc__desc { font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 2px; }
+
+.proc-doc__actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.proc-doc__cell { width: 1%; }
+
+button.doc-link { font-family: inherit; cursor: pointer; }
+
+.doc-link--plain {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text-body);
+}
+
+/* ── Diagramas ── */
+.proc-diagram-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.proc-diagram-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: left;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-6);
+  color: var(--color-text-body);
+  transition: all var(--transition-fast);
+}
+
+.proc-diagram-item > i { font-size: 20px; color: var(--color-blue); }
+.proc-diagram-item:hover { border-color: var(--color-blue); }
+.proc-diagram-item.is-active { border-color: var(--color-navy); border-bottom: 2px solid var(--color-red); }
+.proc-diagram-item__name { display: block; font-size: var(--font-size-base); font-weight: var(--font-weight-bold); color: var(--color-navy); }
+.proc-diagram-item__meta { display: block; font-size: var(--font-size-xs); color: var(--color-text-muted); }
+
+.proc-viewer {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+  display: flex;
+  flex-direction: column;
+}
+
+.proc-viewer__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-soft);
+}
+
+.proc-viewer__title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proc-tool {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg);
+  color: var(--color-text-body);
+  font-size: 17px;
+  transition: all var(--transition-fast);
+}
+
+.proc-tool:hover { border-color: var(--color-blue); color: var(--color-blue); }
+
+.proc-viewer__canvas {
+  height: 62vh;
+  min-height: 420px;
+  position: relative;
+  background: #fff;
+}
+
+.proc-viewer:fullscreen .proc-viewer__canvas { height: auto; flex: 1; }
+
+.proc-viewer__hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--color-border-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.proc-viewer__plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--color-text-body);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-text-body);
+}
+
+/* Breadcrumb del drill-down de bpmn-js: alinear con la paleta del sitio */
+.proc-viewer .bjs-breadcrumbs { font-family: var(--font-base); font-size: var(--font-size-base); }
+
+/* ── Reuniones (línea de tiempo) ── */
+.proc-timeline { position: relative; }
+
+.proc-timeline__item {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: var(--space-4);
+  position: relative;
+}
+
+.proc-timeline__item::before {
+  content: '';
+  position: absolute;
+  left: 23px;
+  top: 44px;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-border);
+}
+
+.proc-timeline__item:last-child::before { display: none; }
+
+.proc-timeline__marker {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-navy);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.proc-timeline__docs {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--color-border-light);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.proc-timeline__doc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--font-size-base);
+  color: var(--color-text-body);
+}
+
+/* ── Visor de documentos (PDF) ── */
+.proc-docmodal {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 35, 64, 0.55);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2vh 2vw;
+}
+
+.proc-docmodal[hidden] { display: none; }
+
+.proc-docmodal__box {
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: min(1100px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.proc-docmodal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.proc-docmodal__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  margin-right: auto;
+}
+
+.proc-docmodal__frame { flex: 1; border: 0; width: 100%; background: var(--color-bg-page); }
+
+@media (max-width: 640px) {
+  .proc-intro { padding: 1.25rem 1.25rem; }
+  .proc-table th:nth-child(3), .proc-table td:nth-child(3) { display: none; }
+  .proc-doc__actions { justify-content: flex-start; }
+  .proc-viewer__canvas { height: 55vh; min-height: 320px; }
+}
+
+.proc-table .pill { white-space: nowrap; }

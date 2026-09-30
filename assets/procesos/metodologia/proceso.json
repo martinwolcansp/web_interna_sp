@@ -1,0 +1,41 @@
+{
+  "id": "metodologia",
+  "categoria": "Referencia",
+  "nombre": "Metodología de documentación de procesos",
+  "descripcion": "Cómo se relevan, modelan, validan, publican e implementan los procesos, con la misma nomenclatura para todas las áreas.",
+  "estado": "Vigente",
+  "version": "v0.1",
+  "actualizado": "30/09/2026",
+  "responsable": "Proceso y Mejora Continua",
+  "resumen": {
+    "objetivo": "Que todos los subprocesos y áreas se documenten igual, con la misma nomenclatura y en un único lugar de consulta.",
+    "puntosTitulo": "Ciclo de trabajo por subproceso",
+    "puntos": [
+      "Relevamiento: reuniones del ciclo de mejora con las áreas involucradas y minuta de cada una.",
+      "Análisis de hitos: responsable, canal y plazo de cada traspaso (matrices).",
+      "Modelado: diagrama BPMN con un lane por área; lo abierto se marca \"A definir\".",
+      "Validación: se circula a los participantes y lo aprueba el gerente de cada área (v1.0).",
+      "Publicación: en esta sección del portal.",
+      "Implementación: configuración en GHL / NetSuite según los hitos definidos."
+    ]
+  },
+  "documentos": [
+    {
+      "nombre": "Guía de documentación de procesos",
+      "tipo": "Guía",
+      "descripcion": "Ciclo de trabajo, paquete documental, convenciones, nomenclatura de áreas y herramientas.",
+      "version": "v0.1",
+      "fecha": "30/09/2026",
+      "pdf": "guia-documentacion-procesos.pdf",
+      "original": "guia-documentacion-procesos.docx"
+    },
+    {
+      "nombre": "Plantilla de minuta de reunión",
+      "tipo": "Plantilla",
+      "version": "v0.1",
+      "fecha": "30/09/2026",
+      "pdf": "plantilla-minuta.pdf",
+      "original": "plantilla-minuta.docx"
+    }
+  ]
+}

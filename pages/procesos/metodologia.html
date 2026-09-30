@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metodología de documentación — Procesos Operativos | SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Visor BPMN (solo lectura) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bpmn-js@18.30.1/dist/assets/diagram-js.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bpmn-js@18.30.1/dist/assets/bpmn-js.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bpmn-js@18.30.1/dist/assets/bpmn-font/css/bpmn-embedded.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../../css/tokens.css">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <link rel="stylesheet" href="../../css/procesos.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Procesos Operativos","href":"/pages/procesos-operativos.html"},{"label":"Metodología de documentación"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'procesos-operativos';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <!-- Contenido renderizado por js/procesos-proceso.js a partir de
+       /assets/procesos/metodologia/proceso.json -->
+  <main class="proc-wrap" id="proc-app" data-proceso="metodologia" role="main">
+    <p class="proc-loading">Cargando proceso…</p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bpmn-js@18.30.1/dist/bpmn-navigated-viewer.production.min.js"></script>
+  <script src="../../js/procesos-proceso.js"></script>
+
+</body>
+</html>
