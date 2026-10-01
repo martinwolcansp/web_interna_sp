@@ -82,9 +82,23 @@ def _suiteql_url():
     return f"https://{_host_cuenta()}.suitetalk.api.netsuite.com/services/rest/query/v1/suiteql"
 
 
+def _normalizar_pem(texto):
+    """Reconstruye la clave PEM aunque llegue deformada desde una variable de
+    entorno: con comillas, con "\\n" literales, en una sola linea, o con cortes
+    y espacios agregados al copiarla desde la consola."""
+    import re
+    texto = texto.strip().strip('"').strip("'").replace("\\n", "\n").replace("\r", "")
+    m = re.search(r"-----BEGIN ([A-Z ]+)-----(.*?)-----END \1-----", texto, re.S)
+    if not m:
+        raise RuntimeError("NETSUITE_PRIVATE_KEY no tiene el formato -----BEGIN ... PRIVATE KEY----- / -----END ...-----.")
+    tipo, cuerpo = m.group(1), re.sub(r"[^A-Za-z0-9+/=]", "", m.group(2))
+    lineas = [cuerpo[i:i + 64] for i in range(0, len(cuerpo), 64)]
+    return f"-----BEGIN {tipo}-----\n" + "\n".join(lineas) + f"\n-----END {tipo}-----\n"
+
+
 def _clave_privada():
     if config.NETSUITE_PRIVATE_KEY.strip():
-        return config.NETSUITE_PRIVATE_KEY
+        return _normalizar_pem(config.NETSUITE_PRIVATE_KEY)
     if config.NETSUITE_PRIVATE_KEY_PATH:
         with open(config.NETSUITE_PRIVATE_KEY_PATH, encoding="utf-8") as f:
             return f.read()
