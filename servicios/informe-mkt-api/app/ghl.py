@@ -146,3 +146,38 @@ def traer_oportunidades(desde, hasta_excl, log):
 
     log(f"GHL oportunidades: {len(en_rango)} actualizadas en el rango ({vistos} revisadas).")
     return en_rango
+
+
+def traer_contactos_por_id(ids, log):
+    """GET /contacts/{id} para contactos que no vinieron en el rango (contacto
+    creado antes, pero con oportunidad en NetSuite en el rango)."""
+    contactos = []
+    for cid in ids:
+        try:
+            data = _get(f"{BASE_URL}/contacts/{cid}", "2021-07-28", None, log)
+        except RuntimeError as e:
+            log(f"  GHL contacto {cid}: no se pudo traer ({str(e)[:120]})")
+            continue
+        c = data.get("contact") or {}
+        if c:
+            c["contactId"] = c.get("id")
+            contactos.append(c)
+        time.sleep(PAUSA_ENTRE_LLAMADAS)
+    log(f"GHL contactos por ID (oportunidades NetSuite fuera del rango de GHL): {len(contactos)} de {len(ids)}.")
+    return contactos
+
+
+def traer_oportunidades_por_contacto(ids, log):
+    """Oportunidades de GHL (todos los estados) de una lista de contactos."""
+    oportunidades = []
+    for cid in ids:
+        try:
+            data = _get(f"{BASE_URL}/opportunities/search", "v3",
+                        {"locationId": config.GHL_LOCATION_ID, "contactId": cid, "status": "all", "limit": 100}, log)
+        except RuntimeError as e:
+            log(f"  GHL oportunidades de {cid}: no se pudieron traer ({str(e)[:120]})")
+            continue
+        oportunidades.extend(data.get("opportunities", []))
+        time.sleep(PAUSA_ENTRE_LLAMADAS)
+    log(f"GHL oportunidades de esos contactos: {len(oportunidades)}.")
+    return oportunidades

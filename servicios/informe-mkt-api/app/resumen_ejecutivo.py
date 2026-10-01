@@ -269,181 +269,193 @@ def contar(items, campo):
 
 
 # =====================================================================
-# generar(): version "en memoria" de main() para el servicio.
+# generar(): Resumen ejecutivo con NetSuite como fuente de las ventas.
+#
+# Criterio (definido el 01/10/2026):
+#   - Las oportunidades del informe son las de NetSuite con FECHA DE
+#     OPORTUNIDAD en el rango (busqueda "SP- Fede Oportunidades por Vendedor").
+#   - "Ganada" = estado de NetSuite Compra / Venta Cerrada Concretada
+#     (columna "Aprobada" = 1, estados 12 y 13).
+#   - GHL aporta informacion: origen, forma de contacto e interesado en
+#     (cuando NetSuite no lo tiene), tags, monto y etapa de su oportunidad,
+#     y las conversaciones. El estado de GHL queda solo como dato informativo.
+#   - GHL tambien aporta los contactos nuevos del rango (tabla "Contactos").
 # =====================================================================
+
+ESTADOS_PERDIDA = ("rechazada", "perdida")
+
+
+def _vacio(v):
+    return v is None or (isinstance(v, float) and math.isnan(v)) or not str(v).strip()
+
+
+def _limpio(v):
+    return None if _vacio(v) else v
+
+
+def _fecha_iso(v):
+    if _vacio(v):
+        return None
+    try:
+        return pd.Timestamp(v).strftime("%Y-%m-%d")
+    except Exception:
+        return str(v)[:10]
+
 
 def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, periodo_fin,
             rango_label, fecha_actualizacion):
     """
-    contactos / oportunidades: listas crudas de GHL (mismo formato que
-        contactos.json / oportunidades.json de los scripts por fecha).
-    ventas_df: DataFrame de NetSuite (mismas columnas que el Excel) o None.
-    old_contacts: CONTACTS de la corrida anterior / HTML publicado, para
-        preservar los campos de conversacion (resumen, motivo, hilo).
-    periodo_inicio / periodo_fin: datetimes con zona horaria (inclusive).
-    rango_label: ej. "01/09/2026 al 30/09/2026".
-    fecha_actualizacion: ej. "01/10/2026 14:35".
+    contactos: contactos crudos de GHL (alta en el rango + los traidos por ID
+        para las oportunidades de NetSuite).
+    oportunidades: oportunidades crudas de GHL (actualizadas en el rango + las
+        de esos contactos traidos por ID). Solo aportan informacion.
+    ventas_df: DataFrame de NetSuite (mismas columnas que el Excel).
+    old_contacts: CONTACTS anteriores, para preservar los campos de conversacion.
     Devuelve dict(contacts=[...], panel_html="<section ...>", stats={...}).
     """
-    def _ns(columna):
-        # groupby().apply() convierte los grupos sin dato en NaN, que en Python es
-        # "verdadero": sin este filtro un NaN le ganaria al dato de GHL en el cruce
-        # (y ademas no se puede guardar en JSON). Se descartan NaN y vacios.
-        return {
-            cid: v for cid, v in valores_netsuite_por_crm(ventas_df, columna).items()
-            if v is not None and not (isinstance(v, float) and math.isnan(v)) and str(v).strip()
-        }
-
-    ns_origen = _ns("Origen de clientes potenciales")
-    ns_forma = _ns("Forma de Contacto con SP")
-    ns_vendedor = {cid: normalizar_vendedor_netsuite(nombre) for cid, nombre in _ns("Representante de Ventas").items()}
-    ns_cliente = _ns("ID")
-    fuente_contador = {"origen": {"netsuite": 0, "ghl": 0, "sin_dato": 0},
-                        "forma": {"netsuite": 0, "ghl": 0, "sin_dato": 0},
-                        "vendedor": {"netsuite": 0, "ghl": 0, "sin_dato": 0}}
-
     old_by_id = {c["contact_id"]: c for c in (old_contacts or []) if c.get("contact_id")}
+    contactos_por_id = {c.get("id"): c for c in contactos if c.get("id")}
 
-    opp_by_contact = {}
+    opp_ghl_por_contacto = {}
     for o in oportunidades:
-        cid = o.get("contactId")
-        if cid:
-            opp_by_contact.setdefault(cid, []).append(o)
+        if o.get("contactId"):
+            opp_ghl_por_contacto.setdefault(o["contactId"], []).append(o)
 
-    contacto_ids_en_archivo = {c.get("id") for c in contactos}
+    # ---- Oportunidades de NetSuite agrupadas por contacto ----
+    ns_por_contacto = {}
+    if ventas_df is not None and len(ventas_df):
+        for _, f in ventas_df.iterrows():
+            crm = _limpio(f.get("ID CLIENTE CRM"))
+            clave = str(crm) if crm else f"ns-{_limpio(f.get('ID')) or int(f.get('ID interno'))}"
+            ns_por_contacto.setdefault(clave, []).append(f)
 
-    def construir_registro(contact_id, nombre, date_added, tags, origen_ghl, forma_ghl, interesado_en, contacto_crudo):
-        opps = opp_by_contact.get(contact_id, [])
-        n_oportunidades = len(opps)
-        n_ganadas = sum(1 for o in opps if o.get("status") == "won")
+    fuente_contador = {"origen": {"netsuite": 0, "ghl": 0, "sin_dato": 0},
+                       "forma": {"netsuite": 0, "ghl": 0, "sin_dato": 0},
+                       "vendedor": {"netsuite": 0, "ghl": 0, "sin_dato": 0}}
+
+    def primero(filas, col):
+        for f in filas:
+            v = _limpio(f.get(col))
+            if v is not None:
+                return v
+        return None
+
+    def registro(contact_id, crudo, filas_ns):
+        crudo = crudo or {}
+        cfs = crudo.get("customFields") or []
+        opps_ghl = opp_ghl_por_contacto.get(contact_id, [])
+        tags = crudo.get("tags") or []
+
+        nombre = (f"{crudo.get('firstName') or ''} {crudo.get('lastName') or ''}".strip()
+                  or crudo.get("name") or crudo.get("contactName") or crudo.get("email")
+                  or primero(filas_ns, "Cliente") or contact_id)
+
+        # ---- NetSuite: oportunidades, estado y grupo ----
+        ns_opps = []
+        for f in filas_ns:
+            ns_opps.append({
+                "oportunidad": _limpio(f.get("Oportunidad")),
+                "fecha": _fecha_iso(f.get("Fecha Oportunidad")),
+                "estado": _limpio(f.get("Estado Oportunidad")),
+                "ganada": int(f.get("Aprobada") or 0) == 1,
+            })
+        ns_opps.sort(key=lambda o: o["fecha"] or "")
+        n_oportunidades = len(ns_opps)
+        n_ganadas = sum(1 for o in ns_opps if o["ganada"])
         tiene_oportunidad = n_oportunidades > 0
-        grupo_venta = None
-        ghl_estado = None
-        mas_reciente = None
+        grupo_venta = ns_estado = fecha_oportunidad = None
         if tiene_oportunidad:
-            grupo_venta = "Cerrada (venta)" if n_ganadas > 0 else "Abierta / en proceso"
-            mas_reciente = max(opps, key=lambda o: o.get("updatedAt") or "")
-            ghl_estado = mas_reciente.get("status")
-
-        # Oportunidad "relevante": la ganada mas reciente si hay alguna, si no
-        # la mas reciente en general (criterio del 22/09/2026, caso Cadelli).
-        opp_relevante = None
-        if tiene_oportunidad:
-            ganadas_del_contacto = [o for o in opps if o.get("status") == "won"]
-            if ganadas_del_contacto:
-                opp_relevante = max(ganadas_del_contacto, key=lambda o: o.get("lastStatusChangeAt") or o.get("updatedAt") or "")
+            relevante = ([o for o in ns_opps if o["ganada"]] or ns_opps)[-1]
+            ns_estado, fecha_oportunidad = relevante["estado"], relevante["fecha"]
+            if n_ganadas:
+                grupo_venta = "Cerrada (venta)"
+            elif all(any(p in (o["estado"] or "").lower() for p in ESTADOS_PERDIDA) for o in ns_opps):
+                grupo_venta = "Perdida"
             else:
-                opp_relevante = mas_reciente
-        monto = opp_relevante.get("monetaryValue") if opp_relevante else None
-        fecha_creacion_oportunidad = opp_relevante.get("createdAt") if opp_relevante else None
-        fecha_cierre = None
-        if opp_relevante and opp_relevante.get("status") in ("won", "lost"):
-            fecha_cierre = opp_relevante.get("lastStatusChangeAt")
-        etapa_pipeline = None
-        if opp_relevante:
-            stage_id = opp_relevante.get("pipelineStageId")
-            etapa_pipeline = PIPELINE_STAGE_NAMES.get(stage_id, stage_id)
-        nro_cliente_netsuite = ns_cliente.get(contact_id)
+                grupo_venta = "Abierta / en proceso"
 
+        # ---- GHL: informacion de su oportunidad (monto, etapa, estado) ----
+        ghl_estado = monto = etapa_pipeline = None
+        if opps_ghl:
+            ganadas_ghl = [o for o in opps_ghl if o.get("status") == "won"]
+            o = max(ganadas_ghl or opps_ghl, key=lambda x: x.get("updatedAt") or "")
+            ghl_estado, monto = o.get("status"), o.get("monetaryValue")
+            etapa_pipeline = PIPELINE_STAGE_NAMES.get(o.get("pipelineStageId"), o.get("pipelineStageId"))
+
+        # ---- Cruce de origen / forma / vendedor: NetSuite manda, GHL respalda ----
+        origen_ns, forma_ns = primero(filas_ns, "Origen de clientes potenciales"), primero(filas_ns, "Forma de Contacto con SP")
+        vendedor_ns = normalizar_vendedor_netsuite(primero(filas_ns, "Representante de Ventas"))
+        origen_ghl, forma_ghl = cf_value(cfs, CF_ORIGEN), cf_value(cfs, CF_FORMA)
+        vendedor_ghl = resolver_vendedor_ghl(crudo, opps_ghl)
+        for campo, ns, ghl in (("origen", origen_ns, origen_ghl), ("forma", forma_ns, forma_ghl),
+                               ("vendedor", vendedor_ns, vendedor_ghl)):
+            fuente_contador[campo]["netsuite" if ns else ("ghl" if ghl else "sin_dato")] += 1
+
+        date_added = crudo.get("dateAdded")
         da = parse_iso(date_added)
-        contacto_del_periodo = bool(da and periodo_inicio <= da <= periodo_fin)
-
         canal = clasificar_canal(tags)
-        canal_tag = f"{canal} (tag)" if canal else None
-
-        # Cruce NetSuite/GHL: NetSuite manda, GHL de respaldo.
-        origen_ns = ns_origen.get(contact_id)
-        origen_final = origen_ns or origen_ghl
-        fuente_contador["origen"]["netsuite" if origen_ns else ("ghl" if origen_ghl else "sin_dato")] += 1
-
-        forma_ns = ns_forma.get(contact_id)
-        forma_final = forma_ns or forma_ghl
-        fuente_contador["forma"]["netsuite" if forma_ns else ("ghl" if forma_ghl else "sin_dato")] += 1
-
-        vendedor_ns = ns_vendedor.get(contact_id)
-        vendedor_ghl = resolver_vendedor_ghl(contacto_crudo, opps)
-        vendedor_final = vendedor_ns or vendedor_ghl
-        fuente_contador["vendedor"]["netsuite" if vendedor_ns else ("ghl" if vendedor_ghl else "sin_dato")] += 1
-
-        registro = {
+        reg = {
             "contact_id": contact_id,
             "nombre": nombre,
             "date_added": date_added,
-            "contacto_del_periodo": contacto_del_periodo,
-            "origen_cliente": origen_final or "Sin dato",
-            "forma_contacto": forma_final or "Sin dato",
-            "interesado_en": interesado_en or "Sin dato",
-            "vendedor": vendedor_final or "Sin asignar",
-            "canal_tag": canal_tag,
-            "tags": tags or [],
+            "contacto_del_periodo": bool(da and periodo_inicio <= da <= periodo_fin),
+            "origen_cliente": origen_ns or origen_ghl or "Sin dato",
+            "forma_contacto": forma_ns or forma_ghl or "Sin dato",
+            "interesado_en": cf_value(cfs, CF_INTERESADO) or "Sin dato",
+            "vendedor": vendedor_ns or vendedor_ghl or "Sin asignar",
+            "canal_tag": f"{canal} (tag)" if canal else None,
+            "tags": tags,
+            "sin_contacto_ghl": (not contact_id) or contact_id.startswith("ns-") or not crudo,
+            "ns_estado": ns_estado,
+            "ns_oportunidades": ns_opps,
             "ghl_estado": ghl_estado,
             "n_oportunidades": n_oportunidades,
             "n_ganadas": n_ganadas,
             "tiene_oportunidad": tiene_oportunidad,
             "grupo_venta": grupo_venta,
             "monto": monto,
-            "fecha_creacion_oportunidad": fecha_creacion_oportunidad,
-            "fecha_cierre": fecha_cierre,
+            "fecha_creacion_oportunidad": fecha_oportunidad,
+            "fecha_cierre": None,
             "etapa_pipeline": etapa_pipeline,
-            "nro_cliente_netsuite": nro_cliente_netsuite,
+            "nro_cliente_netsuite": primero(filas_ns, "ID"),
         }
         old = old_by_id.get(contact_id)
         for k in CONV_FIELDS_DEFAULT:
-            registro[k] = old.get(k, CONV_FIELDS_DEFAULT[k]) if old else CONV_FIELDS_DEFAULT[k]
-        return registro
+            reg[k] = old.get(k, CONV_FIELDS_DEFAULT[k]) if old else CONV_FIELDS_DEFAULT[k]
+        return reg
 
-    nuevos_contacts = []
-    for c in contactos:
-        cid = c.get("id")
-        cfs = c.get("customFields") or []
-        nombre = (
-            f"{c.get('firstName') or ''} {c.get('lastName') or ''}".strip()
-            or c.get("email") or cid
-        )
-        nuevos_contacts.append(construir_registro(
-            cid, nombre, c.get("dateAdded"), c.get("tags"),
-            cf_value(cfs, CF_ORIGEN), cf_value(cfs, CF_FORMA), cf_value(cfs, CF_INTERESADO),
-            c,
-        ))
-
-    # Contactos "stub": referenciados por una oportunidad pero con alta fuera del rango.
-    ids_agregados = set(contacto_ids_en_archivo)
-    for o in oportunidades:
-        cid = o.get("contactId")
-        if not cid or cid in ids_agregados:
+    # Universo: contactos nuevos del rango (GHL) + contactos con oportunidad en NetSuite.
+    nuevos_contacts, vistos = [], set()
+    for cid, crudo in contactos_por_id.items():
+        da = parse_iso(crudo.get("dateAdded"))
+        if cid in ns_por_contacto or (da and periodo_inicio <= da <= periodo_fin):
+            nuevos_contacts.append(registro(cid, crudo, ns_por_contacto.get(cid, [])))
+            vistos.add(cid)
+    for clave, filas in ns_por_contacto.items():
+        if clave in vistos:
             continue
-        embedded = o.get("contact") or {}
-        if not embedded:
-            continue
-        nuevos_contacts.append(construir_registro(
-            cid, embedded.get("name") or cid, None, embedded.get("tags"),
-            None, None, None, embedded,
-        ))
-        ids_agregados.add(cid)
+        # Con oportunidad en NetSuite pero sin ficha de GHL disponible: se usa el
+        # contacto embebido en alguna oportunidad de GHL, si existe.
+        embebido = next((o.get("contact") for o in opp_ghl_por_contacto.get(clave, []) if o.get("contact")), None)
+        nuevos_contacts.append(registro(clave, embebido, filas))
 
-    total_oportunidades = len(oportunidades)
-    oportunidades_ganadas = sum(1 for o in oportunidades if o.get("status") == "won")
+    # ---- KPIs (NetSuite) ----
+    total_oportunidades = sum(c["n_oportunidades"] for c in nuevos_contacts)
+    oportunidades_ganadas = sum(c["n_ganadas"] for c in nuevos_contacts)
     contactos_con_oportunidad = [c for c in nuevos_contacts if c["tiene_oportunidad"]]
     n_con_oportunidad = len(contactos_con_oportunidad)
-    contactos_del_periodo = [c for c in nuevos_contacts if c["contacto_del_periodo"]]
-    n_del_periodo = len(contactos_del_periodo)
     contactos_ganados = [c for c in contactos_con_oportunidad if c["n_ganadas"] > 0]
     n_ganados = len(contactos_ganados)
+    n_del_periodo = sum(1 for c in nuevos_contacts if c["contacto_del_periodo"])
     origen_ganadas = contar(contactos_ganados, "origen_cliente")
+    sin_ghl = sum(1 for c in contactos_con_oportunidad if c["sin_contacto_ghl"])
 
     rango_fechas = f"{periodo_inicio.strftime('%d/%m')} al {periodo_fin.strftime('%d/%m')}"
-    cruce_txt = ""
-    if ventas_df is not None:
-        cruce_txt = (
-            f' &middot; cruzado con NetSuite (Origen {fuente_contador["origen"]["netsuite"]}, '
-            f'Forma {fuente_contador["forma"]["netsuite"]}, Vendedor {fuente_contador["vendedor"]["netsuite"]} '
-            f"resueltos por esa via)"
-        )
 
     panel_resumen = f'''<section class="tab-panel active" id="panel-resumen" role="tabpanel" aria-labelledby="tab-resumen">
       <h2>Resumen ejecutivo</h2>
-      <div class="kpi-caveat">Contactos y oportunidades actualizados el {fecha_actualizacion} (datos de GHL y NetSuite, {rango_fechas}){cruce_txt}.</div>
-      <h3>Oportunidades (trazabilidad)</h3>
+      <div class="kpi-caveat">Oportunidades y ventas segun NetSuite (fecha de oportunidad del {rango_fechas}); origen, conversaciones y contactos nuevos segun GHL. Actualizado el {fecha_actualizacion} &middot; origen resuelto por NetSuite {fuente_contador["origen"]["netsuite"]}, por GHL {fuente_contador["origen"]["ghl"]}.</div>
+      <h3>Oportunidades (NetSuite)</h3>
 
 <div class="kpi-row kpi-row-featured">
   <div class="kpi-card kpi-card-feature kpi-card-feature--win">
@@ -452,7 +464,7 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
   </div>
   <div class="kpi-card kpi-card-feature kpi-card-feature--win">
     <div class="kpi-num">{n_ganados}</div>
-    <div class="kpi-label">Contactos con al menos una oportunidad ganada</div>
+    <div class="kpi-label">Clientes con al menos una oportunidad ganada</div>
   </div>
   <div class="kpi-card kpi-card-feature kpi-card-feature--total">
     <div class="kpi-num">{total_oportunidades}</div>
@@ -460,12 +472,13 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
   </div>
 </div>
 <div class="kpi-row">
-  <div class="kpi-card"><div class="kpi-num">{n_con_oportunidad}</div><div class="kpi-label">Contactos con al menos una oportunidad en el rango</div></div>
+  <div class="kpi-card"><div class="kpi-num">{n_con_oportunidad}</div><div class="kpi-label">Clientes con al menos una oportunidad en el rango</div></div>
+  <div class="kpi-card"><div class="kpi-num">{sin_ghl}</div><div class="kpi-label">Clientes sin contacto en GHL (sin ID CLIENTE CRM o sin ficha)</div></div>
 </div>
 
 <div class="donut-row donut-row-single">
   <div class="donut-block">
-    <div class="donut-block-title">Origen de los contactos con oportunidad ganada &middot; n={n_ganados}</div>
+    <div class="donut-block-title">Origen de los clientes con oportunidad ganada &middot; n={n_ganados}</div>
     {donut_svg(origen_ganadas, n_ganados, "origen_cliente", "oportunidades")}
   </div>
 </div>
@@ -473,7 +486,7 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
 <div class="explorer" id="explorer-oportunidades">
   <div class="explorer-bar">
     <div class="explorer-bar-top">
-      <div class="explorer-title">Contactos con oportunidad actualizada en el rango ({n_con_oportunidad}) &mdash; click para ver el detalle</div>
+      <div class="explorer-title">Clientes con oportunidad en NetSuite en el rango ({n_con_oportunidad}) &mdash; click para ver el detalle</div>
       <span class="explorer-count" id="oportunidades-count"></span>
     </div>
     <div class="explorer-bar-controls">
@@ -505,7 +518,7 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
 <div class="explorer" id="explorer-contactos">
   <div class="explorer-bar">
     <div class="explorer-bar-top">
-      <div class="explorer-title">Contactos creados del {rango_label} ({n_del_periodo}) &mdash; click en una fila para ver el detalle</div>
+      <div class="explorer-title">Contactos creados en GHL del {rango_label} ({n_del_periodo}) &mdash; click en una fila para ver el detalle</div>
       <span class="explorer-count" id="contactos-count"></span>
     </div>
     <div class="explorer-bar-controls">
@@ -530,10 +543,11 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
     stats = {
         "contactos_total": len(nuevos_contacts),
         "contactos_del_periodo": n_del_periodo,
-        "contactos_con_oportunidad": n_con_oportunidad,
-        "contactos_ganados": n_ganados,
-        "oportunidades_total": total_oportunidades,
-        "oportunidades_ganadas": oportunidades_ganadas,
+        "clientes_con_oportunidad_ns": n_con_oportunidad,
+        "clientes_ganados_ns": n_ganados,
+        "oportunidades_total_ns": total_oportunidades,
+        "oportunidades_ganadas_ns": oportunidades_ganadas,
+        "clientes_sin_contacto_ghl": sin_ghl,
         "cruce_netsuite": fuente_contador,
     }
     return {"contacts": nuevos_contacts, "panel_html": panel_resumen, "stats": stats}

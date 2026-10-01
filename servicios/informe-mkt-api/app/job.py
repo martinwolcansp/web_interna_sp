@@ -163,6 +163,19 @@ def ejecutar(corrida_id, token, desde, hasta):
         paso("Consultando NetSuite")
         ventas_df = netsuite.traer_oportunidades(desde, hasta, log)
 
+        # Contactos de las oportunidades de NetSuite que no vinieron en la descarga
+        # por rango (contacto creado antes y sin movimiento en GHL en el rango):
+        # se traen por ID para tener su origen, sus oportunidades y conversaciones.
+        paso("Completando datos de GHL de las oportunidades de NetSuite")
+        ids_ns = {str(x) for x in ventas_df.get("ID CLIENTE CRM", []) if x is not None and str(x).strip() and str(x) != "nan"}
+        ids_faltantes = sorted(ids_ns - {c.get("id") for c in contactos})
+        if ids_faltantes:
+            contactos = contactos + ghl.traer_contactos_por_id(ids_faltantes, log)
+            ids_con_opp = {o.get("contactId") for o in oportunidades}
+            extra = ghl.traer_oportunidades_por_contacto([i for i in ids_faltantes if i not in ids_con_opp], log)
+            vistas = {o.get("id") for o in oportunidades}
+            oportunidades = oportunidades + [o for o in extra if o.get("id") not in vistas]
+
         paso("Cargando contactos y oportunidades en la base")
         advertencias = []
         try:

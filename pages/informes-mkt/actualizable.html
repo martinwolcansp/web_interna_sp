@@ -265,14 +265,18 @@ window.iniciarInforme = function (CONTACTS) {
     st.search = (value || "").toLowerCase();
     render(explorerId);
   };
+  // Estado que filtra cada tabla: NetSuite en "oportunidades" (fuente de las
+  // ventas), GHL en "contactos" (dato informativo).
+  function estadoKey(explorerId) { return explorerId === "oportunidades" ? "ns_estado" : "ghl_estado"; }
   window.setEstadoFilter = function (explorerId, value) {
     var st = getState(explorerId);
+    var k = estadoKey(explorerId);
     if (!value) {
-      delete st.filters.ghl_estado;
+      delete st.filters[k];
     } else if (value === "__null__") {
-      st.filters.ghl_estado = null;
+      st.filters[k] = null;
     } else {
-      st.filters.ghl_estado = value;
+      st.filters[k] = value;
     }
     render(explorerId);
   };
@@ -411,13 +415,19 @@ window.iniciarInforme = function (CONTACTS) {
     return pill(c.ghl_estado, ESTADO_COLORS[c.ghl_estado] || "#9AA0A6");
   }
 
+  function nsEstadoPill(c) {
+    if (!c.ns_estado) return pill("Sin oportunidad", "#9AA0A6");
+    return pill(c.ns_estado, GRUPO_COLORS[c.grupo_venta] || "#9AA0A6");
+  }
+
   function renderEstadoFilter(explorerId) {
     var sel = document.getElementById(explorerId + "-estado-select");
     if (!sel || sel.dataset.built) return;
     var seen = {};
     var values = [];
     baseRows(explorerId).forEach(function (c) {
-      var v = (c.ghl_estado === null || c.ghl_estado === undefined) ? "__null__" : c.ghl_estado;
+      var ev = c[estadoKey(explorerId)];
+      var v = (ev === null || ev === undefined) ? "__null__" : ev;
       if (!seen[v]) { seen[v] = true; values.push(v); }
     });
     values.sort(function (a, b) {
@@ -425,9 +435,9 @@ window.iniciarInforme = function (CONTACTS) {
       if (b === "__null__") return -1;
       return a.localeCompare(b);
     });
-    var optHtml = '<option value="">Estado de oportunidad: todos</option>';
+    var optHtml = '<option value="">' + (explorerId === "oportunidades" ? "Estado NetSuite: todos" : "Estado GHL: todos") + '</option>';
     values.forEach(function (v) {
-      var label = v === "__null__" ? "Sin datos en esta corrida" : estadoLabel(v);
+      var label = v === "__null__" ? "Sin dato" : (explorerId === "oportunidades" ? v : estadoLabel(v));
       optHtml += '<option value="' + esc(v) + '">' + esc(label) + '</option>';
     });
     sel.innerHTML = optHtml;
@@ -492,14 +502,21 @@ window.iniciarInforme = function (CONTACTS) {
     if (!c.contacto_del_periodo) {
       var sinDatos = c.origen_cliente === "Sin dato" && c.forma_contacto === "Sin dato";
       var nota = sinDatos
-        ? 'Contacto creado antes de septiembre -- aparece aca porque su oportunidad se actualizo este mes. Todavia no se completaron sus datos de Origen del Cliente / Forma de Contacto.'
-        : 'Contacto creado antes de septiembre -- aparece aca porque su oportunidad se actualizo este mes.';
+        ? 'Contacto creado antes del rango -- aparece por su oportunidad en NetSuite. No tiene cargados Origen del Cliente / Forma de Contacto.'
+        : 'Contacto creado antes del rango -- aparece por su oportunidad en NetSuite.';
+      if (c.sin_contacto_ghl) nota = 'Cliente sin contacto en GHL (sin ID CLIENTE CRM o sin ficha en GHL): datos solo de NetSuite.';
       html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">' + esc(nota) + '</div></div>';
     }
     rows.forEach(function (r) {
       html += '<div><div class="dg-label">' + esc(r[0]) + '</div><div class="dg-value">' + esc(r[1]) + "</div></div>";
     });
     html += '<div><div class="dg-label">Estado en GHL</div><div class="dg-value">' + estadoPill(c) + "</div></div>";
+    if (c.ns_oportunidades && c.ns_oportunidades.length) {
+      html += '<div class="dg-full"><div class="dg-label">Oportunidades en NetSuite</div><div class="dg-value">' +
+        c.ns_oportunidades.map(function (o) {
+          return esc(o.oportunidad || "Sin numero") + " &middot; " + esc(fmtDate(o.fecha)) + " &middot; " + esc(o.estado || "Sin estado");
+        }).join("<br>") + "</div></div>";
+    }
     if (c.tiene_oportunidad) {
       html += '<div><div class="dg-label">Oportunidades</div><div class="dg-value">' + c.n_oportunidades + (c.n_ganadas ? (' (' + c.n_ganadas + ' ganada' + (c.n_ganadas > 1 ? 's' : '') + ')') : '') + "</div></div>";
       html += '<div><div class="dg-label">Grupo</div><div class="dg-value">' + grupoPill(c) + "</div></div>";
@@ -509,7 +526,7 @@ window.iniciarInforme = function (CONTACTS) {
       html += '<div><div class="dg-label">Ultimo mensaje</div><div class="dg-value">' + esc(fmtDateTime(c.ultimo_mensaje)) + "</div></div>";
     }
     if (c.resumen_conversacion) {
-      html += '<div class="dg-full conv-summary"><div class="dg-label">Resumen de conversacion' + (c.ghl_estado && c.ghl_estado !== "won" ? " (no cerrada)" : "") + '</div><div class="dg-value">' + esc(c.resumen_conversacion) + "</div></div>";
+      html += '<div class="dg-full conv-summary"><div class="dg-label">Resumen de conversacion' + (c.grupo_venta && c.grupo_venta !== "Cerrada (venta)" ? " (no cerrada)" : "") + '</div><div class="dg-value">' + esc(c.resumen_conversacion) + "</div></div>";
     } else if (c.tiene_datos_conversacion) {
       html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">Hay conversacion registrada pero todavia no se redacto un resumen.</div></div>';
     } else {
@@ -525,12 +542,12 @@ window.iniciarInforme = function (CONTACTS) {
     { label: "Vendedor", key: "vendedor" },
     { label: "Origen del Cliente", key: "origen_cliente" },
     { label: "Cantidad", key: "n_oportunidades" },
-    { label: "Estado GHL", key: "ghl_estado" },
+    { label: "Estado NetSuite", key: "ns_estado" },
     { label: "Grupo", key: "grupo_venta" },
-    { label: "Fecha de creacion", key: "fecha_creacion_oportunidad" },
-    { label: "Monto", key: "monto" },
-    { label: "Etapa de pipeline", key: "etapa_pipeline" },
-    { label: "Fecha de cierre", key: "fecha_cierre" }
+    { label: "Fecha oportunidad", key: "fecha_creacion_oportunidad" },
+    { label: "Monto (GHL)", key: "monto" },
+    { label: "Etapa (GHL)", key: "etapa_pipeline" },
+    { label: "Estado GHL", key: "ghl_estado" }
   ];
 
   function renderThead(explorerId) {
@@ -558,7 +575,7 @@ window.iniciarInforme = function (CONTACTS) {
       return [esc(c.nombre), grupoPill(c), c.mensajes_total, esc(c.origen_cliente), esc(fmtDateTime(c.ultimo_mensaje))];
     }
     if (explorerId === "oportunidades") {
-      return [esc(c.nro_cliente_netsuite || "Sin dato"), esc(c.nombre), esc(c.vendedor), esc(c.origen_cliente), c.n_oportunidades, estadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), esc(fmtDate(c.fecha_cierre))];
+      return [esc(c.nro_cliente_netsuite || "Sin dato"), esc(c.nombre), esc(c.vendedor), esc(c.origen_cliente), c.n_oportunidades, nsEstadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), estadoPill(c)];
     }
     return [esc(c.nombre), esc(c.canal_tag || "Sin dato")];
   }
@@ -568,8 +585,9 @@ window.iniciarInforme = function (CONTACTS) {
     renderEstadoFilter(explorerId);
     var selEl = document.getElementById(explorerId + "-estado-select");
     if (selEl) {
-      var selVal = st.filters.hasOwnProperty("ghl_estado")
-        ? (st.filters.ghl_estado === null ? "__null__" : st.filters.ghl_estado)
+      var ek = estadoKey(explorerId);
+      var selVal = st.filters.hasOwnProperty(ek)
+        ? (st.filters[ek] === null ? "__null__" : st.filters[ek])
         : "";
       selEl.value = selVal;
     }
