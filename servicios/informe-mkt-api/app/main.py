@@ -18,6 +18,7 @@ from app import config, job
 from app import supabase_rest as sb
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
+logger = logging.getLogger("informe_mkt_api")
 
 app = FastAPI(title="informe-mkt-api")
 app.add_middleware(
@@ -40,6 +41,19 @@ def health():
 
 @app.post("/informe-mkt/actualizar", status_code=202)
 def actualizar(pedido: PedidoActualizacion, background: BackgroundTasks, authorization: str = Header(None)):
+    # Cualquier error inesperado se devuelve como HTTPException: asi la respuesta
+    # pasa por el middleware de CORS y el navegador muestra el mensaje real (un
+    # 500 sin manejar sale sin encabezados CORS y se ve como "Failed to fetch").
+    try:
+        return _actualizar(pedido, background, authorization)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error al iniciar la actualizacion")
+        raise HTTPException(500, f"Error interno al iniciar la actualizacion: {e}")
+
+
+def _actualizar(pedido, background, authorization):
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Falta el header Authorization: Bearer <token de Supabase del usuario>")
     token = authorization.split(" ", 1)[1].strip()
