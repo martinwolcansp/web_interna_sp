@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+certificados/
+*.pem
+__pycache__/
+*.py[cod]
+.git

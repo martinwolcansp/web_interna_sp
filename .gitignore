@@ -1,0 +1,7 @@
+# Secretos del servicio informe-mkt-api: nunca al repo
+# (en Coolify van como variables de entorno).
+servicios/**/.env
+servicios/**/certificados/
+*.pem
+__pycache__/
+*.py[cod]

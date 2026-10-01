@@ -21,5 +21,8 @@
 'use strict';
 
 window.INFORMES_MKT_PERIODOS = [
+  // Informe actualizable desde la web (boton Actualizar + rango Desde/Hasta).
+  // Lee la ultima corrida de la tabla informe_mkt_corrida (migracion_17).
+  { id: 'actualizable', label: 'Actualizable (rango a elección)', archivo: 'actualizable.html' },
   { id: '2026-09', label: 'Septiembre 2026', archivo: '2026-09.html' },
 ];

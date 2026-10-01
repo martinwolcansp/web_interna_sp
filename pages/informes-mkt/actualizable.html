@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe MKT actualizable — Oportunidades y contactos (GHL + NetSuite)</title>
+<style>
+
+:root {
+  --navy: #1F3864; --navy-solid: #1F3864; --ink: #202124; --second: #52514E; --muted: #6B6B6B;
+  --rule: #DEDCD3; --light-fill: #EEF1F6; --blue: #2a78d6; --orange: #eb6834;
+  --page: #F7F8FA; --surface: #FFFFFF;
+  --win-bg: #E6F4EC; --win-border: #bfe3cd; --win-text: #1e7a44;
+  --total-bg: var(--light-fill); --total-border: #c9d3e6;
+  --warn-bg: #FCEEE3;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: Calibri, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15.5px; line-height: 1.55;
+}
+.wrap { max-width: 1600px; margin: 0 auto; padding: 28px 24px 64px; }
+header.report-header { border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 22px; }
+header.report-header .eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .02em; margin-bottom: 6px; }
+header.report-header h1 { color: var(--navy); font-size: 26px; margin: 0 0 6px; font-weight: 700; }
+header.report-header .sub { color: var(--second); font-size: 15.5px; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--rule); padding-bottom: 0; }
+.tab-btn { appearance: none; border: 1px solid transparent; background: transparent; color: var(--second); font: inherit; font-size: 14px; padding: 9px 14px; cursor: pointer; border-radius: 6px 6px 0 0; margin-bottom: -1px; }
+.tab-btn:hover { background: var(--light-fill); color: var(--navy); }
+.tab-btn.active { color: var(--navy); font-weight: 700; border: 1px solid var(--rule); border-bottom-color: var(--surface); background: var(--surface); }
+main { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 28px 28px; }
+.tab-panel { display: none; padding-top: 18px; }
+.tab-panel.active { display: block; }
+.tab-panel h2 { color: var(--navy); font-size: 21px; margin: 0 0 16px; padding-left: 12px; border-left: 4px solid var(--navy); }
+.tab-panel h3 { color: var(--navy); font-size: 16px; margin: 22px 0 8px; }
+.tab-panel p { margin: 0 0 12px; color: var(--ink); }
+.data-table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14.5px; }
+.data-table th { background: var(--navy-solid); color: #fff; text-align: left; padding: 9px 12px; font-weight: 600; position: sticky; top: 0; }
+.data-table td { padding: 8px 12px; border-bottom: 1px solid var(--rule); }
+.data-table tr:last-child td { border-bottom: none; }
+#oportunidades-table th, #oportunidades-table td { padding: 7px 8px; font-size: 13px; }
+.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.th-sort:hover { background: #16294d; }
+.sort-arrow { font-size: 10px; opacity: .6; margin-left: 3px; }
+.th-sort-active .sort-arrow { opacity: 1; }
+.note-box { background: var(--light-fill); border-left: 4px solid var(--navy); padding: 12px 16px; margin: 10px 0 18px; border-radius: 0 6px 6px 0; }
+.note-box p { margin: 0; color: var(--ink); font-size: 14.5px; }
+.note-box--warn { border-left-color: var(--orange); background: var(--warn-bg); }
+.note-box--warn p { color: var(--ink); }
+.chart-wrap { margin: 14px 0 4px; }
+.chart-svg { display: block; width: 100%; height: auto; }
+.chart-caption { text-align: center; font-size: 13px; color: var(--muted); font-style: italic; margin: 4px 0 18px; }
+.axis-label { font-size: 11px; fill: var(--second); }
+.cat-label { font-size: 12.5px; fill: var(--ink); }
+.val-label { font-size: 11.5px; fill: var(--second); }
+.bar-row.clickable { cursor: pointer; }
+.bar-row.clickable:hover rect[fill]:not([fill="transparent"]) { opacity: .82; }
+code { background: var(--light-fill); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+.kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 22px; }
+.kpi-card { flex: 1 1 150px; background: var(--light-fill); border-radius: 8px; padding: 14px 16px; border-top: 3px solid var(--navy); }
+.kpi-num { font-size: 26px; font-weight: 700; line-height: 1.1; color: var(--navy); }
+.kpi-label { font-size: 12.5px; color: var(--second); margin-top: 4px; }
+.kpi-row-featured { margin-bottom: 10px; }
+.kpi-card-feature { flex: 1 1 220px; padding: 20px 22px; border-top: none; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.kpi-card-feature .kpi-num { font-size: 40px; }
+.kpi-card-feature .kpi-label { font-size: 13.5px; font-weight: 600; margin-top: 6px; }
+.kpi-card-feature--win { background: var(--win-bg); border: 1px solid var(--win-border); }
+.kpi-card-feature--win .kpi-num, .kpi-card-feature--win .kpi-label { color: var(--win-text); }
+.kpi-card-feature--total { background: var(--total-bg); border: 1px solid var(--total-border); }
+.kpi-card-feature--total .kpi-num, .kpi-card-feature--total .kpi-label { color: var(--navy-solid); }
+.kpi-caveat { font-size: 12.5px; color: var(--second); background: var(--light-fill); border-left: 3px solid var(--orange); border-radius: 0 6px 6px 0; padding: 8px 12px; margin: 0 0 16px; line-height: 1.5; }
+.donut-row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; margin: 8px 0 10px; }
+.donut-block { flex: 1 1 260px; min-width: 240px; }
+.donut-row-single { justify-content: center; }
+.donut-row-single .donut-block { flex: 0 1 420px; }
+.donut-block-title { font-size: 13.5px; color: var(--navy); font-weight: 700; margin-bottom: 8px; }
+.donut-flex { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.donut-svg { flex: 0 0 auto; }
+.donut-seg.clickable { cursor: pointer; }
+.donut-seg.clickable:hover { opacity: .82; }
+.donut-center-num { font-size: 30px; font-weight: 700; fill: var(--navy); }
+.donut-center-sub { font-size: 11px; fill: var(--muted); }
+.chart-legend-wrap { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.chart-legend-wrap .legend-item { gap: 8px; }
+.legend-item.clickable { cursor: pointer; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+.legend-item.clickable:hover { background: var(--light-fill); }
+.legend-item.filter-active { background: var(--light-fill); font-weight: 700; }
+.swatch { display:inline-block; width:10px; height:10px; border-radius: 2px; }
+footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 22px; }
+
+.explorer { margin: 16px 0 8px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.explorer-bar { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--light-fill); border-bottom: 1px solid var(--rule); } .explorer-bar-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; } .explorer-bar-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.explorer-title { font-weight: 700; color: var(--navy); font-size: 13.5px; }
+.explorer-search { border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; width: 180px; } .explorer-date { border: 1px solid var(--rule); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px; background: var(--surface); color: var(--ink); } .explorer-date-label { font-size: 12.5px; color: var(--muted); white-space: nowrap; } .explorer-date-group { display: inline-flex; align-items: center; gap: 6px; }
+.explorer-select { border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; background: var(--surface); color: var(--ink); }
+.explorer-chips { display: flex; flex-wrap: wrap; gap: 6px; } .explorer-chips:empty { display: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; background: var(--navy-solid); color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 999px; }
+.chip button { background: none; border: none; color: #fff; cursor: pointer; font-size: 13px; line-height: 1; padding: 0; }
+.explorer-clear { border: 1px solid var(--rule); background: #fff; color: var(--second); font-size: 12.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.explorer-clear:hover { background: var(--light-fill); }
+.explorer-count { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.table-scroll { max-height: 480px; overflow-y: auto; }
+.explorer-table { margin: 0; }
+.explorer-table tbody tr.client-row { cursor: pointer; }
+.explorer-table tbody tr.client-row:hover { background: var(--light-fill); }
+.explorer-table tbody tr.detail-row { background: #FBFBF8; display: none; }
+.explorer-table tbody tr.detail-row.open { display: table-row; }
+.explorer-table tbody tr.detail-row td { padding: 12px 16px; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 20px; font-size: 13px; }
+.detail-grid .dg-label { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .02em; }
+.detail-grid .dg-value { color: var(--ink); }
+.detail-grid .dg-full { grid-column: 1 / -1; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: #fff; }
+.conv-summary { margin-top: 4px; border-left: 3px solid var(--navy-solid); border-radius: 4px; background: var(--light-fill); padding: 10px 14px; }
+.conv-summary .dg-label { margin-bottom: 4px; }
+.conv-summary .dg-value { font-size: 13.5px; line-height: 1.5; }
+@media (max-width: 640px) { .wrap { padding: 16px 12px 40px; } main { padding: 4px 14px 20px; } header.report-header h1 { font-size: 20px; } .explorer-search { width: 140px; } }
+@media print { nav.tabs { display: none; } .tab-panel { display: block !important; page-break-before: always; } main { border: none; } }
+
+
+/* ---- Barra de actualizacion (informe actualizable) ---- */
+.upd-bar { margin-top: 14px; padding: 10px 14px; background: var(--light-fill); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.upd-ultima { font-size: 14px; color: var(--ink); flex: 1 1 320px; }
+.upd-ultima strong { color: var(--navy); }
+.upd-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.upd-controles[hidden] { display: none; }
+.upd-campo { font-size: 13px; color: var(--second); display: inline-flex; align-items: center; gap: 6px; }
+.upd-campo input { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); color: var(--ink); }
+.upd-btn { appearance: none; border: 0; background: var(--navy); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; padding: 7px 16px; border-radius: 5px; cursor: pointer; }
+.upd-btn:hover { background: #16294d; }
+.upd-btn:disabled { opacity: .55; cursor: progress; }
+.upd-estado { flex-basis: 100%; font-size: 13px; color: var(--second); }
+.upd-estado:empty { display: none; }
+.upd-estado--error { color: #b3261e; }
+.upd-estado--ok { color: var(--win-text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="report-header">
+    <div class="eyebrow">SP Seguridad Privada &middot; Informe de MKT &middot; actualizable</div>
+    <h1>Oportunidades ganadas y contactos</h1>
+    <div class="sub">Datos de GHL cruzados con NetSuite &middot; elegí el rango y presioná Actualizar para traer datos frescos &middot; click en un gráfico para filtrar el detalle</div>
+    <div class="upd-bar">
+      <div class="upd-ultima" id="upd-ultima">Cargando datos…</div>
+      <div class="upd-controles" id="upd-controles" hidden>
+        <label class="upd-campo">Desde <input type="date" id="upd-desde"></label>
+        <label class="upd-campo">Hasta <input type="date" id="upd-hasta"></label>
+        <button type="button" class="upd-btn" id="upd-btn">Actualizar</button>
+      </div>
+      <div class="upd-estado" id="upd-estado" role="status" aria-live="polite"></div>
+    </div>
+  </header>
+  <main>
+    <section class="tab-panel active" id="panel-resumen" role="tabpanel" aria-labelledby="tab-resumen">
+      <h2>Resumen ejecutivo</h2>
+      <p>Cargando…</p>
+    </section>
+  </main>
+  <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Informe de MKT &middot; datos de GHL y NetSuite</footer>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var main = document.querySelector("main");
+  var btns = document.querySelectorAll(".tab-btn");
+  btns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = btn.getAttribute("data-tab");
+      document.querySelectorAll(".tab-btn").forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+        b.setAttribute("aria-selected", b === btn ? "true" : "false");
+      });
+      document.querySelectorAll(".tab-panel").forEach(function (p) {
+        p.classList.toggle("active", p.id === "panel-" + id);
+      });
+      window.scrollTo({ top: main.offsetTop - 12, behavior: "smooth" });
+    });
+  });
+});
+</script>
+<script id="contacts-data" type="application/json">[]</script>
+<script>
+window.iniciarInforme = function (CONTACTS) {
+  var STATE = {};
+
+  function esc(s) {
+    if (s === null || s === undefined) return "";
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fmtDateTime(s) {
+    if (!s) return "Sin fecha";
+    return s.replace("T", " ").slice(0, 16);
+  }
+  function fmtDate(s) {
+    if (!s) return "Sin dato";
+    return s.slice(0, 10);
+  }
+  function fmtMonto(v) {
+    if (v === null || v === undefined || v === "") return "Sin dato";
+    return "$ " + Number(v).toLocaleString("es-AR");
+  }
+
+  function todayStr() {
+    var d = new Date();
+    var mm = String(d.getMonth() + 1).padStart(2, "0");
+    var dd = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + mm + "-" + dd;
+  }
+
+  function getState(id) {
+    if (!STATE[id]) {
+      if (id === "oportunidades") {
+        STATE[id] = { filters: { grupo_venta: "Cerrada (venta)" }, search: "", dateFrom: null, dateTo: null, sortKey: null, sortDir: "asc" };
+      } else if (id === "contactos") {
+        var hoy = todayStr();
+        STATE[id] = { filters: {}, search: "", dateFrom: hoy, dateTo: hoy, sortKey: null, sortDir: "asc" };
+      } else {
+        STATE[id] = { filters: {}, search: "", dateFrom: null, dateTo: null, sortKey: null, sortDir: "asc" };
+      }
+    }
+    return STATE[id];
+  }
+
+  window.applyFilter = function (explorerId, filtersObj) {
+    var st = getState(explorerId);
+    var same = JSON.stringify(st.filters) === JSON.stringify(filtersObj);
+    st.filters = same ? {} : filtersObj;
+    render(explorerId);
+  };
+  window.clearFilter = function (explorerId) {
+    var st = getState(explorerId);
+    st.filters = {};
+    st.search = "";
+    st.dateFrom = null;
+    st.dateTo = null;
+    var input = document.querySelector('#explorer-' + explorerId + ' .explorer-search');
+    if (input) input.value = "";
+    var fromEl = document.getElementById(explorerId + "-date-from");
+    if (fromEl) fromEl.value = "";
+    var toEl = document.getElementById(explorerId + "-date-to");
+    if (toEl) toEl.value = "";
+    render(explorerId);
+  };
+  window.setDateFilter = function (explorerId, which, value) {
+    var st = getState(explorerId);
+    if (which === "from") st.dateFrom = value || null;
+    else st.dateTo = value || null;
+    render(explorerId);
+  };
+  window.clearDateFilter = function (explorerId) {
+    var st = getState(explorerId);
+    st.dateFrom = null;
+    st.dateTo = null;
+    var fromEl = document.getElementById(explorerId + "-date-from");
+    if (fromEl) fromEl.value = "";
+    var toEl = document.getElementById(explorerId + "-date-to");
+    if (toEl) toEl.value = "";
+    render(explorerId);
+  };
+  window.setSearch = function (explorerId, value) {
+    var st = getState(explorerId);
+    st.search = (value || "").toLowerCase();
+    render(explorerId);
+  };
+  window.setEstadoFilter = function (explorerId, value) {
+    var st = getState(explorerId);
+    if (!value) {
+      delete st.filters.ghl_estado;
+    } else if (value === "__null__") {
+      st.filters.ghl_estado = null;
+    } else {
+      st.filters.ghl_estado = value;
+    }
+    render(explorerId);
+  };
+  window.setVendedorFilter = function (explorerId, value) {
+    var st = getState(explorerId);
+    if (!value) {
+      delete st.filters.vendedor;
+    } else {
+      st.filters.vendedor = value;
+    }
+    render(explorerId);
+  };
+  window.setGrupoFilter = function (explorerId, value) {
+    var st = getState(explorerId);
+    if (!value) {
+      delete st.filters.grupo_venta;
+    } else {
+      st.filters.grupo_venta = value;
+    }
+    render(explorerId);
+  };
+  window.setSort = function (explorerId, key) {
+    var st = getState(explorerId);
+    if (st.sortKey === key) {
+      st.sortDir = st.sortDir === "asc" ? "desc" : "asc";
+    } else {
+      st.sortKey = key;
+      st.sortDir = "asc";
+    }
+    render(explorerId);
+  };
+  window.toggleDetail = function (rowId) {
+    var row = document.getElementById(rowId);
+    if (row) row.classList.toggle("open");
+  };
+
+  function baseRows(explorerId) {
+    // "contactos" = poblacion real de septiembre (por fecha de alta). Los
+    // contactos "fuera de periodo" (vistos solo porque su oportunidad se
+    // actualizo este mes) quedan afuera de esta tabla -- aparecen en la de
+    // "oportunidades" nada mas, para no mezclar dos poblaciones distintas.
+    if (explorerId === "contactos") return CONTACTS.filter(function (c) { return c.contacto_del_periodo; });
+    if (explorerId === "conversaciones") return CONTACTS.filter(function (c) { return c.tiene_datos_conversacion; });
+    if (explorerId === "oportunidades") return CONTACTS.filter(function (c) { return c.tiene_oportunidad; });
+    return CONTACTS;
+  }
+
+  function applyFiltersAndSearch(rows, st) {
+    var filtered = rows.filter(function (c) {
+      return Object.keys(st.filters).every(function (k) {
+        var want = st.filters[k];
+        var have = c[k];
+        // "Sin dato" significa "sin valor real", pero cada campo lo
+        // representa distinto: los campos que pasan por el cruce con
+        // NetSuite (origen_cliente, forma_contacto, vendedor) ya guardan
+        // el string literal "Sin dato"; los campos crudos de GHL (como
+        // canal_tag) quedan null/undefined/"" y solo se etiquetan "Sin
+        // dato" al mostrarlos o contarlos (ver contar()/contarJs()). Hay
+        // que aceptar las dos formas, si no el click en ese segmento del
+        // grafico no trae resultados.
+        if (want === "Sin dato") return !have || String(have) === "Sin dato";
+        return String(have) === String(want);
+      });
+    });
+    if (st.search) {
+      filtered = filtered.filter(function (c) {
+        return (c.nombre || "").toLowerCase().indexOf(st.search) !== -1;
+      });
+    }
+    if (st.dateFrom || st.dateTo) {
+      filtered = filtered.filter(function (c) {
+        if (!c.date_added) return false;
+        var d = c.date_added.slice(0, 10);
+        if (st.dateFrom && d < st.dateFrom) return false;
+        if (st.dateTo && d > st.dateTo) return false;
+        return true;
+      });
+    }
+    if (st.sortKey) {
+      filtered.sort(function (a, b) {
+        var cmp = compareForSort(a, b, st.sortKey);
+        return st.sortDir === "desc" ? -cmp : cmp;
+      });
+    } else {
+      filtered.sort(function (a, b) {
+        return (b.mensajes_total || 0) - (a.mensajes_total || 0) || (a.nombre || "").localeCompare(b.nombre || "");
+      });
+    }
+    return filtered;
+  }
+
+  var SORT_TYPES = { n_oportunidades: "number", monto: "number", fecha_creacion_oportunidad: "date", fecha_cierre: "date" };
+  function isEmptyForSort(v) {
+    return v === null || v === undefined || v === "" || v === "Sin dato";
+  }
+  function compareForSort(a, b, key) {
+    var va = a[key], vb = b[key];
+    var aEmpty = isEmptyForSort(va), bEmpty = isEmptyForSort(vb);
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
+    if (SORT_TYPES[key] === "number") return va - vb;
+    return String(va).localeCompare(String(vb), "es", { sensitivity: "base" });
+  }
+
+  var CHIP_KEY_LABELS = { "ghl_estado": "Estado de oportunidad", "vendedor": "Vendedor", "grupo_venta": "Grupo", "canal_tag": "Origen (tag)" };
+  function chips(explorerId) {
+    var st = getState(explorerId);
+    var out = [];
+    Object.keys(st.filters).forEach(function (k) {
+      var v = st.filters[k];
+      var keyLabel = CHIP_KEY_LABELS[k] || k;
+      var valLabel = k === "ghl_estado" ? estadoLabel(v) : v;
+      out.push('<span class="chip">' + esc(keyLabel) + ": " + esc(valLabel) +
+        '<button onclick="applyFilter(\'' + explorerId + "', " + JSON.stringify(st.filters).replace(/"/g, "&quot;").replace(/'/g, "&#39;") + ')">&times;</button></span>');
+    });
+    if (st.dateFrom || st.dateTo) {
+      var dateLabel = "Alta: " + (st.dateFrom || "sin limite") + " a " + (st.dateTo || "sin limite");
+      out.push('<span class="chip">' + esc(dateLabel) + '<button onclick="clearDateFilter(\'' + explorerId + '\')">&times;</button></span>');
+    }
+    return out.join("");
+  }
+
+  function pill(text, color) {
+    return '<span class="pill" style="background:' + color + '">' + esc(text) + "</span>";
+  }
+
+  var ESTADO_COLORS = { "open": "#eb6834", "won": "#2a9d5c", "lost": "#c0392b", "open+won": "#8e6bb0" };
+  var ESTADO_LABELS = { "open": "Abierta (open)", "won": "Ganada (won)", "lost": "Perdida (lost)", "open+won": "Abierta + Ganada" };
+  function estadoLabel(v) {
+    if (v === null || v === undefined) return "Sin datos en esta corrida";
+    return ESTADO_LABELS[v] || v;
+  }
+  function estadoPill(c) {
+    if (!c.ghl_estado) return pill("Sin datos en esta corrida", "#9AA0A6");
+    return pill(c.ghl_estado, ESTADO_COLORS[c.ghl_estado] || "#9AA0A6");
+  }
+
+  function renderEstadoFilter(explorerId) {
+    var sel = document.getElementById(explorerId + "-estado-select");
+    if (!sel || sel.dataset.built) return;
+    var seen = {};
+    var values = [];
+    baseRows(explorerId).forEach(function (c) {
+      var v = (c.ghl_estado === null || c.ghl_estado === undefined) ? "__null__" : c.ghl_estado;
+      if (!seen[v]) { seen[v] = true; values.push(v); }
+    });
+    values.sort(function (a, b) {
+      if (a === "__null__") return 1;
+      if (b === "__null__") return -1;
+      return a.localeCompare(b);
+    });
+    var optHtml = '<option value="">Estado de oportunidad: todos</option>';
+    values.forEach(function (v) {
+      var label = v === "__null__" ? "Sin datos en esta corrida" : estadoLabel(v);
+      optHtml += '<option value="' + esc(v) + '">' + esc(label) + '</option>';
+    });
+    sel.innerHTML = optHtml;
+    sel.dataset.built = "1";
+  }
+
+  function renderVendedorFilter(explorerId) {
+    var sel = document.getElementById(explorerId + "-vendedor-select");
+    if (!sel || sel.dataset.built) return;
+    var seen = {};
+    var values = [];
+    baseRows(explorerId).forEach(function (c) {
+      var v = c.vendedor || "Sin asignar";
+      if (!seen[v]) { seen[v] = true; values.push(v); }
+    });
+    values.sort(function (a, b) {
+      if (a === "Sin asignar") return 1;
+      if (b === "Sin asignar") return -1;
+      return a.localeCompare(b);
+    });
+    var optHtml = '<option value="">Vendedor: todos</option>';
+    values.forEach(function (v) {
+      optHtml += '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+    });
+    sel.innerHTML = optHtml;
+    sel.dataset.built = "1";
+  }
+
+  function renderGrupoFilter(explorerId) {
+    var sel = document.getElementById(explorerId + "-grupo-select");
+    if (!sel || sel.dataset.built) return;
+    var seen = {};
+    var values = [];
+    baseRows(explorerId).forEach(function (c) {
+      var v = c.grupo_venta || "Sin dato";
+      if (!seen[v]) { seen[v] = true; values.push(v); }
+    });
+    values.sort();
+    var optHtml = '<option value="">Grupo: todos</option>';
+    values.forEach(function (v) {
+      optHtml += '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+    });
+    sel.innerHTML = optHtml;
+    sel.dataset.built = "1";
+  }
+
+  var GRUPO_COLORS = { "Cerrada (venta)": "#2a9d5c", "Abierta / en proceso": "#eb6834", "Perdida": "#c0392b" };
+  function grupoPill(c) {
+    if (!c.grupo_venta) return pill("Sin oportunidad", "#9AA0A6");
+    return pill(c.grupo_venta, GRUPO_COLORS[c.grupo_venta] || "#9AA0A6");
+  }
+
+  function detailGrid(c) {
+    var rows = [
+      ["Origen del Cliente", c.origen_cliente],
+      ["Forma de Contacto", c.forma_contacto],
+      ["Interesado en", c.interesado_en],
+      ["Vendedor", c.vendedor],
+      ["Fecha de alta", fmtDateTime(c.date_added)],
+    ];
+    var html = '<div class="detail-grid">';
+    if (!c.contacto_del_periodo) {
+      var sinDatos = c.origen_cliente === "Sin dato" && c.forma_contacto === "Sin dato";
+      var nota = sinDatos
+        ? 'Contacto creado antes de septiembre -- aparece aca porque su oportunidad se actualizo este mes. Todavia no se completaron sus datos de Origen del Cliente / Forma de Contacto.'
+        : 'Contacto creado antes de septiembre -- aparece aca porque su oportunidad se actualizo este mes.';
+      html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">' + esc(nota) + '</div></div>';
+    }
+    rows.forEach(function (r) {
+      html += '<div><div class="dg-label">' + esc(r[0]) + '</div><div class="dg-value">' + esc(r[1]) + "</div></div>";
+    });
+    html += '<div><div class="dg-label">Estado en GHL</div><div class="dg-value">' + estadoPill(c) + "</div></div>";
+    if (c.tiene_oportunidad) {
+      html += '<div><div class="dg-label">Oportunidades</div><div class="dg-value">' + c.n_oportunidades + (c.n_ganadas ? (' (' + c.n_ganadas + ' ganada' + (c.n_ganadas > 1 ? 's' : '') + ')') : '') + "</div></div>";
+      html += '<div><div class="dg-label">Grupo</div><div class="dg-value">' + grupoPill(c) + "</div></div>";
+    }
+    if (c.tiene_datos_conversacion) {
+      html += '<div><div class="dg-label">Mensajes</div><div class="dg-value">' + c.mensajes_total + ' (' + c.mensajes_inbound + ' recibidos / ' + c.mensajes_outbound + ' enviados)</div></div>';
+      html += '<div><div class="dg-label">Ultimo mensaje</div><div class="dg-value">' + esc(fmtDateTime(c.ultimo_mensaje)) + "</div></div>";
+    }
+    if (c.resumen_conversacion) {
+      html += '<div class="dg-full conv-summary"><div class="dg-label">Resumen de conversacion' + (c.ghl_estado && c.ghl_estado !== "won" ? " (no cerrada)" : "") + '</div><div class="dg-value">' + esc(c.resumen_conversacion) + "</div></div>";
+    } else if (c.tiene_datos_conversacion) {
+      html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">Hay conversacion registrada pero todavia no se redacto un resumen.</div></div>';
+    } else {
+      html += '<div class="dg-full"><div class="dg-value" style="color:var(--muted);font-style:italic;">Sin datos de conversacion en esta corrida (no se incluyo en el subconjunto consultado a GHL).</div></div>';
+    }
+    html += "</div>";
+    return html;
+  }
+
+  var OPORTUNIDADES_COLUMNS = [
+    { label: "Nro cliente (NetSuite)", key: "nro_cliente_netsuite" },
+    { label: "Contacto", key: "nombre" },
+    { label: "Vendedor", key: "vendedor" },
+    { label: "Origen del Cliente", key: "origen_cliente" },
+    { label: "Cantidad", key: "n_oportunidades" },
+    { label: "Estado GHL", key: "ghl_estado" },
+    { label: "Grupo", key: "grupo_venta" },
+    { label: "Fecha de creacion", key: "fecha_creacion_oportunidad" },
+    { label: "Monto", key: "monto" },
+    { label: "Etapa de pipeline", key: "etapa_pipeline" },
+    { label: "Fecha de cierre", key: "fecha_cierre" }
+  ];
+
+  function renderThead(explorerId) {
+    var thead = document.getElementById(explorerId + "-thead");
+    var cols;
+    if (explorerId === "oportunidades") {
+      var st = getState("oportunidades");
+      thead.innerHTML = "<tr>" + OPORTUNIDADES_COLUMNS.map(function (col) {
+        var active = st.sortKey === col.key;
+        var arrow = active ? (st.sortDir === "desc" ? "\u25bc" : "\u25b2") : "\u2195";
+        return '<th class="th-sort' + (active ? " th-sort-active" : "") + '" onclick="setSort(\'oportunidades\', \'' + col.key + '\')">' + esc(col.label) + ' <span class="sort-arrow">' + arrow + "</span></th>";
+      }).join("") + "</tr>";
+      return;
+    }
+    if (explorerId === "conversaciones") {
+      cols = ["Contacto", "Grupo", "Mensajes", "Origen del Cliente", "Ultimo mensaje"];
+    } else {
+      cols = ["Contacto", "Origen (tag)"];
+    }
+    thead.innerHTML = "<tr>" + cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr>";
+  }
+
+  function rowCells(explorerId, c) {
+    if (explorerId === "conversaciones") {
+      return [esc(c.nombre), grupoPill(c), c.mensajes_total, esc(c.origen_cliente), esc(fmtDateTime(c.ultimo_mensaje))];
+    }
+    if (explorerId === "oportunidades") {
+      return [esc(c.nro_cliente_netsuite || "Sin dato"), esc(c.nombre), esc(c.vendedor), esc(c.origen_cliente), c.n_oportunidades, estadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), esc(fmtDate(c.fecha_cierre))];
+    }
+    return [esc(c.nombre), esc(c.canal_tag || "Sin dato")];
+  }
+
+  function render(explorerId) {
+    var st = getState(explorerId);
+    renderEstadoFilter(explorerId);
+    var selEl = document.getElementById(explorerId + "-estado-select");
+    if (selEl) {
+      var selVal = st.filters.hasOwnProperty("ghl_estado")
+        ? (st.filters.ghl_estado === null ? "__null__" : st.filters.ghl_estado)
+        : "";
+      selEl.value = selVal;
+    }
+    renderVendedorFilter(explorerId);
+    var vendedorSelEl = document.getElementById(explorerId + "-vendedor-select");
+    if (vendedorSelEl) {
+      vendedorSelEl.value = st.filters.hasOwnProperty("vendedor") ? st.filters.vendedor : "";
+    }
+    renderGrupoFilter(explorerId);
+    var grupoSelEl = document.getElementById(explorerId + "-grupo-select");
+    if (grupoSelEl) {
+      grupoSelEl.value = st.filters.hasOwnProperty("grupo_venta") ? st.filters.grupo_venta : "";
+    }
+    var fromSyncEl = document.getElementById(explorerId + "-date-from");
+    if (fromSyncEl) fromSyncEl.value = st.dateFrom || "";
+    var toSyncEl = document.getElementById(explorerId + "-date-to");
+    if (toSyncEl) toSyncEl.value = st.dateTo || "";
+    var rows = applyFiltersAndSearch(baseRows(explorerId), st);
+    var tbody = document.getElementById(explorerId + "-tbody");
+    var countEl = document.getElementById(explorerId + "-count");
+    var chipsEl = document.getElementById(explorerId + "-chips");
+    if (chipsEl) chipsEl.innerHTML = chips(explorerId);
+    if (countEl) {
+      var countText = rows.length + " de " + baseRows(explorerId).length;
+      if (explorerId === "oportunidades") {
+        var totalOps = rows.reduce(function (sum, c) { return sum + (c.n_oportunidades || 0); }, 0);
+        var totalGanadas = rows.reduce(function (sum, c) { return sum + (c.n_ganadas || 0); }, 0);
+        countText += " \u00b7 " + totalOps + " oportunidad" + (totalOps === 1 ? "" : "es") +
+          (totalGanadas ? " (" + totalGanadas + " ganada" + (totalGanadas === 1 ? "" : "s") + ")" : "");
+      }
+      countEl.textContent = countText;
+    }
+    renderThead(explorerId);
+    var colCount = (explorerId === "oportunidades") ? 11 : 2;
+
+    var htmlOut = "";
+    rows.forEach(function (c, i) {
+      var rowId = explorerId + "-detail-" + i;
+      var cells = rowCells(explorerId, c);
+      htmlOut += '<tr class="client-row" onclick="toggleDetail(\'' + rowId + '\')">';
+      cells.forEach(function (cell) { htmlOut += "<td>" + cell + "</td>"; });
+      htmlOut += "</tr>";
+      htmlOut += '<tr class="detail-row" id="' + rowId + '"><td colspan="' + cells.length + '">' + detailGrid(c) + "</td></tr>";
+    });
+    if (!rows.length) {
+      htmlOut = '<tr><td colspan="' + colCount + '" style="text-align:center;color:#6B6B6B;padding:18px;">Sin resultados para este filtro.</td></tr>';
+    }
+    tbody.innerHTML = htmlOut;
+  }
+
+  function renderContactosHoyKpi() {
+    var el = document.getElementById("contactos-hoy-kpi-num");
+    if (!el) return;
+    var hoy = todayStr();
+    var n = CONTACTS.filter(function (c) {
+      return c.date_added && c.date_added.slice(0, 10) === hoy;
+    }).length;
+    el.textContent = n;
+  }
+
+  var DONUT_PALETTE = ["#1F3864", "#2a78d6", "#2a9d5c", "#8e6bb0", "#eb6834", "#9AA0A6", "#c9a227", "#6b6b6b"];
+
+  function contarJs(items, getField) {
+    var counts = {};
+    items.forEach(function (c) {
+      var v = getField(c) || "Sin dato";
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    return Object.keys(counts)
+      .map(function (k) { return [k, counts[k]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+  }
+
+  function donutSvgJs(counterItems, total, filtroCampo, explorerId, nLabel) {
+    var r = 76.0, cx = 90.0, cy = 90.0;
+    var circunf = 2 * Math.PI * r;
+    var segments = "", legend = "", offset = 0;
+    counterItems.forEach(function (item, i) {
+      var label = item[0], count = item[1];
+      if (!count) return;
+      var color = DONUT_PALETTE[i % DONUT_PALETTE.length];
+      var pct = total ? (100 * count / total) : 0;
+      var largo = total ? (circunf * count / total) : 0;
+      var resto = circunf - largo;
+      var onclickStr = 'applyFilter("' + explorerId + '", {"' + filtroCampo + '": ' + JSON.stringify(label) + "})";
+      segments += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="28" class="donut-seg clickable" stroke-dasharray="' + largo.toFixed(2) + " " + resto.toFixed(2) + '" stroke-dashoffset="-' + offset.toFixed(2) + '" transform="rotate(-90 ' + cx + " " + cy + ')" onclick=\'' + onclickStr + "'><title>" + esc(label) + ": " + count + " (" + pct.toFixed(1) + "%)</title></circle>";
+      legend += '<span class="legend-item clickable" onclick=\'' + onclickStr + '\'><span class="swatch" style="background:' + color + '"></span>' + esc(label) + ": <strong>" + count + "</strong> (" + pct.toFixed(1) + "%)</span>";
+      offset += largo;
+    });
+    var svg = '<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="grafico de torta" class="donut-svg"><circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#DEDCD3" stroke-width="28"/>' + segments +
+      '<text x="' + cx + '" y="87.0" text-anchor="middle" class="donut-center-num">' + total + '</text>' +
+      '<text x="' + cx + '" y="106.0" text-anchor="middle" class="donut-center-sub">' + esc(nLabel) + "</text></svg>";
+    return '<div class="donut-flex">' + svg + '<div class="chart-legend chart-legend-wrap">' + legend + "</div></div>";
+  }
+
+  function renderContactosHoyDonut() {
+    var el = document.getElementById("contactos-hoy-donut-row");
+    if (!el) return;
+    var hoy = todayStr();
+    var rows = CONTACTS.filter(function (c) { return c.date_added && c.date_added.slice(0, 10) === hoy; });
+    var counts = contarJs(rows, function (c) { return c.canal_tag; });
+    el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados hoy &middot; n=' + rows.length + "</div>" +
+      donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
+  }
+
+  ["contactos", "oportunidades"].forEach(function (id) {
+    if (document.getElementById(id + "-table")) render(id);
+  });
+  renderContactosHoyKpi();
+  renderContactosHoyDonut();
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script>
+/* Carga de datos y boton "Actualizar" del Informe MKT actualizable.
+   - Lee la ultima corrida OK de la tabla informe_mkt_corrida (Supabase).
+   - El boton llama a informe-mkt-api con el rango Desde/Hasta y sigue el
+     avance de la corrida hasta que termina.
+   - El renderizador de tablas/graficos es el mismo de los informes
+     mensuales, expuesto como window.iniciarInforme(CONTACTS). */
+(function () {
+  // URL del servicio en Coolify. Ajustar al dominio que asigne Coolify.
+  var API_BASE_URL = "https://informe-mkt-api.200.5.196.50.sslip.io";
+  var TZ = "America/Argentina/Buenos_Aires";
+  var POLL_MS = 4000;
+  var sb = window.supabaseClient;
+  var pollTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+
+  function hoyAR() {
+    return new Date().toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD
+  }
+  function primeroDelMesAR() {
+    return hoyAR().slice(0, 8) + "01";
+  }
+  function fmtDia(s) {
+    var p = String(s).split("-");
+    return p[2] + "/" + p[1] + "/" + p[0];
+  }
+  function fmtFechaHora(iso) {
+    var d = new Date(iso);
+    return d.toLocaleDateString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }) +
+      " " + d.toLocaleTimeString("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }) + " hs";
+  }
+  function setEstado(texto, tipo) {
+    var el = $("upd-estado");
+    el.textContent = texto || "";
+    el.className = "upd-estado" + (tipo ? " upd-estado--" + tipo : "");
+  }
+  function bloquear(b) {
+    $("upd-btn").disabled = b;
+    $("upd-desde").disabled = b;
+    $("upd-hasta").disabled = b;
+    $("upd-btn").textContent = b ? "Actualizando…" : "Actualizar";
+  }
+
+  async function cargarUltima() {
+    var r = await sb.from("informe_mkt_corrida")
+      .select("id,desde,hasta,datos_hasta,finalizado_en,mensaje,panel_resumen_html,contacts")
+      .eq("estado", "ok")
+      .order("finalizado_en", { ascending: false })
+      .limit(1);
+    if (r.error) {
+      $("upd-ultima").textContent = "No se pudieron leer los datos del informe.";
+      setEstado(r.error.message, "error");
+      return;
+    }
+    if (!r.data.length) {
+      $("upd-ultima").innerHTML = "Todavía no hay datos cargados. Elegí un rango y presioná <strong>Actualizar</strong>.";
+      $("upd-desde").value = primeroDelMesAR();
+      $("upd-hasta").value = hoyAR();
+      return;
+    }
+    var c = r.data[0];
+    $("upd-ultima").innerHTML =
+      "Datos actualizados hasta el <strong>" + fmtFechaHora(c.datos_hasta) + "</strong>" +
+      " &middot; rango consultado: " + fmtDia(c.desde) + " al " + fmtDia(c.hasta);
+    $("report-footer").innerHTML = "SP Seguridad Privada &middot; Informe de MKT &middot; datos de GHL y NetSuite, actualizado el " +
+      fmtFechaHora(c.finalizado_en);
+    $("upd-desde").value = c.desde;
+    $("upd-hasta").value = hoyAR();
+    if (c.mensaje) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
+    $("panel-resumen").outerHTML = c.panel_resumen_html;
+    window.iniciarInforme(c.contacts || []);
+  }
+
+  function seguirCorrida(id) {
+    bloquear(true);
+    setEstado("Actualizando…");
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async function () {
+      var r = await sb.from("informe_mkt_corrida").select("estado,paso,mensaje").eq("id", id).single();
+      if (r.error) { setEstado("No se pudo consultar el avance: " + r.error.message, "error"); return; }
+      var c = r.data;
+      if (c.estado === "en_curso") {
+        setEstado("Actualizando: " + (c.paso || "…") + ". Puede tardar algunos minutos.");
+        return;
+      }
+      clearInterval(pollTimer);
+      pollTimer = null;
+      bloquear(false);
+      if (c.estado === "ok") {
+        setEstado("Actualización terminada.", "ok");
+        await cargarUltima();
+      } else {
+        setEstado("La actualización falló: " + (c.mensaje || "error desconocido") + ". Se siguen mostrando los datos anteriores.", "error");
+      }
+    }, POLL_MS);
+  }
+
+  async function actualizar() {
+    var desde = $("upd-desde").value;
+    var hasta = $("upd-hasta").value;
+    if (!desde || !hasta) { setEstado("Completá las dos fechas.", "error"); return; }
+    if (desde > hasta) { setEstado("La fecha Desde no puede ser posterior a Hasta.", "error"); return; }
+    if (hasta > hoyAR()) { setEstado("La fecha Hasta no puede ser posterior a hoy.", "error"); return; }
+
+    bloquear(true);
+    setEstado("Iniciando actualización…");
+    var s = await sb.auth.getSession();
+    var token = s.data && s.data.session && s.data.session.access_token;
+    if (!token) { bloquear(false); setEstado("Tu sesión venció: volvé a ingresar a la web interna.", "error"); return; }
+
+    try {
+      var resp = await fetch(API_BASE_URL + "/informe-mkt/actualizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ desde: desde, hasta: hasta }),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+      if (resp.status === 409 && body.detail && body.detail.corrida_id) {
+        setEstado("Ya había una actualización en curso; se muestra su avance.");
+        seguirCorrida(body.detail.corrida_id);
+        return;
+      }
+      if (!resp.ok) {
+        var det = body.detail;
+        var msg = typeof det === "string" ? det : (det && det.mensaje) || ("error " + resp.status);
+        bloquear(false);
+        setEstado("No se pudo iniciar la actualización: " + msg, "error");
+        return;
+      }
+      seguirCorrida(body.corrida_id);
+    } catch (e) {
+      bloquear(false);
+      setEstado("No se pudo contactar al servicio de actualización (" + e.message + ").", "error");
+    }
+  }
+
+  async function iniciar() {
+    $("upd-hasta").max = hoyAR();
+    $("upd-desde").max = hoyAR();
+    $("upd-btn").addEventListener("click", actualizar);
+
+    // Botón visible sólo para quien puede editar la sección (el servicio lo vuelve a validar).
+    var p = await sb.rpc("fn_tiene_permiso", { p_seccion_id: "informes-mkt", p_nivel: "editar" });
+    $("upd-controles").hidden = !(p && p.data === true);
+
+    await cargarUltima();
+
+    var enCurso = await sb.from("informe_mkt_corrida").select("id").eq("estado", "en_curso").limit(1);
+    if (enCurso.data && enCurso.data.length) seguirCorrida(enCurso.data[0].id);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+</script>
+
+</body>
+</html>
