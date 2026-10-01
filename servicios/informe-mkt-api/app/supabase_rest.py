@@ -98,7 +98,20 @@ def crear_corrida(token, desde, hasta):
     return _check(resp, "crear corrida").json()[0]
 
 
+def _sin_nan(valor):
+    """JSON no admite NaN/Infinity: se guardan como null (red de seguridad)."""
+    import math
+    if isinstance(valor, float) and (math.isnan(valor) or math.isinf(valor)):
+        return None
+    if isinstance(valor, dict):
+        return {k: _sin_nan(v) for k, v in valor.items()}
+    if isinstance(valor, (list, tuple)):
+        return [_sin_nan(v) for v in valor]
+    return valor
+
+
 def actualizar_corrida(token, corrida_id, cambios):
+    cambios = _sin_nan(cambios)
     _check(requests.patch(
         _rest("informe_mkt_corrida"),
         headers=_h(token, "return=minimal"),
@@ -122,6 +135,7 @@ def contactos_ultima_corrida_ok(token):
 # ---------- contacto / oportunidad (equivalente a generar_sql.py) ----------
 
 def _post_lotes(token, tabla, filas, on_conflict, resolucion):
+    filas = _sin_nan(filas)
     for i in range(0, len(filas), TAMANO_LOTE):
         _check(requests.post(
             _rest(tabla),

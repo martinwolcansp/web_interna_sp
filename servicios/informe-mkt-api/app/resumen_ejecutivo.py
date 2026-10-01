@@ -285,13 +285,19 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
     fecha_actualizacion: ej. "01/10/2026 14:35".
     Devuelve dict(contacts=[...], panel_html="<section ...>", stats={...}).
     """
-    ns_origen = valores_netsuite_por_crm(ventas_df, "Origen de clientes potenciales")
-    ns_forma = valores_netsuite_por_crm(ventas_df, "Forma de Contacto con SP")
-    ns_vendedor = {
-        cid: normalizar_vendedor_netsuite(nombre)
-        for cid, nombre in valores_netsuite_por_crm(ventas_df, "Representante de Ventas").items()
-    }
-    ns_cliente = valores_netsuite_por_crm(ventas_df, "ID")
+    def _ns(columna):
+        # groupby().apply() convierte los grupos sin dato en NaN, que en Python es
+        # "verdadero": sin este filtro un NaN le ganaria al dato de GHL en el cruce
+        # (y ademas no se puede guardar en JSON). Se descartan NaN y vacios.
+        return {
+            cid: v for cid, v in valores_netsuite_por_crm(ventas_df, columna).items()
+            if v is not None and not (isinstance(v, float) and math.isnan(v)) and str(v).strip()
+        }
+
+    ns_origen = _ns("Origen de clientes potenciales")
+    ns_forma = _ns("Forma de Contacto con SP")
+    ns_vendedor = {cid: normalizar_vendedor_netsuite(nombre) for cid, nombre in _ns("Representante de Ventas").items()}
+    ns_cliente = _ns("ID")
     fuente_contador = {"origen": {"netsuite": 0, "ghl": 0, "sin_dato": 0},
                         "forma": {"netsuite": 0, "ghl": 0, "sin_dato": 0},
                         "vendedor": {"netsuite": 0, "ghl": 0, "sin_dato": 0}}
