@@ -45,6 +45,8 @@ MAX_DIAS_RANGO = int(os.getenv("MAX_DIAS_RANGO", "92"))
 # Una corrida "en_curso" mas vieja que esto se considera colgada (reinicio
 # del contenedor, etc.) y se marca como error para no bloquear el boton.
 MINUTOS_CORRIDA_COLGADA = int(os.getenv("MINUTOS_CORRIDA_COLGADA", "30"))
+# Historial: cuantas corridas se conservan (las mas viejas se borran).
+CORRIDAS_A_CONSERVAR = int(os.getenv("CORRIDAS_A_CONSERVAR", "20"))
 
 # ---------- CORS ----------
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]

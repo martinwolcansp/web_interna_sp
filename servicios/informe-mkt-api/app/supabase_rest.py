@@ -132,6 +132,26 @@ def contactos_ultima_corrida_ok(token):
     return (filas[0].get("contacts") or []) if filas else []
 
 
+def borrar_corridas_viejas(token, conservar):
+    """Deja solo las ultimas `conservar` corridas (por iniciado_en). Devuelve cuantas borro."""
+    resp = _check(requests.get(
+        _rest("informe_mkt_corrida"),
+        headers=_h(token),
+        params={"select": "id", "order": "iniciado_en.desc", "offset": conservar, "limit": 500},
+        timeout=30,
+    ), "listar corridas viejas")
+    ids = [str(f["id"]) for f in resp.json()]
+    if not ids:
+        return 0
+    _check(requests.delete(
+        _rest("informe_mkt_corrida"),
+        headers=_h(token, "return=minimal"),
+        params={"id": f"in.({','.join(ids)})", "estado": "neq.en_curso"},
+        timeout=30,
+    ), "borrar corridas viejas")
+    return len(ids)
+
+
 # ---------- contacto / oportunidad (equivalente a generar_sql.py) ----------
 
 def _post_lotes(token, tabla, filas, on_conflict, resolucion):

@@ -214,6 +214,13 @@ def ejecutar(corrida_id, token, desde, hasta):
             "contacts": resultado["contacts"],
             "log": "\n".join(lineas),
         })
+        try:
+            borradas = sb.borrar_corridas_viejas(token, config.CORRIDAS_A_CONSERVAR)
+            if borradas:
+                logger.info("Historial: se borraron %s corridas viejas", borradas)
+        except Exception:
+            # No es grave: la corrida ya quedo OK. Suele ser que falta la migracion 18.
+            logger.warning("No se pudo limpiar el historial de corridas", exc_info=True)
     except Exception as e:
         logger.exception("Fallo la corrida %s", corrida_id)
         log(f"ERROR: {e}")

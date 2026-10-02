@@ -123,17 +123,36 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .upd-bar { margin-top: 14px; padding: 10px 14px; background: var(--light-fill); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 .upd-ultima { font-size: 14px; color: var(--ink); flex: 1 1 320px; }
 .upd-ultima strong { color: var(--navy); }
+.upd-menu-btn { appearance: none; border: 1px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 14px; border-radius: 5px; cursor: pointer; }
+.upd-menu-btn[hidden] { display: none; }
+.upd-menu-btn[aria-expanded="true"], .upd-menu-btn:hover { background: var(--navy); color: #fff; }
+.upd-estado { flex-basis: 100%; font-size: 13px; color: var(--second); }
+.upd-estado:empty { display: none; }
+.upd-estado--error { color: #b3261e; }
+.upd-estado--ok { color: var(--win-text); }
+.upd-anterior { flex-basis: 100%; font-size: 13px; color: var(--ink); background: var(--warn-bg); border-left: 3px solid var(--orange); padding: 6px 10px; border-radius: 0 5px 5px 0; }
+.upd-anterior[hidden] { display: none; }
+.upd-anterior button { appearance: none; border: 0; background: none; color: var(--navy); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 0 0 0 6px; }
+.upd-panel { margin-top: 10px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; display: grid; gap: 18px; }
+.upd-panel[hidden] { display: none; }
+.upd-panel-titulo { color: var(--navy); font-weight: 700; font-size: 15px; margin-bottom: 2px; }
+.upd-panel-ayuda { color: var(--second); font-size: 13px; margin-bottom: 8px; }
 .upd-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.upd-controles[hidden] { display: none; }
 .upd-campo { font-size: 13px; color: var(--second); display: inline-flex; align-items: center; gap: 6px; }
 .upd-campo input { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); color: var(--ink); }
 .upd-btn { appearance: none; border: 0; background: var(--navy); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; padding: 7px 16px; border-radius: 5px; cursor: pointer; }
 .upd-btn:hover { background: #16294d; }
 .upd-btn:disabled { opacity: .55; cursor: progress; }
-.upd-estado { flex-basis: 100%; font-size: 13px; color: var(--second); }
-.upd-estado:empty { display: none; }
-.upd-estado--error { color: #b3261e; }
-.upd-estado--ok { color: var(--win-text); }
+.upd-hist-scroll { max-height: 320px; overflow: auto; border: 1px solid var(--rule); border-radius: 6px; }
+.upd-hist { width: 100%; border-collapse: collapse; font-size: 13px; }
+.upd-hist th { position: sticky; top: 0; background: var(--light-fill); color: var(--navy); text-align: left; font-weight: 600; padding: 7px 10px; }
+.upd-hist td { padding: 7px 10px; border-top: 1px solid var(--rule); vertical-align: top; }
+.upd-hist tr.is-actual td { background: var(--light-fill); font-weight: 600; }
+.upd-hist .upd-det { color: var(--second); max-width: 360px; }
+.upd-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; color: #fff; }
+.upd-tag--ok { background: #2a9d5c; } .upd-tag--error { background: #c0392b; } .upd-tag--en_curso { background: #eb6834; }
+.upd-ver { appearance: none; border: 1px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 4px; cursor: pointer; }
+.upd-ver:hover { background: var(--navy); color: #fff; }
 </style>
 </head>
 <body>
@@ -141,15 +160,33 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   <header class="report-header">
     <div class="eyebrow">SP Seguridad Privada &middot; Informe de MKT &middot; actualizable</div>
     <h1>Oportunidades ganadas y contactos</h1>
-    <div class="sub">Datos de GHL cruzados con NetSuite &middot; elegí el rango y presioná Actualizar para traer datos frescos &middot; click en un gráfico para filtrar el detalle</div>
+    <div class="sub">Oportunidades y ventas de NetSuite, origen y conversaciones de GHL &middot; click en un gráfico para filtrar el detalle</div>
     <div class="upd-bar">
       <div class="upd-ultima" id="upd-ultima">Cargando datos…</div>
-      <div class="upd-controles" id="upd-controles" hidden>
-        <label class="upd-campo">Desde <input type="date" id="upd-desde"></label>
-        <label class="upd-campo">Hasta <input type="date" id="upd-hasta"></label>
-        <button type="button" class="upd-btn" id="upd-btn">Actualizar</button>
-      </div>
+      <button type="button" class="upd-menu-btn" id="upd-menu-btn" aria-expanded="false" aria-controls="upd-panel" hidden>Actualizaciones &#9662;</button>
       <div class="upd-estado" id="upd-estado" role="status" aria-live="polite"></div>
+      <div class="upd-anterior" id="upd-anterior" hidden></div>
+    </div>
+    <div class="upd-panel" id="upd-panel" hidden>
+      <div class="upd-panel-seccion">
+        <div class="upd-panel-titulo">Nueva actualización</div>
+        <div class="upd-panel-ayuda">Trae de NetSuite y GHL los datos del rango elegido. Puede tardar algunos minutos.</div>
+        <div class="upd-controles">
+          <label class="upd-campo">Desde <input type="date" id="upd-desde"></label>
+          <label class="upd-campo">Hasta <input type="date" id="upd-hasta"></label>
+          <button type="button" class="upd-btn" id="upd-btn">Actualizar</button>
+        </div>
+      </div>
+      <div class="upd-panel-seccion">
+        <div class="upd-panel-titulo">Actualizaciones anteriores</div>
+        <div class="upd-panel-ayuda">Se conservan las últimas 20. Elegí una para ver el informe tal como quedó en ese momento.</div>
+        <div class="upd-hist-scroll">
+          <table class="upd-hist">
+            <thead><tr><th>Actualizada el</th><th>Rango</th><th>Estado</th><th>Detalle</th><th></th></tr></thead>
+            <tbody id="upd-hist-body"><tr><td colspan="5">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </header>
   <main>
@@ -703,33 +740,37 @@ window.iniciarInforme = function (CONTACTS) {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/supabase-client.js"></script>
 <script>
-/* Carga de datos y boton "Actualizar" del Informe MKT actualizable.
-   - Lee la ultima corrida OK de la tabla informe_mkt_corrida (Supabase).
-   - El boton llama a informe-mkt-api con el rango Desde/Hasta y sigue el
-     avance de la corrida hasta que termina.
-   - El renderizador de tablas/graficos es el mismo de los informes
-     mensuales, expuesto como window.iniciarInforme(CONTACTS). */
+/* Carga de datos y menu "Actualizaciones" del Informe MKT actualizable.
+   - Todos ven la ultima actualizacion OK (tabla informe_mkt_corrida).
+   - Quien tiene permiso "editar" en Informes de MKT ve el boton
+     "Actualizaciones": abre un panel con la nueva actualizacion (Desde /
+     Hasta + Actualizar) y el historial, desde donde se puede ver el informe
+     tal como quedo en una actualizacion anterior.
+   - El renderizador de tablas/graficos es el de los informes mensuales,
+     expuesto como window.iniciarInforme(CONTACTS). */
 (function () {
-  // URL del servicio en Coolify. Ajustar al dominio que asigne Coolify.
+  // URL del servicio en Coolify.
   var API_BASE_URL = "https://informe-mkt-api.200.5.196.50.sslip.io";
   var TZ = "America/Argentina/Buenos_Aires";
   var POLL_MS = 4000;
+  var HISTORIAL = 20;
   var sb = window.supabaseClient;
   var pollTimer = null;
+  var puedeEditar = false;
+  var idUltimaOk = null;   // la mas reciente OK
+  var idMostrada = null;   // la que se esta viendo
 
   function $(id) { return document.getElementById(id); }
-
-  function hoyAR() {
-    return new Date().toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
   }
-  function primeroDelMesAR() {
-    return hoyAR().slice(0, 8) + "01";
-  }
-  function fmtDia(s) {
-    var p = String(s).split("-");
-    return p[2] + "/" + p[1] + "/" + p[0];
-  }
+  function hoyAR() { return new Date().toLocaleDateString("en-CA", { timeZone: TZ }); }
+  function primeroDelMesAR() { return hoyAR().slice(0, 8) + "01"; }
+  function fmtDia(s) { var p = String(s).split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
   function fmtFechaHora(iso) {
+    if (!iso) return "";
     var d = new Date(iso);
     return d.toLocaleDateString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }) +
       " " + d.toLocaleTimeString("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }) + " hs";
@@ -746,36 +787,84 @@ window.iniciarInforme = function (CONTACTS) {
     $("upd-btn").textContent = b ? "Actualizando…" : "Actualizar";
   }
 
-  async function cargarUltima() {
-    var r = await sb.from("informe_mkt_corrida")
+  // ---- Mostrar una corrida (la ultima OK o una anterior) ----
+  async function mostrarCorrida(id) {
+    var q = sb.from("informe_mkt_corrida")
       .select("id,desde,hasta,datos_hasta,finalizado_en,mensaje,panel_resumen_html,contacts")
-      .eq("estado", "ok")
-      .order("finalizado_en", { ascending: false })
-      .limit(1);
+      .eq("estado", "ok");
+    q = id ? q.eq("id", id) : q.order("finalizado_en", { ascending: false });
+    var r = await q.limit(1);
     if (r.error) {
       $("upd-ultima").textContent = "No se pudieron leer los datos del informe.";
       setEstado(r.error.message, "error");
       return;
     }
     if (!r.data.length) {
-      $("upd-ultima").innerHTML = "Todavía no hay datos cargados. Elegí un rango y presioná <strong>Actualizar</strong>.";
-      $("upd-desde").value = primeroDelMesAR();
-      $("upd-hasta").value = hoyAR();
+      $("upd-ultima").innerHTML = puedeEditar
+        ? "Todavía no hay datos cargados. Abrí <strong>Actualizaciones</strong> y elegí un rango."
+        : "Todavía no hay datos cargados.";
       return;
     }
     var c = r.data[0];
+    if (!id) idUltimaOk = c.id;
+    idMostrada = c.id;
     $("upd-ultima").innerHTML =
-      "Datos actualizados hasta el <strong>" + fmtFechaHora(c.datos_hasta) + "</strong>" +
-      " &middot; rango consultado: " + fmtDia(c.desde) + " al " + fmtDia(c.hasta);
+      "Datos actualizados hasta el <strong>" + esc(fmtFechaHora(c.datos_hasta)) + "</strong>" +
+      " &middot; rango consultado: " + esc(fmtDia(c.desde)) + " al " + esc(fmtDia(c.hasta));
     $("report-footer").innerHTML = "SP Seguridad Privada &middot; Informe de MKT &middot; datos de GHL y NetSuite, actualizado el " +
-      fmtFechaHora(c.finalizado_en);
-    $("upd-desde").value = c.desde;
-    $("upd-hasta").value = hoyAR();
-    if (c.mensaje) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
+      esc(fmtFechaHora(c.finalizado_en));
+    var anterior = idUltimaOk && c.id !== idUltimaOk;
+    $("upd-anterior").hidden = !anterior;
+    if (anterior) {
+      $("upd-anterior").innerHTML = "Estás viendo una actualización anterior (" + esc(fmtFechaHora(c.finalizado_en)) +
+        ").<button type=\"button\" id=\"upd-volver\">Volver a la más reciente</button>";
+      $("upd-volver").addEventListener("click", function () { mostrarCorrida(null); });
+    }
+    if (c.mensaje && !anterior) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
+    // Se conserva la pestana activa (el HTML guardado siempre viene con "active").
+    var resumenActivo = $("panel-resumen").classList.contains("active");
     $("panel-resumen").outerHTML = c.panel_resumen_html;
+    $("panel-resumen").classList.toggle("active", resumenActivo);
     window.iniciarInforme(c.contacts || []);
+    if (puedeEditar) cargarHistorial();
   }
 
+  // ---- Historial (solo editores) ----
+  async function cargarHistorial() {
+    var r = await sb.from("informe_mkt_corrida")
+      .select("id,estado,desde,hasta,iniciado_en,finalizado_en,mensaje,paso")
+      .order("iniciado_en", { ascending: false })
+      .limit(HISTORIAL);
+    var body = $("upd-hist-body");
+    if (r.error) { body.innerHTML = '<tr><td colspan="5">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
+    if (!r.data.length) { body.innerHTML = '<tr><td colspan="5">Todavía no hay actualizaciones.</td></tr>'; return; }
+    var etiquetas = { ok: "OK", error: "Error", en_curso: "En curso" };
+    body.innerHTML = r.data.map(function (c) {
+      var detalle = c.estado === "en_curso" ? (c.paso || "") : (c.mensaje || "");
+      if (detalle.length > 140) detalle = detalle.slice(0, 140) + "…";
+      var accion = c.estado !== "ok" ? "" : (c.id === idMostrada
+        ? "Mostrando"
+        : '<button type="button" class="upd-ver" data-id="' + esc(c.id) + '">Ver</button>');
+      return '<tr class="' + (c.id === idMostrada ? "is-actual" : "") + '">' +
+        "<td>" + esc(fmtFechaHora(c.finalizado_en || c.iniciado_en)) + "</td>" +
+        "<td>" + esc(fmtDia(c.desde)) + " al " + esc(fmtDia(c.hasta)) + "</td>" +
+        '<td><span class="upd-tag upd-tag--' + esc(c.estado) + '">' + esc(etiquetas[c.estado] || c.estado) + "</span></td>" +
+        '<td class="upd-det">' + esc(detalle) + "</td>" +
+        "<td>" + accion + "</td></tr>";
+    }).join("");
+    body.querySelectorAll(".upd-ver").forEach(function (b) {
+      b.addEventListener("click", function () { mostrarCorrida(b.getAttribute("data-id")); });
+    });
+  }
+
+  function togglePanel(abrir) {
+    var abierto = typeof abrir === "boolean" ? abrir : $("upd-panel").hidden;
+    $("upd-panel").hidden = !abierto;
+    $("upd-menu-btn").setAttribute("aria-expanded", abierto ? "true" : "false");
+    if (abierto) cargarHistorial();
+  }
+
+  // ---- Nueva actualizacion ----
   function seguirCorrida(id) {
     bloquear(true);
     setEstado("Actualizando…");
@@ -793,9 +882,10 @@ window.iniciarInforme = function (CONTACTS) {
       bloquear(false);
       if (c.estado === "ok") {
         setEstado("Actualización terminada.", "ok");
-        await cargarUltima();
+        await mostrarCorrida(null);
       } else {
         setEstado("La actualización falló: " + (c.mensaje || "error desconocido") + ". Se siguen mostrando los datos anteriores.", "error");
+        cargarHistorial();
       }
     }, POLL_MS);
   }
@@ -832,6 +922,7 @@ window.iniciarInforme = function (CONTACTS) {
         setEstado("No se pudo iniciar la actualización: " + msg, "error");
         return;
       }
+      cargarHistorial();
       seguirCorrida(body.corrida_id);
     } catch (e) {
       bloquear(false);
@@ -842,16 +933,22 @@ window.iniciarInforme = function (CONTACTS) {
   async function iniciar() {
     $("upd-hasta").max = hoyAR();
     $("upd-desde").max = hoyAR();
+    $("upd-desde").value = primeroDelMesAR();
+    $("upd-hasta").value = hoyAR();
     $("upd-btn").addEventListener("click", actualizar);
+    $("upd-menu-btn").addEventListener("click", function () { togglePanel(); });
 
-    // Botón visible sólo para quien puede editar la sección (el servicio lo vuelve a validar).
+    // Menu Actualizaciones solo para quien puede editar (el servicio lo vuelve a validar).
     var p = await sb.rpc("fn_tiene_permiso", { p_seccion_id: "informes-mkt", p_nivel: "editar" });
-    $("upd-controles").hidden = !(p && p.data === true);
+    puedeEditar = !!(p && p.data === true);
+    $("upd-menu-btn").hidden = !puedeEditar;
 
-    await cargarUltima();
+    await mostrarCorrida(null);
 
-    var enCurso = await sb.from("informe_mkt_corrida").select("id").eq("estado", "en_curso").limit(1);
-    if (enCurso.data && enCurso.data.length) seguirCorrida(enCurso.data[0].id);
+    if (puedeEditar) {
+      var enCurso = await sb.from("informe_mkt_corrida").select("id").eq("estado", "en_curso").limit(1);
+      if (enCurso.data && enCurso.data.length) seguirCorrida(enCurso.data[0].id);
+    }
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
