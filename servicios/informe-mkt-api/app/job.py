@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from app import config, ghl, netsuite, resumen_ejecutivo
+from app import acumulado, config, ghl, netsuite, resumen_ejecutivo
 from app import supabase_rest as sb
 
 logger = logging.getLogger("informe_mkt_job")
@@ -200,6 +200,16 @@ def ejecutar(corrida_id, token, desde, hasta):
             rango_label=f"{desde.strftime('%d/%m/%Y')} al {hasta.strftime('%d/%m/%Y')}",
             fecha_actualizacion=ahora.strftime("%d/%m/%Y %H:%M"),
         )
+        paso("Guardando los datos para consultas por rango")
+        try:
+            acumulado.guardar(token, corrida_id, desde, hasta, datos_hasta, contactos, oportunidades,
+                              ventas_df, resultado["contacts"], log)
+        except Exception as e:
+            # El informe de esta actualizacion se guarda igual; lo que falla es
+            # poder sumarla a otras (suele ser que falta la migracion 19).
+            advertencias.append(f"No se pudieron guardar los datos para consultas por rango: {e}")
+            log(f"AVISO: {advertencias[-1]}")
+
         stats = dict(resultado["stats"], advertencias=advertencias, netsuite_filas=len(ventas_df))
         log(f"Listo: {json.dumps(stats, ensure_ascii=False)}")
 

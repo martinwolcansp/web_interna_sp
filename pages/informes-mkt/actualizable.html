@@ -132,6 +132,10 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .upd-estado--ok { color: var(--win-text); }
 .upd-anterior { flex-basis: 100%; font-size: 13px; color: var(--ink); background: var(--warn-bg); border-left: 3px solid var(--orange); padding: 6px 10px; border-radius: 0 5px 5px 0; }
 .upd-anterior[hidden] { display: none; }
+.per-controles { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+.per-titulo { color: var(--navy); font-weight: 700; font-size: 14px; margin-right: 4px; }
+.per-aviso { flex-basis: 100%; font-size: 13px; color: var(--ink); background: var(--warn-bg); border-left: 3px solid var(--orange); padding: 6px 10px; border-radius: 0 5px 5px 0; }
+.per-aviso[hidden] { display: none; }
 .upd-anterior button { appearance: none; border: 0; background: none; color: var(--navy); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 0 0 0 6px; }
 .upd-panel { margin-top: 10px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; display: grid; gap: 18px; }
 .upd-panel[hidden] { display: none; }
@@ -162,10 +166,17 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     <h1>Oportunidades ganadas y contactos</h1>
     <div class="sub">Oportunidades y ventas de NetSuite, origen y conversaciones de GHL &middot; click en un gráfico para filtrar el detalle</div>
     <div class="upd-bar">
+      <div class="per-controles">
+        <span class="per-titulo">Período del informe</span>
+        <label class="upd-campo">Desde <input type="date" id="per-desde"></label>
+        <label class="upd-campo">Hasta <input type="date" id="per-hasta"></label>
+        <button type="button" class="upd-btn" id="per-btn">Ver período</button>
+      </div>
       <div class="upd-ultima" id="upd-ultima">Cargando datos…</div>
       <button type="button" class="upd-menu-btn" id="upd-menu-btn" aria-expanded="false" aria-controls="upd-panel" hidden>Actualizaciones &#9662;</button>
       <div class="upd-estado" id="upd-estado" role="status" aria-live="polite"></div>
       <div class="upd-anterior" id="upd-anterior" hidden></div>
+      <div class="per-aviso" id="per-aviso" hidden></div>
     </div>
     <div class="upd-panel" id="upd-panel" hidden>
       <div class="upd-panel-seccion">
@@ -179,7 +190,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       </div>
       <div class="upd-panel-seccion">
         <div class="upd-panel-titulo">Actualizaciones anteriores</div>
-        <div class="upd-panel-ayuda">Se conservan las últimas 20. Elegí una para ver el informe tal como quedó en ese momento.</div>
+        <div class="upd-panel-ayuda">Se conservan las últimas 20. Cada actualización suma sus datos a la base: con <strong>Período del informe</strong> se puede ver cualquier rango ya cargado. Con <strong>Ver</strong> se abre el informe tal como quedó en esa actualización.</div>
         <div class="upd-hist-scroll">
           <table class="upd-hist">
             <thead><tr><th>Actualizada el</th><th>Rango</th><th>Estado</th><th>Detalle</th><th></th></tr></thead>
@@ -218,8 +229,21 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 <script id="contacts-data" type="application/json">[]</script>
 <script>
-window.iniciarInforme = function (CONTACTS) {
+window.iniciarInforme = function (CONTACTS, OPTS) {
   var STATE = {};
+  OPTS = OPTS || {};
+  // Dia de referencia de "Contactos cargados": hoy, o el ultimo dia con datos
+  // si el informe mostrado termina antes de hoy. Fechas en hora de Argentina.
+  var TZ_AR = "America/Argentina/Buenos_Aires";
+  function diaAR(iso) {
+    if (!iso) return null;
+    var d = new Date(iso);
+    return isNaN(d) ? String(iso).slice(0, 10) : d.toLocaleDateString("en-CA", { timeZone: TZ_AR });
+  }
+  var HOY_AR = new Date().toLocaleDateString("en-CA", { timeZone: TZ_AR });
+  var DIA_REF = OPTS.diaRef || HOY_AR;
+  function fmtDiaRef() { var p = DIA_REF.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
+  function textoDiaRef() { return DIA_REF === HOY_AR ? "hoy, " + fmtDiaRef() : "el " + fmtDiaRef(); }
 
   function esc(s) {
     if (s === null || s === undefined) return "";
@@ -229,6 +253,14 @@ window.iniciarInforme = function (CONTACTS) {
   }
   function fmtDateTime(s) {
     if (!s) return "Sin fecha";
+    // Fechas ISO con zona (las de GHL vienen en UTC): se muestran en hora de Argentina.
+    if (/T.*(Z|[+-]\d\d:?\d\d)$/.test(s)) {
+      var d = new Date(s);
+      if (!isNaN(d)) {
+        return d.toLocaleDateString("en-CA", { timeZone: TZ_AR }) + " " +
+          d.toLocaleTimeString("es-AR", { timeZone: TZ_AR, hour: "2-digit", minute: "2-digit", hour12: false });
+      }
+    }
     return s.replace("T", " ").slice(0, 16);
   }
   function fmtDate(s) {
@@ -241,10 +273,7 @@ window.iniciarInforme = function (CONTACTS) {
   }
 
   function todayStr() {
-    var d = new Date();
-    var mm = String(d.getMonth() + 1).padStart(2, "0");
-    var dd = String(d.getDate()).padStart(2, "0");
-    return d.getFullYear() + "-" + mm + "-" + dd;
+    return DIA_REF;
   }
 
   function getState(id) {
@@ -386,7 +415,7 @@ window.iniciarInforme = function (CONTACTS) {
     if (st.dateFrom || st.dateTo) {
       filtered = filtered.filter(function (c) {
         if (!c.date_added) return false;
-        var d = c.date_added.slice(0, 10);
+        var d = diaAR(c.date_added);
         if (st.dateFrom && d < st.dateFrom) return false;
         if (st.dateTo && d > st.dateTo) return false;
         return true;
@@ -680,9 +709,19 @@ window.iniciarInforme = function (CONTACTS) {
     if (!el) return;
     var hoy = todayStr();
     var n = CONTACTS.filter(function (c) {
-      return c.date_added && c.date_added.slice(0, 10) === hoy;
+      return c.date_added && diaAR(c.date_added) === hoy;
     }).length;
     el.textContent = n;
+    // Titulo y etiqueta con la fecha (los informes guardados antes no tienen los id).
+    var titulo = document.getElementById("contactos-hoy-titulo") ||
+      Array.prototype.find.call(document.querySelectorAll("#panel-resumen h3"), function (h) {
+        return /Contactos cargados/.test(h.textContent);
+      });
+    if (titulo) titulo.textContent = "Contactos cargados " + textoDiaRef() +
+      (DIA_REF === HOY_AR ? "" : " (último día del período)");
+    var etiqueta = document.getElementById("contactos-hoy-kpi-label") ||
+      (el.parentNode && el.parentNode.querySelector(".kpi-label"));
+    if (etiqueta) etiqueta.textContent = "Contactos cargados " + textoDiaRef();
   }
 
   var DONUT_PALETTE = ["#1F3864", "#2a78d6", "#2a9d5c", "#8e6bb0", "#eb6834", "#9AA0A6", "#c9a227", "#6b6b6b"];
@@ -724,9 +763,9 @@ window.iniciarInforme = function (CONTACTS) {
     var el = document.getElementById("contactos-hoy-donut-row");
     if (!el) return;
     var hoy = todayStr();
-    var rows = CONTACTS.filter(function (c) { return c.date_added && c.date_added.slice(0, 10) === hoy; });
+    var rows = CONTACTS.filter(function (c) { return c.date_added && diaAR(c.date_added) === hoy; });
     var counts = contarJs(rows, function (c) { return c.canal_tag; });
-    el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados hoy &middot; n=' + rows.length + "</div>" +
+    el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados ' + esc(textoDiaRef()) + ' &middot; n=' + rows.length + "</div>" +
       donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
   }
 
@@ -821,12 +860,82 @@ window.iniciarInforme = function (CONTACTS) {
       $("upd-volver").addEventListener("click", function () { mostrarCorrida(null); });
     }
     if (c.mensaje && !anterior) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
+    $("per-aviso").hidden = true;
+    $("per-desde").value = c.desde;
+    $("per-hasta").value = c.hasta;
+    pintar(c.panel_resumen_html, c.contacts, diaDe(c.datos_hasta));
+    if (puedeEditar) cargarHistorial();
+  }
+
+  function diaDe(iso) {
+    return iso ? new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ }) : null;
+  }
+
+  function pintar(panelHtml, contacts, diaRef) {
     // Se conserva la pestana activa (el HTML guardado siempre viene con "active").
     var resumenActivo = $("panel-resumen").classList.contains("active");
-    $("panel-resumen").outerHTML = c.panel_resumen_html;
+    $("panel-resumen").outerHTML = panelHtml;
     $("panel-resumen").classList.toggle("active", resumenActivo);
-    window.iniciarInforme(c.contacts || []);
-    if (puedeEditar) cargarHistorial();
+    window.iniciarInforme(contacts || [], { diaRef: diaRef });
+  }
+
+  // ---- Periodo del informe: cualquier rango con los datos ya cargados ----
+  async function verPeriodo() {
+    var desde = $("per-desde").value;
+    var hasta = $("per-hasta").value;
+    if (!desde || !hasta) { setEstado("Completá las dos fechas del período.", "error"); return; }
+    if (desde > hasta) { setEstado("La fecha Desde no puede ser posterior a Hasta.", "error"); return; }
+    var s = await sb.auth.getSession();
+    var token = s.data && s.data.session && s.data.session.access_token;
+    if (!token) { setEstado("Tu sesión venció: volvé a ingresar a la web interna.", "error"); return; }
+
+    $("per-btn").disabled = true;
+    $("per-btn").textContent = "Consultando…";
+    setEstado("Armando el informe del período…");
+    try {
+      var resp = await fetch(API_BASE_URL + "/informe-mkt/consultar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ desde: desde, hasta: hasta }),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+      if (!resp.ok) {
+        var det = body.detail;
+        setEstado("No se pudo armar el informe del período: " + (typeof det === "string" ? det : "error " + resp.status), "error");
+        return;
+      }
+      var cob = body.cobertura || {};
+      if (!cob.dias_cargados) {
+        setEstado("No hay datos cargados entre el " + fmtDia(desde) + " y el " + fmtDia(hasta) + "." +
+          (puedeEditar ? " Cargalos desde Actualizaciones." : ""), "error");
+        return;
+      }
+      setEstado("");
+      idMostrada = null;
+      $("upd-anterior").hidden = true;
+      $("upd-ultima").innerHTML =
+        "Período <strong>" + esc(fmtDia(desde)) + " al " + esc(fmtDia(hasta)) + "</strong>" +
+        " &middot; datos cargados hasta el <strong>" + esc(fmtFechaHora(cob.datos_hasta)) + "</strong>";
+      $("report-footer").innerHTML = "SP Seguridad Privada &middot; Informe de MKT &middot; datos de GHL y NetSuite, última carga el " +
+        esc(fmtFechaHora(cob.actualizado_en));
+      var faltan = (cob.faltantes || []).map(function (r) {
+        return r.desde === r.hasta ? fmtDia(r.desde) : fmtDia(r.desde) + " al " + fmtDia(r.hasta);
+      });
+      $("per-aviso").hidden = !faltan.length;
+      if (faltan.length) {
+        $("per-aviso").textContent = "Sin datos cargados para: " + faltan.join(", ") + ". Esos días no suman al informe." +
+          (puedeEditar ? " Podés cargarlos desde Actualizaciones." : " Pedile a quien actualiza el informe que los cargue.");
+      }
+      // Dia de referencia: el ultimo dia con datos dentro del periodo.
+      var diaDatos = diaDe(cob.datos_hasta);
+      pintar(body.panel_resumen_html, body.contacts, diaDatos && diaDatos < hasta ? diaDatos : hasta);
+      if (puedeEditar && !$("upd-panel").hidden) cargarHistorial();
+    } catch (e) {
+      setEstado("No se pudo contactar al servicio del informe (" + e.message + ").", "error");
+    } finally {
+      $("per-btn").disabled = false;
+      $("per-btn").textContent = "Ver período";
+    }
   }
 
   // ---- Historial (solo editores) ----
@@ -936,6 +1045,9 @@ window.iniciarInforme = function (CONTACTS) {
     $("upd-desde").value = primeroDelMesAR();
     $("upd-hasta").value = hoyAR();
     $("upd-btn").addEventListener("click", actualizar);
+    $("per-hasta").max = hoyAR();
+    $("per-desde").max = hoyAR();
+    $("per-btn").addEventListener("click", verPeriodo);
     $("upd-menu-btn").addEventListener("click", function () { togglePanel(); });
 
     // Menu Actualizaciones solo para quien puede editar (el servicio lo vuelve a validar).

@@ -192,3 +192,35 @@ def mapa_ids_contacto(token, ghl_ids):
 
 def upsert_oportunidades(token, filas):
     _post_lotes(token, "oportunidad", filas, "ghl_opportunity_id", "merge-duplicates")
+
+
+# ---------- datos acumulados del informe (migracion 19) ----------
+
+def upsert(token, tabla, filas, on_conflict):
+    _post_lotes(token, tabla, filas, on_conflict, "merge-duplicates")
+
+
+def borrar(token, tabla, params, que):
+    _check(requests.delete(_rest(tabla), headers=_h(token, "return=minimal"), params=params, timeout=60), que)
+
+
+def leer_todo(token, tabla, params, que, pagina=1000):
+    """GET paginado (PostgREST corta en 1000 filas por pedido)."""
+    filas, offset = [], 0
+    while True:
+        p = dict(params, limit=pagina, offset=offset)
+        lote = _check(requests.get(_rest(tabla), headers=_h(token), params=p, timeout=60), que).json()
+        filas.extend(lote)
+        if len(lote) < pagina:
+            return filas
+        offset += pagina
+
+
+def leer_por_ids(token, tabla, columna, ids, select, que, tamano=100):
+    """GET por una lista de valores (columna=in.(...)) en tandas, para no armar URLs enormes."""
+    ids = sorted({str(i) for i in ids if i})
+    filas = []
+    for i in range(0, len(ids), tamano):
+        tanda = ",".join(f'"{x}"' for x in ids[i:i + tamano])
+        filas.extend(leer_todo(token, tabla, {"select": select, columna: f"in.({tanda})"}, que))
+    return filas

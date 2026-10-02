@@ -47,6 +47,8 @@ MAX_DIAS_RANGO = int(os.getenv("MAX_DIAS_RANGO", "92"))
 MINUTOS_CORRIDA_COLGADA = int(os.getenv("MINUTOS_CORRIDA_COLGADA", "30"))
 # Historial: cuantas corridas se conservan (las mas viejas se borran).
 CORRIDAS_A_CONSERVAR = int(os.getenv("CORRIDAS_A_CONSERVAR", "20"))
+# Rango maximo de una consulta sobre los datos ya cargados (no llama a NetSuite ni a GHL).
+MAX_DIAS_CONSULTA = int(os.getenv("MAX_DIAS_CONSULTA", "400"))
 
 # ---------- CORS ----------
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]

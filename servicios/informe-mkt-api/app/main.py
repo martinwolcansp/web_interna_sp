@@ -5,6 +5,10 @@
 #   el access token de Supabase del usuario. Valida el rango y el permiso,
 #   crea la corrida y la ejecuta en segundo plano. La pagina sigue el avance
 #   leyendo la tabla informe_mkt_corrida.
+#
+# POST /informe-mkt/consultar {desde, hasta}
+#   Arma el informe para cualquier rango con los datos ya cargados por las
+#   actualizaciones (tablas de la migracion 19). Permiso: ver. Es sincronico.
 
 import logging
 from datetime import date, datetime
@@ -12,15 +16,17 @@ from zoneinfo import ZoneInfo
 
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 
-from app import config, job
+from app import acumulado, config, job
 from app import supabase_rest as sb
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger("informe_mkt_api")
 
 app = FastAPI(title="informe-mkt-api")
+app.add_middleware(GZipMiddleware, minimum_size=2000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.ALLOWED_ORIGINS or ["*"],
@@ -53,13 +59,35 @@ def actualizar(pedido: PedidoActualizacion, background: BackgroundTasks, authori
         raise HTTPException(500, f"Error interno al iniciar la actualizacion: {e}")
 
 
-def _actualizar(pedido, background, authorization):
+def _token_valido(authorization):
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Falta el header Authorization: Bearer <token de Supabase del usuario>")
     token = authorization.split(" ", 1)[1].strip()
-
     if not sb.verificar_usuario(token):
         raise HTTPException(401, "La sesion no es valida o vencio. Volve a ingresar a la web interna.")
+    return token
+
+
+@app.post("/informe-mkt/consultar")
+def consultar(pedido: PedidoActualizacion, authorization: str = Header(None)):
+    try:
+        token = _token_valido(authorization)
+        if not sb.tiene_permiso(token, "informes-mkt", "ver"):
+            raise HTTPException(403, "Tu usuario no tiene permiso para ver el Informe de MKT.")
+        if pedido.desde > pedido.hasta:
+            raise HTTPException(422, "La fecha 'desde' no puede ser posterior a 'hasta'.")
+        if (pedido.hasta - pedido.desde).days + 1 > config.MAX_DIAS_CONSULTA:
+            raise HTTPException(422, f"El rango no puede superar {config.MAX_DIAS_CONSULTA} dias.")
+        return acumulado.consultar(token, pedido.desde, pedido.hasta)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error al consultar el informe")
+        raise HTTPException(500, f"Error interno al consultar el informe: {e}")
+
+
+def _actualizar(pedido, background, authorization):
+    token = _token_valido(authorization)
     if not sb.tiene_permiso(token, "informes-mkt", "editar"):
         raise HTTPException(403, "Tu usuario no tiene permiso para actualizar el informe (editar en Informes de MKT).")
 

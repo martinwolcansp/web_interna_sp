@@ -507,10 +507,10 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
   </div>
 </div>
 
-      <h3>Contactos cargados hoy</h3>
+      <h3 id="contactos-hoy-titulo">Contactos cargados hoy</h3>
 
 <div class="kpi-row">
-  <div class="kpi-card"><div class="kpi-num" id="contactos-hoy-kpi-num">&nbsp;</div><div class="kpi-label">Contactos cargados hoy</div></div>
+  <div class="kpi-card"><div class="kpi-num" id="contactos-hoy-kpi-num">&nbsp;</div><div class="kpi-label" id="contactos-hoy-kpi-label">Contactos cargados hoy</div></div>
 </div>
 
 <div class="donut-row donut-row-single" id="contactos-hoy-donut-row"></div>
