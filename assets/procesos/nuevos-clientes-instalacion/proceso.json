@@ -5,13 +5,19 @@
   "descripcion": "Recorrido de un cliente nuevo desde la confirmación de la venta hasta la instalación, la activación del sistema y el seguimiento de posventa.",
   "estado": "En relevamiento",
   "version": "v0.1",
-  "actualizado": "30/09/2026",
+  "actualizado": "06/10/2026",
   "responsable": "Proceso y Mejora Continua",
   "resumen": {
     "objetivo": "Definir hitos formales que marquen cuándo termina la responsabilidad de un área y empieza la de otra, para que el cliente sepa con quién hablar en cada etapa y ningún caso quede sin dueño.",
     "alcance": "Desde el cierre de la venta hasta la resolución de los pendientes posteriores a la instalación. La implementación se apoya en GHL, continuando lo hecho en Ventas y Posventa.",
     "diagnostico": "La causa de los roces entre áreas no es la falta de comunicación en sí, sino la ausencia de hitos formales de traspaso. Ventas termina siendo el único canal vivo con el cliente y recibe reclamos que no le corresponden; los pendientes del acta de instalación quedan sin responsable ni plazo.",
-    "areas": ["Ventas", "Atención al Cliente", "Instalaciones", "Servicio Técnico", "Posventa"],
+    "areas": [
+      "Ventas",
+      "Atención al Cliente",
+      "Instalaciones",
+      "Servicio Técnico",
+      "Posventa"
+    ],
     "puntosTitulo": "Etapas del proyecto",
     "puntos": [
       "Relevamiento de los procesos actuales (reuniones del ciclo de mejora).",
@@ -20,46 +26,111 @@
     ]
   },
   "hitos": [
-    { "n": 1,  "nombre": "Cierre de la venta (negociación y contrato)", "responsable": "Ventas", "estado": "Resuelto" },
-    { "n": 2,  "nombre": "Cobro del 100% y generación automática del caso de instalación en NetSuite", "responsable": "Atención al Cliente", "estado": "Resuelto" },
-    { "n": 3,  "nombre": "Coordinación de la fecha de instalación con el cliente", "estado": "A definir" },
-    { "n": 4,  "nombre": "Atención de consultas del cliente mientras no hay fecha confirmada", "estado": "A definir" },
-    { "n": 5,  "nombre": "Ejecución de la instalación", "responsable": "Instalaciones", "estado": "Resuelto" },
-    { "n": 6,  "nombre": "Cierre de la instalación y firma del acta de conformidad", "responsable": "Instalaciones", "estado": "Resuelto" },
-    { "n": 7,  "nombre": "Registro de pendientes en el acta con responsable y plazo", "estado": "A definir" },
-    { "n": 8,  "nombre": "Comunicación de finalización / activación del sistema al cliente", "estado": "A definir" },
-    { "n": 9,  "nombre": "Control de calidad y encuesta de satisfacción", "responsable": "Posventa", "estado": "Resuelto" },
-    { "n": 10, "nombre": "Clasificación y canalización de reclamos según tipo", "estado": "A definir" },
-    { "n": 11, "nombre": "Escalación de un pendiente del acta no resuelto en plazo", "estado": "A definir" },
-    { "n": 12, "nombre": "Resolución de un caso técnico derivado por Posventa (SLA)", "responsable": "Servicio Técnico", "estado": "A definir (SLA)" },
-    { "n": 13, "nombre": "Resolución de una situación administrativa derivada por Posventa", "responsable": "Atención al Cliente", "estado": "Resuelto" }
+    {
+      "n": 1,
+      "nombre": "Cierre de la venta (negociación y contrato)",
+      "responsable": "Ventas",
+      "estado": "Validado"
+    },
+    {
+      "n": 2,
+      "nombre": "Cobro del 100% y generación automática del caso de instalación en NetSuite",
+      "responsable": "Atención al Cliente",
+      "estado": "Validado"
+    },
+    {
+      "n": 3,
+      "nombre": "Coordinación de la fecha de instalación con el cliente",
+      "responsable": "Instalaciones",
+      "estado": "En proceso"
+    },
+    {
+      "n": 4,
+      "nombre": "Atención de consultas del cliente mientras no hay fecha confirmada",
+      "responsable": "Instalaciones",
+      "estado": "En proceso"
+    },
+    {
+      "n": 5,
+      "nombre": "Ejecución de la instalación",
+      "responsable": "Instalaciones",
+      "estado": "Validado"
+    },
+    {
+      "n": 6,
+      "nombre": "Cierre de la instalación y firma del acta de conformidad",
+      "responsable": "Instalaciones",
+      "estado": "Validado"
+    },
+    {
+      "n": 7,
+      "nombre": "Registro de pendientes en el acta con responsable y plazo",
+      "responsable": "Instalaciones",
+      "estado": "Pendiente"
+    },
+    {
+      "n": 8,
+      "nombre": "Comunicación de finalización / activación del sistema al cliente",
+      "responsable": "Instalaciones",
+      "estado": "En proceso"
+    },
+    {
+      "n": 9,
+      "nombre": "Control de calidad y encuesta de satisfacción",
+      "responsable": "Posventa",
+      "estado": "Validado"
+    },
+    {
+      "n": 10,
+      "nombre": "Clasificación y canalización de reclamos según tipo",
+      "responsable": "Posventa",
+      "estado": "Pendiente"
+    },
+    {
+      "n": 11,
+      "nombre": "Escalación de un pendiente del acta no resuelto en plazo",
+      "responsable": "A definir",
+      "estado": "Pendiente"
+    },
+    {
+      "n": 12,
+      "nombre": "Resolución de un caso técnico derivado por Posventa (SLA)",
+      "responsable": "Servicio Técnico",
+      "estado": "En proceso"
+    },
+    {
+      "n": 13,
+      "nombre": "Resolución de una situación administrativa derivada por Posventa",
+      "responsable": "Atención al Cliente",
+      "estado": "Validado"
+    }
   ],
   "diagramas": [
     {
       "nombre": "Confirmación de la venta y cobro",
       "archivo": "nuevos-clientes-venta-cobro.bpmn",
       "version": "v0.1",
-      "fecha": "30/09/2026",
+      "fecha": "06/10/2026",
       "estado": "Borrador",
-      "descripcion": "Subproceso Ventas → Atención al Cliente (hitos 1 y 2). Surge de la reunión R2. Los puntos abiertos están marcados en el diagrama como \"A definir (R2)\". El subproceso \"Gestión del cobro\" muestra el ciclo de intentos de contacto con el cliente."
+      "descripcion": "Subproceso Ventas → Atención al Cliente (hitos 1 y 2). Surge de la reunión R2. Los puntos abiertos están marcados en el diagrama como \"A definir (R2)\". El subproceso \"Gestión del cobro\" muestra el ciclo de intentos de contacto con el cliente. Actualizado 06/10: la forma de pago forma parte de los datos mínimos del traspaso."
     }
   ],
   "documentos": [
     {
       "nombre": "Proceso de venta y atención por áreas",
       "tipo": "Descriptivo",
-      "descripcion": "Etapas del proceso, responsabilidades de cada área, entregables y traspasos.",
+      "descripcion": "Etapas del proceso, responsabilidades de cada área, entregables y traspasos. Actualizado 06/10: la bienvenida pasa a la etapa 8 (Atención al Cliente, antes de la instalación).",
       "version": "Borrador",
-      "fecha": "30/09/2026",
+      "fecha": "06/10/2026",
       "pdf": "proceso-venta-atencion-por-areas.pdf",
       "original": "proceso-venta-atencion-por-areas.docx"
     },
     {
       "nombre": "Matrices de responsabilidades y comunicación",
       "tipo": "Matriz",
-      "descripcion": "Responsable de cada hito por área y quién se comunica con el cliente en cada etapa.",
-      "version": "v0.1",
-      "fecha": "30/09/2026",
+      "descripcion": "Responsable de cada hito por área, quién se comunica con el cliente en cada etapa y estado de validación.",
+      "version": "v0.2",
+      "fecha": "06/10/2026",
       "pdf": "matrices-responsabilidades.pdf",
       "original": "matrices-responsabilidades.xlsx"
     },
@@ -95,7 +166,13 @@
       "fecha": "30/09/2026",
       "titulo": "Ventas → Atención al Cliente: confirmación de la venta y cobro",
       "objetivo": "Definir el proceso a grandes rasgos, relevar las problemáticas actuales y definir la metodología de trabajo para implementarlo.",
-      "participantes": ["Jefe de Ventas", "Atención al Cliente", "Gerencia de Administración y Finanzas", "Gerencia de Comercialización y Marketing", "Gerencia de Proceso y Mejora Continua"],
+      "participantes": [
+        "Jefe de Ventas",
+        "Atención al Cliente",
+        "Gerencia de Administración y Finanzas",
+        "Gerencia de Comercialización y Marketing",
+        "Gerencia de Proceso y Mejora Continua"
+      ],
       "temas": [
         "Ventas realiza la venta consultiva con visita (etapas 1 a 5); al confirmar la venta se inicia el traspaso a Atención al Cliente.",
         "El cliente no responde cuando Atención al Cliente lo contacta para el pago: es un número desconocido y se trata de un pago.",
@@ -104,7 +181,11 @@
         "Criterio para pasar un presupuesto no cobrado a venta perdida."
       ],
       "documentos": [
-        { "nombre": "Minuta R2", "pdf": "2026-09-30_R2_minuta.pdf", "original": "2026-09-30_R2_minuta.docx" }
+        {
+          "nombre": "Minuta R2",
+          "pdf": "2026-09-30_R2_minuta.pdf",
+          "original": "2026-09-30_R2_minuta.docx"
+        }
       ]
     },
     {
@@ -113,16 +194,34 @@
       "fecha": "04/09/2026",
       "titulo": "Traspasos de responsabilidad entre áreas",
       "objetivo": "Presentar el diagnóstico y tratar los hitos de mayor fricción: coordinación de la fecha de instalación (3), consultas sin fecha confirmada (4) y aviso de activación del sistema (8).",
-      "participantes": ["Gerencia de Operaciones", "Gerencia Comercial y Marketing", "Administración", "Proceso y Mejora Continua"],
+      "participantes": [
+        "Gerencia de Operaciones",
+        "Gerencia Comercial y Marketing",
+        "Administración",
+        "Proceso y Mejora Continua"
+      ],
       "temas": [
         "Diagnóstico: faltan hitos formales de traspaso entre áreas.",
         "Los hitos 3, 4 y 8 quedaron sin definir.",
         "Se presentó el documento \"Proceso de venta y atención por áreas\"."
       ],
       "documentos": [
-        { "nombre": "Preguntas por hito", "pdf": "2026-09-04_R1_preguntas-responsabilidades.pdf", "original": "2026-09-04_R1_preguntas-responsabilidades.docx" },
-        { "nombre": "Diagnóstico y preguntas en detalle", "pdf": "2026-09-04_R1_preguntas-detalle.pdf", "original": "2026-09-04_R1_preguntas-detalle.docx" }
+        {
+          "nombre": "Preguntas por hito",
+          "pdf": "2026-09-04_R1_preguntas-responsabilidades.pdf",
+          "original": "2026-09-04_R1_preguntas-responsabilidades.docx"
+        },
+        {
+          "nombre": "Diagnóstico y preguntas en detalle",
+          "pdf": "2026-09-04_R1_preguntas-detalle.pdf",
+          "original": "2026-09-04_R1_preguntas-detalle.docx"
+        }
       ]
     }
-  ]
+  ],
+  "estadosValidacion": {
+    "Pendiente": "Responsable tomado del relevamiento, aún sin revisar con las áreas.",
+    "En proceso": "En revisión con las áreas, con puntos abiertos.",
+    "Validado": "Confirmado por las áreas involucradas."
+  }
 }

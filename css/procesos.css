@@ -405,3 +405,9 @@ button.doc-link { font-family: inherit; cursor: pointer; }
 }
 
 .proc-table .pill { white-space: nowrap; }
+
+.proc-table__legend {
+  display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem;
+  margin: 1rem 0 0; font-size: 0.8rem; color: var(--color-text-muted, #595959);
+}
+.proc-table__legend .status-badge { margin-left: 0; margin-right: 0.35rem; }

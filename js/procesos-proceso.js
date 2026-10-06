@@ -50,7 +50,7 @@
   function url(archivo) { return archivo ? base + encodeURI(archivo) : null; }
   function estadoClase(estado) {
     const e = (estado || '').toLowerCase();
-    if (e.startsWith('resuelto') || e.startsWith('vigente') || e.startsWith('aprobado')) return 'ok';
+    if (e.startsWith('resuelto') || e.startsWith('validado') || e.startsWith('vigente') || e.startsWith('aprobado')) return 'ok';
     if (e.startsWith('a definir') || e.startsWith('propuesto') || e.startsWith('borrador') || e.startsWith('en ')) return 'prog';
     return 'rev';
   }
@@ -145,7 +145,7 @@
         <div class="proc-card">
           <div class="proc-card__head">
             <h2 class="proc-card__title">Hitos de traspaso de responsabilidad</h2>
-            <span class="proc-card__count">${resueltos} de ${data.hitos.length} resueltos</span>
+            <span class="proc-card__count">${resueltos} de ${data.hitos.length} ${data.estadosValidacion ? 'validados' : 'resueltos'}</span>
           </div>
           <table class="proc-table">
             <thead><tr><th>N°</th><th>Hito</th><th>Responsable</th><th>Estado</th></tr></thead>
@@ -159,6 +159,10 @@
                 </tr>`).join('')}
             </tbody>
           </table>
+          ${data.estadosValidacion ? `
+          <p class="proc-table__legend">
+            ${Object.entries(data.estadosValidacion).map(([k, v]) => `<span><span class="status-badge status-badge--${estadoClase(k)}">${esc(k)}</span> ${esc(v)}</span>`).join('')}
+          </p>` : ''}
         </div>`;
     }
     p.innerHTML = h;

@@ -78,7 +78,7 @@
       <bpmn:sequenceFlow id="F18" sourceRef="Task_AvisoVencimiento" targetRef="End_AvisoEnviado" />
       <bpmn:sequenceFlow id="F19" sourceRef="Bnd_PresupuestoVencido" targetRef="Task_ActualizarPresupuesto" />
       <bpmn:sequenceFlow id="F20" sourceRef="Task_ActualizarPresupuesto" targetRef="Task_VendedorRetoma" />
-      <bpmn:textAnnotation id="Ann_DatosTraspaso"><bpmn:text>A definir (R2): información mínima que necesita Atención al Cliente para iniciar la etapa 7</bpmn:text></bpmn:textAnnotation>
+      <bpmn:textAnnotation id="Ann_DatosTraspaso"><bpmn:text>Datos mínimos del traspaso (R2, a completar). Definido: incluye la forma de pago, para que Atención al Cliente sepa cuándo esperar el primer cobro (comodato: primer abono, 1 mes después de la instalación o al terminar el beneficio de X meses)</bpmn:text></bpmn:textAnnotation>
       <bpmn:association id="Ann_DatosTraspaso_Assoc" sourceRef="Ann_DatosTraspaso" targetRef="Task_Derivar" />
       <bpmn:textAnnotation id="Ann_NumeroDesconocido"><bpmn:text>Problema (R2): el cliente no responde a un número desconocido, más aún tratándose de un pago</bpmn:text></bpmn:textAnnotation>
       <bpmn:association id="Ann_NumeroDesconocido_Assoc" sourceRef="Ann_NumeroDesconocido" targetRef="Sub_GestionCobro" />
@@ -134,8 +134,8 @@
       <bpmndi:BPMNEdge id="F18_di" bpmnElement="F18"><di:waypoint x="1565" y="700" /><di:waypoint x="1672" y="700" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="F19_di" bpmnElement="F19"><di:waypoint x="1490" y="512" /><di:waypoint x="1490" y="455" /><di:waypoint x="1340" y="455" /><di:waypoint x="1340" y="420" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="F20_di" bpmnElement="F20"><di:waypoint x="1390" y="380" /><di:waypoint x="1640" y="380" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="Ann_DatosTraspaso_di" bpmnElement="Ann_DatosTraspaso"><dc:Bounds x="775" y="345" width="200" height="70" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Ann_DatosTraspaso_Assoc_di" bpmnElement="Ann_DatosTraspaso_Assoc"><di:waypoint x="975" y="380" /><di:waypoint x="1115" y="280" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_DatosTraspaso_di" bpmnElement="Ann_DatosTraspaso"><dc:Bounds x="775" y="345" width="230" height="110" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_DatosTraspaso_Assoc_di" bpmnElement="Ann_DatosTraspaso_Assoc"><di:waypoint x="1005" y="380" /><di:waypoint x="1115" y="280" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_NumeroDesconocido_di" bpmnElement="Ann_NumeroDesconocido"><dc:Bounds x="950" y="665" width="220" height="70" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_NumeroDesconocido_Assoc_di" bpmnElement="Ann_NumeroDesconocido_Assoc"><di:waypoint x="1170" y="700" /><di:waypoint x="1465" y="600" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_Vigencia_di" bpmnElement="Ann_Vigencia"><dc:Bounds x="1815" y="670" width="200" height="60" /></bpmndi:BPMNShape>
