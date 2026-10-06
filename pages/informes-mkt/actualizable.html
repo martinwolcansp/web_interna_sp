@@ -157,6 +157,15 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .upd-tag--ok { background: #2a9d5c; } .upd-tag--error { background: #c0392b; } .upd-tag--en_curso { background: #eb6834; }
 .upd-ver { appearance: none; border: 1px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 4px; cursor: pointer; }
 .upd-ver:hover { background: var(--navy); color: #fff; }
+/* ---- Ultima actualizacion destacada ---- */
+.upd-hero { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 16px; background: var(--navy); color: #fff; border-left: 6px solid #8fb3e8; border-radius: 0 6px 6px 0; }
+.upd-hero[hidden] { display: none; }
+.upd-hero-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; opacity: .85; }
+.upd-hero-fecha { font-size: 22px; font-weight: 700; }
+.upd-hero-det { font-size: 13.5px; opacity: .9; }
+.upd-hero--atrasada { background: var(--warn-bg); color: var(--ink); border-left-color: var(--orange); }
+.upd-hero--atrasada .upd-hero-fecha { color: #b3261e; }
+@media print { .upd-hero { background: none; color: var(--ink); border: 1px solid var(--rule); border-left: 6px solid var(--navy); } }
 </style>
 </head>
 <body>
@@ -165,6 +174,11 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     <div class="eyebrow">SP Seguridad Privada &middot; Informe de MKT &middot; actualizable</div>
     <h1>Oportunidades ganadas y contactos</h1>
     <div class="sub">Oportunidades y ventas de NetSuite, origen y conversaciones de GHL &middot; click en un gráfico para filtrar el detalle</div>
+    <div class="upd-hero" id="upd-hero" hidden>
+      <span class="upd-hero-label">Última actualización</span>
+      <span class="upd-hero-fecha" id="upd-hero-fecha"></span>
+      <span class="upd-hero-det" id="upd-hero-det"></span>
+    </div>
     <div class="upd-bar">
       <div class="per-controles">
         <span class="per-titulo">Período del informe</span>
@@ -829,7 +843,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   // ---- Mostrar una corrida (la ultima OK o una anterior) ----
   async function mostrarCorrida(id) {
     var q = sb.from("informe_mkt_corrida")
-      .select("id,desde,hasta,datos_hasta,finalizado_en,mensaje,panel_resumen_html,contacts")
+      .select("id,origen,desde,hasta,datos_hasta,finalizado_en,mensaje,panel_resumen_html,contacts")
       .eq("estado", "ok");
     q = id ? q.eq("id", id) : q.order("finalizado_en", { ascending: false });
     var r = await q.limit(1);
@@ -845,7 +859,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       return;
     }
     var c = r.data[0];
-    if (!id) idUltimaOk = c.id;
+    if (!id) { idUltimaOk = c.id; pintarUltimaActualizacion(c); }
     idMostrada = c.id;
     $("upd-ultima").innerHTML =
       "Datos actualizados hasta el <strong>" + esc(fmtFechaHora(c.datos_hasta)) + "</strong>" +
@@ -865,6 +879,44 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     $("per-hasta").value = c.hasta;
     pintar(c.panel_resumen_html, c.contacts, diaDe(c.datos_hasta));
     if (puedeEditar) cargarHistorial();
+  }
+
+  // ---- Ultima actualizacion destacada (siempre la mas reciente OK) ----
+  // La automatica corre de lunes a viernes a las 16 hs (Argentina, UTC-3 fijo).
+  // Si la ultima OK es anterior a la ultima corrida automatica esperada, se marca como atrasada.
+  var HORA_AUTOMATICA = 16, MARGEN_MIN = 30;
+  function ultimaAutomaticaEsperada(ahora) {
+    var AR_MS = 3 * 3600 * 1000;
+    var ar = new Date(ahora.getTime() - AR_MS); // campos UTC = hora de Argentina
+    var d = new Date(Date.UTC(ar.getUTCFullYear(), ar.getUTCMonth(), ar.getUTCDate(), HORA_AUTOMATICA, MARGEN_MIN));
+    if (d > ar) d.setUTCDate(d.getUTCDate() - 1);
+    while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() - 1);
+    d.setUTCMinutes(0);
+    return new Date(d.getTime() + AR_MS);
+  }
+  function hace(iso) {
+    var min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 1) return "recién";
+    if (min < 60) return "hace " + min + " min";
+    var h = Math.floor(min / 60);
+    if (h < 24) return "hace " + h + (h === 1 ? " hora" : " horas");
+    var dias = Math.floor(h / 24);
+    return "hace " + dias + (dias === 1 ? " día" : " días");
+  }
+  var ultimaOk = null;
+  setInterval(function () { if (ultimaOk) pintarUltimaActualizacion(ultimaOk); }, 60000); // refresca "hace X"
+  function pintarUltimaActualizacion(c) {
+    ultimaOk = c;
+    if (!c || !c.finalizado_en) { $("upd-hero").hidden = true; return; }
+    var atrasada = new Date(c.finalizado_en) < ultimaAutomaticaEsperada(new Date());
+    $("upd-hero").hidden = false;
+    $("upd-hero").className = "upd-hero" + (atrasada ? " upd-hero--atrasada" : "");
+    $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
+    $("upd-hero-det").textContent = [
+      c.origen === "automatica" ? "Automática" : "Manual",
+      hace(c.finalizado_en),
+      atrasada ? "No se registró la actualización automática de las 16 hs" : null,
+    ].filter(Boolean).join(" · ");
   }
 
   function diaDe(iso) {
