@@ -6,7 +6,7 @@
   "estado": "En relevamiento",
   "version": "v0.1",
   "actualizado": "06/10/2026",
-  "responsable": "Proceso y Mejora Continua",
+  "responsable": "Procesos y Mejora Continua",
   "resumen": {
     "objetivo": "Definir hitos formales que marquen cuándo termina la responsabilidad de un área y empieza la de otra, para que el cliente sepa con quién hablar en cada etapa y ningún caso quede sin dueño.",
     "alcance": "Desde el cierre de la venta hasta la resolución de los pendientes posteriores a la instalación. La implementación se apoya en GHL, continuando lo hecho en Ventas y Posventa.",
@@ -25,84 +25,209 @@
       "Implementación de la herramienta (GHL) que formaliza esos traspasos."
     ]
   },
+  "etapas": [
+    {
+      "id": 1,
+      "nombre": "Primer contacto",
+      "area": "Ventas"
+    },
+    {
+      "id": 2,
+      "nombre": "Concertación de la visita",
+      "area": "Ventas"
+    },
+    {
+      "id": 3,
+      "nombre": "Visita: relevamiento y propuesta de valor",
+      "area": "Ventas"
+    },
+    {
+      "id": 4,
+      "nombre": "Envío de presupuesto",
+      "area": "Ventas"
+    },
+    {
+      "id": 5,
+      "nombre": "Seguimiento del presupuesto",
+      "area": "Ventas"
+    },
+    {
+      "id": 6,
+      "nombre": "Confirmación de la venta",
+      "area": "Ventas"
+    },
+    {
+      "id": 7,
+      "nombre": "Recepción de presupuesto aprobado y cobro",
+      "area": "Atención al Cliente"
+    },
+    {
+      "id": 8,
+      "nombre": "Bienvenida al cliente",
+      "area": "Atención al Cliente"
+    },
+    {
+      "id": 9,
+      "nombre": "Coordinación de la instalación",
+      "area": "Instalaciones"
+    },
+    {
+      "id": 10,
+      "nombre": "Ejecución de la instalación",
+      "area": "Instalaciones"
+    },
+    {
+      "id": "cc",
+      "nombre": "Control de calidad posterior a la instalación",
+      "area": "Posventa"
+    },
+    {
+      "id": 11,
+      "nombre": "Mantenimiento preventivo",
+      "area": "Servicio Técnico"
+    },
+    {
+      "id": 12,
+      "nombre": "Mantenimiento correctivo y reclamos",
+      "area": "Servicio Técnico"
+    },
+    {
+      "id": 13,
+      "nombre": "Gestión de nuevas necesidades (propuesta)",
+      "area": "Ampliaciones"
+    },
+    {
+      "id": 14,
+      "nombre": "Cobranza recurrente y gestión de mora (propuesta)",
+      "area": "Atención al Cliente"
+    },
+    {
+      "id": 15,
+      "nombre": "Gestión de bajas y cancelaciones (propuesta)",
+      "area": "Atención al Cliente"
+    }
+  ],
   "hitos": [
     {
       "n": 1,
       "nombre": "Cierre de la venta (negociación y contrato)",
       "responsable": "Ventas",
-      "estado": "Validado"
+      "estado": "En proceso",
+      "etapas": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
     },
     {
       "n": 2,
       "nombre": "Cobro del 100% y generación automática del caso de instalación en NetSuite",
       "responsable": "Atención al Cliente",
-      "estado": "Validado"
+      "estado": "En proceso",
+      "etapas": [
+        7
+      ]
     },
     {
       "n": 3,
       "nombre": "Coordinación de la fecha de instalación con el cliente",
       "responsable": "Instalaciones",
-      "estado": "En proceso"
+      "estado": "Pendiente",
+      "etapas": [
+        9
+      ]
     },
     {
       "n": 4,
       "nombre": "Atención de consultas del cliente mientras no hay fecha confirmada",
       "responsable": "Instalaciones",
-      "estado": "En proceso"
+      "estado": "Pendiente",
+      "etapas": [
+        9
+      ]
     },
     {
       "n": 5,
       "nombre": "Ejecución de la instalación",
       "responsable": "Instalaciones",
-      "estado": "Validado"
+      "estado": "Pendiente",
+      "etapas": [
+        10
+      ]
     },
     {
       "n": 6,
       "nombre": "Cierre de la instalación y firma del acta de conformidad",
       "responsable": "Instalaciones",
-      "estado": "Validado"
+      "estado": "Pendiente",
+      "etapas": [
+        10
+      ]
     },
     {
       "n": 7,
       "nombre": "Registro de pendientes en el acta con responsable y plazo",
       "responsable": "Instalaciones",
-      "estado": "Pendiente"
+      "estado": "Pendiente",
+      "etapas": [
+        10
+      ]
     },
     {
       "n": 8,
       "nombre": "Comunicación de finalización / activación del sistema al cliente",
       "responsable": "Instalaciones",
-      "estado": "En proceso"
+      "estado": "Pendiente",
+      "etapas": [
+        10
+      ]
     },
     {
       "n": 9,
       "nombre": "Control de calidad y encuesta de satisfacción",
       "responsable": "Posventa",
-      "estado": "Validado"
+      "estado": "Pendiente",
+      "etapas": [
+        "cc"
+      ]
     },
     {
       "n": 10,
       "nombre": "Clasificación y canalización de reclamos según tipo",
       "responsable": "Posventa",
-      "estado": "Pendiente"
+      "estado": "Pendiente",
+      "etapas": [
+        "cc",
+        12
+      ]
     },
     {
       "n": 11,
       "nombre": "Escalación de un pendiente del acta no resuelto en plazo",
       "responsable": "A definir",
-      "estado": "Pendiente"
+      "estado": "Pendiente",
+      "etapas": []
     },
     {
       "n": 12,
       "nombre": "Resolución de un caso técnico derivado por Posventa (SLA)",
       "responsable": "Servicio Técnico",
-      "estado": "En proceso"
+      "estado": "Pendiente",
+      "etapas": [
+        12
+      ]
     },
     {
       "n": 13,
       "nombre": "Resolución de una situación administrativa derivada por Posventa",
       "responsable": "Atención al Cliente",
-      "estado": "Validado"
+      "estado": "Pendiente",
+      "etapas": [
+        14
+      ]
     }
   ],
   "diagramas": [
@@ -171,7 +296,7 @@
         "Atención al Cliente",
         "Gerencia de Administración y Finanzas",
         "Gerencia de Comercialización y Marketing",
-        "Gerencia de Proceso y Mejora Continua"
+        "Gerencia de Procesos y Mejora Continua"
       ],
       "temas": [
         "Ventas realiza la venta consultiva con visita (etapas 1 a 5); al confirmar la venta se inicia el traspaso a Atención al Cliente.",
@@ -198,7 +323,7 @@
         "Gerencia de Operaciones",
         "Gerencia Comercial y Marketing",
         "Administración",
-        "Proceso y Mejora Continua"
+        "Procesos y Mejora Continua"
       ],
       "temas": [
         "Diagnóstico: faltan hitos formales de traspaso entre áreas.",
@@ -220,8 +345,8 @@
     }
   ],
   "estadosValidacion": {
-    "Pendiente": "Responsable tomado del relevamiento, aún sin revisar con las áreas.",
-    "En proceso": "En revisión con las áreas, con puntos abiertos.",
-    "Validado": "Confirmado por las áreas involucradas."
+    "Pendiente": "Relevamiento del hito aún no iniciado; responsable tomado del documento de relevamiento.",
+    "En proceso": "Relevamiento en curso: reuniones con las áreas y minutas.",
+    "Validado": "Relevamiento realizado, reuniones con sus minutas y validación formal del sector."
   }
 }

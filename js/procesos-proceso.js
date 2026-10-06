@@ -122,6 +122,24 @@
 
   function panel(id) { return app.querySelector(`[data-panel="${id}"]`); }
 
+  // Etapas del documento de relevamiento que componen un hito
+  function tablaEtapas(ids) {
+    const etapas = ids.map(id => data.etapas.find(e => e.id === id)).filter(Boolean);
+    if (!etapas.length) return '<p class="proc-hito__vacio">Sin etapas asociadas en el documento de relevamiento.</p>';
+    return `
+      <table class="proc-subtable">
+        <thead><tr><th>Etapa</th><th>Descripción</th><th>Área responsable</th></tr></thead>
+        <tbody>
+          ${etapas.map(e => `
+            <tr>
+              <td class="proc-table__num">${typeof e.id === 'number' ? esc(e.id) : '—'}</td>
+              <td>${esc(e.nombre)}</td>
+              <td>${esc(e.area)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
   // ── Resumen ──
   function renderResumen() {
     const p = panel('resumen');
@@ -150,13 +168,20 @@
           <table class="proc-table">
             <thead><tr><th>N°</th><th>Hito</th><th>Responsable</th><th>Estado</th></tr></thead>
             <tbody>
-              ${data.hitos.map(x => `
-                <tr>
+              ${data.hitos.map(x => {
+                const conEtapas = Array.isArray(x.etapas) && Array.isArray(data.etapas);
+                const nombre = conEtapas
+                  ? `<button type="button" class="proc-hito__toggle" data-hito="${esc(x.n)}" aria-expanded="false" aria-controls="proc-hito-${esc(x.n)}"><i class="ti ti-chevron-right" aria-hidden="true"></i> ${esc(x.nombre)}</button>`
+                  : esc(x.nombre);
+                return `
+                <tr class="${conEtapas ? 'proc-hito' : ''}">
                   <td class="proc-table__num">${esc(x.n)}</td>
-                  <td>${esc(x.nombre)}</td>
+                  <td>${nombre}</td>
                   <td>${esc(x.responsable || '—')}</td>
                   <td><span class="status-badge status-badge--${estadoClase(x.estado)}">${esc(x.estado)}</span></td>
-                </tr>`).join('')}
+                </tr>
+                ${conEtapas ? `<tr class="proc-hito__detalle" id="proc-hito-${esc(x.n)}" hidden><td colspan="4">${tablaEtapas(x.etapas)}</td></tr>` : ''}`;
+              }).join('')}
             </tbody>
           </table>
           ${data.estadosValidacion ? `
@@ -330,6 +355,14 @@
 
   function wireEventos() {
     app.addEventListener('click', (e) => {
+      const hito = e.target.closest('.proc-hito__toggle');
+      if (hito) {
+        const det = document.getElementById(hito.getAttribute('aria-controls'));
+        const abierto = hito.getAttribute('aria-expanded') === 'true';
+        hito.setAttribute('aria-expanded', String(!abierto));
+        if (det) det.hidden = abierto;
+        return;
+      }
       const tab = e.target.closest('.section-tab');
       if (tab) return mostrarTab(tab.dataset.tab);
       const diag = e.target.closest('.proc-diagram-item');
