@@ -77,32 +77,32 @@
       "area": "Instalaciones"
     },
     {
-      "id": "cc",
+      "id": 11,
       "nombre": "Control de calidad posterior a la instalación",
       "area": "Posventa"
     },
     {
-      "id": 11,
+      "id": 12,
       "nombre": "Mantenimiento preventivo",
       "area": "Servicio Técnico"
     },
     {
-      "id": 12,
+      "id": 13,
       "nombre": "Mantenimiento correctivo y reclamos",
       "area": "Servicio Técnico"
     },
     {
-      "id": 13,
+      "id": 14,
       "nombre": "Gestión de nuevas necesidades (propuesta)",
       "area": "Ampliaciones"
     },
     {
-      "id": 14,
+      "id": 15,
       "nombre": "Cobranza recurrente y gestión de mora (propuesta)",
       "area": "Atención al Cliente"
     },
     {
-      "id": 15,
+      "id": 16,
       "nombre": "Gestión de bajas y cancelaciones (propuesta)",
       "area": "Atención al Cliente"
     }
@@ -191,7 +191,7 @@
       "responsable": "Posventa",
       "estado": "Pendiente",
       "etapas": [
-        "cc"
+        11
       ]
     },
     {
@@ -200,8 +200,8 @@
       "responsable": "Posventa",
       "estado": "Pendiente",
       "etapas": [
-        "cc",
-        12
+        11,
+        13
       ]
     },
     {
@@ -217,7 +217,7 @@
       "responsable": "Servicio Técnico",
       "estado": "Pendiente",
       "etapas": [
-        12
+        13
       ]
     },
     {
@@ -226,7 +226,7 @@
       "responsable": "Atención al Cliente",
       "estado": "Pendiente",
       "etapas": [
-        14
+        15
       ]
     }
   ],
@@ -244,7 +244,7 @@
     {
       "nombre": "Proceso de venta y atención por áreas",
       "tipo": "Descriptivo",
-      "descripcion": "Etapas del proceso, responsabilidades de cada área, entregables y traspasos. Actualizado 06/10: la bienvenida pasa a la etapa 8 (Atención al Cliente, antes de la instalación).",
+      "descripcion": "Etapas del proceso, responsabilidades de cada área, entregables y traspasos. Actualizado 06/10: la bienvenida pasa a la etapa 8 (Atención al Cliente, antes de la instalación) y el control de calidad posterior a la instalación es la etapa 11 (Posventa).",
       "version": "Borrador",
       "fecha": "06/10/2026",
       "pdf": "proceso-venta-atencion-por-areas.pdf",
