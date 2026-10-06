@@ -46,9 +46,22 @@ MAX_DIAS_RANGO = int(os.getenv("MAX_DIAS_RANGO", "92"))
 # del contenedor, etc.) y se marca como error para no bloquear el boton.
 MINUTOS_CORRIDA_COLGADA = int(os.getenv("MINUTOS_CORRIDA_COLGADA", "30"))
 # Historial: cuantas corridas se conservan (las mas viejas se borran).
-CORRIDAS_A_CONSERVAR = int(os.getenv("CORRIDAS_A_CONSERVAR", "20"))
+CORRIDAS_A_CONSERVAR = int(os.getenv("CORRIDAS_A_CONSERVAR", "40"))
 # Rango maximo de una consulta sobre los datos ya cargados (no llama a NetSuite ni a GHL).
 MAX_DIAS_CONSULTA = int(os.getenv("MAX_DIAS_CONSULTA", "400"))
+
+# ---------- Corrida programada (python -m app.corrida_programada) ----------
+# Usuario tecnico de Supabase Auth (email + contrasena) con permiso editar en
+# Informes de MKT y en Integracion NetSuite-GHL. Lo usa la tarea programada
+# de Coolify, que no tiene un usuario de la web que apriete el boton.
+INFORME_BOT_EMAIL = os.getenv("INFORME_BOT_EMAIL")
+INFORME_BOT_PASSWORD = os.getenv("INFORME_BOT_PASSWORD")
+# En los primeros N dias habiles del mes se actualiza tambien el mes anterior
+# completo (cierres tardios), antes de la corrida del mes en curso. 0 = nunca.
+DIAS_HABILES_MES_ANTERIOR = int(os.getenv("DIAS_HABILES_MES_ANTERIOR", "3"))
+# Si hay una actualizacion manual en curso, cuantos minutos esperar a que
+# termine antes de desistir.
+MINUTOS_ESPERA_EN_CURSO = int(os.getenv("MINUTOS_ESPERA_EN_CURSO", "20"))
 
 # ---------- CORS ----------
 ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]

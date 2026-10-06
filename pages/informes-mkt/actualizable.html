@@ -190,11 +190,11 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       </div>
       <div class="upd-panel-seccion">
         <div class="upd-panel-titulo">Actualizaciones anteriores</div>
-        <div class="upd-panel-ayuda">Se conservan las últimas 20. Cada actualización suma sus datos a la base: con <strong>Período del informe</strong> se puede ver cualquier rango ya cargado. Con <strong>Ver</strong> se abre el informe tal como quedó en esa actualización.</div>
+        <div class="upd-panel-ayuda">Además del botón, el informe se actualiza solo de lunes a viernes a las 16 hs (del 1 del mes a hoy). Se conservan las últimas 40. Cada actualización suma sus datos a la base: con <strong>Período del informe</strong> se puede ver cualquier rango ya cargado. Con <strong>Ver</strong> se abre el informe tal como quedó en esa actualización.</div>
         <div class="upd-hist-scroll">
           <table class="upd-hist">
-            <thead><tr><th>Actualizada el</th><th>Rango</th><th>Estado</th><th>Detalle</th><th></th></tr></thead>
-            <tbody id="upd-hist-body"><tr><td colspan="5">Cargando…</td></tr></tbody>
+            <thead><tr><th>Actualizada el</th><th>Rango</th><th>Tipo</th><th>Estado</th><th>Detalle</th><th></th></tr></thead>
+            <tbody id="upd-hist-body"><tr><td colspan="6">Cargando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -792,7 +792,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   var API_BASE_URL = "https://informe-mkt-api.200.5.196.50.sslip.io";
   var TZ = "America/Argentina/Buenos_Aires";
   var POLL_MS = 4000;
-  var HISTORIAL = 20;
+  var HISTORIAL = 40;
   var sb = window.supabaseClient;
   var pollTimer = null;
   var puedeEditar = false;
@@ -941,12 +941,12 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   // ---- Historial (solo editores) ----
   async function cargarHistorial() {
     var r = await sb.from("informe_mkt_corrida")
-      .select("id,estado,desde,hasta,iniciado_en,finalizado_en,mensaje,paso")
+      .select("id,estado,origen,desde,hasta,iniciado_en,finalizado_en,mensaje,paso")
       .order("iniciado_en", { ascending: false })
       .limit(HISTORIAL);
     var body = $("upd-hist-body");
-    if (r.error) { body.innerHTML = '<tr><td colspan="5">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
-    if (!r.data.length) { body.innerHTML = '<tr><td colspan="5">Todavía no hay actualizaciones.</td></tr>'; return; }
+    if (r.error) { body.innerHTML = '<tr><td colspan="6">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
+    if (!r.data.length) { body.innerHTML = '<tr><td colspan="6">Todavía no hay actualizaciones.</td></tr>'; return; }
     var etiquetas = { ok: "OK", error: "Error", en_curso: "En curso" };
     body.innerHTML = r.data.map(function (c) {
       var detalle = c.estado === "en_curso" ? (c.paso || "") : (c.mensaje || "");
@@ -957,6 +957,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       return '<tr class="' + (c.id === idMostrada ? "is-actual" : "") + '">' +
         "<td>" + esc(fmtFechaHora(c.finalizado_en || c.iniciado_en)) + "</td>" +
         "<td>" + esc(fmtDia(c.desde)) + " al " + esc(fmtDia(c.hasta)) + "</td>" +
+        "<td>" + (c.origen === "automatica" ? "Automática" : "Manual") + "</td>" +
         '<td><span class="upd-tag upd-tag--' + esc(c.estado) + '">' + esc(etiquetas[c.estado] || c.estado) + "</span></td>" +
         '<td class="upd-det">' + esc(detalle) + "</td>" +
         "<td>" + accion + "</td></tr>";

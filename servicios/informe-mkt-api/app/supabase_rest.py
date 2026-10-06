@@ -39,6 +39,31 @@ def _check(resp, que):
 
 # ---------- usuario y permisos ----------
 
+def iniciar_sesion(email, password):
+    """Login con email y contrasena (usuario tecnico de la corrida programada).
+    Devuelve el access token, que se usa igual que el del usuario que aprieta el boton."""
+    resp = requests.post(
+        f"{config.SUPABASE_URL}/auth/v1/token",
+        headers={"apikey": config.SUPABASE_ANON_KEY, "Content-Type": "application/json"},
+        params={"grant_type": "password"},
+        json={"email": email, "password": password},
+        timeout=15,
+    )
+    _check(resp, "iniciar sesion del usuario tecnico")
+    return resp.json()["access_token"]
+
+
+def estado_corrida(token, corrida_id):
+    resp = _check(requests.get(
+        _rest("informe_mkt_corrida"),
+        headers=_h(token),
+        params={"select": "estado,mensaje", "id": f"eq.{corrida_id}"},
+        timeout=15,
+    ), "leer estado de la corrida")
+    filas = resp.json()
+    return filas[0] if filas else None
+
+
 def verificar_usuario(token):
     resp = requests.get(
         f"{config.SUPABASE_URL}/auth/v1/user",
@@ -86,11 +111,14 @@ def corrida_en_curso(token):
     return filas[0] if filas else None
 
 
-def crear_corrida(token, desde, hasta):
+def crear_corrida(token, desde, hasta, origen=None):
+    fila = {"desde": desde.isoformat(), "hasta": hasta.isoformat(), "estado": "en_curso", "paso": "Iniciando"}
+    if origen:  # columna de la migracion 20 (si no viene, la base pone 'manual')
+        fila["origen"] = origen
     resp = requests.post(
         _rest("informe_mkt_corrida"),
         headers=_h(token, "return=representation"),
-        json={"desde": desde.isoformat(), "hasta": hasta.isoformat(), "estado": "en_curso", "paso": "Iniciando"},
+        json=fila,
         timeout=15,
     )
     if resp.status_code == 409:

@@ -47,6 +47,32 @@ La web no expone el código del servicio: `serve.json` en la raíz redirige `/se
 
 `js/versiones/informes-mkt.js` ya tiene la entrada **Actualizable** primera en el selector. Hacer commit y push de `web_interna_sp`. Los informes mensuales estáticos (`2026-09.html`) quedan como estaban.
 
+## Actualización automática (lunes a viernes, 16 hs)
+
+`app/corrida_programada.py` hace lo mismo que el botón, con el rango calculado en hora de Argentina:
+
+- Siempre corre del 1 del mes en curso a hoy.
+- En los primeros 3 días hábiles del mes (`DIAS_HABILES_MES_ANTERIOR`), antes corre el mes anterior completo para tomar los cierres tardíos. Lo corre primero para que la página muestre el mes en curso.
+- Si hay una actualización manual en curso, espera hasta 20 minutos (`MINUTOS_ESPERA_EN_CURSO`).
+- En el historial figura como **Automática** (columna `origen`, migración 20).
+- Sale con código 1 si algo falla, así Coolify marca la ejecución como fallida.
+
+Como no hay un usuario de la web, inicia sesión con un **usuario técnico** de Supabase (`INFORME_BOT_EMAIL` / `INFORME_BOT_PASSWORD`). Ese usuario necesita permiso **editar** en *Informes de MKT* y en *Integración NetSuite-GHL*.
+
+**Tarea en Coolify:** aplicación `informe-mkt-api` → **Scheduled Tasks** → **Add**.
+
+- Command: `python -m app.corrida_programada`
+- Frequency: `0 16 * * 1-5` si la zona horaria del servidor en Coolify es `America/Argentina/Buenos_Aires`, o `0 19 * * 1-5` si es UTC.
+
+Pruebas:
+
+```
+python -m app.corrida_programada --simular
+python -m app.corrida_programada --desde 2026-10-01 --hasta 2026-10-06
+```
+
+`--simular` muestra los rangos que correría sin ejecutar nada. `--forzar` corre aunque sea sábado o domingo.
+
 ## Prueba rápida sin la web
 
 ```
