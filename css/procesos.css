@@ -412,27 +412,30 @@ button.doc-link { font-family: inherit; cursor: pointer; }
 }
 .proc-table__legend .status-badge { margin-left: 0; margin-right: 0.35rem; }
 
-/* Hitos desplegables con sus etapas */
-.proc-hito__toggle {
-  display: flex; align-items: flex-start; gap: 0.4rem;
-  background: none; border: 0; padding: 0; margin: 0;
-  font: inherit; line-height: inherit; color: inherit; text-align: left; cursor: pointer;
-}
-.proc-hito__toggle:hover { color: var(--color-navy); }
-.proc-hito__toggle:focus-visible { outline: 2px solid var(--color-navy); outline-offset: 2px; border-radius: 2px; }
-.proc-hito__toggle .ti { margin-top: 0.2em; flex: none; transition: transform 0.15s ease; color: var(--color-text-muted); }
-.proc-hito__toggle[aria-expanded="true"] .ti { transform: rotate(90deg); }
-.proc-hito__detalle > td { background: var(--color-bg-soft); padding: var(--space-2) var(--space-4) var(--space-4) 56px; }
-.proc-subtable { width: 100%; font-size: var(--font-size-sm); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-bg); }
-.proc-subtable th {
-  text-align: left; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold);
+/* Tabla única: etapas del relevamiento + hitos de traspaso */
+.proc-table--etapas .proc-etapa td { color: var(--color-text-body); }
+.proc-table--etapas .proc-etapa--grupo td {
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-bold);
   color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.6px;
-  padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-soft);
 }
-.proc-subtable td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-border-light); }
-.proc-subtable tr:last-child td { border-bottom: none; }
-.proc-hito__vacio { font-size: var(--font-size-sm); color: var(--color-text-muted); margin: 0; }
+.proc-table--etapas .proc-hito td {
+  background: #eef4fb;
+  border-bottom: 1px solid #d6e4f5;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-navy);
+}
+.proc-table--etapas .proc-hito td:first-child { box-shadow: inset 3px 0 0 var(--color-navy); }
+.proc-hito__tag {
+  display: inline-block; padding: 1px 6px; border-radius: 4px;
+  background: var(--color-navy); color: #fff;
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: 0.3px;
+}
+.proc-table--etapas .proc-hito .status-badge { font-weight: var(--font-weight-semibold); }
+.proc-hito__estado-movil { display: none; }
 @media (max-width: 640px) {
-  .proc-hito__detalle > td { padding-left: var(--space-4); }
-  .proc-table .proc-subtable th:nth-child(3), .proc-table .proc-subtable td:nth-child(3) { display: table-cell; }
+  .proc-table--etapas th:nth-child(3), .proc-table--etapas td:nth-child(3) { display: table-cell; }
+  .proc-table--etapas th:nth-child(4), .proc-table--etapas td:nth-child(4) { display: none; }
+  .proc-table--etapas th, .proc-table--etapas td { padding: var(--space-2) var(--space-2); }
+  .proc-hito__estado-movil { display: table; margin-top: 4px; }
 }

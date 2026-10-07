@@ -122,22 +122,35 @@
 
   function panel(id) { return app.querySelector(`[data-panel="${id}"]`); }
 
-  // Etapas del documento de relevamiento que componen un hito
-  function tablaEtapas(ids) {
-    const etapas = ids.map(id => data.etapas.find(e => e.id === id)).filter(Boolean);
-    if (!etapas.length) return '<p class="proc-hito__vacio">Sin etapas asociadas en el documento de relevamiento.</p>';
-    return `
-      <table class="proc-subtable">
-        <thead><tr><th>Etapa</th><th>Descripción</th><th>Área responsable</th></tr></thead>
-        <tbody>
-          ${etapas.map(e => `
-            <tr>
-              <td class="proc-table__num">${typeof e.id === 'number' ? esc(e.id) : '—'}</td>
-              <td>${esc(e.nombre)}</td>
-              <td>${esc(e.area)}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`;
+  // Tabla única: etapas del relevamiento en orden y, al cerrar cada tramo,
+  // el hito donde cambia la responsabilidad. Cada hito se ubica después de
+  // la última etapa que lo compone; los que no tienen etapa van al final.
+  function filasEtapasHitos() {
+    const ultimaEtapa = h => (h.etapas && h.etapas.length) ? Math.max(...h.etapas) : null;
+    const filaHito = h => `
+      <tr class="proc-hito">
+        <td class="proc-table__num"><span class="proc-hito__tag">H${esc(h.n)}</span></td>
+        <td class="proc-hito__nombre">${esc(h.nombre)}<span class="status-badge status-badge--${estadoClase(h.estado)} proc-hito__estado-movil">${esc(h.estado)}</span></td>
+        <td>${esc(h.responsable || '—')}</td>
+        <td><span class="status-badge status-badge--${estadoClase(h.estado)}">${esc(h.estado)}</span></td>
+      </tr>`;
+    let filas = '';
+    data.etapas.forEach(e => {
+      filas += `
+      <tr class="proc-etapa">
+        <td class="proc-table__num">${esc(e.id)}</td>
+        <td>${esc(e.nombre)}</td>
+        <td>${esc(e.area)}</td>
+        <td></td>
+      </tr>`;
+      data.hitos.filter(h => ultimaEtapa(h) === e.id).forEach(h => { filas += filaHito(h); });
+    });
+    const sinEtapa = data.hitos.filter(h => ultimaEtapa(h) === null);
+    if (sinEtapa.length) {
+      filas += `<tr class="proc-etapa proc-etapa--grupo"><td></td><td colspan="3">Hitos sin etapa asociada en el relevamiento</td></tr>`;
+      sinEtapa.forEach(h => { filas += filaHito(h); });
+    }
+    return filas;
   }
 
   // ── Resumen ──
@@ -162,28 +175,26 @@
       h += `
         <div class="proc-card">
           <div class="proc-card__head">
-            <h2 class="proc-card__title">Hitos de traspaso de responsabilidad</h2>
+            <h2 class="proc-card__title">${Array.isArray(data.etapas) ? 'Etapas e hitos de traspaso de responsabilidad' : 'Hitos de traspaso de responsabilidad'}</h2>
             <span class="proc-card__count">${resueltos} de ${data.hitos.length} ${data.estadosValidacion ? 'validados' : 'resueltos'}</span>
           </div>
+          ${Array.isArray(data.etapas) ? `
+          <table class="proc-table proc-table--etapas">
+            <thead><tr><th>N°</th><th>Etapa / hito</th><th>Área responsable</th><th>Estado</th></tr></thead>
+            <tbody>${filasEtapasHitos()}</tbody>
+          </table>` : `
           <table class="proc-table">
             <thead><tr><th>N°</th><th>Hito</th><th>Responsable</th><th>Estado</th></tr></thead>
             <tbody>
-              ${data.hitos.map(x => {
-                const conEtapas = Array.isArray(x.etapas) && Array.isArray(data.etapas);
-                const nombre = conEtapas
-                  ? `<button type="button" class="proc-hito__toggle" data-hito="${esc(x.n)}" aria-expanded="false" aria-controls="proc-hito-${esc(x.n)}"><i class="ti ti-chevron-right" aria-hidden="true"></i> ${esc(x.nombre)}</button>`
-                  : esc(x.nombre);
-                return `
-                <tr class="${conEtapas ? 'proc-hito' : ''}">
+              ${data.hitos.map(x => `
+                <tr>
                   <td class="proc-table__num">${esc(x.n)}</td>
-                  <td>${nombre}</td>
+                  <td>${esc(x.nombre)}</td>
                   <td>${esc(x.responsable || '—')}</td>
                   <td><span class="status-badge status-badge--${estadoClase(x.estado)}">${esc(x.estado)}</span></td>
-                </tr>
-                ${conEtapas ? `<tr class="proc-hito__detalle" id="proc-hito-${esc(x.n)}" hidden><td colspan="4">${tablaEtapas(x.etapas)}</td></tr>` : ''}`;
-              }).join('')}
+                </tr>`).join('')}
             </tbody>
-          </table>
+          </table>`}
           ${data.estadosValidacion ? `
           <p class="proc-table__legend">
             ${Object.entries(data.estadosValidacion).map(([k, v]) => `<span><span class="status-badge status-badge--${estadoClase(k)}">${esc(k)}</span> ${esc(v)}</span>`).join('')}
@@ -355,14 +366,6 @@
 
   function wireEventos() {
     app.addEventListener('click', (e) => {
-      const hito = e.target.closest('.proc-hito__toggle');
-      if (hito) {
-        const det = document.getElementById(hito.getAttribute('aria-controls'));
-        const abierto = hito.getAttribute('aria-expanded') === 'true';
-        hito.setAttribute('aria-expanded', String(!abierto));
-        if (det) det.hidden = abierto;
-        return;
-      }
       const tab = e.target.closest('.section-tab');
       if (tab) return mostrarTab(tab.dataset.tab);
       const diag = e.target.closest('.proc-diagram-item');
