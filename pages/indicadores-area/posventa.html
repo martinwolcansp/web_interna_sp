@@ -386,6 +386,8 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   // pasan cuando no hay ningun filtro elegido.
   function crearFiltrosPeriodo(contenedorId, fechas, alCambiar) {
     var cont = $(contenedorId);
+    // Se rearma en cada carga de datos (los años dependen de lo que haya en la base).
+    cont.querySelectorAll(".chk-filtro, .chk-limpiar").forEach(function (el) { el.remove(); });
     var anios = Array.from(new Set(fechas.filter(Boolean).map(function (f) { return f.slice(0, 4); }))).sort();
     var filtros = {
       anio: crearFiltro(cont, contenedorId + "-anio", "Año", anios.map(function (a) { return { valor: a, etiqueta: a }; }), alCambiar),
@@ -650,12 +652,12 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     ]);
     DATOS.casos = res[0]; DATOS.relev = res[1]; DATOS.enc = res[2];
 
+    filtroInst = crearFiltrosPeriodo("filtros-inst",
+      DATOS.relev.map(function (r) { return r.fecha_creacion; }).concat(DATOS.casos.map(function (c) { return c.fecha_fin_inst; })),
+      pintarInstalaciones);
+    filtroEnc = crearFiltrosPeriodo("filtros-enc", DATOS.enc.map(function (e) { return e.fecha; }), pintarEncuestas);
     if (!iniciado) {
       iniciado = true;
-      filtroInst = crearFiltrosPeriodo("filtros-inst",
-        DATOS.relev.map(function (r) { return r.fecha_creacion; }).concat(DATOS.casos.map(function (c) { return c.fecha_fin_inst; })),
-        pintarInstalaciones);
-      filtroEnc = crearFiltrosPeriodo("filtros-enc", DATOS.enc.map(function (e) { return e.fecha; }), pintarEncuestas);
       tablaRelev = crearTabla("tabla-relev", "buscar-relev", "cuenta-relev", [
         { titulo: "Número", valor: function (r) { return r.numero_caso || ""; }, clase: "nowrap" },
         { titulo: "Nro cuenta", valor: function (r) { return r.nro_cuenta || ""; }, orden: function (r) { return +r.nro_cuenta || 0; } },
