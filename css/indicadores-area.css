@@ -1,0 +1,35 @@
+/* ============================================================
+   indicadores-area.css — Mosaico "Indicadores por Área".
+   Mismo armado que informes-mkt.css: selector (.mapa-topbar /
+   .version-selector de components.css) + el área en un iframe.
+   ============================================================ */
+
+.indicadores-wrap {
+  /* Más ancho que el contenido estándar: las matrices tienen un mes por columna. */
+  max-width: 1400px;
+  margin: var(--space-10) auto;
+  padding: 0 var(--space-6) 3rem;
+}
+
+.indicadores-frame-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+
+.indicadores-frame-wrap[hidden] { display: none; }
+
+.indicadores-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  /* Alto inicial; js/indicadores-area.js lo ajusta al contenido. */
+  height: 600px;
+}
+
+.indicadores-vacio {
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 3rem 0;
+}

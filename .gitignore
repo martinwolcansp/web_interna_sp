@@ -5,3 +5,6 @@ servicios/**/certificados/
 *.pem
 __pycache__/
 *.py[cod]
+
+# Salidas de las pruebas desde la PC (datos de clientes)
+servicios/**/salida_prueba/

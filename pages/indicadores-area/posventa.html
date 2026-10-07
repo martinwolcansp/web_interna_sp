@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indicadores de Posventa — SP Seguridad</title>
+<style>
+/* Mismo modelo visual que pages/informes-mkt/actualizable.html */
+:root {
+  --navy: #1F3864; --navy-solid: #1F3864; --ink: #202124; --second: #52514E; --muted: #6B6B6B;
+  --rule: #DEDCD3; --light-fill: #EEF1F6; --blue: #2a78d6; --orange: #eb6834;
+  --page: #F7F8FA; --surface: #FFFFFF;
+  --win-bg: #E6F4EC; --win-border: #bfe3cd; --win-text: #1e7a44;
+  --warn-bg: #FCEEE3;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: Calibri, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15.5px; line-height: 1.55;
+}
+.wrap { max-width: 1600px; margin: 0 auto; padding: 28px 24px 64px; }
+header.report-header { border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 22px; }
+header.report-header .eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .02em; margin-bottom: 6px; }
+header.report-header h1 { color: var(--navy); font-size: 26px; margin: 0 0 6px; font-weight: 700; }
+header.report-header .sub { color: var(--second); font-size: 15.5px; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--rule); }
+.tab-btn { appearance: none; border: 1px solid transparent; background: transparent; color: var(--second); font: inherit; font-size: 14px; padding: 9px 14px; cursor: pointer; border-radius: 6px 6px 0 0; margin-bottom: -1px; }
+.tab-btn:hover { background: var(--light-fill); color: var(--navy); }
+.tab-btn.active { color: var(--navy); font-weight: 700; border: 1px solid var(--rule); border-bottom-color: var(--surface); background: var(--surface); }
+main { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 28px 28px; }
+.tab-panel { display: none; padding-top: 18px; }
+.tab-panel.active { display: block; }
+.tab-panel h2 { color: var(--navy); font-size: 21px; margin: 0 0 16px; padding-left: 12px; border-left: 4px solid var(--navy); }
+.tab-panel h3 { color: var(--navy); font-size: 16px; margin: 0 0 8px; }
+.note-box { background: var(--light-fill); border-left: 4px solid var(--navy); padding: 12px 16px; margin: 10px 0 18px; border-radius: 0 6px 6px 0; font-size: 14.5px; }
+
+/* KPIs */
+.kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 22px; }
+.kpi-card { flex: 1 1 170px; background: var(--light-fill); border-radius: 8px; padding: 14px 16px; border-top: 3px solid var(--navy); }
+.kpi-num { font-size: 26px; font-weight: 700; line-height: 1.1; color: var(--navy); }
+.kpi-label { font-size: 12.5px; color: var(--second); margin-top: 4px; }
+
+/* Bloques */
+.grid-2 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.bloque { margin: 0 0 26px; }
+.bloque-nota { font-size: 12.5px; color: var(--second); margin-top: 6px; }
+@media (max-width: 980px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Matrices (mismo estilo que .pivot del informe MKT) */
+.pivot-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; }
+.pivot { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0; }
+.pivot th { background: var(--navy-solid); color: #fff; font-weight: 600; padding: 7px 10px; text-align: center; white-space: nowrap; border-left: 1px solid rgba(255,255,255,.18); }
+.pivot th.pv-fila { text-align: left; border-left: 0; }
+.pivot td { padding: 7px 10px; border-bottom: 1px solid var(--rule); text-align: center; font-variant-numeric: tabular-nums; }
+.pivot td.pv-fila { text-align: left; white-space: nowrap; }
+.pivot td.pv-total, .pivot th.pv-total { font-weight: 700; color: var(--navy); background: #dfe6f2; }
+.pivot thead th.pv-total { background: #16294d; color: #fff; }
+.pivot td.pv-cero { color: #b7b4ab; }
+.pivot tfoot td { font-weight: 700; color: var(--navy); background: var(--light-fill); border-top: 2px solid var(--navy); border-bottom: 0; }
+.pivot th.pv-fila, .pivot td.pv-fila { position: sticky; left: 0; z-index: 1; }
+.pivot td.pv-fila { background: var(--surface); }
+.pivot tfoot td.pv-fila { background: var(--light-fill); }
+.vacio { color: var(--muted); font-style: italic; padding: 10px 0; }
+
+/* Tortas */
+.donut-row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; margin: 8px 0 22px; }
+.donut-block { flex: 1 1 280px; min-width: 260px; }
+.donut-block-title { font-size: 13.5px; color: var(--navy); font-weight: 700; margin-bottom: 8px; }
+.donut-flex { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.donut-center-num { font-size: 30px; font-weight: 700; fill: var(--navy); }
+.donut-center-sub { font-size: 11px; fill: var(--muted); }
+.chart-legend-wrap { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.legend-item { display: inline-flex; align-items: center; gap: 8px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+
+/* Filtros con casillas (estilo segmentador de Power BI) */
+.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; margin: 0 0 18px; background: var(--light-fill); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; }
+.filtros-titulo { color: var(--navy); font-weight: 700; font-size: 14px; margin-right: 4px; }
+.chk-filtro { position: relative; }
+.chk-btn { appearance: none; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font: inherit; font-size: 13.5px; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chk-btn:hover, .chk-btn[aria-expanded="true"] { border-color: var(--navy); }
+.chk-btn .chk-nombre { color: var(--second); }
+.chk-btn .chk-valor { font-weight: 700; color: var(--navy); }
+.chk-btn.chk-activo { background: var(--navy); border-color: var(--navy); }
+.chk-btn.chk-activo .chk-nombre, .chk-btn.chk-activo .chk-valor { color: #fff; }
+.chk-panel { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 210px; max-height: 340px; overflow: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 6px; }
+.chk-panel[hidden] { display: none; }
+.chk-op { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 5px; font-size: 13.5px; cursor: pointer; user-select: none; }
+.chk-op:hover { background: var(--light-fill); }
+.chk-op input { width: 15px; height: 15px; accent-color: var(--navy); margin: 0; cursor: pointer; }
+.chk-op--todos { border-bottom: 1px solid var(--rule); border-radius: 5px 5px 0 0; margin-bottom: 4px; font-weight: 600; color: var(--navy); }
+.chk-limpiar { appearance: none; border: 1px solid var(--rule); background: #fff; color: var(--second); font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.chk-limpiar:hover { background: var(--surface); border-color: var(--navy); color: var(--navy); }
+.chk-limpiar[hidden] { display: none; }
+
+/* Detalle */
+.explorer { margin: 4px 0 8px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.explorer-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--light-fill); border-bottom: 1px solid var(--rule); }
+.explorer-title { font-weight: 700; color: var(--navy); font-size: 13.5px; }
+.explorer-search { border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; width: 220px; }
+.explorer-count { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.table-scroll { max-height: 520px; overflow: auto; }
+.data-table { width: 100%; border-collapse: collapse; margin: 0; font-size: 13.5px; }
+.data-table th { background: var(--navy-solid); color: #fff; text-align: left; padding: 8px 10px; font-weight: 600; position: sticky; top: 0; z-index: 2; white-space: nowrap; cursor: pointer; user-select: none; }
+.data-table th:hover { background: #16294d; }
+.data-table th .sort-arrow { font-size: 10px; opacity: .6; margin-left: 3px; }
+.data-table td { padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.data-table td.nowrap { white-space: nowrap; }
+.data-table td.texto-largo { min-width: 280px; }
+
+/* Barra de actualizacion (igual que el informe MKT) */
+.upd-hero { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 16px; background: var(--navy); color: #fff; border-left: 6px solid #8fb3e8; border-radius: 0 6px 6px 0; }
+.upd-hero[hidden] { display: none; }
+.upd-hero-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; opacity: .85; }
+.upd-hero-fecha { font-size: 22px; font-weight: 700; }
+.upd-hero-det { font-size: 13.5px; opacity: .9; }
+.upd-hero--atrasada { background: var(--warn-bg); color: var(--ink); border-left-color: var(--orange); }
+.upd-hero--atrasada .upd-hero-fecha { color: #b3261e; }
+.upd-bar { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.upd-btn[hidden], .upd-menu-btn[hidden] { display: none; }
+.upd-btn { appearance: none; border: 0; background: var(--navy); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; padding: 7px 16px; border-radius: 5px; cursor: pointer; }
+.upd-btn:hover { background: #16294d; }
+.upd-btn:disabled { opacity: .55; cursor: progress; }
+.upd-menu-btn { appearance: none; border: 1px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 14px; border-radius: 5px; cursor: pointer; }
+.upd-menu-btn[aria-expanded="true"], .upd-menu-btn:hover { background: var(--navy); color: #fff; }
+.upd-estado { font-size: 13px; color: var(--second); }
+.upd-estado:empty { display: none; }
+.upd-estado--error { color: #b3261e; }
+.upd-estado--ok { color: var(--win-text); }
+.upd-panel { margin-top: 10px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; }
+.upd-panel[hidden] { display: none; }
+.upd-panel-ayuda { color: var(--second); font-size: 13px; margin-bottom: 8px; }
+.upd-hist-scroll { max-height: 300px; overflow: auto; border: 1px solid var(--rule); border-radius: 6px; }
+.upd-hist { width: 100%; border-collapse: collapse; font-size: 13px; }
+.upd-hist th { position: sticky; top: 0; background: var(--light-fill); color: var(--navy); text-align: left; font-weight: 600; padding: 7px 10px; }
+.upd-hist td { padding: 7px 10px; border-top: 1px solid var(--rule); vertical-align: top; }
+.upd-hist .upd-det { color: var(--second); max-width: 420px; }
+.upd-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; color: #fff; }
+.upd-tag--ok { background: #2a9d5c; } .upd-tag--error { background: #c0392b; } .upd-tag--en_curso { background: #eb6834; }
+footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 22px; }
+.aviso-acceso { margin: 40px auto; max-width: 560px; text-align: center; color: var(--second); }
+@media (max-width: 640px) { .wrap { padding: 16px 12px 40px; } main { padding: 4px 14px 20px; } header.report-header h1 { font-size: 20px; } .explorer-search { width: 160px; } }
+@media print { nav.tabs, .filtros, .upd-bar, .upd-panel { display: none; } .tab-panel { display: block !important; page-break-before: always; } main { border: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="report-header">
+    <div class="eyebrow">SP Seguridad Privada &middot; Indicadores por Área &middot; Posventa</div>
+    <h1>Indicadores de Posventa</h1>
+    <div class="sub">Relevamientos posventa e instalaciones de NetSuite, encuestas de satisfacción de GHL</div>
+    <div class="upd-hero" id="upd-hero" hidden>
+      <span class="upd-hero-label">Última actualización</span>
+      <span class="upd-hero-fecha" id="upd-hero-fecha"></span>
+      <span class="upd-hero-det" id="upd-hero-det"></span>
+    </div>
+    <div class="upd-bar" id="upd-bar">
+      <button type="button" class="upd-btn" id="upd-btn" hidden>Actualizar ahora</button>
+      <button type="button" class="upd-menu-btn" id="upd-menu-btn" aria-expanded="false" aria-controls="upd-panel" hidden>Actualizaciones anteriores &#9662;</button>
+      <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
+    </div>
+    <div class="upd-panel" id="upd-panel" hidden>
+      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite todos los casos de instalación y relevamientos (no sólo los nuevos) y de GHL las encuestas. Además del botón, se actualiza sola de lunes a viernes.</div>
+      <div class="upd-hist-scroll">
+        <table class="upd-hist">
+          <thead><tr><th>Actualizada el</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
+          <tbody id="upd-hist-body"><tr><td colspan="4">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Reportes de Posventa">
+    <button type="button" class="tab-btn active" data-tab="instalaciones" role="tab" aria-selected="true" aria-controls="panel-instalaciones">Análisis Posventa Instalaciones</button>
+    <button type="button" class="tab-btn" data-tab="encuestas" role="tab" aria-selected="false" aria-controls="panel-encuestas">Encuestas Posventa</button>
+  </nav>
+
+  <main>
+    <!-- ============ Pestaña 1 ============ -->
+    <section class="tab-panel active" id="panel-instalaciones" role="tabpanel">
+      <h2>Análisis Posventa Instalaciones</h2>
+      <div class="filtros" id="filtros-inst">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
+      <div class="kpi-row" id="kpi-inst"></div>
+
+      <div class="bloque">
+        <h3>Análisis por acción de posventa</h3>
+        <div id="pv-acciones"></div>
+        <div class="bloque-nota">Cantidad de relevamientos por acción y mes de creación del relevamiento. Un relevamiento puede tener varias acciones.</div>
+      </div>
+
+      <div class="bloque">
+        <h3>Instalaciones finalizadas por período</h3>
+        <div id="pv-instalaciones"></div>
+        <div class="bloque-nota">Por mes de fecha de fin de instalación. Una instalación con dos casos (alarma y cámaras) cuenta una vez; la fila Casos muestra cuántos casos hubo.</div>
+      </div>
+
+      <div class="bloque">
+        <h3>Relevamientos con y sin caso de instalación</h3>
+        <div id="pv-caso"></div>
+      </div>
+
+      <div class="bloque">
+        <h3>Clasificación por tipo de posventa</h3>
+        <div id="pv-tipo"></div>
+        <div class="bloque-nota">Relevamientos con caso de instalación, según el tipo de posventa del caso.</div>
+      </div>
+
+      <div class="bloque">
+        <h3>Detalle de relevamientos</h3>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Relevamientos posventa</span>
+            <input type="search" class="explorer-search" id="buscar-relev" placeholder="Buscar caso, cuenta, empresa…">
+            <span class="explorer-count" id="cuenta-relev"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table" id="tabla-relev"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Pestaña 2 ============ -->
+    <section class="tab-panel" id="panel-encuestas" role="tabpanel">
+      <h2>Encuestas Posventa</h2>
+      <div class="filtros" id="filtros-enc">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
+      <div class="kpi-row" id="kpi-enc"></div>
+
+      <div class="grid-2">
+        <div class="bloque">
+          <h3>Encuestas por estado y mes</h3>
+          <div id="pv-enc-estado"></div>
+          <div class="bloque-nota">Mes en que se envió la encuesta. Si un contacto recibió más de una, cuenta la más reciente.</div>
+        </div>
+        <div class="bloque">
+          <div class="donut-row" id="donut-estado"></div>
+        </div>
+      </div>
+
+      <h3>Resultados de las encuestas finalizadas</h3>
+      <div class="donut-row" id="donuts-resultado"></div>
+
+      <div class="bloque">
+        <h3>Detalle de encuestas</h3>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Encuestas posventa</span>
+            <input type="search" class="explorer-search" id="buscar-enc" placeholder="Buscar contacto, comentario…">
+            <span class="explorer-count" id="cuenta-enc"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table" id="tabla-enc"></table></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Indicadores de Posventa &middot; datos de NetSuite y GHL</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // URL del servicio indicadores-api en Coolify.
+  var API_BASE_URL = "https://indicadores-api.200.5.196.50.sslip.io";
+  var AREA = "posventa";
+  var SECCION = "indicadores-posventa";
+  var TZ = "America/Argentina/Buenos_Aires";
+  var POLL_MS = 4000;
+  var HISTORIAL = 20;
+  var MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  var MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  var PALETA = ["#1F3864", "#2a78d6", "#2a9d5c", "#8e6bb0", "#eb6834", "#9AA0A6", "#c9a227", "#6b6b6b"];
+  var COLOR_RESULTADO = {
+    "Excelente": "#2a9d5c", "Buena": "#2a78d6", "Mala": "#c0392b",
+    "Las superó": "#2a9d5c", "Las cumplió": "#2a78d6", "No las cumplió": "#c0392b",
+    "Otra respuesta": "#c9a227", "Sin respuesta": "#9AA0A6",
+  };
+  var CALIFICACIONES = ["Excelente", "Buena", "Mala"];
+  var EXPECTATIVAS = ["Las superó", "Las cumplió", "No las cumplió"];
+  // Texto libre (la persona escribio en vez de elegir): en las tortas se agrupa.
+  function opcion(valor, validas) { return !valor ? "Sin respuesta" : validas.indexOf(valor) >= 0 ? valor : "Otra respuesta"; }
+
+  var sb = window.supabaseClient;
+  var DATOS = { casos: [], relev: [], enc: [] };
+  var puedeEditar = false;
+  var pollTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fmtDia(s) { if (!s) return ""; var p = String(s).slice(0, 10).split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
+  function fmtFechaHora(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    return d.toLocaleDateString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }) +
+      " " + d.toLocaleTimeString("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }) + " hs";
+  }
+  function anioMes(fecha) { return fecha ? String(fecha).slice(0, 7) : null; }
+  function etiquetaMes(am) { if (!am) return "Sin fecha"; var p = am.split("-"); return MESES_CORTO[+p[1] - 1] + " " + p[0]; }
+  function contar(lista, clave) {
+    var m = {};
+    lista.forEach(function (x) { var k = clave(x); m[k] = (m[k] || 0) + 1; });
+    return m;
+  }
+  function pct(a, b) { return b ? Math.round(100 * a / b) + "%" : "–"; }
+
+  // =====================================================================
+  // Filtros con casillas
+  // =====================================================================
+  // Cada filtro guarda el conjunto de valores elegidos; vacio = todos.
+  function crearFiltro(contenedor, id, nombre, opciones, alCambiar) {
+    var estado = { elegidos: new Set() };
+    var cont = document.createElement("div");
+    cont.className = "chk-filtro";
+    cont.innerHTML =
+      '<button type="button" class="chk-btn" aria-expanded="false" aria-haspopup="true" id="' + id + '-btn">' +
+      '<span class="chk-nombre">' + esc(nombre) + ':</span> <span class="chk-valor">Todos</span> &#9662;</button>' +
+      '<div class="chk-panel" id="' + id + '-panel" hidden role="group" aria-label="' + esc(nombre) + '">' +
+      '<label class="chk-op chk-op--todos"><input type="checkbox" data-todos="1" checked> Seleccionar todo</label>' +
+      opciones.map(function (o) {
+        return '<label class="chk-op"><input type="checkbox" value="' + esc(o.valor) + '" checked> ' + esc(o.etiqueta) + "</label>";
+      }).join("") + "</div>";
+    contenedor.appendChild(cont);
+
+    var btn = cont.querySelector(".chk-btn");
+    var panel = cont.querySelector(".chk-panel");
+    var todos = panel.querySelector("[data-todos]");
+    var casillas = Array.prototype.slice.call(panel.querySelectorAll("input:not([data-todos])"));
+
+    function pintarBoton() {
+      var marcadas = casillas.filter(function (c) { return c.checked; });
+      var valor = marcadas.length === casillas.length ? "Todos"
+        : marcadas.length === 0 ? "Ninguno"
+        : marcadas.length === 1 ? marcadas[0].parentNode.textContent.trim()
+        : marcadas.length + " elegidos";
+      btn.querySelector(".chk-valor").textContent = valor;
+      btn.classList.toggle("chk-activo", marcadas.length !== casillas.length);
+      todos.checked = marcadas.length === casillas.length;
+      todos.indeterminate = marcadas.length > 0 && marcadas.length < casillas.length;
+    }
+    function leer() {
+      var marcadas = casillas.filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+      // Todas marcadas = sin filtro. Ninguna marcada = no pasa nada (como el segmentador).
+      estado.elegidos = marcadas.length === casillas.length ? new Set() : new Set(marcadas.length ? marcadas : ["__ninguno__"]);
+      pintarBoton();
+      alCambiar();
+    }
+    todos.addEventListener("change", function () {
+      casillas.forEach(function (c) { c.checked = todos.checked; });
+      leer();
+    });
+    casillas.forEach(function (c) { c.addEventListener("change", leer); });
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var abrir = panel.hidden;
+      document.querySelectorAll(".chk-panel").forEach(function (p) { p.hidden = true; });
+      document.querySelectorAll(".chk-btn").forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+      panel.hidden = !abrir;
+      btn.setAttribute("aria-expanded", abrir ? "true" : "false");
+    });
+    panel.addEventListener("click", function (e) { e.stopPropagation(); });
+
+    return {
+      pasa: function (valor) { return estado.elegidos.size === 0 || estado.elegidos.has(String(valor)); },
+      activo: function () { return estado.elegidos.size > 0; },
+      limpiar: function () { casillas.forEach(function (c) { c.checked = true; }); estado.elegidos = new Set(); pintarBoton(); },
+    };
+  }
+  document.addEventListener("click", function () {
+    document.querySelectorAll(".chk-panel").forEach(function (p) { p.hidden = true; });
+    document.querySelectorAll(".chk-btn").forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") document.querySelectorAll(".chk-panel").forEach(function (p) { p.hidden = true; });
+  });
+
+  // Filtro Año + Mes sobre una fecha (AAAA-MM-DD). Las filas sin fecha solo
+  // pasan cuando no hay ningun filtro elegido.
+  function crearFiltrosPeriodo(contenedorId, fechas, alCambiar) {
+    var cont = $(contenedorId);
+    var anios = Array.from(new Set(fechas.filter(Boolean).map(function (f) { return f.slice(0, 4); }))).sort();
+    var filtros = {
+      anio: crearFiltro(cont, contenedorId + "-anio", "Año", anios.map(function (a) { return { valor: a, etiqueta: a }; }), alCambiar),
+      mes: crearFiltro(cont, contenedorId + "-mes", "Mes", MESES.map(function (m, i) {
+        return { valor: String(i + 1).padStart(2, "0"), etiqueta: m };
+      }), alCambiar),
+    };
+    var limpiar = document.createElement("button");
+    limpiar.type = "button";
+    limpiar.className = "chk-limpiar";
+    limpiar.textContent = "Quitar filtros";
+    limpiar.hidden = true;
+    limpiar.addEventListener("click", function () { filtros.anio.limpiar(); filtros.mes.limpiar(); alCambiar(); });
+    cont.appendChild(limpiar);
+    return {
+      pasa: function (fecha) {
+        if (!fecha) return !filtros.anio.activo() && !filtros.mes.activo();
+        return filtros.anio.pasa(fecha.slice(0, 4)) && filtros.mes.pasa(fecha.slice(5, 7));
+      },
+      pintarLimpiar: function () { limpiar.hidden = !(filtros.anio.activo() || filtros.mes.activo()); },
+    };
+  }
+
+  // =====================================================================
+  // Matriz (filas x meses) con totales
+  // =====================================================================
+  function matriz(titulo, filas, meses, valor, opciones) {
+    opciones = opciones || {};
+    if (!filas.length || !meses.length) return '<div class="vacio">Sin datos para los filtros elegidos.</div>';
+    var totCol = {}, totGral = 0;
+    var cuerpo = filas.map(function (f) {
+      var totFila = 0;
+      var celdas = meses.map(function (m) {
+        var n = valor(f, m) || 0;
+        totFila += n; totCol[m] = (totCol[m] || 0) + n;
+        return '<td class="' + (n ? "" : "pv-cero") + '">' + n + "</td>";
+      }).join("");
+      totGral += totFila;
+      return '<tr><td class="pv-fila">' + esc(f) + "</td>" + celdas + '<td class="pv-total">' + totFila + "</td></tr>";
+    }).join("");
+    var pie = opciones.sinTotalFilas ? "" :
+      '<tfoot><tr><td class="pv-fila">Total</td>' + meses.map(function (m) { return "<td>" + (totCol[m] || 0) + "</td>"; }).join("") +
+      "<td>" + totGral + "</td></tr></tfoot>";
+    return '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">' + esc(titulo) + "</th>" +
+      meses.map(function (m) { return "<th>" + esc(etiquetaMes(m)) + "</th>"; }).join("") +
+      '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
+  }
+
+  function mesesDe(lista, campo) {
+    var s = new Set(lista.map(function (x) { return anioMes(x[campo]); }));
+    return Array.from(s).sort(function (a, b) { return a === null ? 1 : b === null ? -1 : a < b ? -1 : 1; });
+  }
+
+  // =====================================================================
+  // Torta (mismo dibujo que el informe MKT)
+  // =====================================================================
+  function torta(titulo, pares, nLabel, colores) {
+    var total = pares.reduce(function (s, p) { return s + p[1]; }, 0);
+    if (!total) return '<div class="donut-block"><div class="donut-block-title">' + esc(titulo) + '</div><div class="vacio">Sin datos.</div></div>';
+    var r = 76, cx = 90, cy = 90, circ = 2 * Math.PI * r, offset = 0, segs = "", ley = "";
+    pares.forEach(function (p, i) {
+      if (!p[1]) return;
+      var color = (colores && colores[p[0]]) || PALETA[i % PALETA.length];
+      var largo = circ * p[1] / total, porc = (100 * p[1] / total).toFixed(1);
+      segs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="28" stroke-dasharray="' +
+        largo.toFixed(2) + " " + (circ - largo).toFixed(2) + '" stroke-dashoffset="-' + offset.toFixed(2) + '" transform="rotate(-90 ' + cx + " " + cy +
+        ')"><title>' + esc(p[0]) + ": " + p[1] + " (" + porc + "%)</title></circle>";
+      ley += '<span class="legend-item"><span class="swatch" style="background:' + color + '"></span>' + esc(p[0]) + ": <strong>" + p[1] + "</strong> (" + porc + "%)</span>";
+      offset += largo;
+    });
+    return '<div class="donut-block"><div class="donut-block-title">' + esc(titulo) + " &middot; n=" + total + '</div><div class="donut-flex">' +
+      '<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="' + esc(titulo) + '"><circle cx="' + cx + '" cy="' + cy + '" r="' + r +
+      '" fill="none" stroke="#DEDCD3" stroke-width="28"/>' + segs +
+      '<text x="' + cx + '" y="87" text-anchor="middle" class="donut-center-num">' + total + "</text>" +
+      '<text x="' + cx + '" y="106" text-anchor="middle" class="donut-center-sub">' + esc(nLabel) + "</text></svg>" +
+      '<div class="chart-legend-wrap">' + ley + "</div></div></div>";
+  }
+
+  function ordenarPares(mapa, orden) {
+    var pares = Object.keys(mapa).map(function (k) { return [k, mapa[k]]; });
+    if (orden) {
+      return pares.sort(function (a, b) {
+        var ia = orden.indexOf(a[0]), ib = orden.indexOf(b[0]);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || b[1] - a[1];
+      });
+    }
+    return pares.sort(function (a, b) { return b[1] - a[1]; });
+  }
+
+  // =====================================================================
+  // Tabla de detalle (busqueda + orden por columna)
+  // =====================================================================
+  function crearTabla(tablaId, buscarId, cuentaId, columnas, textoBusqueda) {
+    var estado = { filas: [], orden: null, asc: true };
+    var tabla = $(tablaId);
+    function pintar() {
+      var q = $(buscarId).value.trim().toLowerCase();
+      var filas = estado.filas.filter(function (f) { return !q || textoBusqueda(f).toLowerCase().indexOf(q) >= 0; });
+      if (estado.orden !== null) {
+        var col = columnas[estado.orden];
+        filas = filas.slice().sort(function (a, b) {
+          var x = col.orden ? col.orden(a) : col.valor(a), y = col.orden ? col.orden(b) : col.valor(b);
+          x = x === null || x === undefined ? "" : x; y = y === null || y === undefined ? "" : y;
+          return (x < y ? -1 : x > y ? 1 : 0) * (estado.asc ? 1 : -1);
+        });
+      }
+      tabla.innerHTML = "<thead><tr>" + columnas.map(function (c, i) {
+        var flecha = estado.orden === i ? (estado.asc ? "▲" : "▼") : "↕";
+        return '<th data-col="' + i + '">' + esc(c.titulo) + '<span class="sort-arrow">' + flecha + "</span></th>";
+      }).join("") + "</tr></thead><tbody>" + (filas.length ? filas.map(function (f) {
+        return "<tr>" + columnas.map(function (c) {
+          return '<td class="' + (c.clase || "") + '">' + esc(c.valor(f)) + "</td>";
+        }).join("") + "</tr>";
+      }).join("") : '<tr><td colspan="' + columnas.length + '" class="vacio">Sin resultados.</td></tr>') + "</tbody>";
+      $(cuentaId).textContent = filas.length + " de " + estado.filas.length;
+      tabla.querySelectorAll("th").forEach(function (th) {
+        th.addEventListener("click", function () {
+          var i = +th.getAttribute("data-col");
+          estado.asc = estado.orden === i ? !estado.asc : true;
+          estado.orden = i;
+          pintar();
+        });
+      });
+    }
+    $(buscarId).addEventListener("input", pintar);
+    return { mostrar: function (filas) { estado.filas = filas; pintar(); } };
+  }
+
+  // =====================================================================
+  // Pestaña 1: Analisis Posventa Instalaciones
+  // =====================================================================
+  var filtroInst, tablaRelev;
+
+  function pintarInstalaciones() {
+    filtroInst.pintarLimpiar();
+    var relev = DATOS.relev.filter(function (r) { return filtroInst.pasa(r.fecha_creacion); });
+    var casosFin = DATOS.casos.filter(function (c) { return c.fecha_fin_inst && filtroInst.pasa(c.fecha_fin_inst); });
+    var mesesRelev = mesesDe(relev, "fecha_creacion");
+
+    // KPIs
+    var instalaciones = new Set(casosFin.map(function (c) { return c.id_inst; }));
+    var conCaso = relev.filter(function (r) { return r.numero_caso; }).length;
+    $("kpi-inst").innerHTML = [
+      [relev.length, "Relevamientos posventa"],
+      [instalaciones.size, "Instalaciones finalizadas"],
+      [conCaso, "Relevamientos con caso de instalación"],
+      [pct(conCaso, relev.length), "Relevamientos con caso / total"],
+    ].map(function (k) { return '<div class="kpi-card"><div class="kpi-num">' + k[0] + '</div><div class="kpi-label">' + k[1] + "</div></div>"; }).join("");
+
+    // Acciones x mes
+    var porAccion = {};
+    relev.forEach(function (r) {
+      (r.acciones || []).forEach(function (a) {
+        var m = anioMes(r.fecha_creacion);
+        porAccion[a] = porAccion[a] || {};
+        porAccion[a][m] = (porAccion[a][m] || 0) + 1;
+      });
+    });
+    var acciones = Object.keys(porAccion).sort(function (a, b) {
+      var ta = 0, tb = 0;
+      Object.keys(porAccion[a]).forEach(function (m) { ta += porAccion[a][m]; });
+      Object.keys(porAccion[b]).forEach(function (m) { tb += porAccion[b][m]; });
+      return tb - ta;
+    });
+    $("pv-acciones").innerHTML = matriz("Acción posventa", acciones, mesesRelev, function (a, m) { return porAccion[a][m]; }, { sinTotalFilas: true });
+
+    // Instalaciones finalizadas por mes de fin (distintas por id_inst) y casos.
+    var porMes = {};
+    casosFin.forEach(function (c) {
+      var m = anioMes(c.fecha_fin_inst);
+      porMes[m] = porMes[m] || { inst: new Set(), casos: 0 };
+      porMes[m].inst.add(c.id_inst);
+      porMes[m].casos += 1;
+    });
+    $("pv-instalaciones").innerHTML = matriz("Mes de fin", ["Instalaciones", "Casos"], Object.keys(porMes).sort(), function (k, m) {
+      return k === "Instalaciones" ? porMes[m].inst.size : porMes[m].casos;
+    }, { sinTotalFilas: true });
+
+    // Con / sin caso x mes
+    var porCaso = {};
+    relev.forEach(function (r) {
+      var k = r.numero_caso ? "Caso Instalación" : "Sin Caso Instalación";
+      var m = anioMes(r.fecha_creacion);
+      porCaso[k] = porCaso[k] || {};
+      porCaso[k][m] = (porCaso[k][m] || 0) + 1;
+    });
+    $("pv-caso").innerHTML = matriz("Relevamiento", ["Caso Instalación", "Sin Caso Instalación"].filter(function (k) { return porCaso[k]; }),
+      mesesRelev, function (k, m) { return porCaso[k][m]; });
+
+    // Tipo de posventa x mes (solo con caso)
+    var relevCaso = relev.filter(function (r) { return r.numero_caso; });
+    var porTipo = {};
+    relevCaso.forEach(function (r) {
+      var k = r.tipo_posventa || "Sin tipo";
+      var m = anioMes(r.fecha_creacion);
+      porTipo[k] = porTipo[k] || {};
+      porTipo[k][m] = (porTipo[k][m] || 0) + 1;
+    });
+    var tipos = Object.keys(porTipo).sort(function (a, b) { return a === "Sin tipo" ? 1 : b === "Sin tipo" ? -1 : a.localeCompare(b); });
+    $("pv-tipo").innerHTML = matriz("Tipo de posventa", tipos, mesesDe(relevCaso, "fecha_creacion"), function (k, m) { return porTipo[k][m]; });
+
+    tablaRelev.mostrar(relev);
+  }
+
+  // =====================================================================
+  // Pestaña 2: Encuestas Posventa
+  // =====================================================================
+  var filtroEnc, tablaEnc;
+
+  function pintarEncuestas() {
+    filtroEnc.pintarLimpiar();
+    var enc = DATOS.enc.filter(function (e) { return filtroEnc.pasa(e.fecha); });
+    var fin = enc.filter(function (e) { return e.estado === "Finalizada"; });
+
+    $("kpi-enc").innerHTML = [
+      [enc.length, "Encuestas enviadas"],
+      [fin.length, "Encuestas finalizadas"],
+      [pct(fin.length, enc.length), "Tasa de respuesta"],
+      [pct(fin.filter(function (e) { return e.calificacion === "Excelente" || e.calificacion === "Buena"; }).length, fin.filter(function (e) { return e.calificacion; }).length), "Calificación buena o excelente"],
+    ].map(function (k) { return '<div class="kpi-card"><div class="kpi-num">' + k[0] + '</div><div class="kpi-label">' + k[1] + "</div></div>"; }).join("");
+
+    var porEstado = {};
+    enc.forEach(function (e) {
+      var m = anioMes(e.fecha);
+      porEstado[e.estado] = porEstado[e.estado] || {};
+      porEstado[e.estado][m] = (porEstado[e.estado][m] || 0) + 1;
+    });
+    $("pv-enc-estado").innerHTML = matriz("Estado", ["Enviada", "Finalizada"].filter(function (k) { return porEstado[k]; }),
+      mesesDe(enc, "fecha"), function (k, m) { return porEstado[k][m]; });
+
+    $("donut-estado").innerHTML = torta("Estado de las encuestas", ordenarPares(contar(enc, function (e) { return e.estado; }), ["Finalizada", "Enviada"]),
+      "encuestas", { "Finalizada": "#2a9d5c", "Enviada": "#2a78d6" });
+
+    var resto = ["Otra respuesta", "Sin respuesta"];
+    $("donuts-resultado").innerHTML =
+      torta("Calificación", ordenarPares(contar(fin, function (e) { return opcion(e.calificacion, CALIFICACIONES); }), CALIFICACIONES.concat(resto)), "finalizadas", COLOR_RESULTADO) +
+      torta("Expectativa", ordenarPares(contar(fin, function (e) { return opcion(e.expectativa, EXPECTATIVAS); }), EXPECTATIVAS.concat(resto)), "finalizadas", COLOR_RESULTADO);
+
+    tablaEnc.mostrar(enc);
+  }
+
+  // =====================================================================
+  // Carga de datos
+  // =====================================================================
+  async function leerTodo(tabla, select, orden) {
+    var filas = [], desde = 0, PAG = 1000;
+    for (;;) {
+      var r = await sb.from(tabla).select(select).order(orden, { ascending: false }).range(desde, desde + PAG - 1);
+      if (r.error) throw new Error(tabla + ": " + r.error.message);
+      filas = filas.concat(r.data);
+      if (r.data.length < PAG) return filas;
+      desde += PAG;
+    }
+  }
+
+  var iniciado = false;
+  async function cargarDatos() {
+    var res = await Promise.all([
+      leerTodo("ind_posventa_caso", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id"),
+      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo", "relevamiento_id"),
+      leerTodo("ind_posventa_encuesta", "contact_id,contacto,estado,fecha,calificacion,expectativa,comentarios", "contact_id"),
+    ]);
+    DATOS.casos = res[0]; DATOS.relev = res[1]; DATOS.enc = res[2];
+
+    if (!iniciado) {
+      iniciado = true;
+      filtroInst = crearFiltrosPeriodo("filtros-inst",
+        DATOS.relev.map(function (r) { return r.fecha_creacion; }).concat(DATOS.casos.map(function (c) { return c.fecha_fin_inst; })),
+        pintarInstalaciones);
+      filtroEnc = crearFiltrosPeriodo("filtros-enc", DATOS.enc.map(function (e) { return e.fecha; }), pintarEncuestas);
+      tablaRelev = crearTabla("tabla-relev", "buscar-relev", "cuenta-relev", [
+        { titulo: "Número", valor: function (r) { return r.numero_caso || ""; }, clase: "nowrap" },
+        { titulo: "Nro cuenta", valor: function (r) { return r.nro_cuenta || ""; }, orden: function (r) { return +r.nro_cuenta || 0; } },
+        { titulo: "Empresa", valor: function (r) { return r.empresa || ""; } },
+        { titulo: "Fecha de creación", valor: function (r) { return fmtDia(r.fecha_creacion); }, orden: function (r) { return r.fecha_creacion; }, clase: "nowrap" },
+        { titulo: "Acciones posventa", valor: function (r) { return (r.acciones || []).join(", "); } },
+        { titulo: "Comentarios posventa", valor: function (r) { return r.comentarios || ""; }, clase: "texto-largo" },
+        { titulo: "Tipo de posventa", valor: function (r) { return r.tipo_posventa || ""; } },
+      ], function (r) { return [r.numero_caso, r.nro_cuenta, r.empresa, (r.acciones || []).join(" "), r.comentarios, r.tipo_posventa, r.realizo].join(" "); });
+      tablaEnc = crearTabla("tabla-enc", "buscar-enc", "cuenta-enc", [
+        { titulo: "Contacto", valor: function (e) { return e.contacto || ""; } },
+        { titulo: "Fecha", valor: function (e) { return fmtDia(e.fecha); }, orden: function (e) { return e.fecha; }, clase: "nowrap" },
+        { titulo: "Estado", valor: function (e) { return e.estado || ""; } },
+        { titulo: "Calificación", valor: function (e) { return e.calificacion || ""; } },
+        { titulo: "Expectativa", valor: function (e) { return e.expectativa || ""; } },
+        { titulo: "Comentarios", valor: function (e) { return e.comentarios || ""; }, clase: "texto-largo" },
+      ], function (e) { return [e.contacto, e.estado, e.calificacion, e.expectativa, e.comentarios].join(" "); });
+    }
+    pintarInstalaciones();
+    pintarEncuestas();
+  }
+
+  // =====================================================================
+  // Ultima actualizacion, boton Actualizar e historial
+  // =====================================================================
+  function setEstado(texto, tipo) {
+    var el = $("upd-estado");
+    el.textContent = texto || "";
+    el.className = "upd-estado" + (tipo ? " upd-estado--" + tipo : "");
+  }
+  function hace(iso) {
+    var min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 1) return "recién";
+    if (min < 60) return "hace " + min + " min";
+    var h = Math.floor(min / 60);
+    if (h < 24) return "hace " + h + (h === 1 ? " hora" : " horas");
+    var d = Math.floor(h / 24);
+    return "hace " + d + (d === 1 ? " día" : " días");
+  }
+
+  async function pintarUltima() {
+    var r = await sb.from("ind_corrida").select("finalizado_en,origen,mensaje,stats")
+      .eq("area", AREA).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
+    if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
+    var c = r.data[0];
+    // Atrasada: mas de 2 dias habiles sin actualizar.
+    var horas = (Date.now() - new Date(c.finalizado_en).getTime()) / 3600000;
+    var atrasada = horas > (new Date().getDay() === 1 ? 96 : 48);
+    $("upd-hero").hidden = false;
+    $("upd-hero").classList.toggle("upd-hero--atrasada", atrasada);
+    $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
+    $("upd-hero-det").textContent = [c.origen === "automatica" ? "Automática" : "Manual", hace(c.finalizado_en),
+      atrasada ? "Los datos pueden estar desactualizados" : null].filter(Boolean).join(" · ");
+    $("report-footer").innerHTML = "SP Seguridad Privada &middot; Indicadores de Posventa &middot; datos de NetSuite y GHL, actualizados el " + esc(fmtFechaHora(c.finalizado_en));
+    if (c.mensaje && puedeEditar) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
+  }
+
+  async function cargarHistorial() {
+    var r = await sb.from("ind_corrida").select("id,estado,origen,iniciado_en,finalizado_en,mensaje,paso,stats")
+      .eq("area", AREA).order("iniciado_en", { ascending: false }).limit(HISTORIAL);
+    var body = $("upd-hist-body");
+    if (r.error) { body.innerHTML = '<tr><td colspan="4">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
+    if (!r.data.length) { body.innerHTML = '<tr><td colspan="4">Todavía no hay actualizaciones.</td></tr>'; return; }
+    var etiquetas = { ok: "OK", error: "Error", en_curso: "En curso" };
+    body.innerHTML = r.data.map(function (c) {
+      var s = c.stats || {};
+      var detalle = c.estado === "en_curso" ? (c.paso || "")
+        : c.estado === "error" ? (c.mensaje || "")
+        : [s.casos != null ? s.casos + " casos" : null, s.relevamientos != null ? s.relevamientos + " relevamientos" : null,
+           s.encuestas != null ? s.encuestas + " encuestas" : null, c.mensaje].filter(Boolean).join(" · ");
+      if (detalle.length > 200) detalle = detalle.slice(0, 200) + "…";
+      return "<tr><td>" + esc(fmtFechaHora(c.finalizado_en || c.iniciado_en)) + "</td>" +
+        "<td>" + (c.origen === "automatica" ? "Automática" : "Manual") + "</td>" +
+        '<td><span class="upd-tag upd-tag--' + esc(c.estado) + '">' + esc(etiquetas[c.estado] || c.estado) + "</span></td>" +
+        '<td class="upd-det">' + esc(detalle) + "</td></tr>";
+    }).join("");
+  }
+
+  function bloquear(b) {
+    $("upd-btn").disabled = b;
+    $("upd-btn").textContent = b ? "Actualizando…" : "Actualizar ahora";
+  }
+
+  function seguirCorrida(id) {
+    bloquear(true);
+    setEstado("Actualizando…");
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async function () {
+      var r = await sb.from("ind_corrida").select("estado,paso,mensaje").eq("id", id).single();
+      if (r.error) { setEstado("No se pudo consultar el avance: " + r.error.message, "error"); return; }
+      var c = r.data;
+      if (c.estado === "en_curso") { setEstado("Actualizando: " + (c.paso || "…")); return; }
+      clearInterval(pollTimer); pollTimer = null;
+      bloquear(false);
+      if (c.estado === "ok") {
+        setEstado(c.mensaje ? "Actualización terminada con avisos: " + c.mensaje : "Actualización terminada.", c.mensaje ? "error" : "ok");
+        await cargarDatos();
+        await pintarUltima();
+      } else {
+        setEstado("La actualización falló: " + (c.mensaje || "error desconocido") + ". Se siguen mostrando los datos anteriores.", "error");
+      }
+      if (!$("upd-panel").hidden) cargarHistorial();
+    }, POLL_MS);
+  }
+
+  async function actualizar() {
+    bloquear(true);
+    setEstado("Iniciando actualización…");
+    var s = await sb.auth.getSession();
+    var token = s.data && s.data.session && s.data.session.access_token;
+    if (!token) { bloquear(false); setEstado("Tu sesión venció: volvé a ingresar a la web interna.", "error"); return; }
+    try {
+      var resp = await fetch(API_BASE_URL + "/indicadores/" + AREA + "/actualizar", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+      var body = await resp.json().catch(function () { return {}; });
+      if (resp.status === 409 && body.detail && body.detail.corrida_id) {
+        setEstado("Ya había una actualización en curso; se muestra su avance.");
+        seguirCorrida(body.detail.corrida_id);
+        return;
+      }
+      if (!resp.ok) {
+        var det = body.detail;
+        bloquear(false);
+        setEstado("No se pudo iniciar la actualización: " + (typeof det === "string" ? det : (det && det.mensaje) || "error " + resp.status), "error");
+        return;
+      }
+      seguirCorrida(body.corrida_id);
+    } catch (e) {
+      bloquear(false);
+      setEstado("No se pudo contactar al servicio de actualización (" + e.message + ").", "error");
+    }
+  }
+
+  // =====================================================================
+  // Inicio
+  // =====================================================================
+  function iniciarPestanas() {
+    document.querySelectorAll(".tab-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-tab");
+        document.querySelectorAll(".tab-btn").forEach(function (b) {
+          b.classList.toggle("active", b === btn);
+          b.setAttribute("aria-selected", b === btn ? "true" : "false");
+        });
+        document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.toggle("active", p.id === "panel-" + id); });
+      });
+    });
+  }
+
+  function sinAcceso(mensaje) {
+    document.querySelector(".wrap").innerHTML = '<div class="aviso-acceso">' + esc(mensaje) + "</div>";
+  }
+
+  async function iniciar() {
+    iniciarPestanas();
+    var s = await sb.auth.getSession();
+    if (!s.data || !s.data.session) { sinAcceso("Iniciá sesión en la web interna para ver estos indicadores."); return; }
+    var ver = await sb.rpc("fn_tiene_permiso", { p_seccion_id: SECCION, p_nivel: "ver" });
+    if (!(ver && ver.data === true)) { sinAcceso("No tenés permiso para ver los indicadores de Posventa. Pedile a un administrador que te lo habilite."); return; }
+    var ed = await sb.rpc("fn_tiene_permiso", { p_seccion_id: SECCION, p_nivel: "editar" });
+    puedeEditar = !!(ed && ed.data === true);
+    $("upd-btn").hidden = !puedeEditar;
+    $("upd-menu-btn").hidden = !puedeEditar;
+    $("upd-btn").addEventListener("click", actualizar);
+    $("upd-menu-btn").addEventListener("click", function () {
+      var abrir = $("upd-panel").hidden;
+      $("upd-panel").hidden = !abrir;
+      $("upd-menu-btn").setAttribute("aria-expanded", abrir ? "true" : "false");
+      if (abrir) cargarHistorial();
+    });
+
+    try {
+      await cargarDatos();
+    } catch (e) {
+      setEstado("No se pudieron leer los datos: " + e.message, "error");
+      return;
+    }
+    await pintarUltima();
+    if (!DATOS.relev.length && !DATOS.casos.length) {
+      setEstado(puedeEditar ? "Todavía no hay datos cargados: apretá Actualizar ahora." : "Todavía no hay datos cargados.");
+    }
+    if (puedeEditar) {
+      var enCurso = await sb.from("ind_corrida").select("id").eq("area", AREA).eq("estado", "en_curso").limit(1);
+      if (enCurso.data && enCurso.data.length) seguirCorrida(enCurso.data[0].id);
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+</script>
+</body>
+</html>

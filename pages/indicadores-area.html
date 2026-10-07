@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Indicadores por Área — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/indicadores-area.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Indicadores por Área"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'indicadores-area';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <main class="indicadores-wrap" role="main">
+
+    <div class="mapa-topbar">
+      <div class="version-selector" id="area-selector">
+        <button class="version-selector__btn" id="area-btn"
+                onclick="toggleIndicadoresAreaDropdown()"
+                aria-haspopup="listbox" aria-expanded="false"
+                aria-label="Selector de área">
+          <i class="ti ti-chart-bar" aria-hidden="true"></i>
+          <span id="area-current-label">Cargando…</span>
+          <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
+        </button>
+        <ul class="version-selector__dropdown" id="area-dropdown" role="listbox">
+          <!-- Renderizado por js/indicadores-area.js -->
+        </ul>
+      </div>
+    </div>
+
+    <p class="indicadores-vacio" id="indicadores-vacio" hidden>
+      Todavía no tenés indicadores de ningún área habilitados. Pedile a un administrador que te los asigne.
+    </p>
+
+    <div class="indicadores-frame-wrap" id="indicadores-frame-wrap">
+      <iframe id="indicadores-frame" class="indicadores-frame" title="Indicadores del área"></iframe>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/indicadores-area.js"></script>
+
+</body>
+</html>
