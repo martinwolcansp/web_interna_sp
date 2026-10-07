@@ -988,6 +988,13 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     CONTACTS.forEach(function (c) {
       (c.ns_oportunidades || []).forEach(function (o) {
         out.push({
+          oportunidad: o.oportunidad || null,
+          fecha: o.fecha || null,
+          cliente: c.nombre || null,
+          nroCliente: c.nro_cliente_netsuite || null,
+          estado: o.estado || null,
+          unidad: o.unidad_negocio || null,
+          categoria: o.categoria || null,
           vendedor: o.vendedor || c.vendedor || "Sin asignar",
           tipo: o.tipo_establecimiento || "Sin dato",
           modalidad: o.comodato === true ? "Comodato" : (o.comodato === false ? "Venta" : "Sin dato"),
@@ -999,6 +1006,106 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   }
 
   window.setPivotGanadas = function (v) { PIVOT.soloGanadas = v === "ganadas"; renderMatrizVendedor(); };
+
+  // Exporta la matriz tal como se ve (encabezado de dos niveles con celdas
+  // combinadas) y una hoja "Detalle" con las oportunidades que se cuentan.
+  window.exportarMatrizExcel = function (btn) {
+    var m = PIVOT.ultimo;
+    if (!m || !m.total) return;
+    var textoBtn = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Generando…"; }
+    cargarXlsx().then(function (XLSX) {
+      var d = (document.getElementById("per-desde") || {}).value || "";
+      var h = (document.getElementById("per-hasta") || {}).value || "";
+      var titulo = (PIVOT.soloGanadas ? "Ventas (oportunidades ganadas)" : "Todas las oportunidades") +
+        " por vendedor, tipo de establecimiento y modalidad" + (d && h ? " · " + fmtDia(d) + " al " + fmtDia(h) : "");
+
+      var ancho = m.listaMod.length + 1;
+      var fila1 = ["Vendedor"], fila2 = [""];
+      m.listaTipos.forEach(function (t) {
+        fila1.push(t); for (var i = 1; i < ancho; i++) fila1.push("");
+        m.listaMod.forEach(function (mo) { fila2.push(mo); });
+        fila2.push("Subtotal");
+      });
+      fila1.push("Total"); fila2.push("");
+      var aoa = [[titulo], [], fila1, fila2];
+      m.listaVend.forEach(function (v) {
+        var fila = [v];
+        m.listaTipos.forEach(function (t) {
+          var porTipo = (m.conteos[v] || {})[t] || {}, sub = 0;
+          m.listaMod.forEach(function (mo) { sub += porTipo[mo] || 0; fila.push(porTipo[mo] || 0); });
+          fila.push(sub);
+        });
+        fila.push(m.totVend[v] || 0);
+        aoa.push(fila);
+      });
+      var tot = ["Total"];
+      m.listaTipos.forEach(function (t) {
+        m.listaMod.forEach(function (mo) { tot.push(m.totCol[t + "|" + mo] || 0); });
+        tot.push(m.totCol[t] || 0);
+      });
+      tot.push(m.total);
+      aoa.push(tot);
+
+      var hoja = XLSX.utils.aoa_to_sheet(aoa);
+      var ultCol = fila1.length - 1;
+      var merges = [{ s: { r: 0, c: 0 }, e: { r: 0, c: ultCol } },
+                    { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } },
+                    { s: { r: 2, c: ultCol }, e: { r: 3, c: ultCol } }];
+      m.listaTipos.forEach(function (t, i) {
+        var c0 = 1 + i * ancho;
+        merges.push({ s: { r: 2, c: c0 }, e: { r: 2, c: c0 + ancho - 1 } });
+      });
+      hoja["!merges"] = merges;
+      var largoVend = Math.max.apply(null, m.listaVend.map(function (v) { return v.length; }).concat([10]));
+      hoja["!cols"] = [{ wch: largoVend + 2 }].concat(fila2.slice(1).map(function (x) { return { wch: Math.max(String(x).length + 2, 9) }; }));
+
+      var detalle = m.ops.map(function (o) {
+        return {
+          "Vendedor": o.vendedor,
+          "Tipo de establecimiento": o.tipo,
+          "Modalidad": o.modalidad,
+          "Oportunidad": o.oportunidad,
+          "Fecha oportunidad": fechaExcel(o.fecha),
+          "Estado NetSuite": o.estado,
+          "Ganada": siNo(o.ganada),
+          "Nro cliente (NetSuite)": o.nroCliente,
+          "Cliente": o.cliente,
+          "Unidad de Negocio": o.unidad,
+          "Categoría": o.categoria
+        };
+      }).sort(function (a, b) {
+        return a["Vendedor"].localeCompare(b["Vendedor"], "es") ||
+          String(a["Oportunidad"] || "").localeCompare(String(b["Oportunidad"] || ""), "es", { numeric: true });
+      });
+      var hojaDet = XLSX.utils.json_to_sheet(detalle);
+      var colsDet = Object.keys(detalle[0]);
+      var colFecha = colsDet.indexOf("Fecha oportunidad");
+      for (var r = 1; r <= detalle.length; r++) {
+        var celdaF = hojaDet[XLSX.utils.encode_cell({ r: r, c: colFecha })];
+        if (celdaF && celdaF.t === "n") celdaF.z = "dd/mm/yyyy";
+      }
+      hojaDet["!cols"] = colsDet.map(function (k) {
+        var largo = k.length;
+        detalle.forEach(function (f) { var n = String(f[k] === null || f[k] === undefined ? "" : f[k]).length; if (n > largo) largo = n; });
+        return { wch: Math.min(Math.max(largo + 2, 10), 45) };
+      });
+      hojaDet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: detalle.length, c: colsDet.length - 1 } }) };
+
+      var libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, hoja, "Por vendedor");
+      XLSX.utils.book_append_sheet(libro, hojaDet, "Detalle");
+      XLSX.writeFile(libro, (PIVOT.soloGanadas ? "Ventas" : "Oportunidades") + "_por_vendedor" +
+        (d && h ? "_" + d + "_al_" + h : "") + ".xlsx");
+    }).catch(function (e) {
+      console.error(e);
+      if (btn) btn.textContent = "Error al exportar";
+      setTimeout(function () { if (btn) btn.textContent = textoBtn; }, 3000);
+    }).then(function () {
+      if (btn) { btn.disabled = false; if (btn.textContent === "Generando…") btn.textContent = textoBtn; }
+    });
+  };
+  function fmtDia(s) { var p = String(s).split("-"); return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : s; }
 
   function renderMatrizVendedor() {
     var panel = document.getElementById("panel-vendedor");
@@ -1033,6 +1140,9 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       return (totVend[b] || 0) - (totVend[a] || 0) || a.localeCompare(b, "es");
     });
 
+    PIVOT.ultimo = { ops: ops, listaTipos: listaTipos, listaMod: listaMod, listaVend: listaVend,
+                     conteos: conteos, totVend: totVend, totCol: totCol, total: total };
+
     function celda(n, clase) {
       return '<td class="' + (clase || "") + (n ? "" : " pv-cero") + '">' + (n || 0) + "</td>";
     }
@@ -1043,7 +1153,9 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       '<div class="pivot-bar"><label>Mostrar <select class="explorer-select" onchange="setPivotGanadas(this.value)">' +
       '<option value="ganadas"' + (PIVOT.soloGanadas ? " selected" : "") + ">Ventas (oportunidades ganadas)</option>" +
       '<option value="todas"' + (PIVOT.soloGanadas ? "" : " selected") + ">Todas las oportunidades</option>" +
-      "</select></label><span class=\"explorer-count\">" + total + (PIVOT.soloGanadas ? " venta" + (total === 1 ? "" : "s") : " oportunidad" + (total === 1 ? "" : "es")) + "</span></div>";
+      "</select></label>" +
+      (total ? '<button type="button" class="explorer-export" id="pivot-export" onclick="exportarMatrizExcel(this)">Exportar a Excel</button>' : "") +
+      "<span class=\"explorer-count\">" + total + (PIVOT.soloGanadas ? " venta" + (total === 1 ? "" : "s") : " oportunidad" + (total === 1 ? "" : "es")) + "</span></div>";
 
     if (!total) {
       panel.innerHTML = html + '<p style="color:var(--muted)">No hay ' + (PIVOT.soloGanadas ? "ventas" : "oportunidades") + " en el período.</p>";
