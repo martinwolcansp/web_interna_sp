@@ -62,6 +62,15 @@ ETIQUETAS = {
     "estado": "Estado Oportunidad",
     "unidad_negocio": "Unidad de Negocio",
     "tipo_proyecto": "Tipo de Proyecto",
+    "tipo_establecimiento": "Tipo de establecimiento",
+    "categoria": "Categoría",
+}
+
+# Campos de cabecera agregados el 07/10/2026 (detalle y exportacion a Excel).
+# Si el rol no los puede leer, la consulta se repite sin ellos (quedan vacios).
+CAMPOS_EXTRA = {
+    "tipo_establecimiento": "custbody_mw_sp_unidad_comercial",
+    "categoria": "custbody_3k_categoria",
 }
 
 TAMANO_PAGINA = 1000
@@ -175,7 +184,7 @@ def suiteql(consulta):
         offset += TAMANO_PAGINA
 
 
-def consulta_oportunidades(desde, hasta, clase_completa=True):
+def consulta_oportunidades(desde, hasta, clase_completa=True, campos_extra=True):
     """SuiteQL equivalente a la busqueda guardada. desde/hasta: datetime.date
     (validados por el servicio, por eso se pueden poner como literales)."""
     estados = ", ".join(str(e) for e in ESTADOS_APROBADA)
@@ -188,6 +197,9 @@ def consulta_oportunidades(desde, hasta, clase_completa=True):
     else:
         unidad = "BUILTIN.DF(tl.class)"
         join_clase = ""
+    extra = "".join(
+        f"            BUILTIN.DF(t.{campo}) AS {alias},\n" for alias, campo in CAMPOS_EXTRA.items()
+    ) if campos_extra else ""
     return f"""
         SELECT
             t.id                                            AS id_interno,
@@ -204,7 +216,7 @@ def consulta_oportunidades(desde, hasta, clase_completa=True):
             BUILTIN.DF(t.entitystatus)                      AS estado,
             {unidad}                                        AS unidad_negocio,
             BUILTIN.DF(t.custbody_3k_tipo_de_proyecto)      AS tipo_proyecto,
-            BUILTIN.DF(tl.subsidiary)                       AS subsidiaria
+{extra}            BUILTIN.DF(tl.subsidiary)                       AS subsidiaria
         FROM transaction t
         INNER JOIN transactionline tl ON tl.transaction = t.id AND tl.mainline = 'T'
         LEFT JOIN customer c ON c.id = t.entity
@@ -222,14 +234,24 @@ def _normalizar(nombre):
 def traer_oportunidades(desde, hasta, log):
     """desde/hasta: datetime.date (inclusive). Devuelve un DataFrame con las
     mismas columnas que el Excel de la busqueda guardada."""
-    try:
-        filas = suiteql(consulta_oportunidades(desde, hasta))
-    except RuntimeError as e:
-        if "classification" not in str(e):
-            raise
-        log("AVISO: el rol no tiene permiso sobre Clases; Unidad de Negocio sale sin la jerarquia "
-            "(ej. 'Nuevas' en vez de 'Alarmas : Nuevas'). Agregar Listas > Clases (Ver) al rol.")
-        filas = suiteql(consulta_oportunidades(desde, hasta, clase_completa=False))
+    opciones = {"clase_completa": True, "campos_extra": True}
+    while True:
+        try:
+            filas = suiteql(consulta_oportunidades(desde, hasta, **opciones))
+            break
+        except RuntimeError as e:
+            texto = str(e).lower()
+            if opciones["clase_completa"] and "classification" in texto:
+                log("AVISO: el rol no tiene permiso sobre Clases; Unidad de Negocio sale sin la jerarquia "
+                    "(ej. 'Nuevas' en vez de 'Alarmas : Nuevas'). Agregar Listas > Clases (Ver) al rol.")
+                opciones["clase_completa"] = False
+            elif opciones["campos_extra"] and any(c in texto for c in CAMPOS_EXTRA.values()):
+                log("AVISO: NetSuite no dejo leer Tipo de establecimiento / Categoria "
+                    f"({', '.join(CAMPOS_EXTRA.values())}); salen vacios. Revisar el acceso del rol "
+                    f"a esos campos. Detalle: {str(e)[:300]}")
+                opciones["campos_extra"] = False
+            else:
+                raise
     df = pd.DataFrame(filas)
     if df.empty:
         log("NetSuite: 0 oportunidades en el rango.")

@@ -5,7 +5,7 @@
   "descripcion": "Recorrido de un cliente nuevo desde la confirmación de la venta hasta la instalación, la activación del sistema y el seguimiento de posventa.",
   "estado": "En relevamiento",
   "version": "v0.1",
-  "actualizado": "06/10/2026",
+  "actualizado": "07/10/2026",
   "responsable": "Procesos y Mejora Continua",
   "resumen": {
     "objetivo": "Definir hitos formales que marquen cuándo termina la responsabilidad de un área y empieza la de otra, para que el cliente sepa con quién hablar en cada etapa y ningún caso quede sin dueño.",
@@ -207,9 +207,12 @@
     {
       "n": 11,
       "nombre": "Escalación de un pendiente del acta no resuelto en plazo",
-      "responsable": "A definir",
+      "responsable": "Posventa",
       "estado": "Pendiente",
-      "etapas": []
+      "etapas": [
+        11
+      ],
+      "nota": "Propuesta a validar. Si un pendiente del acta vence sin resolverse, Posventa lo escala al jefe del área dueña (Instalaciones o Servicio Técnico), que lo resuelve con un nuevo plazo; si vuelve a vencer, pasa a la Gerencia de Operaciones. Posventa informa al cliente y confirma el cierre."
     },
     {
       "n": 12,
@@ -255,7 +258,7 @@
       "tipo": "Matriz",
       "descripcion": "Responsable de cada hito por área, quién se comunica con el cliente en cada etapa y estado de validación.",
       "version": "v0.2",
-      "fecha": "06/10/2026",
+      "fecha": "07/10/2026",
       "pdf": "matrices-responsabilidades.pdf",
       "original": "matrices-responsabilidades.xlsx"
     },

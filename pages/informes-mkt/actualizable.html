@@ -112,6 +112,14 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .detail-grid .dg-value { color: var(--ink); }
 .detail-grid .dg-full { grid-column: 1 / -1; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: #fff; }
+.ns-opp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; background: var(--surface); }
+.explorer-table .ns-opp-table th { position: static; background: var(--light-fill); text-align: left; color: var(--navy); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .02em; padding: 4px 8px; border-bottom: 1px solid var(--rule); }
+.ns-opp-table td { padding: 5px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.ns-opp-table tr:last-child td { border-bottom: 0; }
+.ns-opp-scroll { overflow-x: auto; }
+.explorer-export { appearance: none; border: 1px solid var(--navy); background: var(--navy); color: #fff; font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; }
+.explorer-export:hover { background: #16294d; }
+.explorer-export:disabled { opacity: .55; cursor: progress; }
 .conv-summary { margin-top: 4px; border-left: 3px solid var(--navy-solid); border-radius: 4px; background: var(--light-fill); padding: 10px 14px; }
 .conv-summary .dg-label { margin-bottom: 4px; }
 .conv-summary .dg-value { font-size: 13.5px; line-height: 1.5; }
@@ -592,10 +600,14 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     });
     html += '<div><div class="dg-label">Estado en GHL</div><div class="dg-value">' + estadoPill(c) + "</div></div>";
     if (c.ns_oportunidades && c.ns_oportunidades.length) {
-      html += '<div class="dg-full"><div class="dg-label">Oportunidades en NetSuite</div><div class="dg-value">' +
+      html += '<div class="dg-full"><div class="dg-label">Oportunidades en NetSuite</div><div class="dg-value ns-opp-scroll">' +
+        '<table class="ns-opp-table"><thead><tr><th>Oportunidad</th><th>Fecha</th><th>Estado</th>' +
+        '<th>Unidad de Negocio</th><th>Tipo de establecimiento</th><th>Categoría</th></tr></thead><tbody>' +
         c.ns_oportunidades.map(function (o) {
-          return esc(o.oportunidad || "Sin numero") + " &middot; " + esc(fmtDate(o.fecha)) + " &middot; " + esc(o.estado || "Sin estado");
-        }).join("<br>") + "</div></div>";
+          return "<tr><td>" + esc(o.oportunidad || "Sin numero") + "</td><td>" + esc(fmtDate(o.fecha)) + "</td><td>" +
+            esc(o.estado || "Sin estado") + "</td><td>" + esc(o.unidad_negocio || "Sin dato") + "</td><td>" +
+            esc(o.tipo_establecimiento || "Sin dato") + "</td><td>" + esc(o.categoria || "Sin dato") + "</td></tr>";
+        }).join("") + "</tbody></table></div></div>";
     }
     if (c.tiene_oportunidad) {
       html += '<div><div class="dg-label">Oportunidades</div><div class="dg-value">' + c.n_oportunidades + (c.n_ganadas ? (' (' + c.n_ganadas + ' ganada' + (c.n_ganadas > 1 ? 's' : '') + ')') : '') + "</div></div>";
@@ -782,6 +794,147 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados ' + esc(textoDiaRef()) + ' &middot; n=' + rows.length + "</div>" +
       donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
   }
+
+  // ---- Exportar a Excel: todas las oportunidades de NetSuite del periodo que
+  // se esta viendo (sin los filtros de la tabla), una fila por oportunidad con
+  // los datos del contacto repetidos. SheetJS se carga recien al usarlo.
+  var XLSX_URL = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+  function cargarXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (!window.__xlsxCarga) {
+      window.__xlsxCarga = new Promise(function (ok, mal) {
+        var s = document.createElement("script");
+        s.src = XLSX_URL;
+        s.onload = function () { ok(window.XLSX); };
+        s.onerror = function () { window.__xlsxCarga = null; mal(new Error("No se pudo cargar la librería de Excel.")); };
+        document.head.appendChild(s);
+      });
+    }
+    return window.__xlsxCarga;
+  }
+  // Fechas como numero de serie de Excel (sin hora ni zona horaria: con objetos
+  // Date la libreria corre el dia segun la zona del navegador).
+  var COLUMNAS_FECHA = ["Fecha oportunidad", "Fecha de alta (GHL)"];
+  function fechaExcel(dia) {
+    if (!dia) return null;
+    var p = String(dia).slice(0, 10).split("-");
+    if (p.length !== 3) return dia;
+    return (Date.UTC(+p[0], +p[1] - 1, +p[2]) - Date.UTC(1899, 11, 30)) / 86400000;
+  }
+  function siNo(v) { return v ? "Sí" : "No"; }
+  function vacio(v) { return (v === null || v === undefined || v === "" || v === "Sin dato") ? null : v; }
+
+  function filasExportacion() {
+    var filas = [];
+    baseRows("oportunidades").forEach(function (c) {
+      var crm = c.contact_id && String(c.contact_id).indexOf("ns-") !== 0 ? c.contact_id : null;
+      var base = {
+        "Grupo (cliente)": vacio(c.grupo_venta),
+        "Vendedor": vacio(c.vendedor),
+        "Origen del Cliente": vacio(c.origen_cliente),
+        "Forma de Contacto": vacio(c.forma_contacto),
+        "Interesado en": vacio(c.interesado_en),
+        "Fecha de alta (GHL)": fechaExcel(diaAR(c.date_added)),
+        "Contacto del período": siNo(c.contacto_del_periodo),
+        "Sin contacto en GHL": siNo(c.sin_contacto_ghl),
+        "Monto (GHL)": vacio(c.monto) === null ? null : Number(c.monto),
+        "Etapa (GHL)": vacio(c.etapa_pipeline),
+        "Estado GHL": vacio(c.ghl_estado),
+        "Tags": (c.tags || []).join(", ") || null,
+        "Mensajes": c.mensajes_total || 0,
+        "Mensajes recibidos": c.mensajes_inbound || 0,
+        "Mensajes enviados": c.mensajes_outbound || 0,
+        "Último mensaje": c.ultimo_mensaje ? fmtDateTime(c.ultimo_mensaje) : null,
+        "Motivo (categoría)": vacio(c.motivo_categoria),
+        "Resumen de conversación": vacio(c.resumen_conversacion)
+      };
+      var opps = (c.ns_oportunidades && c.ns_oportunidades.length) ? c.ns_oportunidades : [{}];
+      opps.forEach(function (o) {
+        var fila = {
+          "Nro cliente (NetSuite)": vacio(c.nro_cliente_netsuite),
+          "Cliente": vacio(c.nombre),
+          "ID CLIENTE CRM": crm,
+          "Oportunidad": vacio(o.oportunidad),
+          "Fecha oportunidad": fechaExcel(o.fecha),
+          "Estado NetSuite": vacio(o.estado),
+          "Ganada": o.oportunidad ? siNo(o.ganada) : null,
+          "Unidad de Negocio": vacio(o.unidad_negocio),
+          "Tipo de establecimiento": vacio(o.tipo_establecimiento),
+          "Categoría": vacio(o.categoria),
+          "Tipo de Proyecto": vacio(o.tipo_proyecto)
+        };
+        Object.keys(base).forEach(function (k) { fila[k] = base[k]; });
+        filas.push(fila);
+      });
+    });
+    filas.sort(function (a, b) {
+      return String(a["Oportunidad"] || "").localeCompare(String(b["Oportunidad"] || ""), "es", { numeric: true });
+    });
+    return filas;
+  }
+
+  window.exportarOportunidadesExcel = function (btn) {
+    var filas = filasExportacion();
+    if (!filas.length) {
+      if (btn) { var t0 = btn.textContent; btn.textContent = "Sin oportunidades"; setTimeout(function () { btn.textContent = t0; }, 2500); }
+      return;
+    }
+    var textoBtn = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Generando…"; }
+    cargarXlsx().then(function (XLSX) {
+      var hoja = XLSX.utils.json_to_sheet(filas);
+      var columnas = Object.keys(filas[0]);
+      COLUMNAS_FECHA.forEach(function (k) {
+        var col = columnas.indexOf(k);
+        for (var r = 1; r <= filas.length; r++) {
+          var celda = hoja[XLSX.utils.encode_cell({ r: r, c: col })];
+          if (celda && celda.t === "n") celda.z = "dd/mm/yyyy";
+        }
+      });
+      hoja["!cols"] = columnas.map(function (k) {
+        if (k === "Resumen de conversación") return { wch: 60 };
+        var largo = k.length;
+        filas.forEach(function (f) {
+          var v = f[k];
+          var n = COLUMNAS_FECHA.indexOf(k) !== -1 ? 10 : String(v === null || v === undefined ? "" : v).length;
+          if (n > largo) largo = n;
+        });
+        return { wch: Math.min(Math.max(largo + 2, 10), 45) };
+      });
+      hoja["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filas.length, c: columnas.length - 1 } }) };
+      hoja["!freeze"] = { xSplit: 0, ySplit: 1 };
+      var libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, hoja, "Oportunidades");
+      var d = (document.getElementById("per-desde") || {}).value || "";
+      var h = (document.getElementById("per-hasta") || {}).value || "";
+      XLSX.writeFile(libro, "Oportunidades_MKT" + (d && h ? "_" + d + "_al_" + h : "") + ".xlsx");
+    }).catch(function (e) {
+      console.error(e);
+      if (btn) btn.textContent = "Error al exportar";
+      setTimeout(function () { if (btn) btn.textContent = textoBtn; }, 3000);
+    }).then(function () {
+      if (btn) { btn.disabled = false; if (btn.textContent === "Generando…") btn.textContent = textoBtn; }
+    });
+  };
+
+  // El boton se agrega aca (y no en el HTML que genera el servicio) para que
+  // tambien aparezca en las actualizaciones anteriores.
+  (function agregarBotonExportar() {
+    var tabla = document.getElementById("oportunidades-table");
+    if (!tabla || document.getElementById("oportunidades-export")) return;
+    var explorer = tabla.closest(".explorer");
+    var barra = explorer && explorer.querySelector(".explorer-bar-top");
+    if (!barra) return;
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "oportunidades-export";
+    btn.className = "explorer-export";
+    btn.title = "Descarga todas las oportunidades del período en una sola tabla (sin los filtros de la tabla)";
+    btn.textContent = "Exportar a Excel";
+    btn.addEventListener("click", function () { window.exportarOportunidadesExcel(btn); });
+    var limpiar = barra.querySelector(".explorer-clear");
+    if (limpiar) limpiar.parentNode.insertBefore(btn, limpiar.nextSibling); else barra.appendChild(btn);
+  })();
 
   ["contactos", "oportunidades"].forEach(function (id) {
     if (document.getElementById(id + "-table")) render(id);

@@ -130,7 +130,7 @@
     const filaHito = h => `
       <tr class="proc-hito">
         <td class="proc-table__num"><span class="proc-hito__tag">H${esc(h.n)}</span></td>
-        <td class="proc-hito__nombre">${esc(h.nombre)}<span class="status-badge status-badge--${estadoClase(h.estado)} proc-hito__estado-movil">${esc(h.estado)}</span></td>
+        <td class="proc-hito__nombre">${esc(h.nombre)}${h.nota ? `<span class="proc-hito__nota">${esc(h.nota)}</span>` : ''}<span class="status-badge status-badge--${estadoClase(h.estado)} proc-hito__estado-movil">${esc(h.estado)}</span></td>
         <td>${esc(h.responsable || '—')}</td>
         <td><span class="status-badge status-badge--${estadoClase(h.estado)}">${esc(h.estado)}</span></td>
       </tr>`;

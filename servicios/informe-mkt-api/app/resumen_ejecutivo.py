@@ -358,6 +358,10 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
                 "fecha": _fecha_iso(f.get("Fecha Oportunidad")),
                 "estado": _limpio(f.get("Estado Oportunidad")),
                 "ganada": int(f.get("Aprobada") or 0) == 1,
+                "unidad_negocio": _limpio(f.get("Unidad de Negocio")),
+                "tipo_establecimiento": _limpio(f.get("Tipo de establecimiento")),
+                "categoria": _limpio(f.get("Categoría")),
+                "tipo_proyecto": _limpio(f.get("Tipo de Proyecto")),
             })
         ns_opps.sort(key=lambda o: o["fecha"] or "")
         n_oportunidades = len(ns_opps)

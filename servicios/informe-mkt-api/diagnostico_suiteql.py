@@ -15,6 +15,8 @@ PRUEBAS = [
     ("Representante (empleado)", "SELECT BUILTIN.DF(t.employee) AS e FROM transaction t WHERE t.type = 'Opprtnty' AND ROWNUM <= 1"),
     ("Estado de la oportunidad", "SELECT t.entitystatus, BUILTIN.DF(t.entitystatus) AS e FROM transaction t WHERE t.type = 'Opprtnty' AND ROWNUM <= 1"),
     ("Tipo de Proyecto", "SELECT BUILTIN.DF(t.custbody_3k_tipo_de_proyecto) AS p FROM transaction t WHERE t.type = 'Opprtnty' AND ROWNUM <= 1"),
+    ("Tipo de establecimiento", "SELECT BUILTIN.DF(t.custbody_mw_sp_unidad_comercial) AS te FROM transaction t WHERE t.type = 'Opprtnty' AND ROWNUM <= 1"),
+    ("Categoria", "SELECT BUILTIN.DF(t.custbody_3k_categoria) AS cat FROM transaction t WHERE t.type = 'Opprtnty' AND ROWNUM <= 1"),
     ("Clientes (customer)", "SELECT c.id, c.entityid, c.companyname, c.altname, c.datecreated FROM customer c WHERE ROWNUM <= 1"),
     ("Origen de clientes potenciales", "SELECT BUILTIN.DF(c.leadsource) AS o FROM customer c WHERE ROWNUM <= 1"),
     ("Forma de Contacto con SP", "SELECT BUILTIN.DF(c.custentity_ap_sp_forma_de_contactoi) AS f FROM customer c WHERE ROWNUM <= 1"),

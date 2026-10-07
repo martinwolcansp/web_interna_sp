@@ -439,3 +439,8 @@ button.doc-link { font-family: inherit; cursor: pointer; }
   .proc-table--etapas th, .proc-table--etapas td { padding: var(--space-2) var(--space-2); }
   .proc-hito__estado-movil { display: table; margin-top: 4px; }
 }
+
+.proc-hito__nota {
+  display: block; margin-top: 4px;
+  font-size: var(--font-size-sm); font-weight: normal; color: var(--color-text-body); line-height: 1.45;
+}
