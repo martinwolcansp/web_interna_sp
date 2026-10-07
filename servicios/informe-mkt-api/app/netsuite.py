@@ -64,13 +64,17 @@ ETIQUETAS = {
     "tipo_proyecto": "Tipo de Proyecto",
     "tipo_establecimiento": "Tipo de establecimiento",
     "categoria": "Categoría",
+    "comodato": "Comodato",
 }
 
 # Campos de cabecera agregados el 07/10/2026 (detalle y exportacion a Excel).
 # Si el rol no los puede leer, la consulta se repite sin ellos (quedan vacios).
+# alias -> (campo, es_lista): las listas se leen con BUILTIN.DF (texto); los
+# checkbox, tal cual ('T' / 'F').
 CAMPOS_EXTRA = {
-    "tipo_establecimiento": "custbody_mw_sp_unidad_comercial",
-    "categoria": "custbody_3k_categoria",
+    "tipo_establecimiento": ("custbody_mw_sp_unidad_comercial", True),
+    "categoria": ("custbody_3k_categoria", True),
+    "comodato": ("custbody_3k_comodato", False),
 }
 
 TAMANO_PAGINA = 1000
@@ -198,7 +202,8 @@ def consulta_oportunidades(desde, hasta, clase_completa=True, campos_extra=True)
         unidad = "BUILTIN.DF(tl.class)"
         join_clase = ""
     extra = "".join(
-        f"            BUILTIN.DF(t.{campo}) AS {alias},\n" for alias, campo in CAMPOS_EXTRA.items()
+        (f"            BUILTIN.DF(t.{campo}) AS {alias},\n" if es_lista else f"            t.{campo} AS {alias},\n")
+        for alias, (campo, es_lista) in CAMPOS_EXTRA.items()
     ) if campos_extra else ""
     return f"""
         SELECT
@@ -245,9 +250,9 @@ def traer_oportunidades(desde, hasta, log):
                 log("AVISO: el rol no tiene permiso sobre Clases; Unidad de Negocio sale sin la jerarquia "
                     "(ej. 'Nuevas' en vez de 'Alarmas : Nuevas'). Agregar Listas > Clases (Ver) al rol.")
                 opciones["clase_completa"] = False
-            elif opciones["campos_extra"] and any(c in texto for c in CAMPOS_EXTRA.values()):
-                log("AVISO: NetSuite no dejo leer Tipo de establecimiento / Categoria "
-                    f"({', '.join(CAMPOS_EXTRA.values())}); salen vacios. Revisar el acceso del rol "
+            elif opciones["campos_extra"] and any(c in texto for c, _ in CAMPOS_EXTRA.values()):
+                log("AVISO: NetSuite no dejo leer Tipo de establecimiento / Categoria / Comodato "
+                    f"({', '.join(c for c, _ in CAMPOS_EXTRA.values())}); salen vacios. Revisar el acceso del rol "
                     f"a esos campos. Detalle: {str(e)[:300]}")
                 opciones["campos_extra"] = False
             else:

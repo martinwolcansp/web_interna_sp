@@ -578,6 +578,12 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     return pill(c.grupo_venta, GRUPO_COLORS[c.grupo_venta] || "#9AA0A6");
   }
 
+  // Comodato (checkbox de NetSuite): true / false; null si la oportunidad se
+  // cargo antes de sumar el campo (07/10/2026).
+  function comodatoTexto(v) {
+    return v === true ? "Sí" : (v === false ? "No" : null);
+  }
+
   function detailGrid(c) {
     var rows = [
       ["Origen del Cliente", c.origen_cliente],
@@ -602,11 +608,12 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     if (c.ns_oportunidades && c.ns_oportunidades.length) {
       html += '<div class="dg-full"><div class="dg-label">Oportunidades en NetSuite</div><div class="dg-value ns-opp-scroll">' +
         '<table class="ns-opp-table"><thead><tr><th>Oportunidad</th><th>Fecha</th><th>Estado</th>' +
-        '<th>Unidad de Negocio</th><th>Tipo de establecimiento</th><th>Categoría</th></tr></thead><tbody>' +
+        '<th>Unidad de Negocio</th><th>Tipo de establecimiento</th><th>Categoría</th><th>Comodato</th></tr></thead><tbody>' +
         c.ns_oportunidades.map(function (o) {
           return "<tr><td>" + esc(o.oportunidad || "Sin numero") + "</td><td>" + esc(fmtDate(o.fecha)) + "</td><td>" +
             esc(o.estado || "Sin estado") + "</td><td>" + esc(o.unidad_negocio || "Sin dato") + "</td><td>" +
-            esc(o.tipo_establecimiento || "Sin dato") + "</td><td>" + esc(o.categoria || "Sin dato") + "</td></tr>";
+            esc(o.tipo_establecimiento || "Sin dato") + "</td><td>" + esc(o.categoria || "Sin dato") + "</td><td>" +
+            esc(comodatoTexto(o.comodato) || "Sin dato") + "</td></tr>";
         }).join("") + "</tbody></table></div></div>";
     }
     if (c.tiene_oportunidad) {
@@ -861,6 +868,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
           "Unidad de Negocio": vacio(o.unidad_negocio),
           "Tipo de establecimiento": vacio(o.tipo_establecimiento),
           "Categoría": vacio(o.categoria),
+          "Comodato": comodatoTexto(o.comodato),
           "Tipo de Proyecto": vacio(o.tipo_proyecto)
         };
         Object.keys(base).forEach(function (k) { fila[k] = base[k]; });
