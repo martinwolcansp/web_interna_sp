@@ -90,8 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Áreas visibles según permiso (superadmin ve todas: fn_tiene_permiso lo contempla).
+// Se arma una sola vez: auth.js vuelve a disparar 'sp:auth-ready' en cada cambio
+// de sesión (refresco de token, y también cuando la página del iframe abre su
+// propio cliente de Supabase). Si se recargara el iframe en cada aviso, entraría
+// en un ciclo de recargas (la página "parpadea" y no termina de cargar).
+let _indicadoresIniciado = false;
 document.addEventListener('sp:auth-ready', async (e) => {
-  if (!e.detail.session || !window.supabaseClient) return;
+  if (_indicadoresIniciado || !e.detail.session || !window.supabaseClient) return;
+  _indicadoresIniciado = true;
   const areas = window.INDICADORES_AREAS || [];
   const permisos = await Promise.all(areas.map(a =>
     window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: a.seccion, p_nivel: 'ver' })
