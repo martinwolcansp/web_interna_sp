@@ -358,6 +358,7 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
                 "fecha": _fecha_iso(f.get("Fecha Oportunidad")),
                 "estado": _limpio(f.get("Estado Oportunidad")),
                 "ganada": int(f.get("Aprobada") or 0) == 1,
+                "vendedor": normalizar_vendedor_netsuite(_limpio(f.get("Representante de Ventas"))),
                 "unidad_negocio": _limpio(f.get("Unidad de Negocio")),
                 "tipo_establecimiento": _limpio(f.get("Tipo de establecimiento")),
                 "categoria": _limpio(f.get("Categoría")),

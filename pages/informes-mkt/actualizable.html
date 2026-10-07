@@ -120,6 +120,27 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .explorer-export { appearance: none; border: 1px solid var(--navy); background: var(--navy); color: #fff; font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; }
 .explorer-export:hover { background: #16294d; }
 .explorer-export:disabled { opacity: .55; cursor: progress; }
+/* ---- Menu de reportes y matriz por vendedor ---- */
+nav.tabs.reportes { margin: 10px 0 4px; }
+.pivot-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; }
+.pivot-bar label { font-size: 13px; color: var(--second); display: inline-flex; align-items: center; gap: 6px; }
+.pivot-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; }
+.pivot { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0; }
+.pivot th { position: static; background: var(--navy-solid); color: #fff; font-weight: 600; padding: 7px 10px; text-align: center; white-space: nowrap; border-left: 1px solid rgba(255,255,255,.18); }
+.pivot thead tr:nth-child(2) th { background: #2d4a7c; font-size: 12.5px; font-weight: 600; }
+.pivot th.pv-vendedor { text-align: left; border-left: 0; }
+.pivot td { padding: 7px 10px; border-bottom: 1px solid var(--rule); text-align: center; font-variant-numeric: tabular-nums; }
+.pivot td.pv-vendedor { text-align: left; white-space: nowrap; }
+.pivot td.pv-sub, .pivot th.pv-sub { background: var(--light-fill); font-weight: 700; color: var(--navy); }
+.pivot thead th.pv-sub { background: #3c5a8e; color: #fff; }
+.pivot td.pv-total, .pivot th.pv-total { font-weight: 700; color: var(--navy); background: #dfe6f2; }
+.pivot thead th.pv-total { background: #16294d; color: #fff; }
+.pivot td.pv-cero { color: #b7b4ab; }
+.pivot tfoot td { font-weight: 700; color: var(--navy); background: var(--light-fill); border-top: 2px solid var(--navy); border-bottom: 0; }
+.pivot th.pv-vendedor, .pivot td.pv-vendedor { position: sticky; left: 0; z-index: 1; }
+.pivot td.pv-vendedor { background: var(--surface); }
+.pivot tfoot td.pv-vendedor { background: var(--light-fill); }
+.pivot-nota { font-size: 12.5px; color: var(--second); margin-top: 10px; }
 .conv-summary { margin-top: 4px; border-left: 3px solid var(--navy-solid); border-radius: 4px; background: var(--light-fill); padding: 10px 14px; }
 .conv-summary .dg-label { margin-bottom: 4px; }
 .conv-summary .dg-value { font-size: 13.5px; line-height: 1.5; }
@@ -222,9 +243,22 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       </div>
     </div>
   </header>
+  <nav class="tabs reportes" role="tablist" aria-label="Reportes">
+    <button type="button" class="tab-btn active" id="tab-resumen" data-tab="resumen" role="tab" aria-selected="true" aria-controls="panel-resumen">Informe general</button>
+    <button type="button" class="tab-btn" id="tab-diario" data-tab="diario" role="tab" aria-selected="false" aria-controls="panel-diario">Reporte diario</button>
+    <button type="button" class="tab-btn" id="tab-vendedor" data-tab="vendedor" role="tab" aria-selected="false" aria-controls="panel-vendedor">Informe por vendedor</button>
+  </nav>
   <main>
     <section class="tab-panel active" id="panel-resumen" role="tabpanel" aria-labelledby="tab-resumen">
-      <h2>Resumen ejecutivo</h2>
+      <h2>Informe general</h2>
+      <p>Cargando…</p>
+    </section>
+    <section class="tab-panel" id="panel-diario" role="tabpanel" aria-labelledby="tab-diario">
+      <h2>Reporte diario</h2>
+      <p>Cargando…</p>
+    </section>
+    <section class="tab-panel" id="panel-vendedor" role="tabpanel" aria-labelledby="tab-vendedor">
+      <h2>Informe por vendedor</h2>
       <p>Cargando…</p>
     </section>
   </main>
@@ -747,7 +781,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     el.textContent = n;
     // Titulo y etiqueta con la fecha (los informes guardados antes no tienen los id).
     var titulo = document.getElementById("contactos-hoy-titulo") ||
-      Array.prototype.find.call(document.querySelectorAll("#panel-resumen h3"), function (h) {
+      Array.prototype.find.call(document.querySelectorAll("#panel-resumen h3, #panel-diario h3"), function (h) {
         return /Contactos cargados/.test(h.textContent);
       });
     if (titulo) titulo.textContent = "Contactos cargados " + textoDiaRef() +
@@ -944,9 +978,116 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     if (limpiar) limpiar.parentNode.insertBefore(btn, limpiar.nextSibling); else barra.appendChild(btn);
   })();
 
+  // ---- Informe por vendedor: matriz vendedor x tipo de establecimiento x
+  // comodato / venta, con las oportunidades de NetSuite del periodo.
+  var PIVOT = { soloGanadas: true };
+  var TIPOS_PRIMERO = ["Hogar", "Comercio"];
+
+  function oportunidadesPeriodo() {
+    var out = [];
+    CONTACTS.forEach(function (c) {
+      (c.ns_oportunidades || []).forEach(function (o) {
+        out.push({
+          vendedor: o.vendedor || c.vendedor || "Sin asignar",
+          tipo: o.tipo_establecimiento || "Sin dato",
+          modalidad: o.comodato === true ? "Comodato" : (o.comodato === false ? "Venta" : "Sin dato"),
+          ganada: !!o.ganada
+        });
+      });
+    });
+    return out;
+  }
+
+  window.setPivotGanadas = function (v) { PIVOT.soloGanadas = v === "ganadas"; renderMatrizVendedor(); };
+
+  function renderMatrizVendedor() {
+    var panel = document.getElementById("panel-vendedor");
+    if (!panel) return;
+    var todas = oportunidadesPeriodo();
+    var ops = todas.filter(function (o) { return !PIVOT.soloGanadas || o.ganada; });
+
+    var tipos = {}, modalidades = { "Comodato": 1, "Venta": 1 }, vendedores = {};
+    ops.forEach(function (o) { tipos[o.tipo] = 1; modalidades[o.modalidad] = 1; vendedores[o.vendedor] = 1; });
+    var listaTipos = Object.keys(tipos).sort(function (a, b) {
+      var ia = TIPOS_PRIMERO.indexOf(a), ib = TIPOS_PRIMERO.indexOf(b);
+      if (a === "Sin dato") return 1; if (b === "Sin dato") return -1;
+      if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      return a.localeCompare(b, "es");
+    });
+    TIPOS_PRIMERO.forEach(function (t) { if (listaTipos.indexOf(t) === -1) listaTipos.splice(TIPOS_PRIMERO.indexOf(t), 0, t); });
+    var listaMod = ["Comodato", "Venta"].concat(modalidades["Sin dato"] ? ["Sin dato"] : []);
+
+    // conteos[vendedor][tipo][modalidad]
+    var conteos = {}, totVend = {}, totCol = {}, total = 0;
+    ops.forEach(function (o) {
+      var v = conteos[o.vendedor] = conteos[o.vendedor] || {};
+      var t = v[o.tipo] = v[o.tipo] || {};
+      t[o.modalidad] = (t[o.modalidad] || 0) + 1;
+      totVend[o.vendedor] = (totVend[o.vendedor] || 0) + 1;
+      var k = o.tipo + "|" + o.modalidad;
+      totCol[k] = (totCol[k] || 0) + 1;
+      totCol[o.tipo] = (totCol[o.tipo] || 0) + 1;
+      total++;
+    });
+    var listaVend = Object.keys(vendedores).sort(function (a, b) {
+      return (totVend[b] || 0) - (totVend[a] || 0) || a.localeCompare(b, "es");
+    });
+
+    function celda(n, clase) {
+      return '<td class="' + (clase || "") + (n ? "" : " pv-cero") + '">' + (n || 0) + "</td>";
+    }
+
+    var html = "<h2>Informe por vendedor</h2>" +
+      '<div class="kpi-caveat">Oportunidades de NetSuite con fecha de oportunidad en el período, por representante de ventas, ' +
+      "tipo de establecimiento y modalidad (Comodato / Venta, según el check Comodato de la oportunidad).</div>" +
+      '<div class="pivot-bar"><label>Mostrar <select class="explorer-select" onchange="setPivotGanadas(this.value)">' +
+      '<option value="ganadas"' + (PIVOT.soloGanadas ? " selected" : "") + ">Ventas (oportunidades ganadas)</option>" +
+      '<option value="todas"' + (PIVOT.soloGanadas ? "" : " selected") + ">Todas las oportunidades</option>" +
+      "</select></label><span class=\"explorer-count\">" + total + (PIVOT.soloGanadas ? " venta" + (total === 1 ? "" : "s") : " oportunidad" + (total === 1 ? "" : "es")) + "</span></div>";
+
+    if (!total) {
+      panel.innerHTML = html + '<p style="color:var(--muted)">No hay ' + (PIVOT.soloGanadas ? "ventas" : "oportunidades") + " en el período.</p>";
+      return;
+    }
+
+    html += '<div class="pivot-scroll"><table class="data-table pivot"><thead><tr>' +
+      '<th rowspan="2" class="pv-vendedor">Vendedor</th>';
+    listaTipos.forEach(function (t) { html += '<th colspan="' + (listaMod.length + 1) + '">' + esc(t) + "</th>"; });
+    html += '<th rowspan="2" class="pv-total">Total</th></tr><tr>';
+    listaTipos.forEach(function () {
+      listaMod.forEach(function (m) { html += "<th>" + esc(m) + "</th>"; });
+      html += '<th class="pv-sub">Subtotal</th>';
+    });
+    html += "</tr></thead><tbody>";
+    listaVend.forEach(function (v) {
+      html += '<tr><td class="pv-vendedor">' + esc(v) + "</td>";
+      listaTipos.forEach(function (t) {
+        var porTipo = (conteos[v] || {})[t] || {}, sub = 0;
+        listaMod.forEach(function (m) { sub += porTipo[m] || 0; html += celda(porTipo[m]); });
+        html += celda(sub, "pv-sub");
+      });
+      html += celda(totVend[v], "pv-total") + "</tr>";
+    });
+    html += '</tbody><tfoot><tr><td class="pv-vendedor">Total</td>';
+    listaTipos.forEach(function (t) {
+      listaMod.forEach(function (m) { html += celda(totCol[t + "|" + m]); });
+      html += celda(totCol[t], "pv-sub");
+    });
+    html += celda(total, "pv-total") + "</tr></tfoot></table></div>";
+
+    var sinTipo = ops.filter(function (o) { return o.tipo === "Sin dato"; }).length;
+    var sinMod = ops.filter(function (o) { return o.modalidad === "Sin dato"; }).length;
+    var notas = [];
+    if (sinTipo) notas.push(sinTipo + " sin Tipo de establecimiento cargado en NetSuite");
+    if (sinMod) notas.push(sinMod + " sin dato de Comodato (cargadas antes de sumar el campo: se completan al actualizar su período)");
+    if (notas.length) html += '<div class="pivot-nota">' + esc(notas.join(" · ")) + ".</div>";
+    panel.innerHTML = html;
+  }
+
   ["contactos", "oportunidades"].forEach(function (id) {
     if (document.getElementById(id + "-table")) render(id);
   });
+  renderMatrizVendedor();
   renderContactosHoyKpi();
   renderContactosHoyDonut();
 };
@@ -1084,12 +1225,32 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     return iso ? new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ }) : null;
   }
 
+  // El servicio devuelve un solo bloque (Resumen ejecutivo + Contactos cargados).
+  // La pagina lo reparte: "Informe general" hasta la tabla de oportunidades y
+  // "Reporte diario" desde "Contactos cargados" en adelante. Se hace aca para
+  // que tambien funcione con las actualizaciones guardadas antes del cambio.
+  function separarReporteDiario() {
+    var resumen = $("panel-resumen"), diario = $("panel-diario");
+    var h2 = resumen.querySelector("h2");
+    if (h2) h2.textContent = "Informe general";
+    diario.innerHTML = "<h2>Reporte diario</h2>";
+    var inicio = $("contactos-hoy-titulo") ||
+      Array.prototype.find.call(resumen.querySelectorAll("h3"), function (h) { return /Contactos cargados/.test(h.textContent); });
+    if (!inicio) { diario.innerHTML += "<p>Sin datos para este período.</p>"; return; }
+    var nodo = inicio;
+    while (nodo) { var sig = nodo.nextSibling; diario.appendChild(nodo); nodo = sig; }
+  }
+
   function pintar(panelHtml, contacts, diaRef) {
-    // Se conserva la pestana activa (el HTML guardado siempre viene con "active").
-    var resumenActivo = $("panel-resumen").classList.contains("active");
+    // Se conserva la pestana elegida (el HTML guardado siempre viene con "active").
+    var btnActivo = document.querySelector(".tab-btn.active");
+    var activo = btnActivo ? btnActivo.getAttribute("data-tab") : "resumen";
     $("panel-resumen").outerHTML = panelHtml;
-    $("panel-resumen").classList.toggle("active", resumenActivo);
+    separarReporteDiario();
     window.iniciarInforme(contacts || [], { diaRef: diaRef });
+    document.querySelectorAll(".tab-panel").forEach(function (p) {
+      p.classList.toggle("active", p.id === "panel-" + activo);
+    });
   }
 
   // ---- Periodo del informe: cualquier rango con los datos ya cargados ----
