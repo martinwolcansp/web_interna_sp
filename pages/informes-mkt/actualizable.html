@@ -189,6 +189,11 @@ nav.tabs.reportes { margin: 10px 0 4px; }
 /* ---- Ultima actualizacion destacada ---- */
 .upd-hero { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 16px; background: var(--navy); color: #fff; border-left: 6px solid #8fb3e8; border-radius: 0 6px 6px 0; }
 .upd-hero[hidden] { display: none; }
+/* Detalle de actualizaciones: solo para quien puede editar en Informes e
+   indicadores de MKT (permiso "editar" o superadmin). El resto ve la franja
+   "Ultima actualizacion", el Periodo del informe y los reportes. */
+body:not(.es-editor) .solo-editor { display: none !important; }
+body:not(.es-editor) .per-controles { border-bottom: 0; padding-bottom: 0; }
 .upd-hero-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; opacity: .85; }
 .upd-hero-fecha { font-size: 22px; font-weight: 700; }
 .upd-hero-det { font-size: 13.5px; opacity: .9; }
@@ -215,7 +220,7 @@ nav.tabs.reportes { margin: 10px 0 4px; }
         <label class="upd-campo">Hasta <input type="date" id="per-hasta"></label>
         <button type="button" class="upd-btn" id="per-btn">Ver período</button>
       </div>
-      <div class="upd-ultima" id="upd-ultima">Cargando datos…</div>
+      <div class="upd-ultima solo-editor" id="upd-ultima">Cargando datos…</div>
       <button type="button" class="upd-menu-btn" id="upd-menu-btn" aria-expanded="false" aria-controls="upd-panel" hidden>Actualizaciones &#9662;</button>
       <div class="upd-estado" id="upd-estado" role="status" aria-live="polite"></div>
       <div class="upd-anterior" id="upd-anterior" hidden></div>
@@ -1270,6 +1275,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       $("upd-ultima").innerHTML = puedeEditar
         ? "Todavía no hay datos cargados. Abrí <strong>Actualizaciones</strong> y elegí un rango."
         : "Todavía no hay datos cargados.";
+      if (!puedeEditar) setEstado("Todavía no hay datos cargados.");
       return;
     }
     var c = r.data[0];
@@ -1287,7 +1293,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
         ").<button type=\"button\" id=\"upd-volver\">Volver a la más reciente</button>";
       $("upd-volver").addEventListener("click", function () { mostrarCorrida(null); });
     }
-    if (c.mensaje && !anterior) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
+    if (c.mensaje && !anterior && puedeEditar) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
     $("per-aviso").hidden = true;
     $("per-desde").value = c.desde;
     $("per-hasta").value = c.hasta;
@@ -1324,7 +1330,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     if (!c || !c.finalizado_en) { $("upd-hero").hidden = true; return; }
     var atrasada = new Date(c.finalizado_en) < ultimaAutomaticaEsperada(new Date());
     $("upd-hero").hidden = false;
-    $("upd-hero").className = "upd-hero" + (atrasada ? " upd-hero--atrasada" : "");
+    $("upd-hero").classList.toggle("upd-hero--atrasada", atrasada);
     $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
     $("upd-hero-det").textContent = [
       c.origen === "automatica" ? "Automática" : "Manual",
@@ -1541,6 +1547,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     var p = await sb.rpc("fn_tiene_permiso", { p_seccion_id: "informes-mkt", p_nivel: "editar" });
     puedeEditar = !!(p && p.data === true);
     $("upd-menu-btn").hidden = !puedeEditar;
+    document.body.classList.toggle("es-editor", puedeEditar);
 
     await mostrarCorrida(null);
 
