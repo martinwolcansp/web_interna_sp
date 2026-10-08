@@ -1,7 +1,8 @@
 /* ============================================================
    indicadores-area.css — Mosaico "Indicadores por Área".
-   Mismo armado que informes-mkt.css: selector (.mapa-topbar /
-   .version-selector de components.css) + el área en un iframe.
+   pages/indicadores-area.html: encabezado + un mosaico por área
+   (.home-grid / .home-card de components.css).
+   pages/indicadores-area/area.html: el área en un iframe.
    ============================================================ */
 
 .indicadores-wrap {
@@ -11,6 +12,53 @@
   padding: 0 var(--space-6) 3rem;
 }
 
+.indicadores-wrap--angosta { max-width: var(--max-width-content); }
+
+/* ── Encabezado (mismo estilo que Procesos Operativos) ── */
+.ind-intro {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-red);
+  border-radius: var(--radius);
+  padding: 1.75rem 2.25rem;
+  margin-bottom: var(--space-10);
+  box-shadow: var(--shadow-xs);
+}
+
+.ind-intro__eyebrow {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-red);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: var(--space-2);
+}
+
+.ind-intro__title {
+  font-size: 22px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-navy);
+  letter-spacing: -0.3px;
+  line-height: var(--line-height-tight);
+}
+
+.ind-intro__desc {
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+  line-height: var(--line-height-base);
+}
+
+.ind-section-label {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: var(--space-3);
+}
+
+/* ── Área en iframe ── */
 .indicadores-frame-wrap {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -31,5 +79,8 @@
 .indicadores-vacio {
   color: var(--color-text-muted);
   text-align: center;
-  padding: 3rem 0;
+  padding: 2rem 0;
 }
+
+.indicadores-vacio[hidden] { display: none; }
+.indicadores-wrap .site-footer { margin-top: 2rem; }

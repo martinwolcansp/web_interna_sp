@@ -27,31 +27,24 @@
   <script src="/js/page-guard.js"></script>
   <script src="/components/header/header.js"></script>
 
-  <main class="indicadores-wrap" role="main">
+  <main class="indicadores-wrap indicadores-wrap--angosta" role="main">
 
-    <div class="mapa-topbar">
-      <div class="version-selector" id="area-selector">
-        <button class="version-selector__btn" id="area-btn"
-                onclick="toggleIndicadoresAreaDropdown()"
-                aria-haspopup="listbox" aria-expanded="false"
-                aria-label="Selector de área">
-          <i class="ti ti-chart-bar" aria-hidden="true"></i>
-          <span id="area-current-label">Cargando…</span>
-          <i class="ti ti-chevron-down version-selector__chevron" aria-hidden="true"></i>
-        </button>
-        <ul class="version-selector__dropdown" id="area-dropdown" role="listbox">
-          <!-- Renderizado por js/indicadores-area.js -->
-        </ul>
-      </div>
+    <div class="ind-intro">
+      <p class="ind-intro__eyebrow">Gestión por área</p>
+      <h1 class="ind-intro__title">Indicadores por Área</h1>
+      <p class="ind-intro__desc">
+        Indicadores de cada área con datos de NetSuite y GHL, actualizables desde la web.
+      </p>
     </div>
 
+    <p class="ind-section-label">Áreas</p>
+    <p class="indicadores-vacio" id="indicadores-cargando">Cargando…</p>
     <p class="indicadores-vacio" id="indicadores-vacio" hidden>
       Todavía no tenés indicadores de ningún área habilitados. Pedile a un administrador que te los asigne.
     </p>
-
-    <div class="indicadores-frame-wrap" id="indicadores-frame-wrap">
-      <iframe id="indicadores-frame" class="indicadores-frame" title="Indicadores del área"></iframe>
-    </div>
+    <nav class="home-grid" id="indicadores-grid" aria-label="Áreas con indicadores">
+      <!-- Mosaicos renderizados por js/indicadores-area.js según permisos -->
+    </nav>
 
     <footer class="site-footer" role="contentinfo">
       <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>

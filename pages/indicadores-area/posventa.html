@@ -62,6 +62,16 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .pivot td.pv-fila { background: var(--surface); }
 .pivot tfoot td.pv-fila { background: var(--light-fill); }
 .vacio { color: var(--muted); font-style: italic; padding: 10px 0; }
+/* Números que filtran el detalle (como el filtro cruzado de Power BI) */
+.pivot td.pv-clic { cursor: pointer; }
+.pivot td.pv-clic:hover { background: #dfe6f2; color: var(--navy); font-weight: 700; }
+.pivot td.pv-sel, .pivot td.pv-sel:hover { background: var(--orange); color: #fff; font-weight: 700; }
+.sel-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; padding: 8px 12px; background: var(--warn-bg); border-left: 4px solid var(--orange); border-radius: 0 6px 6px 0; font-size: 13.5px; }
+.sel-chip[hidden] { display: none; }
+.sel-chip strong { color: var(--navy); }
+.sel-chip button { appearance: none; border: 1px solid var(--orange); background: #fff; color: var(--ink); font: inherit; font-size: 12.5px; padding: 3px 10px; border-radius: 5px; cursor: pointer; }
+.sel-chip button:hover { background: var(--orange); color: #fff; }
+.bloque-ayuda { font-size: 13px; color: var(--second); margin: -8px 0 16px; }
 
 /* Tortas */
 .donut-row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; margin: 8px 0 22px; }
@@ -161,7 +171,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
     </div>
     <div class="upd-panel" id="upd-panel" hidden>
-      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite todos los casos de instalación y relevamientos (no sólo los nuevos) y de GHL las encuestas. Además del botón, se actualiza sola de lunes a viernes.</div>
+      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite todos los casos de instalación y relevamientos (no sólo los nuevos) y de GHL las encuestas.</div>
       <div class="upd-hist-scroll">
         <table class="upd-hist">
           <thead><tr><th>Actualizada el</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
@@ -184,6 +194,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
         <span class="filtros-titulo">Filtros</span>
       </div>
       <div class="kpi-row" id="kpi-inst"></div>
+      <p class="bloque-ayuda">Hacé click en un número de las tablas para ver esos relevamientos en el detalle de abajo. Otro click en el mismo número quita el filtro.</p>
 
       <div class="bloque">
         <h3>Análisis por acción de posventa</h3>
@@ -210,6 +221,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 
       <div class="bloque">
         <h3>Detalle de relevamientos</h3>
+        <div class="sel-chip" id="sel-relev" hidden></div>
         <div class="explorer">
           <div class="explorer-bar">
             <span class="explorer-title">Relevamientos posventa</span>
@@ -414,23 +426,36 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   // =====================================================================
   // Matriz (filas x meses) con totales
   // =====================================================================
+  // opciones.grupo: si viene, cada numero (distinto de 0) es clickeable y filtra
+  // el detalle por (grupo, fila, mes). Fila o mes vacios = total de la columna o fila.
   function matriz(titulo, filas, meses, valor, opciones) {
     opciones = opciones || {};
     if (!filas.length || !meses.length) return '<div class="vacio">Sin datos para los filtros elegidos.</div>';
+    function celda(n, fila, mes, clase) {
+      var cls = clase ? [clase] : [];
+      if (!n) cls.push("pv-cero");
+      var attrs = "";
+      if (opciones.grupo && n) {
+        cls.push("pv-clic");
+        if (SEL && SEL.g === opciones.grupo && SEL.f === fila && SEL.m === mes) cls.push("pv-sel");
+        attrs = ' data-g="' + esc(opciones.grupo) + '" data-f="' + esc(fila) + '" data-m="' + esc(mes) + '" title="Ver estos relevamientos en el detalle"';
+      }
+      return '<td class="' + cls.join(" ") + '"' + attrs + ">" + n + "</td>";
+    }
     var totCol = {}, totGral = 0;
     var cuerpo = filas.map(function (f) {
       var totFila = 0;
       var celdas = meses.map(function (m) {
         var n = valor(f, m) || 0;
         totFila += n; totCol[m] = (totCol[m] || 0) + n;
-        return '<td class="' + (n ? "" : "pv-cero") + '">' + n + "</td>";
+        return celda(n, f, m || "");
       }).join("");
       totGral += totFila;
-      return '<tr><td class="pv-fila">' + esc(f) + "</td>" + celdas + '<td class="pv-total">' + totFila + "</td></tr>";
+      return '<tr><td class="pv-fila">' + esc(f) + "</td>" + celdas + celda(totFila, f, "", "pv-total") + "</tr>";
     }).join("");
     var pie = opciones.sinTotalFilas ? "" :
-      '<tfoot><tr><td class="pv-fila">Total</td>' + meses.map(function (m) { return "<td>" + (totCol[m] || 0) + "</td>"; }).join("") +
-      "<td>" + totGral + "</td></tr></tfoot>";
+      '<tfoot><tr><td class="pv-fila">Total</td>' + meses.map(function (m) { return celda(totCol[m] || 0, "", m || ""); }).join("") +
+      celda(totGral, "", "") + "</tr></tfoot>";
     return '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">' + esc(titulo) + "</th>" +
       meses.map(function (m) { return "<th>" + esc(etiquetaMes(m)) + "</th>"; }).join("") +
       '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
@@ -520,6 +545,83 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   // Pestaña 1: Analisis Posventa Instalaciones
   // =====================================================================
   var filtroInst, tablaRelev;
+  var SEL = null; // numero elegido en una matriz: {g: grupo, f: fila, m: "AAAA-MM"} ("" = total)
+
+  // Relevamientos que corresponden al numero elegido.
+  function relevDeSeleccion(relev, casosFin) {
+    if (!SEL) return { filas: relev, texto: null };
+    var mesOk = function (fecha) { return !SEL.m || anioMes(fecha) === SEL.m; };
+    var cuando = SEL.m ? " · " + etiquetaMes(SEL.m) : "";
+    if (SEL.g === "accion") {
+      return {
+        filas: relev.filter(function (r) { return mesOk(r.fecha_creacion) && (!SEL.f || (r.acciones || []).indexOf(SEL.f) >= 0); }),
+        texto: (SEL.f ? "Acción <strong>" + esc(SEL.f) + "</strong>" : "Todas las acciones") + esc(cuando),
+      };
+    }
+    if (SEL.g === "caso") {
+      return {
+        filas: relev.filter(function (r) {
+          return mesOk(r.fecha_creacion) && (!SEL.f || (r.numero_caso ? "Caso Instalación" : "Sin Caso Instalación") === SEL.f);
+        }),
+        texto: (SEL.f ? "<strong>" + esc(SEL.f) + "</strong>" : "Todos los relevamientos") + esc(cuando),
+      };
+    }
+    if (SEL.g === "tipo") {
+      return {
+        filas: relev.filter(function (r) {
+          return r.numero_caso && mesOk(r.fecha_creacion) && (!SEL.f || (r.tipo_posventa || "Sin tipo") === SEL.f);
+        }),
+        texto: "Tipo de posventa <strong>" + esc(SEL.f || "todos") + "</strong>" + esc(cuando),
+      };
+    }
+    if (SEL.g === "inst") {
+      // Como en Power BI: relevamientos de los casos de esas instalaciones. Se
+      // buscan entre todos los relevamientos (el relevamiento suele ser de un
+      // mes posterior al fin de la instalación).
+      var casos = casosFin.filter(function (c) { return mesOk(c.fecha_fin_inst); });
+      var numeros = new Set(casos.map(function (c) { return c.numero; }));
+      var filas = DATOS.relev.filter(function (r) { return r.numero_caso && numeros.has(r.numero_caso); });
+      var inst = new Set(casos.map(function (c) { return c.id_inst; })).size;
+      return {
+        filas: filas,
+        texto: "Instalaciones finalizadas" + esc(cuando) + " (" + inst + " instalaciones, " + casos.length + " casos): <strong>" +
+          filas.length + "</strong> con relevamiento",
+      };
+    }
+    return { filas: relev, texto: null };
+  }
+
+  function pintarSeleccion(sel) {
+    var chip = $("sel-relev");
+    chip.hidden = !sel.texto;
+    if (sel.texto) {
+      chip.innerHTML = "<span>Filtrado por: " + sel.texto + "</span>" +
+        '<button type="button" id="sel-quitar">Quitar filtro &times;</button>';
+      $("sel-quitar").addEventListener("click", function () { SEL = null; pintarInstalaciones(); });
+    }
+  }
+
+  function clicMatriz(e) {
+    var td = e.target.closest("td.pv-clic");
+    if (!td) return;
+    var nueva = { g: td.getAttribute("data-g"), f: td.getAttribute("data-f"), m: td.getAttribute("data-m") };
+    var misma = SEL && SEL.g === nueva.g && SEL.f === nueva.f && SEL.m === nueva.m;
+    SEL = misma ? null : nueva;
+    pintarInstalaciones();
+    // Si el detalle no esta a la vista, se lleva la pantalla hasta el. La pagina
+    // vive en un iframe sin scroll propio: la posicion se mide en la ventana contenedora.
+    if (SEL) {
+      var det = $("sel-relev");
+      var r = det.getBoundingClientRect(), arriba = r.top, alto = window.innerHeight;
+      try {
+        if (window.frameElement) { arriba += window.frameElement.getBoundingClientRect().top; alto = window.parent.innerHeight; }
+      } catch (err) { /* otro origen: se usa la propia ventana */ }
+      if (arriba > alto - 80 || arriba + r.height < 0) det.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  // Cambiar el periodo quita el numero elegido (ya no corresponde a lo que se ve).
+  function cambioPeriodoInst() { SEL = null; pintarInstalaciones(); }
 
   function pintarInstalaciones() {
     filtroInst.pintarLimpiar();
@@ -552,7 +654,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       Object.keys(porAccion[b]).forEach(function (m) { tb += porAccion[b][m]; });
       return tb - ta;
     });
-    $("pv-acciones").innerHTML = matriz("Acción posventa", acciones, mesesRelev, function (a, m) { return porAccion[a][m]; }, { sinTotalFilas: true });
+    $("pv-acciones").innerHTML = matriz("Acción posventa", acciones, mesesRelev, function (a, m) { return porAccion[a][m]; }, { sinTotalFilas: true, grupo: "accion" });
 
     // Instalaciones finalizadas por mes de fin (distintas por id_inst) y casos.
     var porMes = {};
@@ -564,7 +666,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     });
     $("pv-instalaciones").innerHTML = matriz("Mes de fin", ["Instalaciones", "Casos"], Object.keys(porMes).sort(), function (k, m) {
       return k === "Instalaciones" ? porMes[m].inst.size : porMes[m].casos;
-    }, { sinTotalFilas: true });
+    }, { sinTotalFilas: true, grupo: "inst" });
 
     // Con / sin caso x mes
     var porCaso = {};
@@ -575,7 +677,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       porCaso[k][m] = (porCaso[k][m] || 0) + 1;
     });
     $("pv-caso").innerHTML = matriz("Relevamiento", ["Caso Instalación", "Sin Caso Instalación"].filter(function (k) { return porCaso[k]; }),
-      mesesRelev, function (k, m) { return porCaso[k][m]; });
+      mesesRelev, function (k, m) { return porCaso[k][m]; }, { grupo: "caso" });
 
     // Tipo de posventa x mes (solo con caso)
     var relevCaso = relev.filter(function (r) { return r.numero_caso; });
@@ -587,9 +689,11 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       porTipo[k][m] = (porTipo[k][m] || 0) + 1;
     });
     var tipos = Object.keys(porTipo).sort(function (a, b) { return a === "Sin tipo" ? 1 : b === "Sin tipo" ? -1 : a.localeCompare(b); });
-    $("pv-tipo").innerHTML = matriz("Tipo de posventa", tipos, mesesDe(relevCaso, "fecha_creacion"), function (k, m) { return porTipo[k][m]; });
+    $("pv-tipo").innerHTML = matriz("Tipo de posventa", tipos, mesesDe(relevCaso, "fecha_creacion"), function (k, m) { return porTipo[k][m]; }, { grupo: "tipo" });
 
-    tablaRelev.mostrar(relev);
+    var sel = relevDeSeleccion(relev, casosFin);
+    pintarSeleccion(sel);
+    tablaRelev.mostrar(sel.filas);
   }
 
   // =====================================================================
@@ -654,7 +758,8 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 
     filtroInst = crearFiltrosPeriodo("filtros-inst",
       DATOS.relev.map(function (r) { return r.fecha_creacion; }).concat(DATOS.casos.map(function (c) { return c.fecha_fin_inst; })),
-      pintarInstalaciones);
+      cambioPeriodoInst);
+    SEL = null;
     filtroEnc = crearFiltrosPeriodo("filtros-enc", DATOS.enc.map(function (e) { return e.fecha; }), pintarEncuestas);
     if (!iniciado) {
       iniciado = true;
@@ -703,14 +808,10 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       .eq("area", AREA).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
     if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
     var c = r.data[0];
-    // Atrasada: mas de 2 dias habiles sin actualizar.
-    var horas = (Date.now() - new Date(c.finalizado_en).getTime()) / 3600000;
-    var atrasada = horas > (new Date().getDay() === 1 ? 96 : 48);
+    // Sin actualizacion automatica por ahora: no se marca como atrasada.
     $("upd-hero").hidden = false;
-    $("upd-hero").classList.toggle("upd-hero--atrasada", atrasada);
     $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
-    $("upd-hero-det").textContent = [c.origen === "automatica" ? "Automática" : "Manual", hace(c.finalizado_en),
-      atrasada ? "Los datos pueden estar desactualizados" : null].filter(Boolean).join(" · ");
+    $("upd-hero-det").textContent = [c.origen === "automatica" ? "Automática" : "Manual", hace(c.finalizado_en)].join(" · ");
     $("report-footer").innerHTML = "SP Seguridad Privada &middot; Indicadores de Posventa &middot; datos de NetSuite y GHL, actualizados el " + esc(fmtFechaHora(c.finalizado_en));
     if (c.mensaje && puedeEditar) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
   }
@@ -797,6 +898,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   // Inicio
   // =====================================================================
   function iniciarPestanas() {
+    $("panel-instalaciones").addEventListener("click", clicMatriz);
     document.querySelectorAll(".tab-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var id = btn.getAttribute("data-tab");

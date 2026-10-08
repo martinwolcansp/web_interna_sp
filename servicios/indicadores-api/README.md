@@ -67,11 +67,13 @@ Igual que informe-mkt-api: **otra aplicación** del mismo repo.
 
 1. New Resource → repo `web_interna_sp`, rama `main`.
 2. Build Pack **Dockerfile**, Base Directory **`/servicios/indicadores-api`**, puerto **8000**, health check `/health`.
-3. Variables de entorno: las del `.env.example`. En `NETSUITE_PRIVATE_KEY` pegar la clave en una línea (`clave_una_linea.py` de informe-mkt-api).
+3. Variables de entorno (solo Production): las del `.env.example`, con dos diferencias respecto de la PC:
+   - `SUPABASE_URL=http://supabase-kong-v110q1hu5ftsmc0zxn2pxrxs:8000` (dirección interna). Con la URL pública el contenedor falla con `SSLV3_ALERT_HANDSHAKE_FAILURE`.
+   - `NETSUITE_PRIVATE_KEY`: cargarla sola con **+ Add**, no en el Developer view (ahí se corta en el primer salto de línea). Valor: el mismo de informe-mkt-api, o la salida de `clave_una_linea.py`. No cargar `NETSUITE_PRIVATE_KEY_PATH`.
 4. Poner el dominio en `API_BASE_URL` de `pages/indicadores-area/posventa.html`. Hoy dice `https://indicadores-api.200.5.196.50.sslip.io`.
 5. Watch Paths: `servicios/indicadores-api/**`.
 
-**Tarea programada** (Scheduled Tasks → Add):
+**Tarea programada** (opcional; por ahora no se usa, la actualización es manual con el botón). Para activarla, Scheduled Tasks → Add:
 
 - Command: `python -m app.corrida_programada`
 - Frequency: `0 16 * * 1-5` si el servidor está en hora de Argentina, `0 19 * * 1-5` si está en UTC.
