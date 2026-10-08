@@ -404,11 +404,27 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
     };
   });
 
-  // 3. Clientes de NetSuite creados en el período sin ID de GHL
-  const c3 = nsClientesRango
+  // 3. Clientes de NetSuite sin ID de GHL: los creados en el período y los
+  // de oportunidades del período (aunque el cliente sea anterior), para que
+  // todo aviso "sin ID de GHL" del control 2 tenga su cliente acá. Se unen
+  // por código de cliente (entityid), que está en las dos fuentes.
+  const c3PorCodigo = new Map();
+  nsClientesRango
     .filter((c) => !auTexto(c.id_cliente_crm))
     .map((c) => auClienteNs(c))
-    .filter((c) => !c.subsidiaria || c.subsidiaria.endsWith(AU_SUBSIDIARIA));
+    .filter((c) => !c.subsidiaria || c.subsidiaria.endsWith(AU_SUBSIDIARIA))
+    .forEach((c) => c3PorCodigo.set(c.codigo || `id:${c.idInterno}`, { ...c, creadoEnPeriodo: true, oportunidades: [] }));
+  c2.filter((r) => !r.crm).forEach((r) => {
+    const clave = r.codCliente || `opp:${r.nsId}`;
+    if (!c3PorCodigo.has(clave)) {
+      c3PorCodigo.set(clave, {
+        idInterno: '', codigo: r.codCliente, nombre: r.cliente, estado: '', representante: r.vendedor,
+        creacion: '', email: '', telefono: '', origen: '', subsidiaria: '', creadoEnPeriodo: false, oportunidades: [],
+      });
+    }
+    c3PorCodigo.get(clave).oportunidades.push({ nsId: r.nsId, numero: r.numero, fecha: r.fecha, vendedor: r.vendedor });
+  });
+  const c3 = [...c3PorCodigo.values()];
 
   // Cobertura de días cargados en el rango.
   const totalDias = Math.round((new Date(`${hasta}T00:00:00`) - new Date(`${desde}T00:00:00`)) / 86400000) + 1;
@@ -735,10 +751,14 @@ function auRenderKpis(d, f) {
   </div>`);
 
   if (d.fuente === 'base') {
-    const c3 = d.c3.filter((c) => !f.vendedor || c.representante === f.vendedor);
+    const c3 = auFiltrarC3(d.c3, f);
+    const conOpp = c3.filter((c) => c.oportunidades.length).length;
     bloques.push(`<div class="au-kpi-grupo au-kpi-grupo--chico">
       <h3 class="au-kpi-grupo__titulo">Clientes NetSuite sin ID de GHL</h3>
-      <div class="au-kpi-grupo__items">${auKpi(fmtNumero(c3.length), 'creados en el período', c3.length ? 'err' : 'ok', 'c3')}</div>
+      <div class="au-kpi-grupo__items">
+        ${auKpi(fmtNumero(c3.length), 'clientes a completar', c3.length ? 'err' : 'ok', 'c3')}
+        ${c3.length ? auKpi(fmtNumero(conOpp), 'con oportunidades en el período', 'rev', 'c3') : ''}
+      </div>
     </div>`);
   }
 
@@ -928,16 +948,32 @@ function auRenderC2b(d) {
   </table>`;
 }
 
+// Vendedor: el representante del cliente o el de alguna de sus oportunidades.
+function auFiltrarC3(filas, f) {
+  return filas.filter((c) => !f.vendedor || c.representante === f.vendedor ||
+    c.oportunidades.some((o) => o.vendedor === f.vendedor));
+}
+
+function auMotivoC3(c) {
+  return [c.creadoEnPeriodo ? 'Creado en el período' : '', c.oportunidades.length ? 'Tiene oportunidades en el período' : '']
+    .filter(Boolean).join(' · ');
+}
+
 function auRenderC3(d, f) {
   const el = document.getElementById('au-c3-tabla');
-  const filas = d.c3.filter((c) => !f.vendedor || c.representante === f.vendedor);
-  if (!filas.length) { el.innerHTML = '<p class="admin-empty">✓ Todos los clientes creados en el período tienen ID de GHL.</p>'; return; }
+  const filas = auFiltrarC3(d.c3, f);
+  if (!filas.length) { el.innerHTML = '<p class="admin-empty">✓ No hay clientes sin ID de GHL en el período.</p>'; return; }
   el.innerHTML = `<table class="admin-table au-tabla">
-    <thead><tr><th>Cliente NetSuite</th><th>Creado</th><th>Estado</th><th>Representante</th><th>Contacto</th><th>Origen</th></tr></thead>
+    <thead><tr><th>Cliente NetSuite</th><th>Por qué aparece</th><th>Oportunidades del período</th><th>Creado</th><th>Estado</th><th>Representante</th><th>Contacto</th></tr></thead>
     <tbody>${filas.map((c) => `<tr>
       <td>${auLinkNs('cliente', c.idInterno, `${c.codigo || c.idInterno} ${c.nombre}`.trim())}</td>
-      <td>${fmtFechaHora(c.creacion)}</td><td>${valor(c.estado)}</td><td>${escapeHtml(c.representante)}</td>
-      <td>${[c.email, c.telefono].filter(Boolean).map(escapeHtml).join(' · ') || '—'}</td><td>${valor(c.origen)}</td>
+      <td>${escapeHtml(auMotivoC3(c))}</td>
+      <td>${c.oportunidades.length
+        ? c.oportunidades.map((o) => `<div>${auLinkNs('opp', o.nsId, o.numero || o.nsId)} <span class="ig-cell-sub">${fmtFecha(o.fecha)}</span></div>`).join('')
+        : '—'}</td>
+      <td>${c.creacion ? fmtFechaHora(c.creacion) : '<span class="ig-cell-sub">Anterior al período</span>'}</td>
+      <td>${valor(c.estado)}</td><td>${escapeHtml(c.representante)}</td>
+      <td>${[c.email, c.telefono].filter(Boolean).map(escapeHtml).join(' · ') || '—'}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -998,10 +1034,14 @@ async function auExportar(cual) {
     }));
   } else if (cual === 'c3') {
     hoja = 'Clientes NS sin ID GHL';
-    filas = d.c3.filter((c) => !f.vendedor || c.representante === f.vendedor).map((c) => ({
-      Cliente: c.nombre, 'Código': c.codigo, 'ID interno': c.idInterno, Creado: c.creacion, Estado: c.estado,
+    filas = auFiltrarC3(d.c3, f).map((c) => ({
+      Cliente: c.nombre, 'Código': c.codigo, 'ID interno': c.idInterno, 'Por qué aparece': auMotivoC3(c),
+      'Oportunidades del período': c.oportunidades.map((o) => o.numero || o.nsId).join(' | '),
+      Creado: c.creacion || 'Anterior al período', Estado: c.estado,
       Representante: c.representante, Email: c.email, 'Teléfono': c.telefono, Origen: c.origen,
-      'Link NetSuite': `${AU_NS_URL}/app/common/entity/custjob.nl?id=${c.idInterno}`,
+      'Link NetSuite': c.idInterno
+        ? `${AU_NS_URL}/app/common/entity/custjob.nl?id=${c.idInterno}`
+        : c.oportunidades.map((o) => `${AU_NS_URL}/app/accounting/transactions/opprtnty.nl?id=${o.nsId}`).join(' | '),
     }));
   }
   if (!filas.length) { auStatus('No hay filas para exportar con estos filtros.'); return; }
