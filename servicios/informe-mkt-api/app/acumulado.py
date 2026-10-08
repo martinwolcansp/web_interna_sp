@@ -24,6 +24,7 @@ T_CONV = "informe_mkt_conversacion"
 T_DIA = "informe_mkt_dia_cargado"
 T_CITA = "informe_mkt_ghl_cita"            # migracion 22
 T_PRESUPUESTO = "informe_mkt_ns_presupuesto"  # migracion 22
+T_CLIENTE = "informe_mkt_ns_cliente"          # migracion 23
 
 
 def _tz():
@@ -44,7 +45,10 @@ def _tiene_conversacion(reg):
 # ---------------------------------------------------------------- guardar
 
 def guardar(token, corrida_id, desde, hasta, datos_hasta, contactos, oportunidades, ventas_df,
-            registros, log):
+            registros, log, ns_verificado=False):
+    """ns_verificado: True si en esta corrida se buscaron en NetSuite los
+    clientes de todos los contactos (guardar_clientes_ns sin error). Los
+    contactos quedan marcados con ns_verificado_en (migracion 23)."""
     ahora = datetime.now(timezone.utc).isoformat()
 
     # NetSuite: upsert por ID interno y, dentro del rango, se borran las que ya
@@ -66,8 +70,9 @@ def guardar(token, corrida_id, desde, hasta, datos_hasta, contactos, oportunidad
     sb.borrar(token, T_NS, params, "limpiar oportunidades NetSuite del rango")
 
     # GHL: contactos y oportunidades tal como vienen de la API.
+    extra_contacto = {"ns_verificado_en": ahora} if ns_verificado else {}
     sb.upsert(token, T_CONTACTO, [
-        {"id": c["id"], "date_added": c.get("dateAdded"), "crudo": c, "actualizado_en": ahora}
+        {"id": c["id"], "date_added": c.get("dateAdded"), "crudo": c, "actualizado_en": ahora, **extra_contacto}
         for c in contactos if c.get("id")
     ], "id")
     sb.upsert(token, T_OPP, [
@@ -129,6 +134,20 @@ def guardar_visitas(token, corrida_id, desde, hasta, inicio, fin_excl, citas, pr
     sb.actualizar(token, T_DIA, {"dia": f"gte.{desde.isoformat()}", "and": f"(dia.lte.{hasta.isoformat()})"},
                   {"visitas_cargadas": True}, "marcar dias con visitas")
     log(f"Datos acumulados: {len(filas_cita)} citas GHL y {len(filas_pres)} presupuestos NetSuite.")
+
+
+def guardar_clientes_ns(token, corrida_id, clientes, log):
+    """Clientes de NetSuite para la Auditoria de la integracion (migracion 23).
+    Upsert por ID interno: si a un cliente le cargan el ID de GHL despues, la
+    proxima corrida que lo traiga lo actualiza."""
+    ahora = datetime.now(timezone.utc).isoformat()
+    filas = [{"id_interno": int(f["ID interno"]),
+              "id_cliente_crm": (str(f["ID CLIENTE CRM"]).strip() or None) if f.get("ID CLIENTE CRM") else None,
+              "fecha_creacion": str(f["Fecha de creación"])[:10] if f.get("Fecha de creación") else None,
+              "fila": f, "corrida_id": corrida_id, "actualizado_en": ahora}
+             for f in clientes if f.get("ID interno")]
+    sb.upsert(token, T_CLIENTE, filas, "id_interno")
+    log(f"Datos acumulados: {len(filas)} clientes NetSuite.")
 
 
 def bloque_visitas(token, desde, hasta, inicio, fin_excl):

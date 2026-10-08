@@ -4,6 +4,7 @@
 #   1. Descargar GHL (contactos por alta, oportunidades por actualizacion)
 #   2-3. Cargar contacto/oportunidad en Supabase (upsert, igual que generar_sql.py)
 #   (nuevo) Traer de NetSuite la busqueda "Oportunidades por vendedor" via RESTlet
+#   (nuevo) Clientes de NetSuite de los contactos de GHL (Auditoria de la integracion)
 #   5. Calcular el Resumen ejecutivo (misma logica que actualizar_resumen_ejecutivo.py)
 #   6. Publicar: se guarda en informe_mkt_corrida y la pagina lo lee de ahi
 # El paso 4 (analisis_mensual_mkt.py -> resumen.json / tablas_dinamicas.xlsx)
@@ -193,6 +194,20 @@ def ejecutar(corrida_id, token, desde, hasta):
             vistas = {o.get("id") for o in oportunidades}
             oportunidades = oportunidades + [o for o in extra if o.get("id") not in vistas]
 
+        # Clientes potenciales de NetSuite de los contactos de GHL de la corrida
+        # (Auditoria de la seccion Integracion NetSuite <-> GHL). Si falla no
+        # frena el informe: los contactos quedan "sin verificar".
+        ns_verificado = False
+        paso("Consultando clientes potenciales en NetSuite")
+        try:
+            clientes_ns = netsuite.traer_clientes(desde, hasta, [c.get("id") for c in contactos], log)
+            acumulado.guardar_clientes_ns(token, corrida_id, clientes_ns, log)
+            ns_verificado = True
+        except Exception as e:
+            # Suele ser que falta la migracion 23.
+            advertencias.append(f"No se pudieron traer / guardar los clientes de NetSuite para la auditoria: {e}")
+            log(f"AVISO: {advertencias[-1]}")
+
         paso("Cargando contactos y oportunidades en la base")
         try:
             cargar_en_supabase(token, contactos, oportunidades, log)
@@ -233,7 +248,7 @@ def ejecutar(corrida_id, token, desde, hasta):
         paso("Guardando los datos para consultas por rango")
         try:
             acumulado.guardar(token, corrida_id, desde, hasta, datos_hasta, contactos, oportunidades,
-                              ventas_df, resultado["contacts"], log)
+                              ventas_df, resultado["contacts"], log, ns_verificado=ns_verificado)
         except Exception as e:
             # El informe de esta actualizacion se guarda igual; lo que falla es
             # poder sumarla a otras (suele ser que falta la migracion 19).

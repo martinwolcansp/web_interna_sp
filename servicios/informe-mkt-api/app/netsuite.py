@@ -16,6 +16,7 @@
 # Autenticacion: OAuth 2.0 Client Credentials (M2M) con certificado. Integracion
 # "SP Servicios internos M2M", rol SP WEB SERVICE INTEGRATION.
 
+from datetime import timedelta
 import time
 import uuid
 
@@ -405,4 +406,101 @@ def traer_presupuestos(desde, hasta, ids_crm, log):
     en_rango = sum(1 for f in salida if desde.isoformat() <= (f["Fecha"] or "") <= hasta.isoformat())
     log(f"NetSuite presupuestos: {en_rango} con fecha en el rango y {len(salida) - en_rango} posteriores de "
         f"clientes visitados ({total} antes de filtrar la subsidiaria).")
+    return salida
+
+
+# ------------------------------------------------- clientes potenciales
+# Para la Auditoria de la seccion Integracion NetSuite <-> GHL (08/10/2026):
+# por cada contacto de GHL de la corrida se busca en NetSuite el cliente
+# (cliente potencial, prospecto o cliente) que tenga ese ID en
+# custentity_ghl_contact_id. Ademas se traen los clientes creados en el rango,
+# para detectar los que quedaron sin ID de GHL. No se filtra subsidiaria ni
+# representante: si el ID de GHL esta en cualquier cliente, el contacto esta.
+
+CAMPOS_EXTRA_CLIENTE = {
+    "email": ("email", False),
+    "telefono": ("phone", False),
+    "origen": ("leadsource", True),
+}
+
+ETIQUETAS_CLIENTE = {
+    "id_interno": "ID interno",
+    "id_cliente": "ID",
+    "cliente": "Cliente",
+    "id_cliente_crm": "ID CLIENTE CRM",
+    "creacion": "Fecha de creación",
+    "estado": "Estado",
+    "representante": "Representante de Ventas",
+    "subsidiaria": "Subsidiaria",
+    "email": "Email",
+    "telefono": "Teléfono",
+    "origen": "Origen de clientes potenciales",
+}
+
+
+def consulta_clientes(desde, hasta, ids_crm=None, campos_extra=True):
+    extra = "".join(
+        (f"            BUILTIN.DF(c.{campo}) AS {alias},\n" if es_lista else f"            c.{campo} AS {alias},\n")
+        for alias, (campo, es_lista) in CAMPOS_EXTRA_CLIENTE.items()
+    ) if campos_extra else ""
+    hasta_excl = (hasta + timedelta(days=1)).isoformat()
+    rango = (f"(c.datecreated >= TO_DATE('{desde.isoformat()}', 'YYYY-MM-DD') "
+             f"AND c.datecreated < TO_DATE('{hasta_excl}', 'YYYY-MM-DD'))")
+    ids = _ids_crm_seguros(ids_crm)
+    if ids:
+        lista = ", ".join(f"'{i}'" for i in ids)
+        filtro = f"({rango} OR c.custentity_ghl_contact_id IN ({lista}))"
+    else:
+        filtro = rango
+    return f"""
+        SELECT
+            c.id                                            AS id_interno,
+            c.entityid                                      AS id_cliente,
+            NVL(c.companyname, c.altname)                   AS cliente,
+            c.custentity_ghl_contact_id                     AS id_cliente_crm,
+            TO_CHAR(c.datecreated, 'YYYY-MM-DD HH24:MI')    AS creacion,
+            BUILTIN.DF(c.entitystatus)                      AS estado,
+            BUILTIN.DF(c.salesrep)                          AS representante,
+{extra}            BUILTIN.DF(c.subsidiary)                        AS subsidiaria
+        FROM customer c
+        WHERE {filtro}
+        ORDER BY c.id
+    """
+
+
+def traer_clientes(desde, hasta, ids_crm, log):
+    """Clientes de NetSuite con ID de GHL en ids_crm o creados en el rango.
+    Lista de dicts con las etiquetas de ETIQUETAS_CLIENTE."""
+    ids = _ids_crm_seguros(ids_crm)
+    filas, campos_extra, vistos = [], True, set()
+    # Tandas de 300 IDs, igual que traer_presupuestos.
+    tandas = [ids[i:i + 300] for i in range(0, len(ids), 300)] or [[]]
+    for tanda in tandas:
+        while True:
+            try:
+                lote = suiteql(consulta_clientes(desde, hasta, tanda, campos_extra))
+                break
+            except RuntimeError as e:
+                if campos_extra:
+                    log("AVISO: NetSuite no dejo leer algun campo opcional del cliente "
+                        f"({', '.join(c for c, _ in CAMPOS_EXTRA_CLIENTE.values())}); se omiten. "
+                        f"Detalle: {str(e)[:300]}")
+                    campos_extra = False
+                else:
+                    raise
+        for f in lote:
+            if f.get("id_interno") in vistos:
+                continue
+            vistos.add(f.get("id_interno"))
+            filas.append(f)
+
+    salida = []
+    for f in filas:
+        fila = {etq: f.get(alias) for alias, etq in ETIQUETAS_CLIENTE.items()}
+        fila["ID interno"] = int(fila["ID interno"])
+        salida.append({k: (None if v == "" else v) for k, v in fila.items()})
+    con_id = {str(f["ID CLIENTE CRM"]).strip() for f in salida if f.get("ID CLIENTE CRM")}
+    encontrados = sum(1 for i in ids if i in con_id)
+    log(f"NetSuite clientes: {encontrados} de {len(ids)} contactos de GHL tienen cliente en NetSuite; "
+        f"{len(salida)} clientes en total (incluye los creados en el rango).")
     return salida

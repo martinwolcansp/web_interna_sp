@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../css/components.css">
   <link rel="stylesheet" href="../css/admin.css">
   <link rel="stylesheet" href="../css/integracion-ghl-ns.css">
+  <link rel="stylesheet" href="../css/integracion-ghl-ns-auditoria.css">
 </head>
 <body>
 
@@ -44,6 +45,14 @@
       <h1 class="admin-page-title">Integración NetSuite ↔ GHL</h1>
       <p class="admin-page-subtitle">Contactos y oportunidades de la integración, con sus IDs en GHL y en NetSuite. Los registros que vienen de GHL o de NetSuite son de consulta; la carga manual queda para casos puntuales.</p>
     </div>
+
+    <!-- Pestañas: Consola (consulta y carga manual) / Auditoría (cruce por vendedor) -->
+    <nav class="segment-nav" role="tablist" aria-label="Vistas de la integración">
+      <button type="button" class="segment-tab is-active" role="tab" id="ig-tabbtn-consola" data-tab="consola" aria-controls="ig-tab-consola" aria-selected="true"><i class="ti ti-database"></i> Consola</button>
+      <button type="button" class="segment-tab" role="tab" id="ig-tabbtn-auditoria" data-tab="auditoria" aria-controls="ig-tab-auditoria" aria-selected="false"><i class="ti ti-list-check"></i> Auditoría</button>
+    </nav>
+
+    <div id="ig-tab-consola" role="tabpanel" aria-labelledby="ig-tabbtn-consola">
 
     <!-- Resumen -->
     <section class="admin-section" aria-labelledby="ig-summary-title">
@@ -292,6 +301,161 @@
       </form>
     </section>
 
+    </div><!-- /ig-tab-consola -->
+
+    <!-- ══════════════════════════════════════════════════════════
+         Auditoría de la integración (migración 23).
+         Cruza lo que el Informe MKT carga todos los días en Supabase
+         (corrida programada de lunes a viernes 16 hs + botón Actualizar):
+           1. Contactos de GHL → clientes potenciales de NetSuite
+           2. Oportunidades de NetSuite → oportunidades de GHL
+         Opcional: el control 2 también se puede correr subiendo los
+         exports de NetSuite y GHL (no se guardan, se procesan acá).
+         Lógica en js/integracion-ghl-ns-auditoria.js.
+         ══════════════════════════════════════════════════════════ -->
+    <div id="ig-tab-auditoria" role="tabpanel" aria-labelledby="ig-tabbtn-auditoria" hidden>
+
+      <!-- Período, vendedor y fuente -->
+      <section class="admin-section" aria-labelledby="au-periodo-title">
+        <div class="admin-section__header">
+          <h2 id="au-periodo-title" class="admin-section__title">Período de la auditoría</h2>
+          <p class="admin-section__subtitle">Contactos por fecha de alta en GHL y oportunidades por fecha de la oportunidad en NetSuite.</p>
+        </div>
+
+        <form id="au-filtros" class="ig-toolbar" autocomplete="off">
+          <label class="ig-toolbar__date">Desde <input type="date" id="au-desde" class="admin-input" required></label>
+          <label class="ig-toolbar__date">hasta <input type="date" id="au-hasta" class="admin-input" required></label>
+          <select id="au-vendedor" class="admin-select" aria-label="Vendedor"></select>
+          <div class="au-fuente" role="radiogroup" aria-label="Fuente de los datos">
+            <label><input type="radio" name="au-fuente" value="base" checked> Base (automática)</label>
+            <label><input type="radio" name="au-fuente" value="archivos"> Subir exports</label>
+          </div>
+          <button type="submit" id="au-aplicar" class="btn btn--primary"><i class="ti ti-refresh"></i> Auditar</button>
+        </form>
+
+        <p id="au-cobertura" class="au-nota"></p>
+
+        <!-- Modo archivos: sólo control 2 (como el HTML de cruce) -->
+        <div id="au-archivos" class="au-archivos" hidden>
+          <p class="au-nota">Subí el export de oportunidades de NetSuite (columna <b>ID interno</b>) y el de oportunidades de GHL (columna <b>NetSuite Opportunity ID</b>). Se procesan en el navegador y no se guardan. Con archivos sólo se corre el control 2.</p>
+          <div class="au-archivos__grid">
+            <label class="au-drop" id="au-drop-ns">
+              <i class="ti ti-file-spreadsheet"></i>
+              <span class="au-drop__titulo">Export de NetSuite (Excel o CSV)</span>
+              <span class="au-drop__archivo" id="au-fn-ns">Elegir archivo…</span>
+              <input type="file" id="au-file-ns" accept=".xlsx,.xls,.csv">
+            </label>
+            <label class="au-drop" id="au-drop-ghl">
+              <i class="ti ti-file-spreadsheet"></i>
+              <span class="au-drop__titulo">Export de GHL (CSV o Excel)</span>
+              <span class="au-drop__archivo" id="au-fn-ghl">Elegir archivo…</span>
+              <input type="file" id="au-file-ghl" accept=".csv,.xlsx,.xls">
+            </label>
+          </div>
+        </div>
+
+        <p id="au-status" class="admin-row-status"></p>
+      </section>
+
+      <div id="au-resultados" hidden>
+
+        <!-- Resumen -->
+        <section class="admin-section" aria-labelledby="au-resumen-title">
+          <div class="admin-section__header">
+            <h2 id="au-resumen-title" class="admin-section__title">Resumen</h2>
+          </div>
+          <div id="au-kpis" class="au-kpis"></div>
+        </section>
+
+        <!-- Por vendedor -->
+        <section class="admin-section" aria-labelledby="au-vendedores-title">
+          <div class="admin-section__header">
+            <h2 id="au-vendedores-title" class="admin-section__title">Por vendedor</h2>
+            <p class="admin-section__subtitle">Hacé click en un número para ver el detalle de ese vendedor.</p>
+          </div>
+          <div id="au-vendedores" class="admin-table-wrap"></div>
+        </section>
+
+        <!-- Control 1 -->
+        <section class="admin-section" id="au-c1" aria-labelledby="au-c1-title">
+          <div class="admin-section__header ig-section-header">
+            <div>
+              <h2 id="au-c1-title" class="admin-section__title">1 · Contactos de GHL → clientes potenciales de NetSuite</h2>
+              <p class="admin-section__subtitle">Cada contacto de GHL debería tener un cliente en NetSuite con su ID en el campo <code>ID CLIENTE CRM</code>.</p>
+            </div>
+            <button type="button" class="btn btn--secondary" data-excel="c1"><i class="ti ti-download"></i> Excel</button>
+          </div>
+          <div class="ig-toolbar">
+            <input type="search" id="au-c1-q" class="admin-input ig-toolbar__search" placeholder="Buscar por nombre, email, teléfono o ID">
+            <select id="au-c1-estado" class="admin-select" aria-label="Estado">
+              <option value="falta">Faltan en NetSuite</option>
+              <option value="sin_verificar">Sin verificar</option>
+              <option value="ok">Con cliente en NetSuite</option>
+              <option value="">Todos</option>
+            </select>
+            <select id="au-c1-universo" class="admin-select" aria-label="Qué contactos">
+              <option value="">Contactos: todos</option>
+              <option value="visita">Sólo con visita en GHL</option>
+              <option value="oportunidad">Sólo con oportunidad en GHL</option>
+            </select>
+          </div>
+          <div id="au-c1-tabla" class="admin-table-wrap"></div>
+          <div id="au-c1-pager" class="ig-pager"></div>
+        </section>
+
+        <!-- Control 2 -->
+        <section class="admin-section" id="au-c2" aria-labelledby="au-c2-title">
+          <div class="admin-section__header ig-section-header">
+            <div>
+              <h2 id="au-c2-title" class="admin-section__title">2 · Oportunidades de NetSuite → GHL</h2>
+              <p class="admin-section__subtitle">Cada oportunidad de NetSuite debería tener su oportunidad en GHL con el ID de NetSuite cargado.</p>
+            </div>
+            <button type="button" class="btn btn--secondary" data-excel="c2"><i class="ti ti-download"></i> Excel</button>
+          </div>
+          <div class="ig-toolbar">
+            <input type="search" id="au-c2-q" class="admin-input ig-toolbar__search" placeholder="Buscar por oportunidad, cliente o ID">
+            <select id="au-c2-estado" class="admin-select" aria-label="Estado">
+              <option value="falta">Faltan en GHL</option>
+              <option value="ok">Vinculadas en GHL</option>
+              <option value="">Todas</option>
+            </select>
+            <select id="au-c2-aprobada" class="admin-select" aria-label="Aprobada">
+              <option value="">NetSuite: todas</option>
+              <option value="1">Sólo aprobadas</option>
+              <option value="0">Sólo no aprobadas</option>
+            </select>
+          </div>
+          <div id="au-c2-tabla" class="admin-table-wrap"></div>
+          <div id="au-c2-pager" class="ig-pager"></div>
+        </section>
+
+        <!-- Extra: GHL con ID NS que no está en el export (sólo modo archivos) -->
+        <section class="admin-section" id="au-c2b" aria-labelledby="au-c2b-title" hidden>
+          <div class="admin-section__header ig-section-header">
+            <div>
+              <h2 id="au-c2b-title" class="admin-section__title">Oportunidades de GHL con un ID de NetSuite que no está en el export de NetSuite</h2>
+            </div>
+            <button type="button" class="btn btn--secondary" data-excel="c2b"><i class="ti ti-download"></i> Excel</button>
+          </div>
+          <div id="au-c2b-tabla" class="admin-table-wrap"></div>
+        </section>
+
+        <!-- Extra: clientes NS sin ID de GHL -->
+        <section class="admin-section" id="au-c3" aria-labelledby="au-c3-title">
+          <div class="admin-section__header ig-section-header">
+            <div>
+              <h2 id="au-c3-title" class="admin-section__title">Clientes de NetSuite creados en el período sin ID de GHL</h2>
+              <p class="admin-section__subtitle">Clientes potenciales de S.P. Seguridad Privada con el campo <code>ID CLIENTE CRM</code> vacío: no se pueden cruzar con GHL.</p>
+            </div>
+            <button type="button" class="btn btn--secondary" data-excel="c3"><i class="ti ti-download"></i> Excel</button>
+          </div>
+          <div id="au-c3-tabla" class="admin-table-wrap"></div>
+        </section>
+
+        <p id="au-pie" class="au-nota"></p>
+      </div>
+    </div><!-- /ig-tab-auditoria -->
+
     <footer class="site-footer" role="contentinfo">
       <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
       <div>
@@ -303,6 +467,7 @@
   </main>
 
   <script src="../js/integracion-ghl-ns.js"></script>
+  <script src="../js/integracion-ghl-ns-auditoria.js"></script>
 
 </body>
 </html>
