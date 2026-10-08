@@ -1113,8 +1113,14 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   function fmtDia(s) { var p = String(s).split("-"); return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : s; }
 
   function renderMatrizVendedor() {
-    var panel = document.getElementById("panel-vendedor");
-    if (!panel) return;
+    var seccion = document.getElementById("panel-vendedor");
+    if (!seccion) return;
+    // Dos bloques: la matriz (se redibuja con el selector) y las visitas.
+    var panel = document.getElementById("vend-matriz");
+    if (!panel) {
+      seccion.innerHTML = '<div id="vend-matriz"></div><div id="vend-visitas"></div>';
+      panel = document.getElementById("vend-matriz");
+    }
     var todas = oportunidadesPeriodo();
     var ops = todas.filter(function (o) { return !PIVOT.soloGanadas || o.ganada; });
 
@@ -1201,10 +1207,312 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     panel.innerHTML = html;
   }
 
+  // ---- Informe por vendedor: visitas (citas GHL pasadas, no canceladas) y
+  // presupuestos de NetSuite. Los datos vienen en <script id="visitas-data">
+  // dentro del panel que arma el servicio (08/10/2026).
+  var VIS = { vendedor: "" };
+  function leerVisitas() {
+    var el = document.getElementById("visitas-data");
+    if (!el) return null;
+    try { return JSON.parse(el.textContent || "null"); } catch (e) { return { error: "No se pudieron leer los datos de visitas." }; }
+  }
+  function fmtPesos(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    return "$ " + Math.round(Number(v)).toLocaleString("es-AR");
+  }
+  function pct(a, b) { return b ? Math.round(100 * a / b) + "%" : "—"; }
+
+  function resumenVisitas(D) {
+    var presPorId = {};
+    (D.presupuestos || []).forEach(function (p) { presPorId[p.id] = p; });
+    var enInforme = {};
+    (D.vendedores_informe || []).forEach(function (v) { enInforme[v] = 1; });
+    var filas = {};
+    function fila(v) {
+      return filas[v] = filas[v] || { vendedor: v, citas: 0, visitas: 0, conPres: 0, presPeriodo: 0, monto: 0, presVisitas: 0 };
+    }
+    Object.keys(D.estados_citas || {}).forEach(function (v) {
+      var e = D.estados_citas[v], f = fila(v);
+      Object.keys(e).forEach(function (k) { f.citas += e[k]; });
+    });
+    (D.visitas || []).forEach(function (vi) {
+      var f = fila(vi.vendedor);
+      f.visitas++;
+      if (vi.presupuestos && vi.presupuestos.length) { f.conPres++; f.presVisitas += vi.presupuestos.length; }
+    });
+    var otros = 0;
+    (D.presupuestos || []).forEach(function (p) {
+      if (!p.en_periodo) return;
+      if (!enInforme[p.vendedor]) { otros++; return; }
+      var f = fila(p.vendedor);
+      f.presPeriodo++;
+      f.monto += Number(p.total) || 0;
+    });
+    var lista = Object.keys(filas).map(function (k) { return filas[k]; }).sort(function (a, b) {
+      if (a.vendedor === "Sin asignar") return 1; if (b.vendedor === "Sin asignar") return -1;
+      return b.visitas - a.visitas || b.presPeriodo - a.presPeriodo || a.vendedor.localeCompare(b.vendedor, "es");
+    });
+    var tot = { citas: 0, visitas: 0, conPres: 0, presPeriodo: 0, monto: 0, presVisitas: 0 };
+    lista.forEach(function (f) { Object.keys(tot).forEach(function (k) { tot[k] += f[k]; }); });
+    return { lista: lista, tot: tot, otros: otros, presPorId: presPorId };
+  }
+
+  window.setVisitasVendedor = function (v) { VIS.vendedor = v || ""; renderVisitasVendedor(); };
+
+  window.exportarVisitasExcel = function (btn) {
+    var D = leerVisitas();
+    if (!D || D.error) return;
+    var R = resumenVisitas(D);
+    var textoBtn = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Generando…"; }
+    cargarXlsx().then(function (XLSX) {
+      var hoja1 = R.lista.map(function (f) {
+        return { "Vendedor": f.vendedor, "Citas en el período": f.citas, "Visitas concretadas": f.visitas,
+                 "Visitas con presupuesto": f.conPres, "Presupuestos de esas visitas": f.presVisitas,
+                 "Presupuestos del período": f.presPeriodo, "Monto presupuestado": f.monto };
+      });
+      var hoja2 = [];
+      (D.visitas || []).forEach(function (vi) {
+        var ps = (vi.presupuestos || []).map(function (id) { return R.presPorId[id]; }).filter(Boolean);
+        (ps.length ? ps : [null]).forEach(function (p) {
+          hoja2.push({ "Fecha visita": fechaExcel(vi.fecha), "Hora": vi.hora, "Vendedor": vi.vendedor, "Cliente": vi.cliente,
+                       "Calendario": vi.calendario, "Presupuesto": p ? p.numero : null, "Fecha presupuesto": p ? fechaExcel(p.fecha) : null,
+                       "Estado presupuesto": p ? p.estado : null, "Total presupuesto": p ? p.total : null,
+                       "Vendedor del presupuesto": p ? p.vendedor : null });
+        });
+      });
+      var hoja3 = (D.presupuestos || []).filter(function (p) { return p.en_periodo; }).map(function (p) {
+        return { "Presupuesto": p.numero, "Fecha": fechaExcel(p.fecha), "Vendedor": p.vendedor, "Estado": p.estado,
+                 "Total": p.total, "Nro cliente (NetSuite)": p.nro_cliente, "Cliente": p.cliente,
+                 "Oportunidad": p.oportunidad, "Comodato": p.comodato === null || p.comodato === undefined ? null : siNo(p.comodato),
+                 "De una visita": siNo(!!p.visita_id) };
+      });
+      var libro = XLSX.utils.book_new();
+      [["Por vendedor", hoja1], ["Visitas", hoja2], ["Presupuestos", hoja3]].forEach(function (par) {
+        var h = XLSX.utils.json_to_sheet(par[1].length ? par[1] : [{ "Sin datos": "" }]);
+        var cols = Object.keys(par[1][0] || { "Sin datos": "" });
+        h["!cols"] = cols.map(function (k) {
+          var largo = k.length;
+          par[1].forEach(function (f) { var n = String(f[k] === null || f[k] === undefined ? "" : f[k]).length; if (n > largo) largo = n; });
+          return { wch: Math.min(Math.max(largo + 2, 10), 45) };
+        });
+        cols.forEach(function (k, c) {
+          if (!/^Fecha/.test(k)) return;
+          for (var r = 1; r <= par[1].length; r++) {
+            var celda = h[XLSX.utils.encode_cell({ r: r, c: c })];
+            if (celda && celda.t === "n") celda.z = "dd/mm/yyyy";
+          }
+        });
+        XLSX.utils.book_append_sheet(libro, h, par[0]);
+      });
+      XLSX.writeFile(libro, "Visitas_y_presupuestos_" + (D.desde || "") + "_al_" + (D.hasta || "") + ".xlsx");
+    }).catch(function (e) {
+      console.error(e);
+      if (btn) btn.textContent = "Error al exportar";
+      setTimeout(function () { if (btn) btn.textContent = textoBtn; }, 3000);
+    }).then(function () {
+      if (btn) { btn.disabled = false; if (btn.textContent === "Generando…") btn.textContent = textoBtn; }
+    });
+  };
+
+  function renderVisitasVendedor() {
+    var cont = document.getElementById("vend-visitas");
+    if (!cont) return;
+    var D = leerVisitas();
+    var html = '<h3>Visitas y presupuestos por vendedor</h3>';
+    if (!D) {
+      cont.innerHTML = html + '<div class="note-box note-box--warn">Esta actualización no tiene datos de visitas. ' +
+        "Se cargan a partir de la próxima actualización del período.</div>";
+      return;
+    }
+    if (D.error) {
+      cont.innerHTML = html + '<div class="note-box note-box--warn">' + esc(D.error) + "</div>";
+      return;
+    }
+    var R = resumenVisitas(D), T = R.tot;
+    html += '<div class="kpi-caveat"><strong>Visitas</strong>: citas de los calendarios de GHL del período con fecha ya pasada y no canceladas ni marcadas <em>No asistió</em>, ' +
+      "por usuario asignado a la cita. <strong>Presupuestos</strong>: transacciones Presupuesto de NetSuite con fecha en el período, por representante de ventas. " +
+      "Una visita <em>con presupuesto</em> tiene al menos un presupuesto del mismo cliente (ID CLIENTE CRM) con fecha igual o posterior a la visita, " +
+      "aunque sea de un mes siguiente.</div>";
+    html += '<div class="kpi-row">' +
+      '<div class="kpi-card"><div class="kpi-num">' + T.visitas + '</div><div class="kpi-label">Visitas concretadas (de ' + T.citas + " citas)</div></div>" +
+      '<div class="kpi-card"><div class="kpi-num">' + T.conPres + '</div><div class="kpi-label">Visitas con presupuesto · ' + pct(T.conPres, T.visitas) + "</div></div>" +
+      '<div class="kpi-card"><div class="kpi-num">' + T.presPeriodo + '</div><div class="kpi-label">Presupuestos del período (NetSuite)</div></div>' +
+      '<div class="kpi-card"><div class="kpi-num">' + esc(fmtPesos(T.monto)) + '</div><div class="kpi-label">Monto presupuestado en el período</div></div>' +
+      "</div>";
+    html += '<div class="pivot-bar"><button type="button" class="explorer-export" onclick="exportarVisitasExcel(this)">Exportar a Excel</button>' +
+      '<span class="explorer-count">Click en un vendedor para ver sus visitas</span></div>';
+    function c(n, clase) { return '<td class="' + (clase || "") + (n ? "" : " pv-cero") + '">' + n + "</td>"; }
+    html += '<div class="pivot-scroll"><table class="data-table pivot"><thead><tr>' +
+      '<th class="pv-vendedor">Vendedor</th><th>Citas</th><th>Visitas concretadas</th><th>Con presupuesto</th><th>%</th>' +
+      '<th>Presupuestos del período</th><th class="pv-total">Monto presupuestado</th></tr></thead><tbody>';
+    R.lista.forEach(function (f) {
+      var sel = VIS.vendedor === f.vendedor;
+      html += '<tr class="client-row" style="cursor:pointer' + (sel ? ";background:var(--light-fill)" : "") + '" onclick=\'setVisitasVendedor(' +
+        JSON.stringify(sel ? "" : f.vendedor).replace(/'/g, "&#39;") + ')\'><td class="pv-vendedor">' + esc(f.vendedor) + (sel ? " ✓" : "") + "</td>" +
+        c(f.citas) + c(f.visitas, "pv-sub") + c(f.conPres) + "<td>" + pct(f.conPres, f.visitas) + "</td>" + c(f.presPeriodo, "pv-sub") +
+        '<td class="pv-total">' + esc(fmtPesos(f.monto)) + "</td></tr>";
+    });
+    html += '</tbody><tfoot><tr><td class="pv-vendedor">Total</td>' + c(T.citas) + c(T.visitas) + c(T.conPres) +
+      "<td>" + pct(T.conPres, T.visitas) + "</td>" + c(T.presPeriodo) + "<td>" + esc(fmtPesos(T.monto)) + "</td></tr></tfoot></table></div>";
+
+    var notas = [];
+    if (R.otros) notas.push(R.otros + " presupuesto" + (R.otros === 1 ? "" : "s") + " del período de otros representantes (fuera de la búsqueda de vendedores) no se cuentan");
+    var sinAsig = R.lista.filter(function (f) { return f.vendedor === "Sin asignar"; })[0];
+    if (sinAsig && sinAsig.citas) notas.push("\"Sin asignar\": citas sin usuario asignado o con un usuario que no es vendedor");
+    if (D.dias_sin_visitas && D.dias_sin_visitas.length) {
+      notas.push("Sin visitas cargadas para: " + D.dias_sin_visitas.map(function (r) {
+        return r.desde === r.hasta ? fmtDia(r.desde) : fmtDia(r.desde) + " al " + fmtDia(r.hasta);
+      }).join(", ") + " (se completan al actualizar esos días)");
+    }
+    if (notas.length) html += '<div class="pivot-nota">' + esc(notas.join(" · ")) + ".</div>";
+
+    // Detalle de visitas
+    var vs = (D.visitas || []).filter(function (v) { return !VIS.vendedor || v.vendedor === VIS.vendedor; });
+    html += '<h3>Detalle de visitas concretadas' + (VIS.vendedor ? " · " + esc(VIS.vendedor) +
+      ' <button type="button" class="explorer-clear" onclick="setVisitasVendedor(\'\')">Ver todos</button>' : "") + "</h3>";
+    if (!vs.length) {
+      cont.innerHTML = html + '<p style="color:var(--muted)">No hay visitas concretadas en el período.</p>';
+      return;
+    }
+    html += '<div class="table-scroll"><table class="data-table explorer-table"><thead><tr><th>Fecha</th><th>Vendedor</th><th>Cliente</th>' +
+      "<th>Presupuestos (NetSuite)</th></tr></thead><tbody>";
+    vs.forEach(function (v) {
+      var ps = (v.presupuestos || []).map(function (id) { return R.presPorId[id]; }).filter(Boolean);
+      var detalle = ps.length ? '<table class="ns-opp-table"><thead><tr><th>Presupuesto</th><th>Fecha</th><th>Estado</th><th>Total</th><th>Vendedor</th></tr></thead><tbody>' +
+        ps.map(function (p) {
+          return "<tr><td>" + esc(p.numero || p.id) + "</td><td>" + esc(p.fecha ? fmtDia(p.fecha) : "") + "</td><td>" + esc(p.estado || "") +
+            "</td><td>" + esc(fmtPesos(p.total)) + "</td><td>" + esc(p.vendedor || "") + "</td></tr>";
+        }).join("") + "</tbody></table>"
+        : '<span style="color:var(--muted)">Sin presupuesto</span>';
+      html += "<tr><td style=\"white-space:nowrap\">" + esc(v.fecha ? fmtDia(v.fecha) : "") + (v.hora ? " " + esc(v.hora) : "") + "</td><td>" + esc(v.vendedor) +
+        "</td><td>" + esc(v.cliente || "") + "</td><td>" + detalle + "</td></tr>";
+    });
+    html += "</tbody></table></div>";
+    cont.innerHTML = html;
+  }
+
+  // ---- Informe general: contactos recibidos en GHL en el periodo, por
+  // calificacion (tags nocalificado) y origen (tags de canal).
+  var ORIGEN_TAGS = [
+    ["fb-ad-lead-whatsapp", "Facebook Ads"],
+    ["instagram-ad-lead-whatsapp", "Instagram Ads"],
+    ["formweb", "Formulario web"],
+    ["organico", "Orgánico"],
+    ["whatsapp-missed-call", "Llamada perdida WhatsApp"],
+    ["inbound whatsapp", "WhatsApp (sin anuncio)"]
+  ];
+  var CALIFICACIONES = ["Calificado", "No calificado (cv)", "No calificado (otros)"];
+  function tagsMin(c) { return (c.tags || []).map(function (t) { return String(t).toLowerCase().trim(); }); }
+  function origenContacto(c) {
+    var t = tagsMin(c);
+    for (var i = 0; i < ORIGEN_TAGS.length; i++) if (t.indexOf(ORIGEN_TAGS[i][0]) !== -1) return ORIGEN_TAGS[i][1];
+    return "Sin etiqueta de origen";
+  }
+  function calificacionContacto(c) {
+    var t = tagsMin(c);
+    if (t.indexOf("nocalificado(cv)") !== -1) return "No calificado (cv)";
+    if (t.indexOf("nocalificado(otros)") !== -1) return "No calificado (otros)";
+    return "Calificado";
+  }
+  function lineaWhatsapp(c) {
+    var t = (c.tags || []).filter(function (x) { return /^wa:\s*/i.test(x); })[0];
+    return t ? String(t).replace(/^wa:\s*/i, "") : "Sin línea";
+  }
+  function contactosRecibidos() {
+    return CONTACTS.filter(function (c) { return c.contacto_del_periodo && !c.sin_contacto_ghl; }).map(function (c) {
+      return { c: c, origen: origenContacto(c), calif: calificacionContacto(c), linea: lineaWhatsapp(c) };
+    });
+  }
+
+  window.exportarContactosRecibidosExcel = function (btn) {
+    var filas = contactosRecibidos();
+    if (!filas.length) return;
+    var textoBtn = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Generando…"; }
+    cargarXlsx().then(function (XLSX) {
+      var datos = filas.map(function (f) {
+        return { "Fecha de alta": fechaExcel(diaAR(f.c.date_added)), "Contacto": f.c.nombre, "Origen (tag)": f.origen,
+                 "Calificación": f.calif, "Línea de WhatsApp": f.linea, "Vendedor": f.c.vendedor,
+                 "Tiene oportunidad NetSuite": siNo(f.c.tiene_oportunidad), "Tags": (f.c.tags || []).join(", "), "ID GHL": f.c.contact_id };
+      }).sort(function (a, b) { return (a["Fecha de alta"] || 0) - (b["Fecha de alta"] || 0); });
+      var h = XLSX.utils.json_to_sheet(datos);
+      var cols = Object.keys(datos[0]);
+      for (var r = 1; r <= datos.length; r++) { var cel = h[XLSX.utils.encode_cell({ r: r, c: 0 })]; if (cel && cel.t === "n") cel.z = "dd/mm/yyyy"; }
+      h["!cols"] = cols.map(function (k) {
+        var largo = k.length;
+        datos.forEach(function (f) { var n = String(f[k] === null || f[k] === undefined ? "" : f[k]).length; if (n > largo) largo = n; });
+        return { wch: Math.min(Math.max(largo + 2, 10), 50) };
+      });
+      h["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: datos.length, c: cols.length - 1 } }) };
+      var libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, h, "Contactos recibidos");
+      var d = (document.getElementById("per-desde") || {}).value || "", hh = (document.getElementById("per-hasta") || {}).value || "";
+      XLSX.writeFile(libro, "Contactos_recibidos_GHL" + (d && hh ? "_" + d + "_al_" + hh : "") + ".xlsx");
+    }).catch(function (e) {
+      console.error(e);
+      if (btn) btn.textContent = "Error al exportar";
+      setTimeout(function () { if (btn) btn.textContent = textoBtn; }, 3000);
+    }).then(function () {
+      if (btn) { btn.disabled = false; if (btn.textContent === "Generando…") btn.textContent = textoBtn; }
+    });
+  };
+
+  function renderContactosRecibidos() {
+    var panel = document.getElementById("panel-resumen");
+    if (!panel) return;
+    var cont = document.getElementById("contactos-recibidos");
+    if (!cont) { cont = document.createElement("div"); cont.id = "contactos-recibidos"; panel.appendChild(cont); }
+    var filas = contactosRecibidos(), n = filas.length;
+    var html = "<h3>Contactos recibidos en GHL en el período</h3>" +
+      '<div class="kpi-caveat">Contactos creados en GHL con fecha de alta en el período. <strong>Calificación</strong> por tags: ' +
+      "<em>nocalificado(cv)</em> y <em>nocalificado(otros)</em> son no calificados; el resto se cuenta como calificado. " +
+      "<strong>Origen</strong> por tag de canal (Facebook / Instagram Ads, formulario web, orgánico; \"WhatsApp (sin anuncio)\" = tag inbound whatsapp sin tag de anuncio).</div>";
+    if (!n) { cont.innerHTML = html + '<p style="color:var(--muted)">No hay contactos creados en GHL en el período.</p>'; return; }
+
+    var porCalif = {};
+    filas.forEach(function (f) { porCalif[f.calif] = (porCalif[f.calif] || 0) + 1; });
+    html += '<div class="kpi-row"><div class="kpi-card"><div class="kpi-num">' + n + '</div><div class="kpi-label">Contactos recibidos</div></div>' +
+      CALIFICACIONES.map(function (k) {
+        var v = porCalif[k] || 0;
+        return '<div class="kpi-card"><div class="kpi-num">' + v + '</div><div class="kpi-label">' + esc(k) + " · " + pct(v, n) + "</div></div>";
+      }).join("") + "</div>";
+
+    function tabla(titulo, clave, orden) {
+      var m = {}, tot = {};
+      filas.forEach(function (f) {
+        var k = f[clave];
+        m[k] = m[k] || {}; m[k][f.calif] = (m[k][f.calif] || 0) + 1; tot[k] = (tot[k] || 0) + 1;
+      });
+      var claves = Object.keys(m).sort(function (a, b) {
+        if (orden) { var ia = orden.indexOf(a), ib = orden.indexOf(b); if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib); }
+        return tot[b] - tot[a] || a.localeCompare(b, "es");
+      });
+      claves.sort(function (a, b) { return /^Sin /.test(a) - /^Sin /.test(b) || tot[b] - tot[a]; });
+      function c(x, clase) { return '<td class="' + (clase || "") + (x ? "" : " pv-cero") + '">' + (x || 0) + "</td>"; }
+      var h = '<div class="pivot-scroll" style="margin-bottom:16px"><table class="data-table pivot"><thead><tr><th class="pv-vendedor">' + esc(titulo) + "</th>" +
+        CALIFICACIONES.map(function (k) { return "<th>" + esc(k) + "</th>"; }).join("") +
+        '<th class="pv-total">Total</th><th>% calificados</th></tr></thead><tbody>';
+      claves.forEach(function (k) {
+        h += '<tr><td class="pv-vendedor">' + esc(k) + "</td>" + CALIFICACIONES.map(function (q) { return c((m[k] || {})[q]); }).join("") +
+          c(tot[k], "pv-total") + "<td>" + pct((m[k] || {})["Calificado"] || 0, tot[k]) + "</td></tr>";
+      });
+      h += '</tbody><tfoot><tr><td class="pv-vendedor">Total</td>' + CALIFICACIONES.map(function (q) { return c(porCalif[q]); }).join("") +
+        c(n) + "<td>" + pct(porCalif["Calificado"] || 0, n) + "</td></tr></tfoot></table></div>";
+      return h;
+    }
+    html += '<div class="pivot-bar"><button type="button" class="explorer-export" onclick="exportarContactosRecibidosExcel(this)">Exportar a Excel</button></div>';
+    html += tabla("Origen", "origen", null);
+    html += tabla("Línea de WhatsApp de ingreso", "linea", null);
+    cont.innerHTML = html;
+  }
+
   ["contactos", "oportunidades"].forEach(function (id) {
     if (document.getElementById(id + "-table")) render(id);
   });
   renderMatrizVendedor();
+  renderVisitasVendedor();
+  renderContactosRecibidos();
   renderContactosHoyKpi();
   renderContactosHoyDonut();
 };

@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from app import acumulado, config, ghl, netsuite, resumen_ejecutivo
+from app import acumulado, config, ghl, netsuite, resumen_ejecutivo, visitas
 from app import supabase_rest as sb
 
 logger = logging.getLogger("informe_mkt_job")
@@ -163,6 +163,23 @@ def ejecutar(corrida_id, token, desde, hasta):
         paso("Consultando NetSuite")
         ventas_df = netsuite.traer_oportunidades(desde, hasta, log)
 
+        # Visitas (citas de GHL) y presupuestos de NetSuite (08/10/2026). Si
+        # fallan no frenan el informe: el Informe por vendedor muestra el aviso.
+        advertencias = []
+        citas = presupuestos = None
+        error_visitas = None
+        try:
+            paso("Descargando visitas de GHL")
+            citas = ghl.traer_citas(inicio, fin_excl, log)
+            paso("Consultando presupuestos en NetSuite")
+            ids_visitados = {c.get("contactId") for c in citas if visitas.es_concretada(c)}
+            presupuestos = netsuite.traer_presupuestos(desde, hasta, ids_visitados, log)
+        except Exception as e:
+            citas = presupuestos = None
+            error_visitas = f"No se pudieron traer las visitas / presupuestos: {e}"
+            advertencias.append(error_visitas)
+            log(f"AVISO: {error_visitas}")
+
         # Contactos de las oportunidades de NetSuite que no vinieron en la descarga
         # por rango (contacto creado antes y sin movimiento en GHL en el rango):
         # se traen por ID para tener su origen, sus oportunidades y conversaciones.
@@ -177,7 +194,6 @@ def ejecutar(corrida_id, token, desde, hasta):
             oportunidades = oportunidades + [o for o in extra if o.get("id") not in vistas]
 
         paso("Cargando contactos y oportunidades en la base")
-        advertencias = []
         try:
             cargar_en_supabase(token, contactos, oportunidades, log)
         except Exception as e:
@@ -200,6 +216,20 @@ def ejecutar(corrida_id, token, desde, hasta):
             rango_label=f"{desde.strftime('%d/%m/%Y')} al {hasta.strftime('%d/%m/%Y')}",
             fecha_actualizacion=ahora.strftime("%d/%m/%Y %H:%M"),
         )
+        if error_visitas:
+            bloque = {"version": 1, "error": error_visitas}
+        else:
+            nombres = {c.get("id"): c for c in contactos if c.get("id")}
+            faltan = {c.get("contactId") for c in citas if c.get("contactId")} - set(nombres)
+            if faltan:
+                try:
+                    for f in sb.leer_por_ids(token, acumulado.T_CONTACTO, "id", faltan, "id,crudo", "leer contactos GHL"):
+                        nombres[f["id"]] = f["crudo"]
+                except Exception as e:  # solo es el nombre del cliente de la visita
+                    log(f"AVISO: no se pudieron leer nombres de contactos visitados: {e}")
+            bloque = visitas.generar(citas, presupuestos, nombres, desde, hasta)
+        resultado["panel_html"] = visitas.incrustar(resultado["panel_html"], bloque)
+
         paso("Guardando los datos para consultas por rango")
         try:
             acumulado.guardar(token, corrida_id, desde, hasta, datos_hasta, contactos, oportunidades,
@@ -209,8 +239,18 @@ def ejecutar(corrida_id, token, desde, hasta):
             # poder sumarla a otras (suele ser que falta la migracion 19).
             advertencias.append(f"No se pudieron guardar los datos para consultas por rango: {e}")
             log(f"AVISO: {advertencias[-1]}")
+        if not error_visitas:
+            try:
+                acumulado.guardar_visitas(token, corrida_id, desde, hasta, inicio, fin_excl, citas, presupuestos, log)
+            except Exception as e:
+                # Suele ser que falta la migracion 22.
+                advertencias.append(f"No se pudieron guardar visitas / presupuestos para consultas por rango: {e}")
+                log(f"AVISO: {advertencias[-1]}")
 
         stats = dict(resultado["stats"], advertencias=advertencias, netsuite_filas=len(ventas_df))
+        if not error_visitas:
+            stats.update(citas_ghl=len(citas), visitas_concretadas=len(bloque["visitas"]),
+                         presupuestos_ns=sum(1 for p in bloque["presupuestos"] if p["en_periodo"]))
         log(f"Listo: {json.dumps(stats, ensure_ascii=False)}")
 
         sb.actualizar_corrida(token, corrida_id, {

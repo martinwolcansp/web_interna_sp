@@ -252,3 +252,9 @@ def leer_por_ids(token, tabla, columna, ids, select, que, tamano=100):
         tanda = ",".join(f'"{x}"' for x in ids[i:i + tamano])
         filas.extend(leer_todo(token, tabla, {"select": select, columna: f"in.({tanda})"}, que))
     return filas
+
+
+def actualizar(token, tabla, params, cambios, que):
+    """PATCH por filtro (ej. marcar dias con visitas cargadas)."""
+    _check(requests.patch(_rest(tabla), headers=_h(token, "return=minimal"), params=params,
+                          json=_sin_nan(cambios), timeout=60), que)

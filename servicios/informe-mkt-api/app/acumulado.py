@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from app import config, resumen_ejecutivo
+from app import config, ghl, resumen_ejecutivo, visitas
 from app import supabase_rest as sb
 
 T_NS = "informe_mkt_ns_oportunidad"
@@ -22,6 +22,8 @@ T_CONTACTO = "informe_mkt_ghl_contacto"
 T_OPP = "informe_mkt_ghl_oportunidad"
 T_CONV = "informe_mkt_conversacion"
 T_DIA = "informe_mkt_dia_cargado"
+T_CITA = "informe_mkt_ghl_cita"            # migracion 22
+T_PRESUPUESTO = "informe_mkt_ns_presupuesto"  # migracion 22
 
 
 def _tz():
@@ -92,6 +94,73 @@ def guardar(token, corrida_id, desde, hasta, datos_hasta, contactos, oportunidad
 
     log(f"Datos acumulados: {len(filas)} oportunidades NetSuite, {len(contactos)} contactos y "
         f"{len(oportunidades)} oportunidades GHL, {len(conv)} conversaciones, {len(dias)} dias.")
+
+
+def guardar_visitas(token, corrida_id, desde, hasta, inicio, fin_excl, citas, presupuestos, log):
+    """Citas de GHL y presupuestos de NetSuite (migracion 22). Dentro del rango
+    se borran las citas / presupuestos que ya no existen, y los dias quedan
+    marcados con visitas_cargadas (los cargados antes no las tienen)."""
+    ahora = datetime.now(timezone.utc).isoformat()
+    filas_cita = []
+    for c in citas:
+        ini = ghl.parse_fecha_cita(c.get("startTime"))
+        if not c.get("id") or ini is None:
+            continue
+        filas_cita.append({"id": c["id"], "contact_id": c.get("contactId"), "inicio": ini.isoformat(),
+                           "estado": (c.get("appointmentStatus") or "").lower() or None,
+                           "crudo": c, "corrida_id": corrida_id, "actualizado_en": ahora})
+    sb.upsert(token, T_CITA, filas_cita, "id")
+    params = {"inicio": f"gte.{inicio.isoformat()}", "and": f"(inicio.lt.{fin_excl.isoformat()})"}
+    if filas_cita:
+        params["id"] = "not.in.(" + ",".join(f'"{f["id"]}"' for f in filas_cita) + ")"
+    sb.borrar(token, T_CITA, params, "limpiar citas del rango")
+
+    filas_pres = [{"id_interno": int(f["ID interno"]), "fecha": str(f.get("Fecha"))[:10],
+                   "id_cliente_crm": (str(f["ID CLIENTE CRM"]).strip() or None) if f.get("ID CLIENTE CRM") else None,
+                   "fila": f, "corrida_id": corrida_id, "actualizado_en": ahora}
+                  for f in presupuestos if f.get("ID interno") and f.get("Fecha")]
+    sb.upsert(token, T_PRESUPUESTO, filas_pres, "id_interno")
+    en_rango = [f for f in filas_pres if desde.isoformat() <= f["fecha"] <= hasta.isoformat()]
+    params = {"fecha": f"gte.{desde.isoformat()}", "and": f"(fecha.lte.{hasta.isoformat()})"}
+    if en_rango:
+        params["id_interno"] = f"not.in.({','.join(str(f['id_interno']) for f in en_rango)})"
+    sb.borrar(token, T_PRESUPUESTO, params, "limpiar presupuestos del rango")
+
+    sb.actualizar(token, T_DIA, {"dia": f"gte.{desde.isoformat()}", "and": f"(dia.lte.{hasta.isoformat()})"},
+                  {"visitas_cargadas": True}, "marcar dias con visitas")
+    log(f"Datos acumulados: {len(filas_cita)} citas GHL y {len(filas_pres)} presupuestos NetSuite.")
+
+
+def bloque_visitas(token, desde, hasta, inicio, fin_excl):
+    """Arma el bloque de visitas del periodo con lo guardado (migracion 22)."""
+    try:
+        dias = sb.leer_todo(token, T_DIA, {
+            "select": "dia,visitas_cargadas",
+            "dia": f"gte.{desde.isoformat()}", "and": f"(dia.lte.{hasta.isoformat()})",
+        }, "leer dias con visitas")
+        citas = [f["crudo"] for f in sb.leer_todo(token, T_CITA, {
+            "select": "crudo",
+            "inicio": f"gte.{inicio.isoformat()}", "and": f"(inicio.lt.{fin_excl.isoformat()})",
+        }, "leer citas")]
+        pres = [f["fila"] for f in sb.leer_todo(token, T_PRESUPUESTO, {
+            "select": "fila",
+            "fecha": f"gte.{desde.isoformat()}", "and": f"(fecha.lte.{hasta.isoformat()})",
+        }, "leer presupuestos")]
+        visitados = {c.get("contactId") for c in citas if visitas.es_concretada(c) and c.get("contactId")}
+        if visitados:
+            vistos = {f.get("ID interno") for f in pres}
+            for f in sb.leer_por_ids(token, T_PRESUPUESTO, "id_cliente_crm", visitados, "fila,fecha",
+                                     "leer presupuestos de clientes visitados"):
+                if f["fecha"] > hasta.isoformat() and f["fila"].get("ID interno") not in vistos:
+                    pres.append(f["fila"])
+        nombres = {f["id"]: f["crudo"] for f in sb.leer_por_ids(
+            token, T_CONTACTO, "id", {c.get("contactId") for c in citas}, "id,crudo", "leer contactos visitados")}
+    except Exception as e:
+        return {"version": 1, "error": f"No se pudieron leer las visitas guardadas (falta la migracion 22?): {e}"}
+    bloque = visitas.generar(citas, pres, nombres, desde, hasta)
+    sin = sorted(date.fromisoformat(d["dia"]) for d in dias if not d.get("visitas_cargadas"))
+    bloque["dias_sin_visitas"] = [{"desde": a.isoformat(), "hasta": b.isoformat()} for a, b in _rangos(sin)]
+    return bloque
 
 
 # -------------------------------------------------------------- consultar
@@ -169,11 +238,12 @@ def consultar(token, desde, hasta):
         rango_label=f"{desde.strftime('%d/%m/%Y')} al {hasta.strftime('%d/%m/%Y')}",
         fecha_actualizacion=fecha_act,
     )
+    panel = visitas.incrustar(resultado["panel_html"], bloque_visitas(token, desde, hasta, inicio, fin_excl))
     return {
         "desde": desde.isoformat(),
         "hasta": hasta.isoformat(),
         "cobertura": cob,
         "stats": resultado["stats"],
-        "panel_resumen_html": resultado["panel_html"],
+        "panel_resumen_html": panel,
         "contacts": resultado["contacts"],
     }

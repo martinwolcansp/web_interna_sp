@@ -181,3 +181,62 @@ def traer_oportunidades_por_contacto(ids, log):
         time.sleep(PAUSA_ENTRE_LLAMADAS)
     log(f"GHL oportunidades de esos contactos: {len(oportunidades)}.")
     return oportunidades
+
+
+# ---------------------------------------------------------------- citas
+# Visitas = citas de los calendarios de GHL (08/10/2026). GET /calendars/events
+# exige calendarId, userId o groupId: se listan los calendarios de la cuenta y
+# se piden las citas de cada uno en el rango (startTime/endTime en epoch ms).
+# Se traen todas (cualquier estado); que cuenta como visita concretada lo
+# decide app/visitas.py (es_concretada).
+
+VERSION_CALENDARIOS = "2021-04-15"
+
+
+def traer_calendarios(log):
+    data = _get(f"{BASE_URL}/calendars/", VERSION_CALENDARIOS, {"locationId": config.GHL_LOCATION_ID}, log)
+    return data.get("calendars", [])
+
+
+def traer_citas(desde, hasta_excl, log):
+    """Citas con inicio en [desde, hasta_excl). Cada cita lleva calendarName."""
+    calendarios = traer_calendarios(log)
+    citas, vistas = [], set()
+    for cal in calendarios:
+        params = {
+            "locationId": config.GHL_LOCATION_ID,
+            "calendarId": cal.get("id"),
+            "startTime": str(int(desde.timestamp() * 1000)),
+            "endTime": str(int(hasta_excl.timestamp() * 1000) - 1),
+        }
+        eventos = _get(f"{BASE_URL}/calendars/events", VERSION_CALENDARIOS, params, log).get("events", [])
+        for ev in eventos:
+            if ev.get("id") in vistas:
+                continue
+            inicio = parse_fecha_cita(ev.get("startTime"))
+            if inicio is None or not (desde <= inicio < hasta_excl):
+                continue
+            vistas.add(ev.get("id"))
+            ev["calendarName"] = cal.get("name")
+            citas.append(ev)
+        time.sleep(PAUSA_ENTRE_LLAMADAS)
+    por_estado = {}
+    for c in citas:
+        e = (c.get("appointmentStatus") or "sin estado").lower()
+        por_estado[e] = por_estado.get(e, 0) + 1
+    log(f"GHL citas: {len(citas)} en el rango en {len(calendarios)} calendarios (por estado: {por_estado}).")
+    return citas
+
+
+def parse_fecha_cita(valor):
+    """startTime de una cita: ISO con zona ("2026-09-14T11:00:00-03:00") o epoch ms."""
+    if valor is None or valor == "":
+        return None
+    if isinstance(valor, (int, float)) or str(valor).isdigit():
+        from datetime import timezone
+        return datetime.fromtimestamp(int(valor) / 1000, tz=timezone.utc)
+    fecha = _parse(str(valor))
+    if fecha is not None and fecha.tzinfo is None:
+        from zoneinfo import ZoneInfo
+        fecha = fecha.replace(tzinfo=ZoneInfo(config.ZONA_HORARIA))
+    return fecha

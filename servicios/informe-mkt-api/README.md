@@ -13,6 +13,12 @@ Reemplaza los pasos manuales de `Actualizacion_Informe_MKT.docx` y trae NetSuite
 
 Los días se cortan en hora de Argentina; los scripts manuales cortaban en UTC.
 
+### Visitas y presupuestos (08/10/2026)
+
+Después de las oportunidades, la corrida trae las **citas de los calendarios de GHL** del rango (`ghl.traer_citas`, todas las de cada calendario) y los **presupuestos de NetSuite** (`netsuite.traer_presupuestos`, transacciones Estimate: los de fecha en el rango y los posteriores de los clientes visitados). `app/visitas.py` arma el bloque del *Informe por vendedor*: visita concretada = cita con fecha ya pasada y estado distinto de *Cancelada*, *No asistió* e *Inválida* (`visitas.es_concretada`; en septiembre ninguna cita estaba marcada *Asistió*), vendedor = usuario asignado a la cita (`VENDEDOR_GHL_IDS`), y cada visita se asocia con los presupuestos del mismo cliente (ID CLIENTE CRM) con fecha igual o posterior a la visita y anterior a la siguiente visita de ese cliente. El bloque viaja dentro del panel como `<script id="visitas-data">`. Si GHL o NetSuite fallan en este paso, el informe se arma igual y queda el aviso.
+
+Requisitos: migración `migracion_22_informe_mkt_visitas_presupuestos.sql` y que el token de GHL tenga permiso de calendarios (`calendars.readonly`, `calendars/events.readonly`). Prueba sin escribir nada: `python diagnostico_visitas.py 2026-09-01 2026-09-30`.
+
 ## Puesta en marcha
 
 ### 1. Supabase

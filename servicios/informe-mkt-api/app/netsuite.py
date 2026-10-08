@@ -288,3 +288,121 @@ def traer_oportunidades(desde, hasta, log):
     log(f"NetSuite (SuiteQL): {len(df)} oportunidades de los representantes de la busqueda "
         f"({total} oportunidades en el rango, todas las subsidiarias y vendedores).")
     return df.reset_index(drop=True)
+
+
+# ------------------------------------------------------------ presupuestos
+# Presupuestos (transacciones tipo Estimate) para el informe de visitas
+# (08/10/2026). Se traen:
+#   - los de fecha en el rango (total de presupuestos por vendedor), y
+#   - los de los clientes visitados (ID CLIENTE CRM = contacto de GHL de la
+#     cita) con fecha desde el inicio del rango en adelante, para poder
+#     asociar a cada visita los presupuestos que se hicieron despues.
+# Misma subsidiaria que las oportunidades; no se filtra por vendedor (eso lo
+# decide el informe). Campos opcionales con reintento sin ellos si el rol no
+# los puede leer.
+
+CAMPOS_EXTRA_PRESUPUESTO = {
+    "oportunidad": ("opportunity", True),
+    "comodato": ("custbody_3k_comodato", False),
+    "tipo_establecimiento": ("custbody_mw_sp_unidad_comercial", True),
+}
+
+ETIQUETAS_PRESUPUESTO = {
+    "id_interno": "ID interno",
+    "fecha": "Fecha",
+    "presupuesto": "Presupuesto",
+    "representante": "Representante de Ventas",
+    "estado": "Estado",
+    "total": "Total",
+    "id_cliente": "ID",
+    "cliente": "Cliente",
+    "id_cliente_crm": "ID CLIENTE CRM",
+    "oportunidad": "Oportunidad",
+    "comodato": "Comodato",
+    "tipo_establecimiento": "Tipo de establecimiento",
+}
+
+
+def _ids_crm_seguros(ids):
+    import re
+    return sorted({str(i) for i in ids or [] if i and re.fullmatch(r"[A-Za-z0-9_-]{5,40}", str(i))})
+
+
+def consulta_presupuestos(desde, hasta, ids_crm=None, campos_extra=True):
+    extra = "".join(
+        (f"            BUILTIN.DF(t.{campo}) AS {alias},\n" if es_lista else f"            t.{campo} AS {alias},\n")
+        for alias, (campo, es_lista) in CAMPOS_EXTRA_PRESUPUESTO.items()
+    ) if campos_extra else ""
+    rango = (f"t.trandate BETWEEN TO_DATE('{desde.isoformat()}', 'YYYY-MM-DD') "
+             f"AND TO_DATE('{hasta.isoformat()}', 'YYYY-MM-DD')")
+    ids = _ids_crm_seguros(ids_crm)
+    if ids:
+        lista = ", ".join(f"'{i}'" for i in ids)
+        filtro = (f"({rango} OR (c.custentity_ghl_contact_id IN ({lista}) "
+                  f"AND t.trandate >= TO_DATE('{desde.isoformat()}', 'YYYY-MM-DD')))")
+    else:
+        filtro = rango
+    return f"""
+        SELECT
+            t.id                                            AS id_interno,
+            TO_CHAR(t.trandate, 'YYYY-MM-DD')               AS fecha,
+            t.tranid                                        AS presupuesto,
+            BUILTIN.DF(t.employee)                          AS representante,
+            BUILTIN.DF(t.status)                            AS estado,
+            t.foreigntotal                                  AS total,
+            c.entityid                                      AS id_cliente,
+            NVL(c.companyname, c.altname)                   AS cliente,
+            c.custentity_ghl_contact_id                     AS id_cliente_crm,
+{extra}            BUILTIN.DF(tl.subsidiary)                       AS subsidiaria
+        FROM transaction t
+        INNER JOIN transactionline tl ON tl.transaction = t.id AND tl.mainline = 'T'
+        LEFT JOIN customer c ON c.id = t.entity
+        WHERE t.type = 'Estimate'
+          AND {filtro}
+        ORDER BY t.id
+    """
+
+
+def traer_presupuestos(desde, hasta, ids_crm, log):
+    """Lista de dicts con las etiquetas de ETIQUETAS_PRESUPUESTO (fechas ISO)."""
+    ids = _ids_crm_seguros(ids_crm)
+    filas, campos_extra = [], True
+    # Tandas de 300 IDs para no armar una consulta enorme (la primera tanda
+    # trae ademas los del rango; las siguientes repiten el rango sin costo).
+    tandas = [ids[i:i + 300] for i in range(0, len(ids), 300)] or [[]]
+    vistos = set()
+    for tanda in tandas:
+        while True:
+            try:
+                lote = suiteql(consulta_presupuestos(desde, hasta, tanda, campos_extra))
+                break
+            except RuntimeError as e:
+                if campos_extra:
+                    log("AVISO: NetSuite no dejo leer algun campo opcional del presupuesto "
+                        f"({', '.join(c for c, _ in CAMPOS_EXTRA_PRESUPUESTO.values())}); se omiten. "
+                        f"Detalle: {str(e)[:300]}")
+                    campos_extra = False
+                else:
+                    raise
+        for f in lote:
+            if f.get("id_interno") in vistos:
+                continue
+            vistos.add(f.get("id_interno"))
+            filas.append(f)
+
+    total = len(filas)
+    salida = []
+    for f in filas:
+        if not str(f.get("subsidiaria") or "").strip().endswith(SUBSIDIARIA):
+            continue
+        fila = {etq: f.get(alias) for alias, etq in ETIQUETAS_PRESUPUESTO.items()}
+        fila["ID interno"] = int(fila["ID interno"])
+        try:
+            fila["Total"] = float(fila["Total"]) if fila["Total"] not in (None, "") else None
+        except (TypeError, ValueError):
+            fila["Total"] = None
+        salida.append({k: (None if v == "" else v) for k, v in fila.items()})
+    en_rango = sum(1 for f in salida if desde.isoformat() <= (f["Fecha"] or "") <= hasta.isoformat())
+    log(f"NetSuite presupuestos: {en_rango} con fecha en el rango y {len(salida) - en_rango} posteriores de "
+        f"clientes visitados ({total} antes de filtrar la subsidiaria).")
+    return salida
