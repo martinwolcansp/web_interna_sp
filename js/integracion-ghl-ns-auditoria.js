@@ -67,7 +67,8 @@ function auMostrarTab(tab) {
     btn.classList.toggle('is-active', activo);
     btn.setAttribute('aria-selected', activo ? 'true' : 'false');
   });
-  try { history.replaceState(null, '', tab === 'auditoria' ? '#auditoria' : location.pathname + location.search); } catch (e) { /* sin historial */ }
+  // La Auditoría es la pestaña por defecto: sólo la Consola queda en la URL.
+  try { history.replaceState(null, '', tab === 'consola' ? '#consola' : location.pathname + location.search); } catch (e) { /* sin historial */ }
   if (tab === 'auditoria' && au.authListo && !au.cargado && !au.cargando) auditar();
 }
 
@@ -77,7 +78,7 @@ if (typeof document !== 'undefined' && document.getElementById('ig-tab-auditoria
   });
 
   auInicializar();
-  if (location.hash === '#auditoria') auMostrarTab('auditoria');
+  if (location.hash === '#consola') auMostrarTab('consola');
 
   document.addEventListener('sp:auth-ready', (e) => {
     if (!e.detail.session || !window.supabaseClient) return;

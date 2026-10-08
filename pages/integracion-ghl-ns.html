@@ -46,13 +46,13 @@
       <p class="admin-page-subtitle">Contactos y oportunidades de la integración, con sus IDs en GHL y en NetSuite. Los registros que vienen de GHL o de NetSuite son de consulta; la carga manual queda para casos puntuales.</p>
     </div>
 
-    <!-- Pestañas: Consola (consulta y carga manual) / Auditoría (cruce por vendedor) -->
+    <!-- Pestañas: Auditoría (cruce por vendedor, la que abre por defecto) / Consola (consulta y carga manual) -->
     <nav class="segment-nav" role="tablist" aria-label="Vistas de la integración">
-      <button type="button" class="segment-tab is-active" role="tab" id="ig-tabbtn-consola" data-tab="consola" aria-controls="ig-tab-consola" aria-selected="true"><i class="ti ti-database"></i> Consola</button>
-      <button type="button" class="segment-tab" role="tab" id="ig-tabbtn-auditoria" data-tab="auditoria" aria-controls="ig-tab-auditoria" aria-selected="false"><i class="ti ti-list-check"></i> Auditoría</button>
+      <button type="button" class="segment-tab is-active" role="tab" id="ig-tabbtn-auditoria" data-tab="auditoria" aria-controls="ig-tab-auditoria" aria-selected="true"><i class="ti ti-list-check"></i> Auditoría</button>
+      <button type="button" class="segment-tab" role="tab" id="ig-tabbtn-consola" data-tab="consola" aria-controls="ig-tab-consola" aria-selected="false"><i class="ti ti-database"></i> Consola</button>
     </nav>
 
-    <div id="ig-tab-consola" role="tabpanel" aria-labelledby="ig-tabbtn-consola">
+    <div id="ig-tab-consola" role="tabpanel" aria-labelledby="ig-tabbtn-consola" hidden>
 
     <!-- Resumen -->
     <section class="admin-section" aria-labelledby="ig-summary-title">
@@ -313,7 +313,7 @@
          exports de NetSuite y GHL (no se guardan, se procesan acá).
          Lógica en js/integracion-ghl-ns-auditoria.js.
          ══════════════════════════════════════════════════════════ -->
-    <div id="ig-tab-auditoria" role="tabpanel" aria-labelledby="ig-tabbtn-auditoria" hidden>
+    <div id="ig-tab-auditoria" role="tabpanel" aria-labelledby="ig-tabbtn-auditoria">
 
       <!-- Período, vendedor y fuente -->
       <section class="admin-section" aria-labelledby="au-periodo-title">
