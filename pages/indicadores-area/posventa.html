@@ -118,6 +118,21 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .data-table td { padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
 .data-table td.nowrap { white-space: nowrap; }
 .data-table td.texto-largo { min-width: 280px; }
+/* Encuestas con alerta: pide llamado (rojo) o respuesta negativa (ambar) */
+.data-table tr.fila-llamado td { background: #fde8e6; }
+.data-table tr.fila-llamado td:first-child { box-shadow: inset 4px 0 0 #c0392b; }
+.data-table tr.fila-negativa td { background: #fff4dc; }
+.data-table tr.fila-negativa td:first-child { box-shadow: inset 4px 0 0 #d99a00; }
+.data-table a.accion-link { color: var(--navy); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.data-table a.accion-link:hover { text-decoration: underline; }
+.accion-det { display: block; font-size: 12px; color: var(--second); }
+.sin-accion { color: #b3261e; font-weight: 600; white-space: nowrap; }
+.explorer-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--second); cursor: pointer; }
+.explorer-check input { width: 15px; height: 15px; accent-color: var(--navy); margin: 0; }
+.leyenda-alerta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--second); margin: 0 0 8px; }
+.leyenda-alerta span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -2px; }
+.leyenda-alerta .ley-llamado::before { background: #fde8e6; box-shadow: inset 3px 0 0 #c0392b; }
+.leyenda-alerta .ley-negativa::before { background: #fff4dc; box-shadow: inset 3px 0 0 #d99a00; }
 
 /* Barra de actualizacion (igual que el informe MKT) */
 .upd-hero { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 16px; background: var(--navy); color: #fff; border-left: 6px solid #8fb3e8; border-radius: 0 6px 6px 0; }
@@ -257,9 +272,14 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 
       <div class="bloque">
         <h3>Detalle de encuestas</h3>
+        <div class="leyenda-alerta">
+          <span class="ley-llamado">Solicita llamado</span>
+          <span class="ley-negativa">Calificación Mala o expectativa No las cumplió</span>
+        </div>
         <div class="explorer">
           <div class="explorer-bar">
             <span class="explorer-title">Encuestas posventa</span>
+            <label class="explorer-check"><input type="checkbox" id="solo-alerta-enc"> Solo con alerta</label>
             <input type="search" class="explorer-search" id="buscar-enc" placeholder="Buscar contacto, comentario…">
             <span class="explorer-count" id="cuenta-enc"></span>
           </div>
@@ -294,6 +314,10 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   };
   var CALIFICACIONES = ["Excelente", "Buena", "Mala"];
   var EXPECTATIVAS = ["Las superó", "Las cumplió", "No las cumplió"];
+  // Relevamiento posventa en NetSuite (registro personalizado, busqueda 2557).
+  var URL_RELEVAMIENTO = "https://7138551.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=3243&id=";
+  // Accion del relevamiento que responde a una encuesta ("Comunicación Cliiente" en NetSuite, con la errata).
+  var ACCION_RESPUESTA = /comunicaci[oó]n\s+cli/i;
   // Texto libre (la persona escribio en vez de elegir): en las tortas se agrupa.
   function opcion(valor, validas) { return !valor ? "Sin respuesta" : validas.indexOf(valor) >= 0 ? valor : "Otra respuesta"; }
 
@@ -505,12 +529,15 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   // =====================================================================
   // Tabla de detalle (busqueda + orden por columna)
   // =====================================================================
-  function crearTabla(tablaId, buscarId, cuentaId, columnas, textoBusqueda) {
+  function crearTabla(tablaId, buscarId, cuentaId, columnas, textoBusqueda, opciones) {
+    opciones = opciones || {};
     var estado = { filas: [], orden: null, asc: true };
     var tabla = $(tablaId);
     function pintar() {
       var q = $(buscarId).value.trim().toLowerCase();
-      var filas = estado.filas.filter(function (f) { return !q || textoBusqueda(f).toLowerCase().indexOf(q) >= 0; });
+      var filas = estado.filas.filter(function (f) {
+        return (!q || textoBusqueda(f).toLowerCase().indexOf(q) >= 0) && (!opciones.filtro || opciones.filtro(f));
+      });
       if (estado.orden !== null) {
         var col = columnas[estado.orden];
         filas = filas.slice().sort(function (a, b) {
@@ -523,8 +550,9 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
         var flecha = estado.orden === i ? (estado.asc ? "▲" : "▼") : "↕";
         return '<th data-col="' + i + '">' + esc(c.titulo) + '<span class="sort-arrow">' + flecha + "</span></th>";
       }).join("") + "</tr></thead><tbody>" + (filas.length ? filas.map(function (f) {
-        return "<tr>" + columnas.map(function (c) {
-          return '<td class="' + (c.clase || "") + '">' + esc(c.valor(f)) + "</td>";
+        var claseFila = opciones.claseFila ? opciones.claseFila(f) : "";
+        return "<tr" + (claseFila ? ' class="' + claseFila + '"' : "") + ">" + columnas.map(function (c) {
+          return '<td class="' + (c.clase || "") + '">' + (c.html ? c.html(f) : esc(c.valor(f))) + "</td>";
         }).join("") + "</tr>";
       }).join("") : '<tr><td colspan="' + columnas.length + '" class="vacio">Sin resultados.</td></tr>') + "</tbody>";
       $(cuentaId).textContent = filas.length + " de " + estado.filas.length;
@@ -538,7 +566,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       });
     }
     $(buscarId).addEventListener("input", pintar);
-    return { mostrar: function (filas) { estado.filas = filas; pintar(); } };
+    return { mostrar: function (filas) { estado.filas = filas; pintar(); }, repintar: pintar };
   }
 
   // =====================================================================
@@ -701,6 +729,45 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   // =====================================================================
   var filtroEnc, tablaEnc;
 
+  // "llamado" si pide llamado; "negativa" si califico Mala o la expectativa
+  // es No las cumplió; null si no tiene alerta.
+  function alertaEncuesta(e) {
+    if (e.comentarios === "Solicita llamado") return "llamado";
+    if (e.calificacion === "Mala" || e.expectativa === "No las cumplió") return "negativa";
+    return null;
+  }
+
+  // Accion de posventa asociada a la encuesta: el primer relevamiento del
+  // mismo cliente (ID de GHL) con la accion Comunicación Cliente, creado el
+  // dia de la encuesta o despues. Los relevamientos anteriores son del
+  // cierre de la instalacion y no responden a la encuesta.
+  var relevPorGhl = {};
+  function indexarRelevamientos() {
+    relevPorGhl = {};
+    DATOS.relev.forEach(function (r) {
+      if (!r.id_cliente_ghl || !(r.acciones || []).some(function (a) { return ACCION_RESPUESTA.test(a); })) return;
+      (relevPorGhl[r.id_cliente_ghl] = relevPorGhl[r.id_cliente_ghl] || []).push(r);
+    });
+    Object.keys(relevPorGhl).forEach(function (k) {
+      relevPorGhl[k].sort(function (a, b) { return a.fecha_creacion < b.fecha_creacion ? -1 : a.fecha_creacion > b.fecha_creacion ? 1 : 0; });
+    });
+  }
+  function accionDeEncuesta(e) {
+    var lista = relevPorGhl[e.contact_id] || [];
+    for (var i = 0; i < lista.length; i++) {
+      if (!e.fecha || !lista[i].fecha_creacion || lista[i].fecha_creacion >= e.fecha) return lista[i];
+    }
+    return null;
+  }
+  function htmlAccion(e) {
+    var r = e._accion;
+    if (!r) return e._alerta ? '<span class="sin-accion">Sin acción</span>' : "";
+    var titulo = [(r.acciones || []).join(", "), r.comentarios].filter(Boolean).join("\n\n");
+    return '<a class="accion-link" href="' + URL_RELEVAMIENTO + encodeURIComponent(r.relevamiento_id) +
+      '" target="_blank" rel="noopener" title="' + esc(titulo) + '">' + esc(fmtDia(r.fecha_creacion)) + " ↗</a>" +
+      (r.realizo ? '<span class="accion-det">' + esc(r.realizo) + "</span>" : "");
+  }
+
   function pintarEncuestas() {
     filtroEnc.pintarLimpiar();
     var enc = DATOS.enc.filter(function (e) { return filtroEnc.pasa(e.fecha); });
@@ -730,6 +797,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
       torta("Calificación", ordenarPares(contar(fin, function (e) { return opcion(e.calificacion, CALIFICACIONES); }), CALIFICACIONES.concat(resto)), "finalizadas", COLOR_RESULTADO) +
       torta("Expectativa", ordenarPares(contar(fin, function (e) { return opcion(e.expectativa, EXPECTATIVAS); }), EXPECTATIVAS.concat(resto)), "finalizadas", COLOR_RESULTADO);
 
+    enc.forEach(function (e) { e._alerta = alertaEncuesta(e); e._accion = accionDeEncuesta(e); });
     tablaEnc.mostrar(enc);
   }
 
@@ -751,10 +819,11 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   async function cargarDatos() {
     var res = await Promise.all([
       leerTodo("ind_posventa_caso", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id"),
-      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo", "relevamiento_id"),
+      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl", "relevamiento_id"),
       leerTodo("ind_posventa_encuesta", "contact_id,contacto,estado,fecha,calificacion,expectativa,comentarios", "contact_id"),
     ]);
     DATOS.casos = res[0]; DATOS.relev = res[1]; DATOS.enc = res[2];
+    indexarRelevamientos();
 
     filtroInst = crearFiltrosPeriodo("filtros-inst",
       DATOS.relev.map(function (r) { return r.fecha_creacion; }).concat(DATOS.casos.map(function (c) { return c.fecha_fin_inst; })),
@@ -779,7 +848,14 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
         { titulo: "Calificación", valor: function (e) { return e.calificacion || ""; } },
         { titulo: "Expectativa", valor: function (e) { return e.expectativa || ""; } },
         { titulo: "Comentarios", valor: function (e) { return e.comentarios || ""; }, clase: "texto-largo" },
-      ], function (e) { return [e.contacto, e.estado, e.calificacion, e.expectativa, e.comentarios].join(" "); });
+        { titulo: "Acción posventa", html: htmlAccion,
+          valor: function (e) { return e._accion ? fmtDia(e._accion.fecha_creacion) : e._alerta ? "Sin acción" : ""; },
+          orden: function (e) { return e._accion ? "2" + e._accion.fecha_creacion : e._alerta ? "1" : "0"; } },
+      ], function (e) { return [e.contacto, e.estado, e.calificacion, e.expectativa, e.comentarios, e._accion ? "" : e._alerta ? "sin acción" : ""].join(" "); }, {
+        claseFila: function (e) { return e._alerta ? "fila-" + e._alerta : ""; },
+        filtro: function (e) { return !$("solo-alerta-enc").checked || !!e._alerta; },
+      });
+      $("solo-alerta-enc").addEventListener("change", function () { tablaEnc.repintar(); });
     }
     pintarInstalaciones();
     pintarEncuestas();

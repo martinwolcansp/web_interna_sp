@@ -87,10 +87,13 @@ def consulta_relevamientos(desde):
             BUILTIN.DF(r.custrecord8)                               AS acciones,
             BUILTIN.DF(r.custrecord_mw_sp_motivos_variacion_mo)     AS motivos_variacion_mo,
             r.custrecord_ap_sp_comentarios_posventa                 AS comentarios,
-            BUILTIN.DF(sc.custevent_mw_sp_tipo_posventa)            AS tipo_posventa
+            BUILTIN.DF(sc.custevent_mw_sp_tipo_posventa)            AS tipo_posventa,
+            COALESCE(c.custentity_ghl_contact_id, cp.custentity_ghl_contact_id) AS id_cliente_ghl
         FROM customrecord_ap_sp_relevamiento_posventa r
         LEFT JOIN supportcase sc ON sc.id = r.custrecord_ap_sp_posventa_caso
         LEFT JOIN customer c ON c.id = sc.company
+        -- El caso apunta al subcliente (C16312-1); el ID de GHL suele estar en el padre (C16312).
+        LEFT JOIN customer cp ON cp.id = c.parent
         WHERE r.created >= TO_DATE('{desde.isoformat()}', 'YYYY-MM-DD')
         ORDER BY r.id
     """
@@ -169,6 +172,8 @@ def filas_relevamientos(crudas, corrida_id):
             "motivos_variacion_mo": _texto(f.get("motivos_variacion_mo")),
             "comentarios": _texto(f.get("comentarios")),
             "tipo_posventa": _primera_palabra(_texto(f.get("tipo_posventa"))),
+            # Contacto de GHL del cliente: cruza el relevamiento con la encuesta.
+            "id_cliente_ghl": _texto(f.get("id_cliente_ghl")),
             "corrida_id": corrida_id,
             "actualizado_en": sb.ahora_iso(),
         })
