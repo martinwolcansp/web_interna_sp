@@ -150,9 +150,7 @@ function auCambioFuente() {
   const archivos = auFuente() === 'archivos';
   document.getElementById('au-archivos').hidden = !archivos;
   document.getElementById('au-periodo').hidden = archivos;
-  document.getElementById('au-aplicar').innerHTML = archivos
-    ? '<i class="ti ti-player-play"></i> Procesar archivos'
-    : '<i class="ti ti-refresh"></i> Auditar';
+  if (!au.actualizando) auEtiquetaBoton();
 }
 
 function auLlenarVendedores(nombres) {
@@ -164,10 +162,22 @@ function auLlenarVendedores(nombres) {
   if (lista.includes(actual)) sel.value = actual;
 }
 
-function auStatus(msg, esError) {
+// Mensaje de estado con fondo según el tipo: 'progreso' (actualizando),
+// 'ok', 'aviso', 'error' o 'info'. Por compatibilidad, true = 'error'.
+const AU_ICONO_STATUS = {
+  progreso: 'ti-loader-2 au-girar',
+  ok: 'ti-circle-check',
+  aviso: 'ti-alert-triangle',
+  error: 'ti-alert-circle',
+  info: 'ti-info-circle',
+};
+
+function auStatus(msg, tipo) {
   const el = document.getElementById('au-status');
-  el.textContent = msg || '';
-  el.classList.toggle('au-status--error', !!esError);
+  const t = tipo === true ? 'error' : (tipo || 'info');
+  el.className = `au-status au-status--${t}`;
+  el.hidden = !msg;
+  el.innerHTML = msg ? `<i class="ti ${AU_ICONO_STATUS[t] || AU_ICONO_STATUS.info}" aria-hidden="true"></i><span>${escapeHtml(msg)}</span>` : '';
 }
 
 /* ── Normalización ───────────────────────────────────────────────────── */
@@ -283,7 +293,7 @@ async function auditar() {
   au.cargando = true;
   const btn = document.getElementById('au-aplicar');
   btn.disabled = true;
-  auStatus('Procesando…');
+  auStatus('Procesando…', 'progreso');
   try {
     if (auFuente() === 'archivos') {
       au.datos = await auProcesarArchivos();
@@ -332,15 +342,26 @@ function auBotonAuditar() {
   auActualizarMes();
 }
 
+// Durante la actualización el botón queda deshabilitado y muestra el avance.
 function auBloquear(bloqueado) {
   au.actualizando = bloqueado;
-  document.getElementById('au-aplicar').disabled = bloqueado;
+  const btn = document.getElementById('au-aplicar');
+  btn.disabled = bloqueado;
+  btn.classList.toggle('au-btn--ocupado', bloqueado);
+  if (bloqueado) btn.innerHTML = '<i class="ti ti-loader-2 au-girar"></i> Actualizando…';
+  else auEtiquetaBoton();
+}
+
+function auEtiquetaBoton() {
+  document.getElementById('au-aplicar').innerHTML = auFuente() === 'archivos'
+    ? '<i class="ti ti-player-play"></i> Procesar archivos'
+    : '<i class="ti ti-refresh"></i> Auditar';
 }
 
 async function auActualizarMes() {
   if (au.actualizando) return;
   auBloquear(true);
-  auStatus('Iniciando la actualización del mes en curso…');
+  auStatus('Iniciando la actualización del mes en curso…', 'progreso');
   const { data: sesion } = await window.supabaseClient.auth.getSession();
   const token = sesion && sesion.session && sesion.session.access_token;
   if (!token) { auBloquear(false); auStatus('Tu sesión venció: volvé a ingresar a la web interna.', true); return; }
@@ -376,14 +397,14 @@ async function auActualizarMes() {
 // Sigue el avance de una corrida del Informe MKT y, al terminar, audita.
 function auSeguirCorrida(id, prefijo) {
   auBloquear(true);
-  auStatus(`${prefijo}… Puede tardar algunos minutos.`);
+  auStatus(`${prefijo}… Puede tardar algunos minutos.`, 'progreso');
   if (au.pollTimer) clearInterval(au.pollTimer);
   au.pollTimer = setInterval(async () => {
     const { data: c, error } = await window.supabaseClient
       .from('informe_mkt_corrida').select('estado,paso,mensaje').eq('id', id).single();
     if (error) { auStatus(`No se pudo consultar el avance: ${error.message}`, true); return; }
     if (c.estado === 'en_curso') {
-      auStatus(`${prefijo}: ${c.paso || '…'}. Puede tardar algunos minutos.`);
+      auStatus(`${prefijo}: ${c.paso || '…'}. Puede tardar algunos minutos.`, 'progreso');
       return;
     }
     clearInterval(au.pollTimer);
@@ -391,7 +412,7 @@ function auSeguirCorrida(id, prefijo) {
     auBloquear(false);
     await auditar();
     if (c.estado === 'ok') {
-      auStatus(c.mensaje ? `Actualización terminada con avisos: ${c.mensaje}` : 'Actualización terminada.');
+      auStatus(c.mensaje ? `Actualización terminada con avisos: ${c.mensaje}` : 'Actualización terminada.', c.mensaje ? 'aviso' : 'ok');
     } else {
       auStatus(`La actualización falló: ${c.mensaje || 'error desconocido'}. Se muestran los datos anteriores.`, true);
     }
@@ -1178,7 +1199,7 @@ async function auExportar(cual) {
         : c.oportunidades.map((o) => `${AU_NS_URL}/app/accounting/transactions/opprtnty.nl?id=${o.nsId}`).join(' | '),
     }));
   }
-  if (!filas.length) { auStatus('No hay filas para exportar con estos filtros.'); return; }
+  if (!filas.length) { auStatus('No hay filas para exportar con estos filtros.', 'aviso'); return; }
   try {
     const XLSX = await auCargarXlsx();
     const ws = XLSX.utils.json_to_sheet(filas);

@@ -56,8 +56,81 @@
   font-size: inherit;
 }
 
+/* ── Mensajes de estado (actualización / errores) ─────────── */
+
+.au-status {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-left-width: 3px;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-tight);
+}
+
+.au-status[hidden] {
+  display: none;
+}
+
+.au-status .ti {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.au-status--progreso,
+.au-status--info {
+  background: var(--color-blue-light);
+  border-color: var(--color-blue-border);
+  border-left-color: var(--color-blue);
+  color: var(--color-navy);
+}
+
+.au-status--ok {
+  background: var(--color-status-ok-bg);
+  border-color: #a7f3d0;
+  border-left-color: #10b981;
+  color: var(--color-status-ok-text);
+}
+
+.au-status--aviso {
+  background: var(--color-alert-bg);
+  border-color: var(--color-alert-border);
+  border-left-color: var(--color-alert-icon);
+  color: var(--color-alert-text);
+}
+
 .au-status--error {
+  background: var(--color-red-light);
+  border-color: var(--color-red-border);
+  border-left-color: var(--color-red);
   color: var(--color-red);
+}
+
+/* Botón Auditar mientras actualiza */
+#au-aplicar:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#au-aplicar.au-btn--ocupado:disabled {
+  opacity: 0.85;
+  cursor: progress;
+}
+
+.au-girar {
+  display: inline-block;
+  animation: au-girar 1s linear infinite;
+}
+
+@keyframes au-girar {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .au-girar { animation: none; }
 }
 
 /* ── Modo archivos ───────────────────────────────────────── */
