@@ -1641,7 +1641,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     $("upd-hero").classList.toggle("upd-hero--atrasada", atrasada);
     $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
     $("upd-hero-det").textContent = [
-      c.origen === "automatica" ? "Automática" : "Manual",
+      c.origen === "automatica" ? "Automática" : c.origen === "auditoria" ? "Auditoría" : "Manual",
       hace(c.finalizado_en),
       atrasada ? "No se registró la actualización automática de las 16 hs" : null,
     ].filter(Boolean).join(" · ");
@@ -1757,7 +1757,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       return '<tr class="' + (c.id === idMostrada ? "is-actual" : "") + '">' +
         "<td>" + esc(fmtFechaHora(c.finalizado_en || c.iniciado_en)) + "</td>" +
         "<td>" + esc(fmtDia(c.desde)) + " al " + esc(fmtDia(c.hasta)) + "</td>" +
-        "<td>" + (c.origen === "automatica" ? "Automática" : "Manual") + "</td>" +
+        "<td>" + (c.origen === "automatica" ? "Automática" : c.origen === "auditoria" ? "Auditoría" : "Manual") + "</td>" +
         '<td><span class="upd-tag upd-tag--' + esc(c.estado) + '">' + esc(etiquetas[c.estado] || c.estado) + "</span></td>" +
         '<td class="upd-det">' + esc(detalle) + "</td>" +
         "<td>" + accion + "</td></tr>";

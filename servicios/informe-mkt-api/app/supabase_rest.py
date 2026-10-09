@@ -111,10 +111,12 @@ def corrida_en_curso(token):
     return filas[0] if filas else None
 
 
-def crear_corrida(token, desde, hasta, origen=None):
+def crear_corrida(token, desde, hasta, origen=None, solicitado_por=None):
     fila = {"desde": desde.isoformat(), "hasta": hasta.isoformat(), "estado": "en_curso", "paso": "Iniciando"}
     if origen:  # columna de la migracion 20 (si no viene, la base pone 'manual')
         fila["origen"] = origen
+    if solicitado_por:  # columna de la migracion 24
+        fila["solicitado_por"] = solicitado_por
     resp = requests.post(
         _rest("informe_mkt_corrida"),
         headers=_h(token, "return=representation"),

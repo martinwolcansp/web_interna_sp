@@ -6,6 +6,12 @@
 #   crea la corrida y la ejecuta en segundo plano. La pagina sigue el avance
 #   leyendo la tabla informe_mkt_corrida.
 #
+# POST /auditoria/actualizar (sin cuerpo)
+#   Lo llama el boton "Auditar" de la seccion Integracion NetSuite <-> GHL.
+#   Permiso propio: 'editar' en integracion-ghl-ns (no hace falta permiso en
+#   Informes de MKT). Siempre actualiza el mes en curso y corre con el usuario
+#   tecnico, como la corrida programada (migracion 24).
+#
 # POST /informe-mkt/consultar {desde, hasta}
 #   Arma el informe para cualquier rango con los datos ya cargados por las
 #   actualizaciones (tablas de la migracion 19). Permiso: ver. Es sincronico.
@@ -84,6 +90,48 @@ def consultar(pedido: PedidoActualizacion, authorization: str = Header(None)):
     except Exception as e:
         logger.exception("Error al consultar el informe")
         raise HTTPException(500, f"Error interno al consultar el informe: {e}")
+
+
+@app.post("/auditoria/actualizar", status_code=202)
+def actualizar_auditoria(background: BackgroundTasks, authorization: str = Header(None)):
+    try:
+        return _actualizar_auditoria(background, authorization)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error al iniciar la actualizacion desde la auditoria")
+        raise HTTPException(500, f"Error interno al iniciar la actualizacion: {e}")
+
+
+def _actualizar_auditoria(background, authorization):
+    token = _token_valido(authorization)
+    if not sb.tiene_permiso(token, "integracion-ghl-ns", "editar"):
+        raise HTTPException(403, "Tu usuario no tiene permiso para actualizar la auditoria (editar en Integracion NetSuite-GHL).")
+    if not (config.INFORME_BOT_EMAIL and config.INFORME_BOT_PASSWORD):
+        raise HTTPException(500, "Falta configurar el usuario tecnico (INFORME_BOT_EMAIL / INFORME_BOT_PASSWORD).")
+    usuario = sb.verificar_usuario(token) or {}
+
+    # El rango lo decide el servidor: mes en curso, del 1 a hoy.
+    hoy = datetime.now(ZoneInfo(config.ZONA_HORARIA)).date()
+    desde = hoy.replace(day=1)
+
+    # La actualizacion escribe en las tablas del informe: se hace con el
+    # usuario tecnico (editar en Informes de MKT), no con el de la persona.
+    bot = sb.iniciar_sesion(config.INFORME_BOT_EMAIL, config.INFORME_BOT_PASSWORD)
+    sb.cerrar_corridas_colgadas(bot)
+    en_curso = sb.corrida_en_curso(bot)
+    if en_curso:
+        raise HTTPException(409, {"mensaje": "Ya hay una actualizacion en curso.", "corrida_id": en_curso["id"]})
+
+    corrida = sb.crear_corrida(bot, desde, hoy, origen="auditoria", solicitado_por=usuario.get("email"))
+    if not corrida:
+        en_curso = sb.corrida_en_curso(bot)
+        raise HTTPException(409, {"mensaje": "Ya hay una actualizacion en curso.",
+                                  "corrida_id": en_curso["id"] if en_curso else None})
+
+    logger.info("Corrida %s desde la auditoria (%s): %s a %s.", corrida["id"], usuario.get("email"), desde, hoy)
+    background.add_task(job.ejecutar, corrida["id"], bot, desde, hoy)
+    return {"corrida_id": corrida["id"], "estado": "en_curso", "desde": desde.isoformat(), "hasta": hoy.isoformat()}
 
 
 def _actualizar(pedido, background, authorization):

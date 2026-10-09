@@ -41,7 +41,8 @@ const AU_SUBSIDIARIA = 'S.P. SEGURIDAD PRIVADA S.A.';
 // Filas por página de cada listado.
 const AU_PAGE_SIZE = { c1: 25, c2: 50 };
 // Servicio del Informe MKT: el botón Auditar le pide la actualización del mes
-// en curso (mismo endpoint que el botón "Actualizar" de Informes de MKT).
+// en curso (POST /auditoria/actualizar, migración 24). Permiso propio:
+// 'editar' en integracion-ghl-ns; el servicio corre con el usuario técnico.
 const AU_INFORME_API_URL = 'https://informe-mkt-api.200.5.196.50.sslip.io';
 const AU_POLL_MS = 5000;
 const AU_XLSX_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
@@ -55,7 +56,7 @@ const AU_ALIAS_VENDEDOR_NS = {
 
 const au = {
   authListo: false,
-  puedeActualizar: false, // permiso 'editar' en informes-mkt
+  puedeActualizar: false, // permiso 'editar' en integracion-ghl-ns
   actualizando: false,
   pollTimer: null,
   cargado: false,
@@ -321,12 +322,13 @@ async function auditar() {
 
 /* ── Botón Auditar: actualizar el mes en curso y auditar ─────────────── */
 
-// Con permiso 'editar' en Informes de MKT, Auditar primero actualiza el mes en
-// curso desde GHL y NetSuite (servicio informe-mkt-api) y después audita.
-// Sin ese permiso, Auditar vuelve a leer lo que ya está cargado.
+// Con permiso 'editar' en Integración NetSuite ↔ GHL, Auditar primero
+// actualiza el mes en curso desde GHL y NetSuite (servicio informe-mkt-api,
+// con el usuario técnico) y después audita. Sin ese permiso, Auditar vuelve a
+// leer lo que ya está cargado. No hace falta permiso en Informes de MKT.
 async function auVerificarPermisoActualizar() {
   const { data } = await window.supabaseClient
-    .rpc('fn_tiene_permiso', { p_seccion_id: 'informes-mkt', p_nivel: 'editar' });
+    .rpc('fn_tiene_permiso', { p_seccion_id: 'integracion-ghl-ns', p_nivel: 'editar' });
   au.puedeActualizar = data === true;
   if (au.datos) auRenderCobertura(au.datos);
   if (!au.puedeActualizar) return;
@@ -366,12 +368,11 @@ async function auActualizarMes() {
   const token = sesion && sesion.session && sesion.session.access_token;
   if (!token) { auBloquear(false); auStatus('Tu sesión venció: volvé a ingresar a la web interna.', true); return; }
 
-  const { desde, hasta } = auPeriodo();
   try {
-    const resp = await fetch(`${AU_INFORME_API_URL}/informe-mkt/actualizar`, {
+    // Sin cuerpo: el servicio actualiza siempre el mes en curso.
+    const resp = await fetch(`${AU_INFORME_API_URL}/auditoria/actualizar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ desde, hasta }),
+      headers: { Authorization: `Bearer ${token}` },
     });
     const body = await resp.json().catch(() => ({}));
     if (resp.status === 409 && body.detail && body.detail.corrida_id) {
