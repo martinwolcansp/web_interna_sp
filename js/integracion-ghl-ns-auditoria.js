@@ -38,7 +38,12 @@ const AU_GHL_URL = 'https://app.gohighlevel.com/v2/location/goympjLjeLIBzCFxsbFM
 const AU_CF_NS_OPP_ID = '';
 
 const AU_SUBSIDIARIA = 'S.P. SEGURIDAD PRIVADA S.A.';
-const AU_PAGE_SIZE = 50;
+// Filas por página de cada listado.
+const AU_PAGE_SIZE = { c1: 25, c2: 50 };
+// Servicio del Informe MKT: el botón Auditar le pide la actualización del mes
+// en curso (mismo endpoint que el botón "Actualizar" de Informes de MKT).
+const AU_INFORME_API_URL = 'https://informe-mkt-api.200.5.196.50.sslip.io';
+const AU_POLL_MS = 5000;
 const AU_XLSX_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
 
 // Mismo alias que NETSUITE_VENDEDOR_ALIAS de resumen_ejecutivo.py, para que
@@ -50,6 +55,9 @@ const AU_ALIAS_VENDEDOR_NS = {
 
 const au = {
   authListo: false,
+  puedeActualizar: false, // permiso 'editar' en informes-mkt
+  actualizando: false,
+  pollTimer: null,
   cargado: false,
   cargando: false,
   datos: null,          // { fuente, c1, c2, c2b, c3, info }
@@ -80,10 +88,11 @@ if (typeof document !== 'undefined' && document.getElementById('ig-tab-auditoria
   auInicializar();
   if (location.hash === '#consola') auMostrarTab('consola');
 
-  document.addEventListener('sp:auth-ready', (e) => {
+  document.addEventListener('sp:auth-ready', async (e) => {
     if (!e.detail.session || !window.supabaseClient) return;
     au.authListo = true;
     if (!document.getElementById('ig-tab-auditoria').hidden && !au.cargado) auditar();
+    await auVerificarPermisoActualizar();
   });
 }
 
@@ -94,13 +103,25 @@ function auHoyAR() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date());
 }
 
-function auInicializar() {
+// Período de la auditoría: siempre el mes en curso (del 1 a hoy, hora de
+// Argentina). Otros períodos se consultan en el Informe de MKT.
+function auPeriodo() {
   const hoy = auHoyAR();
-  document.getElementById('au-desde').value = `${hoy.slice(0, 8)}01`;
-  document.getElementById('au-hasta').value = hoy;
+  return { desde: `${hoy.slice(0, 8)}01`, hasta: hoy };
+}
+
+function auPintarPeriodo() {
+  const { desde, hasta } = auPeriodo();
+  const mes = new Date(`${desde}T12:00:00`).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  document.getElementById('au-periodo').innerHTML =
+    `<i class="ti ti-calendar"></i> <b>${escapeHtml(mes.charAt(0).toUpperCase() + mes.slice(1))}</b> · ${fmtFecha(`${desde}T12:00:00`)} al ${fmtFecha(`${hasta}T12:00:00`)}`;
+}
+
+function auInicializar() {
+  auPintarPeriodo();
   auLlenarVendedores([]);
 
-  document.getElementById('au-filtros').addEventListener('submit', (ev) => { ev.preventDefault(); auditar(); });
+  document.getElementById('au-filtros').addEventListener('submit', (ev) => { ev.preventDefault(); auBotonAuditar(); });
   document.querySelectorAll('input[name="au-fuente"]').forEach((r) => r.addEventListener('change', auCambioFuente));
 
   ['ns', 'ghl'].forEach((tipo) => {
@@ -112,7 +133,7 @@ function auInicializar() {
 
   const rerender = (cual) => () => { au.pag[cual] = 0; auRender(); };
   document.getElementById('au-vendedor').addEventListener('change', () => { au.pag.c1 = 0; au.pag.c2 = 0; auRender(); });
-  ['au-c1-estado', 'au-c1-universo'].forEach((id) => document.getElementById(id).addEventListener('change', rerender('c1')));
+  ['au-c1-estado'].forEach((id) => document.getElementById(id).addEventListener('change', rerender('c1')));
   ['au-c2-estado', 'au-c2-aprobada'].forEach((id) => document.getElementById(id).addEventListener('change', rerender('c2')));
   document.getElementById('au-c1-q').addEventListener('input', debounce(rerender('c1'), 250));
   document.getElementById('au-c2-q').addEventListener('input', debounce(rerender('c2'), 250));
@@ -128,8 +149,7 @@ function auFuente() {
 function auCambioFuente() {
   const archivos = auFuente() === 'archivos';
   document.getElementById('au-archivos').hidden = !archivos;
-  document.getElementById('au-desde').disabled = archivos;
-  document.getElementById('au-hasta').disabled = archivos;
+  document.getElementById('au-periodo').hidden = archivos;
   document.getElementById('au-aplicar').innerHTML = archivos
     ? '<i class="ti ti-player-play"></i> Procesar archivos'
     : '<i class="ti ti-refresh"></i> Auditar';
@@ -268,9 +288,8 @@ async function auditar() {
     if (auFuente() === 'archivos') {
       au.datos = await auProcesarArchivos();
     } else {
-      const desde = document.getElementById('au-desde').value;
-      const hasta = document.getElementById('au-hasta').value;
-      if (!desde || !hasta || desde > hasta) throw new Error('Revisá el rango de fechas.');
+      auPintarPeriodo();
+      const { desde, hasta } = auPeriodo();
       au.datos = await auCargarBase(desde, hasta);
     }
     au.cargado = true;
@@ -286,8 +305,97 @@ async function auditar() {
     auStatus(err && err.auUsuario ? err.message : auMensajeError(err), true);
   } finally {
     au.cargando = false;
-    btn.disabled = false;
+    btn.disabled = au.actualizando;
   }
+}
+
+/* ── Botón Auditar: actualizar el mes en curso y auditar ─────────────── */
+
+// Con permiso 'editar' en Informes de MKT, Auditar primero actualiza el mes en
+// curso desde GHL y NetSuite (servicio informe-mkt-api) y después audita.
+// Sin ese permiso, Auditar vuelve a leer lo que ya está cargado.
+async function auVerificarPermisoActualizar() {
+  const { data } = await window.supabaseClient
+    .rpc('fn_tiene_permiso', { p_seccion_id: 'informes-mkt', p_nivel: 'editar' });
+  au.puedeActualizar = data === true;
+  if (au.datos) auRenderCobertura(au.datos);
+  if (!au.puedeActualizar) return;
+  // Si ya hay una actualización corriendo (la programada de las 16 hs u otra
+  // persona), se muestra su avance y al terminar se vuelve a auditar.
+  const { data: enCurso } = await window.supabaseClient
+    .from('informe_mkt_corrida').select('id').eq('estado', 'en_curso').limit(1);
+  if (enCurso && enCurso.length) auSeguirCorrida(enCurso[0].id, 'Hay una actualización en curso');
+}
+
+function auBotonAuditar() {
+  if (auFuente() === 'archivos' || !au.puedeActualizar) { auditar(); return; }
+  auActualizarMes();
+}
+
+function auBloquear(bloqueado) {
+  au.actualizando = bloqueado;
+  document.getElementById('au-aplicar').disabled = bloqueado;
+}
+
+async function auActualizarMes() {
+  if (au.actualizando) return;
+  auBloquear(true);
+  auStatus('Iniciando la actualización del mes en curso…');
+  const { data: sesion } = await window.supabaseClient.auth.getSession();
+  const token = sesion && sesion.session && sesion.session.access_token;
+  if (!token) { auBloquear(false); auStatus('Tu sesión venció: volvé a ingresar a la web interna.', true); return; }
+
+  const { desde, hasta } = auPeriodo();
+  try {
+    const resp = await fetch(`${AU_INFORME_API_URL}/informe-mkt/actualizar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ desde, hasta }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (resp.status === 409 && body.detail && body.detail.corrida_id) {
+      auSeguirCorrida(body.detail.corrida_id, 'Ya había una actualización en curso');
+      return;
+    }
+    if (!resp.ok) {
+      const det = body.detail;
+      const msg = typeof det === 'string' ? det : (det && det.mensaje) || `error ${resp.status}`;
+      auBloquear(false);
+      auStatus(`No se pudo iniciar la actualización: ${msg}. Se muestran los datos ya cargados.`, true);
+      auditar();
+      return;
+    }
+    auSeguirCorrida(body.corrida_id, 'Actualizando');
+  } catch (err) {
+    auBloquear(false);
+    auStatus(`No se pudo contactar al servicio de actualización (${err.message}). Se muestran los datos ya cargados.`, true);
+    auditar();
+  }
+}
+
+// Sigue el avance de una corrida del Informe MKT y, al terminar, audita.
+function auSeguirCorrida(id, prefijo) {
+  auBloquear(true);
+  auStatus(`${prefijo}… Puede tardar algunos minutos.`);
+  if (au.pollTimer) clearInterval(au.pollTimer);
+  au.pollTimer = setInterval(async () => {
+    const { data: c, error } = await window.supabaseClient
+      .from('informe_mkt_corrida').select('estado,paso,mensaje').eq('id', id).single();
+    if (error) { auStatus(`No se pudo consultar el avance: ${error.message}`, true); return; }
+    if (c.estado === 'en_curso') {
+      auStatus(`${prefijo}: ${c.paso || '…'}. Puede tardar algunos minutos.`);
+      return;
+    }
+    clearInterval(au.pollTimer);
+    au.pollTimer = null;
+    auBloquear(false);
+    await auditar();
+    if (c.estado === 'ok') {
+      auStatus(c.mensaje ? `Actualización terminada con avisos: ${c.mensaje}` : 'Actualización terminada.');
+    } else {
+      auStatus(`La actualización falló: ${c.mensaje || 'error desconocido'}. Se muestran los datos anteriores.`, true);
+    }
+  }, AU_POLL_MS);
 }
 
 async function auCargarBase(desde, hasta) {
@@ -335,7 +443,10 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
   const oppsPorContacto = auAgrupar(ghlOpps, (o) => o.contact_id || (o.crudo && o.crudo.contactId));
 
   // 1. Contactos de GHL → clientes de NetSuite
-  const c1 = contactos.map((c) => {
+  // Sólo los contactos con al menos una oportunidad en GHL tienen que estar
+  // en NetSuite; el resto (leads sin oportunidad) no se audita.
+  const conOportunidad = contactos.filter((c) => (oppsPorContacto.get(c.id) || []).length);
+  const c1 = conOportunidad.map((c) => {
     const k = c.crudo || {};
     const encontrados = (clientesPorCrm.get(c.id) || []).map((x) => auClienteNs(x));
     return {
@@ -347,7 +458,7 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
       alta: c.date_added,
       origen: k.source || '',
       visita: conVisita.has(c.id),
-      oportunidades: (oppsPorContacto.get(c.id) || []).length,
+      oportunidades: (oppsPorContacto.get(c.id) || []).map(auOppGhl),
       clientes: encontrados,
       verificado: c.ns_verificado_en,
       estado: encontrados.length ? 'ok' : (c.ns_verificado_en ? 'falta' : 'sin_verificar'),
@@ -438,7 +549,7 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
   return {
     fuente: 'base',
     c1, c2, c2b: [], c3,
-    info: { desde, hasta, totalDias, diasCargados: dias.length, ultimo, campo },
+    info: { desde, hasta, totalDias, diasCargados: dias.length, ultimo, campo, c1SinOportunidad: contactos.length - conOportunidad.length },
   };
 }
 
@@ -643,7 +754,6 @@ function auFiltrosVista() {
     vendedor: document.getElementById('au-vendedor').value,
     c1q: document.getElementById('au-c1-q').value.trim().toLowerCase(),
     c1estado: document.getElementById('au-c1-estado').value,
-    c1universo: document.getElementById('au-c1-universo').value,
     c2q: document.getElementById('au-c2-q').value.trim().toLowerCase(),
     c2estado: document.getElementById('au-c2-estado').value,
     c2aprobada: document.getElementById('au-c2-aprobada').value,
@@ -653,8 +763,6 @@ function auFiltrosVista() {
 function auFiltrarC1(filas, f, conEstado = true) {
   return filas.filter((r) => {
     if (f.vendedor && r.vendedor !== f.vendedor) return false;
-    if (f.c1universo === 'visita' && !r.visita) return false;
-    if (f.c1universo === 'oportunidad' && !r.oportunidades) return false;
     if (conEstado && f.c1estado && r.estado !== f.c1estado) return false;
     if (f.c1q) {
       const texto = [r.nombre, r.email, r.telefono, r.ghlId, ...r.clientes.map((c) => `${c.codigo} ${c.nombre}`)].join(' ').toLowerCase();
@@ -706,9 +814,12 @@ function auRenderCobertura(d) {
   }
   const { totalDias, diasCargados, ultimo } = d.info;
   const faltan = totalDias - diasCargados;
-  el.innerHTML = `Datos al <b>${fmtFechaHora(ultimo)}</b> (se actualizan con el Informe MKT, de lunes a viernes a las 16 hs). ` +
+  const como = au.puedeActualizar
+    ? 'Auditar los actualiza desde GHL y NetSuite; también se actualizan solos de lunes a viernes a las 16 hs'
+    : 'se actualizan de lunes a viernes a las 16 hs; Auditar vuelve a leerlos';
+  el.innerHTML = `Datos al <b>${fmtFechaHora(ultimo)}</b> (${como}). ` +
     (faltan > 0
-      ? `<span class="au-aviso">${fmtNumero(faltan)} de ${fmtNumero(totalDias)} días del rango no están cargados: actualizalos desde <a href="/pages/informes-mkt/actualizable.html">Informes de MKT</a>.</span>`
+      ? `<span class="au-aviso">${fmtNumero(faltan)} de ${fmtNumero(totalDias)} días del mes no están cargados${au.puedeActualizar ? ': apretá Auditar para traerlos' : ''}.</span>`
       : 'Todos los días del rango están cargados.');
 }
 
@@ -741,7 +852,7 @@ function auRenderKpis(d, f) {
     bloques.push(`<div class="au-kpi-grupo">
       <h3 class="au-kpi-grupo__titulo">Contactos de GHL → NetSuite</h3>
       <div class="au-kpi-grupo__items">
-        ${auKpi(fmtNumero(c1.length), 'contactos de GHL', 'neutro')}
+        ${auKpi(fmtNumero(c1.length), 'contactos de GHL con oportunidad', 'neutro')}
         ${auKpi(`${fmtNumero(ok)} <small>${auPorcentaje(ok, c1.length)}</small>`, 'con cliente en NetSuite', 'ok', 'c1:ok')}
         ${auKpi(fmtNumero(falta), 'faltan en NetSuite', 'err', 'c1:falta')}
         ${sinVer ? auKpi(fmtNumero(sinVer), 'sin verificar', 'rev', 'c1:sin_verificar') : ''}
@@ -866,15 +977,16 @@ function auLinkGhl(contactId, texto) {
 }
 
 function auPaginar(filas, cual) {
-  const ultima = Math.max(0, Math.ceil(filas.length / AU_PAGE_SIZE) - 1);
+  const tamano = AU_PAGE_SIZE[cual] || 50;
+  const ultima = Math.max(0, Math.ceil(filas.length / tamano) - 1);
   if (au.pag[cual] > ultima) au.pag[cual] = ultima;
   const page = au.pag[cual];
   renderPager(`au-${cual}-pager`, { page, total: filas.length }, (p) => {
     au.pag[cual] = p;
     auRender();
     document.getElementById(`au-${cual}`).scrollIntoView({ block: 'start' });
-  });
-  return filas.slice(page * AU_PAGE_SIZE, (page + 1) * AU_PAGE_SIZE);
+  }, tamano);
+  return filas.slice(page * tamano, (page + 1) * tamano);
 }
 
 function auRenderC1(d, f) {
@@ -897,7 +1009,9 @@ function auRenderC1(d, f) {
       <td>${escapeHtml(r.vendedor)}</td>
       <td>${fmtFecha(r.alta)}</td>
       <td>${valor(r.origen)}</td>
-      <td>${r.visita ? '<span class="ig-tag">Visita</span> ' : ''}${r.oportunidades ? `<span class="ig-tag">${r.oportunidades} oport.</span>` : ''}${!r.visita && !r.oportunidades ? '—' : ''}</td>
+      <td>${r.visita ? '<span class="ig-tag">Visita</span> ' : ''}<span class="ig-tag">${r.oportunidades.length} oport.</span>
+        <details class="au-det"><summary>Ver oportunidades</summary><ul>${r.oportunidades.map((o) =>
+          `<li>${escapeHtml(o.nombre || '(sin nombre)')} <span class="ig-cell-sub">${[o.etapa, o.estado, o.creado ? fmtFecha(o.creado) : ''].filter(Boolean).map(escapeHtml).join(' · ')}</span></li>`).join('')}</ul></details></td>
       <td>${r.clientes.length
         ? r.clientes.map((c) => `<div>${auLinkNs('cliente', c.idInterno, `${c.codigo || c.idInterno} ${c.nombre}`.trim())}
             <div class="ig-cell-sub">${[c.estado, c.representante !== 'Sin asignar' ? c.representante : ''].filter(Boolean).map(escapeHtml).join(' · ')}</div></div>`).join('') +
@@ -1006,7 +1120,10 @@ function auRenderPie(d) {
   const campo = c.id
     ? `Campo de GHL con el ID de NetSuite: <span class="ig-mono">${escapeHtml(c.id)}</span>${c.detectado ? ` (detectado en ${fmtNumero(c.coincidencias)} oportunidades)` : ''}.`
     : '<span class="au-aviso">No se pudo identificar el campo de GHL con el ID de NetSuite: ninguna oportunidad de GHL coincide con las de NetSuite del período. Configurá AU_CF_NS_OPP_ID.</span>';
-  el.innerHTML = `${campo} Los contactos "sin verificar" se cargaron antes de habilitar la auditoría: se verifican en la próxima actualización del Informe MKT que incluya su fecha de alta.`;
+  const sinOpp = d.info.c1SinOportunidad
+    ? `${fmtNumero(d.info.c1SinOportunidad)} contactos de GHL del período no tienen oportunidad y no se auditan en el control 1. `
+    : '';
+  el.innerHTML = `${campo} ${sinOpp}Los contactos "sin verificar" se cargaron antes de habilitar la auditoría: se verifican en la próxima actualización del Informe MKT que incluya su fecha de alta.`;
 }
 
 /* ── Excel ───────────────────────────────────────────────────────────── */
@@ -1023,7 +1140,8 @@ async function auExportar(cual) {
       Estado: { ok: 'En NetSuite', falta: 'Falta en NetSuite', sin_verificar: 'Sin verificar' }[r.estado],
       'Contacto GHL': r.nombre, Email: r.email, 'Teléfono': r.telefono, 'ID contacto GHL': r.ghlId,
       'Vendedor GHL': r.vendedor, 'Alta GHL': fmtFecha(r.alta), Origen: r.origen,
-      'Visita en GHL': r.visita ? 'Sí' : 'No', 'Oportunidades en GHL': r.oportunidades,
+      'Visita en GHL': r.visita ? 'Sí' : 'No', 'Oportunidades en GHL': r.oportunidades.length,
+      'Nombres oportunidades GHL': r.oportunidades.map((o) => o.nombre).join(' | '),
       'Cliente NetSuite': r.clientes.map((c) => `${c.codigo} ${c.nombre}`.trim()).join(' | '),
       'ID interno cliente NS': r.clientes.map((c) => c.idInterno).join(' | '),
       'Estado cliente NS': r.clientes.map((c) => c.estado).join(' | '),

@@ -254,14 +254,15 @@ function esEditable(registro) {
 
 /* ── Paginador ───────────────────────────────────────────────────────── */
 
-function renderPager(elId, estado, onPage) {
+// pageSize: opcional (por defecto IG_PAGE_SIZE); la Auditoría usa otros tamaños.
+function renderPager(elId, estado, onPage, pageSize = IG_PAGE_SIZE) {
   const el = document.getElementById(elId);
   if (!el) return;
   const { page, total } = estado;
   if (total === 0) { el.innerHTML = ''; return; }
-  const desde = page * IG_PAGE_SIZE + 1;
-  const hasta = Math.min(total, (page + 1) * IG_PAGE_SIZE);
-  const ultima = Math.max(0, Math.ceil(total / IG_PAGE_SIZE) - 1);
+  const desde = page * pageSize + 1;
+  const hasta = Math.min(total, (page + 1) * pageSize);
+  const ultima = Math.max(0, Math.ceil(total / pageSize) - 1);
   el.innerHTML = `
     <span class="ig-pager__info">Mostrando ${fmtNumero(desde)}–${fmtNumero(hasta)} de ${fmtNumero(total)}</span>
     <span class="ig-pager__nav">

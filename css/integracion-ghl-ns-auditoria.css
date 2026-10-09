@@ -24,6 +24,22 @@
   cursor: pointer;
 }
 
+.au-periodo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-navy);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-body);
+}
+
+.au-periodo[hidden] {
+  display: none;
+}
+
 .au-nota {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);

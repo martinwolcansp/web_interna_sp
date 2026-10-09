@@ -319,12 +319,11 @@
       <section class="admin-section" aria-labelledby="au-periodo-title">
         <div class="admin-section__header">
           <h2 id="au-periodo-title" class="admin-section__title">Período de la auditoría</h2>
-          <p class="admin-section__subtitle">Contactos por fecha de alta en GHL y oportunidades por fecha de la oportunidad en NetSuite.</p>
+          <p class="admin-section__subtitle">Mes en curso: contactos por fecha de alta en GHL y oportunidades por fecha de la oportunidad en NetSuite. Para otros períodos, usá el Informe de MKT.</p>
         </div>
 
         <form id="au-filtros" class="ig-toolbar" autocomplete="off">
-          <label class="ig-toolbar__date">Desde <input type="date" id="au-desde" class="admin-input" required></label>
-          <label class="ig-toolbar__date">hasta <input type="date" id="au-hasta" class="admin-input" required></label>
+          <span id="au-periodo" class="au-periodo"></span>
           <select id="au-vendedor" class="admin-select" aria-label="Vendedor"></select>
           <div class="au-fuente" role="radiogroup" aria-label="Fuente de los datos">
             <label><input type="radio" name="au-fuente" value="base" checked> Base (automática)</label>
@@ -381,7 +380,7 @@
           <div class="admin-section__header ig-section-header">
             <div>
               <h2 id="au-c1-title" class="admin-section__title">1 · Contactos de GHL → clientes potenciales de NetSuite</h2>
-              <p class="admin-section__subtitle">Cada contacto de GHL debería tener un cliente en NetSuite con su ID en el campo <code>ID CLIENTE CRM</code>.</p>
+              <p class="admin-section__subtitle">Cada contacto de GHL <b>con al menos una oportunidad</b> debería tener un cliente en NetSuite con su ID en el campo <code>ID CLIENTE CRM</code>. Los contactos sin oportunidad no se auditan.</p>
             </div>
             <button type="button" class="btn btn--secondary" data-excel="c1"><i class="ti ti-download"></i> Excel</button>
           </div>
@@ -392,11 +391,6 @@
               <option value="sin_verificar">Sin verificar</option>
               <option value="ok">Con cliente en NetSuite</option>
               <option value="">Todos</option>
-            </select>
-            <select id="au-c1-universo" class="admin-select" aria-label="Qué contactos">
-              <option value="">Contactos: todos</option>
-              <option value="visita">Sólo con visita en GHL</option>
-              <option value="oportunidad">Sólo con oportunidad en GHL</option>
             </select>
           </div>
           <div id="au-c1-tabla" class="admin-table-wrap"></div>
