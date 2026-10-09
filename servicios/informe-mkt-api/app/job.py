@@ -185,7 +185,10 @@ def ejecutar(corrida_id, token, desde, hasta):
         # por rango (contacto creado antes y sin movimiento en GHL en el rango):
         # se traen por ID para tener su origen, sus oportunidades y conversaciones.
         paso("Completando datos de GHL de las oportunidades de NetSuite")
-        ids_ns = {str(x) for x in ventas_df.get("ID CLIENTE CRM", []) if x is not None and str(x).strip() and str(x) != "nan"}
+        # Incluye el ID de GHL de la empresa matriz de los establecimientos
+        # (subclientes), para tener las oportunidades de GHL de ese contacto.
+        ids_ns = {str(x) for col in ("ID CLIENTE CRM", "ID CLIENTE CRM MATRIZ")
+                  for x in ventas_df.get(col, []) if x is not None and str(x).strip() and str(x) != "nan"}
         ids_faltantes = sorted(ids_ns - {c.get("id") for c in contactos})
         if ids_faltantes:
             contactos = contactos + ghl.traer_contactos_por_id(ids_faltantes, log)

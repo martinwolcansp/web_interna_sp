@@ -66,7 +66,18 @@ ETIQUETAS = {
     "tipo_establecimiento": "Tipo de establecimiento",
     "categoria": "Categoría",
     "comodato": "Comodato",
+    "id_cliente_crm_matriz": "ID CLIENTE CRM MATRIZ",
+    "empresa_matriz": "Empresa matriz",
 }
+
+# Establecimientos (08/10/2026): un establecimiento es un subcliente del
+# cliente principal (campo parent, "Empresa matriz") y no tiene ID de GHL; lo
+# tiene la matriz. "ID CLIENTE CRM" queda tal cual (el informe MKT no cambia)
+# y se suma el ID de la matriz (hasta dos niveles) para la Auditoria de la
+# integracion. Misma regla que UE_NS_Create_GHL_Opportunity / _Estimate.
+SQL_CRM_MATRIZ = "NVL(p.custentity_ghl_contact_id, p2.custentity_ghl_contact_id)"
+SQL_JOIN_MATRIZ = ("        LEFT JOIN customer p ON p.id = c.parent\n"
+                   "        LEFT JOIN customer p2 ON p2.id = p.parent\n")
 
 # Campos de cabecera agregados el 07/10/2026 (detalle y exportacion a Excel).
 # Si el rol no los puede leer, la consulta se repite sin ellos (quedan vacios).
@@ -222,11 +233,13 @@ def consulta_oportunidades(desde, hasta, clase_completa=True, campos_extra=True)
             BUILTIN.DF(t.entitystatus)                      AS estado,
             {unidad}                                        AS unidad_negocio,
             BUILTIN.DF(t.custbody_3k_tipo_de_proyecto)      AS tipo_proyecto,
+            {SQL_CRM_MATRIZ}                                AS id_cliente_crm_matriz,
+            p.entityid                                      AS empresa_matriz,
 {extra}            BUILTIN.DF(tl.subsidiary)                       AS subsidiaria
         FROM transaction t
         INNER JOIN transactionline tl ON tl.transaction = t.id AND tl.mainline = 'T'
         LEFT JOIN customer c ON c.id = t.entity
-{join_clase}        WHERE t.type = 'Opprtnty'
+{SQL_JOIN_MATRIZ}{join_clase}        WHERE t.type = 'Opprtnty'
           AND t.trandate BETWEEN TO_DATE('{desde.isoformat()}', 'YYYY-MM-DD')
                              AND TO_DATE('{hasta.isoformat()}', 'YYYY-MM-DD')
         ORDER BY t.id
@@ -435,6 +448,8 @@ ETIQUETAS_CLIENTE = {
     "email": "Email",
     "telefono": "Teléfono",
     "origen": "Origen de clientes potenciales",
+    "id_cliente_crm_matriz": "ID CLIENTE CRM MATRIZ",
+    "empresa_matriz": "Empresa matriz",
 }
 
 
@@ -461,9 +476,11 @@ def consulta_clientes(desde, hasta, ids_crm=None, campos_extra=True):
             TO_CHAR(c.datecreated, 'YYYY-MM-DD HH24:MI')    AS creacion,
             BUILTIN.DF(c.entitystatus)                      AS estado,
             BUILTIN.DF(c.salesrep)                          AS representante,
+            {SQL_CRM_MATRIZ}                                AS id_cliente_crm_matriz,
+            p.entityid                                      AS empresa_matriz,
 {extra}            BUILTIN.DF(c.subsidiary)                        AS subsidiaria
         FROM customer c
-        WHERE {filtro}
+{SQL_JOIN_MATRIZ}        WHERE {filtro}
         ORDER BY c.id
     """
 

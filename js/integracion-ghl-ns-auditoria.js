@@ -313,7 +313,7 @@ async function auCargarBase(desde, hasta) {
   ]);
 
   const idsContacto = contactos.map((c) => c.id);
-  const idsCrmNs = nsOpps.map((o) => auTexto(o.id_cliente_crm)).filter(Boolean);
+  const idsCrmNs = nsOpps.map((o) => auCrmEfectivo(o).crm).filter(Boolean);
 
   const [nsClientesCrm, citas, ghlOpps] = await Promise.all([
     auLeerPorIds('informe_mkt_ns_cliente', 'id_cliente_crm', idsContacto, 'id_interno,id_cliente_crm,fecha_creacion,fila'),
@@ -371,7 +371,8 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
   const c2 = nsOpps.map((r) => {
     const f = r.fila || {};
     const id = String(r.id_interno);
-    const crm = auTexto(r.id_cliente_crm);
+    const { crm, viaMatriz } = auCrmEfectivo(r);
+    const matriz = auTexto(f['Empresa matriz']);
     const vinculada = oppPorNsId.get(id);
     const delContacto = crm ? (oppsPorContacto.get(crm) || []).map(auOppGhl) : [];
     const ghl = vinculada ? auOppGhl(vinculada) : null;
@@ -379,7 +380,9 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
     if (ghl) {
       if (crm && ghl.contactId && ghl.contactId !== crm) diag = 'La oportunidad de GHL está en otro contacto que el cliente de NetSuite.';
     } else if (!crm) {
-      diag = 'El cliente de NetSuite no tiene ID de GHL (ID CLIENTE CRM vacío).';
+      diag = matriz
+        ? `Es un establecimiento de ${matriz}: ni el establecimiento ni la empresa matriz tienen ID de GHL.`
+        : 'El cliente de NetSuite no tiene ID de GHL (ID CLIENTE CRM vacío).';
     } else if (!delContacto.length) {
       diag = 'El contacto de GHL no tiene oportunidades.';
     } else {
@@ -397,6 +400,8 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
       unidad: f['Unidad de Negocio'] || '',
       tipoProyecto: f['Tipo de Proyecto'] || '',
       crm,
+      viaMatriz,
+      matriz,
       ghl,
       delContacto,
       diag,
@@ -410,7 +415,7 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
   // por código de cliente (entityid), que está en las dos fuentes.
   const c3PorCodigo = new Map();
   nsClientesRango
-    .filter((c) => !auTexto(c.id_cliente_crm))
+    .filter((c) => !auCrmEfectivo(c).crm)
     .map((c) => auClienteNs(c))
     .filter((c) => !c.subsidiaria || c.subsidiaria.endsWith(AU_SUBSIDIARIA))
     .forEach((c) => c3PorCodigo.set(c.codigo || `id:${c.idInterno}`, { ...c, creadoEnPeriodo: true, oportunidades: [] }));
@@ -435,6 +440,15 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
     c1, c2, c2b: [], c3,
     info: { desde, hasta, totalDias, diasCargados: dias.length, ultimo, campo },
   };
+}
+
+// ID de GHL efectivo: el del cliente o, si es un establecimiento (subcliente)
+// sin ID, el de su empresa matriz. Misma regla que los scripts de NetSuite.
+function auCrmEfectivo(r) {
+  const propio = auTexto(r.id_cliente_crm);
+  if (propio) return { crm: propio, viaMatriz: false };
+  const matriz = auTexto((r.fila || {})['ID CLIENTE CRM MATRIZ']);
+  return { crm: matriz, viaMatriz: !!matriz };
 }
 
 function auClienteNs(c) {
@@ -921,17 +935,19 @@ function auRenderC2(d, f) {
 
 function auCeldaGhlC2(r) {
   const contacto = r.crm ? `<div class="ig-cell-sub">Contacto: ${auLinkGhl(r.crm, r.crm)}</div>` : '';
+  const matriz = r.viaMatriz ? `<div class="ig-cell-sub"><span class="ig-tag">Vía empresa matriz ${escapeHtml(r.matriz)}</span></div>` : '';
   if (r.ghl) {
     return `<div>${escapeHtml(r.ghl.nombre || '(sin nombre)')}</div>
       <div class="ig-cell-sub">${[r.ghl.etapa, r.ghl.vendedor].filter(Boolean).map(escapeHtml).join(' · ')}</div>
       ${r.ghl.contactId ? `<div class="ig-cell-sub">Contacto: ${auLinkGhl(r.ghl.contactId, r.ghl.contacto || r.ghl.contactId)}</div>` : contacto}
+      ${matriz}
       ${r.diag ? `<div class="au-aviso">${escapeHtml(r.diag)}</div>` : ''}`;
   }
   const lista = r.delContacto.length
     ? `<details class="au-det"><summary>Ver oportunidades del contacto</summary><ul>${r.delContacto.map((o) =>
       `<li>${escapeHtml(o.nombre || '(sin nombre)')} <span class="ig-cell-sub">${[o.etapa, o.estado, o.creado ? fmtFecha(o.creado) : ''].filter(Boolean).map(escapeHtml).join(' · ')}</span></li>`).join('')}</ul></details>`
     : '';
-  return `<div class="au-diag">${escapeHtml(r.diag)}</div>${contacto}${lista}`;
+  return `<div class="au-diag">${escapeHtml(r.diag)}</div>${contacto}${matriz}${lista}`;
 }
 
 function auRenderC2b(d) {
@@ -1021,7 +1037,7 @@ async function auExportar(cual) {
       'Oportunidad NS': r.numero, 'ID interno NS': r.nsId, Fecha: fmtFecha(r.fecha),
       Cliente: r.cliente, 'Código cliente': r.codCliente, Representante: r.vendedor,
       'Estado NS': r.estadoNs, Aprobada: r.aprobada === null ? '' : (r.aprobada ? 'Sí' : 'No'),
-      'Unidad de negocio': r.unidad, 'Tipo de proyecto': r.tipoProyecto, 'ID contacto GHL': r.crm,
+      'Unidad de negocio': r.unidad, 'Tipo de proyecto': r.tipoProyecto, 'ID contacto GHL': r.crm, 'ID GHL vía empresa matriz': r.viaMatriz ? r.matriz : '',
       'Oportunidad GHL': r.ghl ? r.ghl.nombre : '', 'Etapa GHL': r.ghl ? r.ghl.etapa : '',
       'Diagnóstico': r.diag,
       'Link NetSuite': d.fuente === 'base' ? `${AU_NS_URL}/app/accounting/transactions/opprtnty.nl?id=${r.nsId}` : '',
