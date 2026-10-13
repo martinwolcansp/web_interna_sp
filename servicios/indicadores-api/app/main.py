@@ -10,6 +10,7 @@
 # ind_<area>_* directo de Supabase (RLS con permiso ver).
 
 import logging
+import os
 
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +33,8 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "areas": sorted(AREAS)}
+    # SOURCE_COMMIT lo carga Coolify: sirve para ver que version esta desplegada.
+    return {"status": "ok", "areas": sorted(AREAS), "version": (os.getenv("SOURCE_COMMIT") or "")[:7] or None}
 
 
 @app.post("/indicadores/{area}/actualizar", status_code=202)

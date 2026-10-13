@@ -169,7 +169,14 @@ def borrar_corridas_viejas(token, area, conservar):
 # ---------- datos de cada area ----------
 
 def upsert(token, tabla, filas, on_conflict):
-    filas = _sin_nan(filas)
+    """Upsert por lotes. Si vienen filas repetidas por la clave (on_conflict),
+    queda la ultima: PostgreSQL rechaza todo el lote si una fila se repite
+    dentro del mismo comando (error 21000)."""
+    claves = [c.strip() for c in on_conflict.split(",")]
+    unicas = {}
+    for f in _sin_nan(filas):
+        unicas[tuple(f.get(c) for c in claves)] = f
+    filas = list(unicas.values())
     for i in range(0, len(filas), TAMANO_LOTE):
         _check(requests.post(
             _rest(tabla),
