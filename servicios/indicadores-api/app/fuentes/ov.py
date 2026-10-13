@@ -280,7 +280,11 @@ def _ov_productos(tr_ids):
                 TO_CHAR(t.trandate, 'YYYY-MM-DD')   AS fecha_ov,
                 BUILTIN.DF(t.status)                AS estado_ov,
                 BUILTIN.DF(t.opportunity)           AS oportunidad,
-                t.foreigntotal                      AS monto
+                t.foreigntotal                      AS monto,
+                t.custbody_3k_comodato              AS comodato,
+                BUILTIN.DF(t.custbody_mw_sp_unidad_comercial) AS uc_ov,
+                t.custbody_3k_trans_orig_ov         AS presupuesto_id,
+                t.opportunity                       AS oportunidad_id
             FROM transaction t
             WHERE t.id IN ({lote})
               AND t.type = 'SalesOrd'
@@ -289,6 +293,42 @@ def _ov_productos(tr_ids):
         """):
             ovs[int(f["ov_id"])] = f
     return ovs
+
+
+def _origen(ovs):
+    """Presupuesto de origen de cada OV (custbody_3k_trans_orig_ov) y unidad
+    comercial: la de la OV, si no la del presupuesto, si no la de la
+    oportunidad (del presupuesto o de la OV). El campo es nuevo en el
+    presupuesto (cargado desde sep-2026); en la oportunidad esta desde mar-2026.
+    Se consulta aparte y por ids: unido a la consulta de OV tarda 10 veces mas."""
+    pres_ids = {int(f["presupuesto_id"]) for f in ovs.values() if f.get("presupuesto_id")}
+    pres = {}
+    for lote in _lotes(pres_ids):
+        for f in netsuite.suiteql(f"""
+            SELECT e.id AS id, e.tranid AS tranid, e.opportunity AS oportunidad_id,
+                   BUILTIN.DF(e.custbody_mw_sp_unidad_comercial) AS uc
+            FROM transaction e
+            WHERE e.id IN ({lote})
+            ORDER BY e.id
+        """):
+            pres[int(f["id"])] = f
+    op_ids = {int(x["oportunidad_id"]) for x in list(pres.values()) + list(ovs.values()) if x.get("oportunidad_id")}
+    ops = {}
+    for lote in _lotes(op_ids):
+        for f in netsuite.suiteql(f"""
+            SELECT o.id AS id, BUILTIN.DF(o.custbody_mw_sp_unidad_comercial) AS uc
+            FROM transaction o
+            WHERE o.id IN ({lote})
+            ORDER BY o.id
+        """):
+            ops[int(f["id"])] = f.get("uc")
+    for f in ovs.values():
+        p = pres.get(int(f["presupuesto_id"])) if f.get("presupuesto_id") else None
+        f["presupuesto"] = p.get("tranid") if p else None
+        op_pre = int(p["oportunidad_id"]) if p and p.get("oportunidad_id") else None
+        op_ov = int(f["oportunidad_id"]) if f.get("oportunidad_id") else None
+        f["unidad_comercial"] = (texto(f.get("uc_ov")) or (texto(p.get("uc")) if p else None)
+                                 or texto(ops.get(op_pre)) or texto(ops.get(op_ov)))
 
 
 def _lineas(ov_ids):
@@ -331,6 +371,9 @@ def filas_ov(crudas, corrida_id):
         "estado_ov": texto(f.get("estado_ov")),
         "oportunidad": texto(f.get("oportunidad")),
         "monto": numero(f.get("monto")),
+        "es_comodato": str(f.get("comodato") or "").upper() == "T",
+        "unidad_comercial": texto(f.get("unidad_comercial")),
+        "presupuesto": texto(f.get("presupuesto")),
         "corrida_id": corrida_id,
         "actualizado_en": sb.ahora_iso(),
     } for f in crudas]
@@ -372,12 +415,15 @@ def traer(caso_ids, log, corrida_id=None):
     pares = _vinculos(caso_ids)
     ovs = _ov_productos(tr for _, tr in pares)
     pares = sorted((c, o) for c, o in pares if o in ovs)
+    _origen(ovs)
     lineas_ov = _lineas(ovs)
 
     filas_o = filas_ov([dict(ovs[o], caso_id=c) for c, o in pares], corrida_id)
     filas_l = filas_lineas([dict(l, caso_id=c) for c, o in pares for l in lineas_ov.get(o, [])], corrida_id)
     log(f"NetSuite: {len(ovs)} OV de productos en {len(pares)} pares caso-OV "
-        f"({len({c for c, _ in pares})} casos con OV).")
+        f"({len({c for c, _ in pares})} casos con OV); "
+        f"{sum(1 for o in ovs.values() if str(o.get('comodato') or '').upper() == 'T')} en comodato, "
+        f"{sum(1 for o in ovs.values() if o.get('unidad_comercial'))} con unidad comercial.")
     elementos = sum(1 for l in filas_l if l["es_elemento"])
     log(f"NetSuite: {len(filas_l)} lineas de OV ({elementos} de elementos instalados).")
     return filas_o, filas_l

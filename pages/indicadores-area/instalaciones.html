@@ -195,6 +195,8 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .cargando-barra::after { content: ""; position: absolute; top: 0; left: -40%; width: 40%; height: 100%; background: var(--navy); border-radius: 3px; animation: cargando-mov 1.1s ease-in-out infinite; }
 @keyframes cargando-mov { to { left: 100%; } }
 main.main--cargando { opacity: .35; pointer-events: none; }
+.pivot tr.pv-grupo td { font-weight: 700; color: var(--navy); background: var(--light-fill); }
+.pivot tr.pv-sub td.pv-fila { padding-left: 28px; color: var(--second); }
 </style>
 </head>
 <body>
@@ -334,6 +336,11 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         <span class="filtros-titulo">Filtros</span>
       </div>
       <div class="kpi-row" id="kpi-fact"></div>
+      <div class="bloque">
+        <h3>Facturación por Venta / Comodato y unidad comercial</h3>
+        <div id="fact-vc-uc"></div>
+        <div class="bloque-nota">Venta o comodato según el campo Comodato de la OV. Unidad comercial: la de la OV; si no la tiene, la del presupuesto de origen; si no, la de la oportunidad. El campo es reciente, por eso muchas OV anteriores figuran "Sin unidad comercial".</div>
+      </div>
       <div class="bloque">
         <h3>Monto de las OV de productos por tipo de proyecto y mes</h3>
         <div id="fact-tipo-mes"></div>
@@ -766,6 +773,34 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
   }
 
+  // Tabla con grupos y subgrupos (filas) x meses (columnas), suma de valor.
+  // o = { titulo, items, grupo(x), sub(x), grupos: [orden], col(x), valor(x), fmt }
+  function tablaJerarquica(o) {
+    var items = o.items.filter(function (x) { return o.col(x); });
+    if (!items.length) return vacio();
+    var cols = Array.from(new Set(items.map(o.col))).sort();
+    var fmt = o.fmt || fmtNum, med = { medida: "suma", valor: o.valor };
+    function fila(nombre, lista, clase) {
+      return '<tr class="' + clase + '"><td class="pv-fila">' + esc(nombre) + "</td>" + cols.map(function (c) {
+        var v = agregar(lista.filter(function (x) { return o.col(x) === c; }), med);
+        return '<td class="' + (v ? "" : "pv-cero") + '">' + (v === null ? "–" : fmt(v)) + "</td>";
+      }).join("") + '<td class="pv-total">' + fmt(agregar(lista, med) || 0) + "</td></tr>";
+    }
+    var grupos = Array.from(new Set(items.map(o.grupo)));
+    grupos.sort(function (a, b) { var ia = (o.grupos || []).indexOf(a), ib = (o.grupos || []).indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "es"); });
+    var cuerpo = grupos.map(function (g) {
+      var deG = items.filter(function (x) { return o.grupo(x) === g; });
+      var subs = Array.from(new Set(deG.map(o.sub)));
+      subs.sort(function (a, b) { return (agregar(deG.filter(function (x) { return o.sub(x) === b; }), med) || 0) - (agregar(deG.filter(function (x) { return o.sub(x) === a; }), med) || 0); });
+      return fila(g, deG, "pv-grupo") + subs.map(function (sname) { return fila(sname, deG.filter(function (x) { return o.sub(x) === sname; }), "pv-sub"); }).join("");
+    }).join("");
+    var pie = fila("Total", items, "").replace('<tr class="">', "<tfoot><tr>").replace(/<\/tr>$/, "</tr></tfoot>");
+    return '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">' + esc(o.titulo) + "</th>" +
+      cols.map(function (c) { return "<th>" + esc(etiquetaMes(c)) + "</th>"; }).join("") +
+      '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
+  }
+  function ventaComodato(ov) { return ov.es_comodato ? "Comodato" : "Venta"; }
+
   // =====================================================================
   // Grafico de lineas por mes (SVG simple)
   // =====================================================================
@@ -963,17 +998,23 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function pintarFacturacion() {
     var ovs = DATOS.ovs.filter(function (o) {
       var c = CASO_POR_ID[o.caso_id];
-      return c && fFact.periodo(c.fecha_fin_inst) && fFact.pasa("estadoOv", o.estado_ov);
+      return c && fFact.periodo(c.fecha_fin_inst) && fFact.pasa("estadoOv", o.estado_ov) &&
+        fFact.pasa("vc", ventaComodato(o)) && fFact.pasa("uc", o.unidad_comercial);
     }).map(function (o) { return { ov: o, caso: CASO_POR_ID[o.caso_id] }; });
     var total = suma(ovs, function (x) { return +x.ov.monto; });
     var inst = distintos(ovs, function (x) { return x.caso.id_inst; });
+    var deTipo = function (t) { return ovs.filter(function (x) { return ventaComodato(x.ov) === t; }); };
     kpis("kpi-fact", [
       { num: fmtPesos(total), label: "Monto de las OV de productos" },
-      { num: fmtNum(distintos(ovs, function (x) { return x.ov.ov_id; })), label: "Órdenes de venta" },
+      { num: fmtPesos(suma(deTipo("Venta"), function (x) { return +x.ov.monto; })), label: "Venta", sub: fmtNum(distintos(deTipo("Venta"), function (x) { return x.ov.ov_id; })) + " OV" },
+      { num: fmtPesos(suma(deTipo("Comodato"), function (x) { return +x.ov.monto; })), label: "Comodato", sub: fmtNum(distintos(deTipo("Comodato"), function (x) { return x.ov.ov_id; })) + " OV" },
       { num: fmtNum(inst), label: "Instalaciones con OV" },
       { num: inst ? fmtPesos(total / inst) : "–", label: "Promedio por instalación" },
     ]);
     var monto = function (x) { return +x.ov.monto; };
+    $("fact-vc-uc").innerHTML = tablaJerarquica({ titulo: "Venta / Comodato", items: ovs.filter(function (x) { return x.caso.fecha_fin_inst; }),
+      grupo: function (x) { return ventaComodato(x.ov); }, sub: function (x) { return x.ov.unidad_comercial || "Sin unidad comercial"; },
+      grupos: ["Venta", "Comodato"], col: function (x) { return anioMes(x.caso.fecha_fin_inst); }, valor: monto, fmt: fmtPesos });
     $("fact-tipo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de proyecto", items: ovs.filter(function (x) { return x.caso.fecha_fin_inst; }),
       fila: function (x) { return x.caso._tipo; }, col: function (x) { return anioMes(x.caso.fecha_fin_inst); }, cols: "mes",
       medida: "suma", valor: monto, fmt: fmtPesos });
@@ -1088,13 +1129,16 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       { titulo: "OV", html: function (x) { return '<a class="accion-link" href="' + URL_OV + encodeURIComponent(x.ov.ov_id) + '" target="_blank" rel="noopener">' + esc(x.ov.ov_numero || x.ov.ov_id) + " ↗</a>"; },
         valor: function (x) { return x.ov.ov_numero || ""; }, clase: "nowrap" },
       { titulo: "Estado OV", valor: function (x) { return x.ov.estado_ov || ""; } },
+      { titulo: "Venta / Comodato", valor: function (x) { return ventaComodato(x.ov); } },
+      { titulo: "Unidad comercial", valor: function (x) { return x.ov.unidad_comercial || ""; } },
       numCol("Monto", function (x) { return x.ov.monto === null ? null : +x.ov.monto; }, fmtPesos),
       { titulo: "Caso", html: function (x) { return linkCaso(x.caso); }, valor: function (x) { return x.caso.numero || ""; }, clase: "nowrap" },
       { titulo: "Cliente", valor: function (x) { return x.caso.cliente || ""; } },
       { titulo: "Tipo de proyecto", valor: function (x) { return x.caso.tipo_proyecto || ""; } },
       { titulo: "Fin instalación", valor: function (x) { return fmtDia(x.caso.fecha_fin_inst); }, orden: function (x) { return x.caso.fecha_fin_inst; }, clase: "nowrap" },
+      { titulo: "Presupuesto", valor: function (x) { return x.ov.presupuesto || ""; }, clase: "nowrap" },
       { titulo: "Oportunidad", valor: function (x) { return x.ov.oportunidad || ""; } },
-    ], function (x) { return [x.ov.ov_numero, x.ov.estado_ov, x.caso.numero, x.caso.cliente, x.caso.tipo_proyecto, x.ov.oportunidad].join(" "); });
+    ], function (x) { return [x.ov.ov_numero, x.ov.estado_ov, ventaComodato(x.ov), x.ov.unidad_comercial, x.ov.presupuesto, x.caso.numero, x.caso.cliente, x.caso.tipo_proyecto, x.ov.oportunidad].join(" "); });
 
     tablaDem = crearTabla("tabla-dem", "buscar-dem", "cuenta-dem", colsCaso.concat([
       numCol("Demora agenda (días)", function (c) { return c._demora; }),
@@ -1118,7 +1162,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   async function cargarDatosInterno() {
     var res = await Promise.all([
       leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_creacion,fecha_inicio_inst,fecha_fin_inst,cliente,nro_cuenta,tecnico,tipo_proyecto,estado_caso,estado_instalacion,tipo_posventa,dias_reales_trabajo", ["caso_id"]),
-      leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto", ["caso_id", "ov_id"]),
+      leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto,es_comodato,unidad_comercial,presupuesto", ["caso_id", "ov_id"]),
       leerTodo("ind_caso_ov_linea", "caso_id,ov_id,linea_id,articulo,cantidad,subcategoria,es_mo,es_elemento", ["caso_id", "ov_id", "linea_id"]),
     ]);
     // Filtro general del informe (como el Power BI): sin tipo de proyecto o tipos ajenos.
@@ -1141,6 +1185,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       { clave: "sub", nombre: "Elementos", valores: valoresDe(DATOS.lineas.filter(function (l) { return l.es_elemento; }), function (l) { return l.subcategoria; }) },
     ], pintarCasos);
     fFact = crearFiltrosTab("filtros-fact", fechas, [
+      { clave: "vc", nombre: "Venta / Comodato", valores: ["Venta", "Comodato"] },
+      { clave: "uc", nombre: "Unidad comercial", valores: valoresDe(DATOS.ovs, function (o) { return o.unidad_comercial; }) },
       { clave: "estadoOv", nombre: "Estado de la OV", valores: valoresDe(DATOS.ovs, function (o) { return o.estado_ov; }) },
     ], pintarFacturacion);
     fDem = crearFiltrosTab("filtros-dem", fechas, [

@@ -18,6 +18,7 @@ Cada área actualiza con su propio botón y solo reescribe lo de su alcance. Pos
 
 1. Casos de instalación (la misma consulta que Posventa).
 2. OV de productos de cada caso: el campo "OV de productos" del caso más las OV con alguna línea cuya "Orden de instalación" es el caso. Solo OV con tipo de orden de venta 1. Se consulta por listas de ids, lo que tarda unos segundos; con un único JOIN tardaba más de un minuto.
+   De cada OV se guarda también si es comodato (`custbody_3k_comodato`), el presupuesto de origen (`custbody_3k_trans_orig_ov`) y la unidad comercial (`custbody_mw_sp_unidad_comercial`). La unidad comercial se toma de la OV; si no la tiene, del presupuesto; y si tampoco, de la oportunidad. El presupuesto y la oportunidad se consultan aparte, por ids, porque unidos a la consulta de OV la hacían 10 veces más lenta. Requiere la `migracion_27_indicadores_ov_comodato_unidad.sql`.
 3. Líneas de esas OV, con categoría y subcategoría según las reglas de `PatronesCategorias` del Power BI, más dos patrones agregados: "Control remoto" y "Tarjeta memoria". `es_elemento` excluye IVA, descuentos, subtotales, mano de obra, cable (se vende por metro) y las categorías Servicios, Administrativo e Interno.
 4. Los indicadores se calculan en `pages/indicadores-area/instalaciones.html`.
 
