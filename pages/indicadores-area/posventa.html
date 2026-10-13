@@ -167,6 +167,14 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .aviso-acceso { margin: 40px auto; max-width: 560px; text-align: center; color: var(--second); }
 @media (max-width: 640px) { .wrap { padding: 16px 12px 40px; } main { padding: 4px 14px 20px; } header.report-header h1 { font-size: 20px; } .explorer-search { width: 160px; } }
 @media print { nav.tabs, .filtros, .upd-bar, .upd-panel { display: none; } .tab-panel { display: block !important; page-break-before: always; } main { border: none; } }
+
+/* Aviso de carga inicial */
+.cargando { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 12px 16px; background: var(--light-fill); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; color: var(--navy); font-weight: 600; font-size: 14.5px; }
+.cargando[hidden] { display: none; }
+.cargando-barra { position: relative; flex: 1; max-width: 320px; height: 6px; background: #dfe6f2; border-radius: 3px; overflow: hidden; }
+.cargando-barra::after { content: ""; position: absolute; top: 0; left: -40%; width: 40%; height: 100%; background: var(--navy); border-radius: 3px; animation: cargando-mov 1.1s ease-in-out infinite; }
+@keyframes cargando-mov { to { left: 100%; } }
+main.main--cargando { opacity: .35; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -196,12 +204,17 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     </div>
   </header>
 
+  <div class="cargando" id="cargando" role="status" aria-live="polite">
+    <span>Cargando datos…</span>
+    <span class="cargando-barra" aria-hidden="true"></span>
+  </div>
+
   <nav class="tabs" role="tablist" aria-label="Reportes de Posventa">
     <button type="button" class="tab-btn active" data-tab="instalaciones" role="tab" aria-selected="true" aria-controls="panel-instalaciones">Análisis Posventa Instalaciones</button>
     <button type="button" class="tab-btn" data-tab="encuestas" role="tab" aria-selected="false" aria-controls="panel-encuestas">Encuestas Posventa</button>
   </nav>
 
-  <main>
+  <main class="main--cargando">
     <!-- ============ Pestaña 1 ============ -->
     <section class="tab-panel active" id="panel-instalaciones" role="tabpanel">
       <h2>Análisis Posventa Instalaciones</h2>
@@ -816,7 +829,17 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   }
 
   var iniciado = false;
+  // Aviso "Cargando datos…" mientras se leen las tablas (al entrar y despues de actualizar).
+  function mostrarCargando(si) {
+    var aviso = $("cargando"), principal = document.querySelector("main");
+    if (aviso) aviso.hidden = !si;
+    if (principal) principal.classList.toggle("main--cargando", !!si);
+  }
   async function cargarDatos() {
+    mostrarCargando(true);
+    try { await cargarDatosInterno(); } finally { mostrarCargando(false); }
+  }
+  async function cargarDatosInterno() {
     var res = await Promise.all([
       leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id"),
       leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl", "relevamiento_id"),

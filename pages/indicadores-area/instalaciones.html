@@ -187,6 +187,14 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .pivot td.pv-txt { text-align: left; }
 .data-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media print { nav.tabs, .filtros, .upd-bar, .upd-panel { display: none; } .tab-panel { display: block !important; page-break-before: always; } main { border: none; } }
+
+/* Aviso de carga inicial */
+.cargando { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 12px 16px; background: var(--light-fill); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; color: var(--navy); font-weight: 600; font-size: 14.5px; }
+.cargando[hidden] { display: none; }
+.cargando-barra { position: relative; flex: 1; max-width: 320px; height: 6px; background: #dfe6f2; border-radius: 3px; overflow: hidden; }
+.cargando-barra::after { content: ""; position: absolute; top: 0; left: -40%; width: 40%; height: 100%; background: var(--navy); border-radius: 3px; animation: cargando-mov 1.1s ease-in-out infinite; }
+@keyframes cargando-mov { to { left: 100%; } }
+main.main--cargando { opacity: .35; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -216,6 +224,11 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     </div>
   </header>
 
+  <div class="cargando" id="cargando" role="status" aria-live="polite">
+    <span>Cargando datos…</span>
+    <span class="cargando-barra" aria-hidden="true"></span>
+  </div>
+
   <nav class="tabs" role="tablist" aria-label="Reportes de Instalaciones">
     <button type="button" class="tab-btn active" data-tab="instalaciones" role="tab" aria-selected="true" aria-controls="panel-instalaciones">Instalaciones</button>
     <button type="button" class="tab-btn" data-tab="casos" role="tab" aria-selected="false" aria-controls="panel-casos">Casos y elementos instalados</button>
@@ -224,7 +237,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     <button type="button" class="tab-btn" data-tab="elementos" role="tab" aria-selected="false" aria-controls="panel-elementos">Elementos</button>
   </nav>
 
-  <main>
+  <main class="main--cargando">
     <!-- ============ Pestaña 1: Instalaciones ============ -->
     <section class="tab-panel active" id="panel-instalaciones" role="tabpanel">
       <h2>Análisis de instalaciones por fecha de finalización</h2>
@@ -1092,7 +1105,17 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   }
 
   var iniciado = false;
+  // Aviso "Cargando datos…" mientras se leen las tablas (al entrar y despues de actualizar).
+  function mostrarCargando(si) {
+    var aviso = $("cargando"), principal = document.querySelector("main");
+    if (aviso) aviso.hidden = !si;
+    if (principal) principal.classList.toggle("main--cargando", !!si);
+  }
   async function cargarDatos() {
+    mostrarCargando(true);
+    try { await cargarDatosInterno(); } finally { mostrarCargando(false); }
+  }
+  async function cargarDatosInterno() {
     var res = await Promise.all([
       leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_creacion,fecha_inicio_inst,fecha_fin_inst,cliente,nro_cuenta,tecnico,tipo_proyecto,estado_caso,estado_instalacion,tipo_posventa,dias_reales_trabajo", ["caso_id"]),
       leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto", ["caso_id", "ov_id"]),
