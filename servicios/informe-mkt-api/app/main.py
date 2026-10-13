@@ -15,6 +15,11 @@
 # POST /informe-mkt/consultar {desde, hasta}
 #   Arma el informe para cualquier rango con los datos ya cargados por las
 #   actualizaciones (tablas de la migracion 19). Permiso: ver. Es sincronico.
+#
+# POST /informe-mkt/comisiones {desde, hasta}
+#   OV de las oportunidades ganadas del rango con sus abonos (ABO), para el
+#   boton "Comisiones por vendedor" (app/comisiones.py). Consulta NetSuite en
+#   vivo, no guarda nada. Permiso: ver. Es sincronico.
 
 import logging
 from datetime import date, datetime
@@ -25,7 +30,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 
-from app import acumulado, config, job
+from app import acumulado, comisiones, config, job
 from app import supabase_rest as sb
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
@@ -90,6 +95,24 @@ def consultar(pedido: PedidoActualizacion, authorization: str = Header(None)):
     except Exception as e:
         logger.exception("Error al consultar el informe")
         raise HTTPException(500, f"Error interno al consultar el informe: {e}")
+
+
+@app.post("/informe-mkt/comisiones")
+def consultar_comisiones(pedido: PedidoActualizacion, authorization: str = Header(None)):
+    try:
+        token = _token_valido(authorization)
+        if not sb.tiene_permiso(token, "informes-mkt", "ver"):
+            raise HTTPException(403, "Tu usuario no tiene permiso para ver el Informe de MKT.")
+        if pedido.desde > pedido.hasta:
+            raise HTTPException(422, "La fecha 'desde' no puede ser posterior a 'hasta'.")
+        if (pedido.hasta - pedido.desde).days + 1 > config.MAX_DIAS_CONSULTA:
+            raise HTTPException(422, f"El rango no puede superar {config.MAX_DIAS_CONSULTA} dias.")
+        return comisiones.generar(pedido.desde, pedido.hasta, logger.info)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error al consultar las comisiones")
+        raise HTTPException(500, f"Error al consultar NetSuite para las comisiones: {e}")
 
 
 @app.post("/auditoria/actualizar", status_code=202)

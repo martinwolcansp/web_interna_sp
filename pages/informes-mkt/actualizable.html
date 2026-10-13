@@ -200,6 +200,58 @@ body:not(.es-editor) .per-controles { border-bottom: 0; padding-bottom: 0; }
 .upd-hero--atrasada { background: var(--warn-bg); color: var(--ink); border-left-color: var(--orange); }
 .upd-hero--atrasada .upd-hero-fecha { color: #b3261e; }
 @media print { .upd-hero { background: none; color: var(--ink); border: 1px solid var(--rule); border-left: 6px solid var(--navy); } }
+/* ---- Comisiones por vendedor (pop up, 13/10/2026) ---- */
+.com-btn { margin-left: auto; }
+body.com-abierto { overflow: hidden; }
+.com-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(20, 30, 50, .45); display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; }
+.com-overlay[hidden] { display: none; }
+.com-dialog { background: var(--surface); width: min(1560px, 96vw); height: 94vh; border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.25); display: flex; flex-direction: column; overflow: hidden; }
+.com-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 14px 20px; border-bottom: 1px solid var(--rule); }
+.com-head h2 { color: var(--navy); font-size: 19px; margin: 0; padding-left: 10px; border-left: 4px solid var(--navy); }
+.com-periodo { color: var(--second); font-size: 13.5px; }
+.com-head-acciones { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.com-cerrar { appearance: none; border: 1px solid var(--rule); background: var(--surface); color: var(--second); font-size: 20px; line-height: 1; width: 34px; height: 34px; border-radius: 6px; cursor: pointer; }
+.com-cerrar:hover { background: var(--light-fill); color: var(--navy); }
+.com-body { flex: 1; overflow: auto; padding: 14px 20px 24px; }
+.com-body h3 { color: var(--navy); font-size: 15.5px; margin: 18px 0 8px; }
+.com-cargando { padding: 40px 0; text-align: center; color: var(--second); }
+.com-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.com-tabla th { position: sticky; top: 0; z-index: 1; background: var(--navy-solid); color: #fff; text-align: left; font-weight: 600; padding: 7px 8px; white-space: nowrap; }
+.com-tabla td { padding: 6px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.com-tabla td.num, .com-tabla th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.com-tabla tbody tr.com-fila { cursor: pointer; }
+.com-tabla tbody tr.com-fila:hover { background: var(--light-fill); }
+.com-tabla tbody tr.com-det td { background: #FBFBF8; padding: 10px 14px; }
+.com-tabla tfoot td { font-weight: 700; color: var(--navy); background: var(--light-fill); border-top: 2px solid var(--navy); }
+.com-sub { color: var(--muted); font-size: 11.5px; }
+.com-ayuda { color: var(--muted); font-size: 12.5px; margin: -4px 0 6px; }
+.com-resumen tbody tr { cursor: pointer; }
+.com-resumen tbody tr:hover { background: var(--light-fill); }
+.com-resumen tbody tr.activo td { background: #dfe6f2; font-weight: 700; }
+.com-scroll { max-height: 56vh; overflow: auto; border: 1px solid var(--rule); border-radius: 8px; }
+.com-scroll-res { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; }
+.com-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 10px; padding: 10px 12px; background: var(--light-fill); border: 1px solid var(--rule); border-radius: 8px 8px 0 0; border-bottom: 0; }
+.com-filtros + .com-scroll { border-radius: 0 0 8px 8px; }
+.com-f { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; color: var(--muted); }
+.com-f select, .com-f input[type=search], .com-f input[type=date] { border: 1px solid var(--rule); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px; background: var(--surface); color: var(--ink); max-width: 220px; }
+.com-f input[type=search] { width: 200px; }
+.com-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); padding-bottom: 6px; }
+.com-cuenta { font-size: 12.5px; color: var(--muted); padding-bottom: 7px; margin-left: auto; white-space: nowrap; }
+.com-abo { display: inline-block; margin: 1px 3px 1px 0; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--rule); background: var(--surface); color: var(--second); white-space: nowrap; }
+.com-abo--cuenta { background: var(--win-bg); border-color: var(--win-border); color: var(--win-text); }
+.com-clasif { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.com-clasif--ok { background: var(--win-bg); color: var(--win-text); border: 1px solid var(--win-border); }
+.com-clasif--rev { background: var(--warn-bg); color: #a3471c; border: 1px solid #f2c6a8; }
+.com-clasif--no { background: #F1F0EC; color: var(--second); border: 1px solid var(--rule); }
+.com-lineas { border-collapse: collapse; font-size: 12.5px; background: var(--surface); min-width: 620px; }
+.com-lineas th { background: var(--light-fill); color: var(--navy); font-size: 11px; text-transform: uppercase; letter-spacing: .02em; padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--rule); }
+.com-lineas td { padding: 4px 8px; border-bottom: 1px solid var(--rule); }
+.com-lineas td.num, .com-lineas th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.com-det-info { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 12.5px; color: var(--second); margin-bottom: 8px; }
+.com-det-info b { color: var(--ink); font-weight: 600; }
+.com-sinov summary { cursor: pointer; color: var(--navy); font-weight: 700; font-size: 15px; margin: 18px 0 8px; }
+.com-vacio { color: var(--muted); padding: 16px 8px; text-align: center; }
+@media (max-width: 640px) { .com-overlay { padding: 0; } .com-dialog { width: 100vw; height: 100vh; border-radius: 0; } .com-head, .com-body { padding-left: 12px; padding-right: 12px; } }
 </style>
 </head>
 <body>
@@ -1166,7 +1218,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       '<option value="todas"' + (PIVOT.soloGanadas ? "" : " selected") + ">Todas las oportunidades</option>" +
       "</select></label>" +
       (total ? '<button type="button" class="explorer-export" id="pivot-export" onclick="exportarMatrizExcel(this)">Exportar a Excel</button>' : "") +
-      "<span class=\"explorer-count\">" + total + (PIVOT.soloGanadas ? " venta" + (total === 1 ? "" : "s") : " oportunidad" + (total === 1 ? "" : "es")) + "</span></div>";
+      "<span class=\"explorer-count\">" + total + (PIVOT.soloGanadas ? " venta" + (total === 1 ? "" : "s") : " oportunidad" + (total === 1 ? "" : "es")) + "</span>" +
+      '<button type="button" class="upd-btn com-btn" onclick="abrirComisiones()" title="OV de las oportunidades ganadas del período y sus abonos (ABO)">Comisiones por vendedor</button></div>';
 
     if (!total) {
       panel.innerHTML = html + '<p style="color:var(--muted)">No hay ' + (PIVOT.soloGanadas ? "ventas" : "oportunidades") + " en el período.</p>";
@@ -1531,6 +1584,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
 (function () {
   // URL del servicio en Coolify.
   var API_BASE_URL = "https://informe-mkt-api.200.5.196.50.sslip.io";
+  window.INFORME_MKT_API = API_BASE_URL; // lo usa el pop up de Comisiones por vendedor
   var TZ = "America/Argentina/Buenos_Aires";
   var POLL_MS = 4000;
   var HISTORIAL = 40;
@@ -1870,5 +1924,440 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
 })();
 </script>
 
+<script>
+/* ---- Comisiones por vendedor (13/10/2026) ----
+   Boton en el Informe por vendedor: abre un pop up con las OV de las
+   oportunidades ganadas del periodo y sus abonos (ABO), para ver como se
+   arma la base de comisiones. Los datos los arma el servicio en vivo desde
+   NetSuite (POST /informe-mkt/comisiones, app/comisiones.py).
+   Comisionable: ABO 16, o ABO 10 + ABO 11 (el ABO 16 reemplaza a la suma). */
+(function () {
+  var TZ = "America/Argentina/Buenos_Aires";
+  var D = null, cacheClave = null, cargando = false;
+  var F = null, ORDEN = { key: "fecha_ov", dir: 1 }, ABIERTAS = {};
+
+  function filtrosVacios() {
+    return { q: "", vendedor: "", modalidad: "", clasif: "", abo: "", estado: "", tipo_ov: "", unidad: "",
+             tipo_est: "", vinculo: "", desde: "", hasta: "", solo_com: false };
+  }
+  F = filtrosVacios();
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fmtDia(s) { if (!s) return ""; var p = String(s).slice(0, 10).split("-"); return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : s; }
+  function pesos(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    return "$ " + Number(v).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+  function modalidad(o) { return o.comodato ? "Comodato" : "Venta"; }
+  function sd(v) { return v === null || v === undefined || v === "" ? "Sin dato" : v; }
+  function claseClasif(c) {
+    if (c === "ABO 16" || c === "ABO 10 + ABO 11") return "ok";
+    if (/revisar|falta/.test(c)) return "rev";
+    return "no";
+  }
+
+  // ---------- Pop up ----------
+  function asegurarDom() {
+    if ($("com-overlay")) return;
+    var d = document.createElement("div");
+    d.className = "com-overlay"; d.id = "com-overlay"; d.hidden = true;
+    d.innerHTML =
+      '<div class="com-dialog" role="dialog" aria-modal="true" aria-labelledby="com-titulo">' +
+        '<div class="com-head"><h2 id="com-titulo">Comisiones por vendedor</h2>' +
+          '<span class="com-periodo" id="com-periodo"></span>' +
+          '<div class="com-head-acciones">' +
+            '<button type="button" class="explorer-export" id="com-recargar">Volver a consultar</button>' +
+            '<button type="button" class="explorer-export" id="com-excel">Exportar a Excel</button>' +
+            '<button type="button" class="com-cerrar" id="com-cerrar" aria-label="Cerrar">&times;</button>' +
+          "</div></div>" +
+        '<div class="com-body" id="com-body"></div>' +
+      "</div>";
+    document.body.appendChild(d);
+    d.addEventListener("click", function (e) { if (e.target === d) cerrar(); });
+    $("com-cerrar").addEventListener("click", cerrar);
+    $("com-recargar").addEventListener("click", function () { cacheClave = null; cargar(); });
+    $("com-excel").addEventListener("click", function () { exportar(this); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("com-overlay").hidden) cerrar(); });
+  }
+  function cerrar() { $("com-overlay").hidden = true; document.body.classList.remove("com-abierto"); }
+
+  window.abrirComisiones = function () {
+    asegurarDom();
+    $("com-overlay").hidden = false;
+    document.body.classList.add("com-abierto");
+    cargar();
+  };
+
+  function periodo() {
+    return { desde: ($("per-desde") || {}).value || "", hasta: ($("per-hasta") || {}).value || "" };
+  }
+
+  async function cargar() {
+    var p = periodo();
+    $("com-periodo").textContent = p.desde && p.hasta ? "Oportunidades ganadas del " + fmtDia(p.desde) + " al " + fmtDia(p.hasta) : "";
+    if (!p.desde || !p.hasta) { $("com-body").innerHTML = '<div class="note-box note-box--warn"><p>Elegí el período del informe (Desde / Hasta).</p></div>'; return; }
+    var clave = p.desde + "|" + p.hasta;
+    if (D && cacheClave === clave) { render(); return; }
+    if (cargando) return;
+    cargando = true;
+    $("com-excel").disabled = true; $("com-recargar").disabled = true;
+    $("com-body").innerHTML = '<div class="com-cargando">Consultando NetSuite: oportunidades ganadas, órdenes de venta y abonos… (puede tardar unos segundos)</div>';
+    try {
+      var sb = window.supabaseClient;
+      var s = sb ? await sb.auth.getSession() : null;
+      var token = s && s.data && s.data.session && s.data.session.access_token;
+      if (!token) throw new Error("Tu sesión venció: volvé a ingresar a la web interna.");
+      var resp = await fetch((window.INFORME_MKT_API || "") + "/informe-mkt/comisiones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ desde: p.desde, hasta: p.hasta }),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+      if (!resp.ok) throw new Error(typeof body.detail === "string" ? body.detail : "error " + resp.status);
+      D = body; cacheClave = clave; ABIERTAS = {};
+      F = filtrosVacios();
+      render();
+    } catch (e) {
+      $("com-body").innerHTML = '<div class="note-box note-box--warn"><p>No se pudieron consultar las comisiones: ' + esc(e.message) + "</p></div>";
+    } finally {
+      cargando = false;
+      $("com-excel").disabled = !D; $("com-recargar").disabled = false;
+    }
+  }
+
+  // ---------- Filtros ----------
+  function cumple(o, ignorar) {
+    if (ignorar !== "vendedor" && F.vendedor && o.vendedor !== F.vendedor) return false;
+    if (F.modalidad && modalidad(o) !== F.modalidad) return false;
+    if (F.clasif && o.clasificacion !== F.clasif) return false;
+    if (F.abo && !(o.abonos || []).some(function (a) { return (a.codigo || a.articulo) === F.abo; })) return false;
+    if (F.estado && sd(o.estado_ov) !== F.estado) return false;
+    if (F.tipo_ov && sd(o.tipo_ov) !== F.tipo_ov) return false;
+    if (F.unidad && sd(o.unidad_negocio) !== F.unidad) return false;
+    if (F.tipo_est && sd(o.tipo_establecimiento) !== F.tipo_est) return false;
+    if (F.vinculo && o.vinculo !== F.vinculo) return false;
+    if (F.desde && (o.fecha_ov || "") < F.desde) return false;
+    if (F.hasta && (o.fecha_ov || "") > F.hasta) return false;
+    if (F.solo_com && !o.comisionable) return false;
+    if (F.q) {
+      var t = [o.ov_numero, o.oportunidad, o.presupuesto, o.cliente, o.nro_cliente, o.vendedor, o.representante_ov]
+        .concat((o.abonos || []).map(function (a) { return a.articulo; })).join(" ").toLowerCase();
+      if (t.indexOf(F.q.toLowerCase()) === -1) return false;
+    }
+    return true;
+  }
+  function filasFiltradas() {
+    var rows = (D.ovs || []).filter(function (o) { return cumple(o); });
+    var col = COLS.filter(function (c) { return c.key === ORDEN.key; })[0];
+    if (col) rows.sort(function (a, b) {
+      var x = col.sort(a), y = col.sort(b);
+      var vx = x === null || x === undefined || x === "", vy = y === null || y === undefined || y === "";
+      if (vx && vy) return 0; if (vx) return 1; if (vy) return -1;
+      if (typeof x === "number" && typeof y === "number") return (x - y) * ORDEN.dir;
+      return String(x).localeCompare(String(y), "es", { numeric: true }) * ORDEN.dir;
+    });
+    return rows;
+  }
+  function sinOvFiltradas() {
+    return (D.sin_ov || []).filter(function (o) {
+      if (F.vendedor && o.vendedor !== F.vendedor) return false;
+      if (F.unidad && sd(o.unidad_negocio) !== F.unidad) return false;
+      if (F.tipo_est && sd(o.tipo_establecimiento) !== F.tipo_est) return false;
+      if (F.q && [o.oportunidad, o.cliente, o.nro_cliente, o.vendedor].join(" ").toLowerCase().indexOf(F.q.toLowerCase()) === -1) return false;
+      return true;
+    });
+  }
+  function valores(get) {
+    var m = {};
+    (D.ovs || []).forEach(function (o) { [].concat(get(o)).forEach(function (v) { m[v] = 1; }); });
+    return Object.keys(m).sort(function (a, b) {
+      if (a === "Sin dato") return 1; if (b === "Sin dato") return -1;
+      return a.localeCompare(b, "es", { numeric: true });
+    });
+  }
+  function select(campo, etiqueta, opciones, textoTodos, etiquetas) {
+    return '<label class="com-f">' + esc(etiqueta) + '<select data-f="' + campo + '"><option value="">' + esc(textoTodos || "Todos") + "</option>" +
+      opciones.map(function (v) {
+        return '<option value="' + esc(v) + '"' + (F[campo] === v ? " selected" : "") + ">" + esc(etiquetas ? etiquetas[v] || v : v) + "</option>";
+      }).join("") + "</select></label>";
+  }
+
+  window.comFiltro = function (campo, valor) { F[campo] = valor; render(); };
+  window.comOrden = function (key) { ORDEN = ORDEN.key === key ? { key: key, dir: -ORDEN.dir } : { key: key, dir: 1 }; renderTabla(); };
+  window.comToggle = function (id) { ABIERTAS[id] = !ABIERTAS[id]; var el = $("com-det-" + id); if (el) el.hidden = !ABIERTAS[id]; };
+  window.comLimpiar = function () { F = filtrosVacios(); render(); };
+
+  // ---------- Columnas de la tabla de OV ----------
+  var COLS = [
+    { key: "ov_numero", label: "OV", sort: function (o) { return o.ov_numero; },
+      html: function (o) { return "<b>" + esc(o.ov_numero) + "</b>" + (o.presupuesto ? '<div class="com-sub">' + esc(o.presupuesto) + "</div>" : ""); } },
+    { key: "fecha_ov", label: "Fecha OV", sort: function (o) { return o.fecha_ov; }, html: function (o) { return esc(fmtDia(o.fecha_ov)); } },
+    { key: "estado_ov", label: "Estado OV", sort: function (o) { return o.estado_ov; }, html: function (o) { return esc(sd(o.estado_ov)); } },
+    { key: "tipo_ov", label: "Tipo OV", sort: function (o) { return o.tipo_ov; }, html: function (o) { return esc(sd(o.tipo_ov)); } },
+    { key: "modalidad", label: "Modalidad", sort: function (o) { return modalidad(o); }, html: function (o) { return esc(modalidad(o)); } },
+    { key: "vendedor", label: "Vendedor", sort: function (o) { return o.vendedor; },
+      html: function (o) { return esc(o.vendedor) + (o.representante_ov && o.representante_ov !== o.vendedor ? '<div class="com-sub">OV: ' + esc(o.representante_ov) + "</div>" : ""); } },
+    { key: "cliente", label: "Cliente", sort: function (o) { return o.cliente; },
+      html: function (o) { return esc(o.cliente) + (o.nro_cliente ? '<div class="com-sub">' + esc(o.nro_cliente) + "</div>" : ""); } },
+    { key: "oportunidad", label: "Oportunidad", sort: function (o) { return o.oportunidad; },
+      html: function (o) { return esc(o.oportunidad) + '<div class="com-sub">' + esc(fmtDia(o.fecha_oportunidad)) + "</div>"; } },
+    { key: "tipo_establecimiento", label: "Tipo establ.", sort: function (o) { return o.tipo_establecimiento; }, html: function (o) { return esc(sd(o.tipo_establecimiento)); } },
+    { key: "abonos", label: "Abonos (ABO)", sort: function (o) { return (o.abonos || []).length; },
+      html: function (o) {
+        if (!(o.abonos || []).length) return '<span class="com-sub">Sin ABO</span>';
+        return o.abonos.map(function (a) {
+          var cod = a.numero !== null && a.numero !== undefined ? "ABO " + a.numero : (a.codigo || "ABO");
+          return '<span class="com-abo' + (a.cuenta ? " com-abo--cuenta" : "") + '" title="' + esc(a.articulo) + '">' + esc(cod) +
+            (a.cantidad && a.cantidad !== 1 ? " ×" + esc(a.cantidad) : "") + "</span>";
+        }).join("");
+      } },
+    { key: "clasificacion", label: "Clasificación", sort: function (o) { return o.clasificacion; },
+      html: function (o) { return '<span class="com-clasif com-clasif--' + claseClasif(o.clasificacion) + '">' + esc(o.clasificacion) + "</span>"; } },
+    { key: "base_comisionable", label: "Base comisionable", num: true, sort: function (o) { return o.base_comisionable; },
+      html: function (o) { return o.comisionable ? "<b>" + pesos(o.base_comisionable) + "</b>" : '<span class="com-sub">—</span>'; } },
+    { key: "importe_otros_abo", label: "Otros ABO", num: true, sort: function (o) { return o.importe_otros_abo; },
+      html: function (o) { return o.importe_otros_abo ? pesos(o.importe_otros_abo) : '<span class="com-sub">—</span>'; } },
+    { key: "total_ov", label: "Total OV", num: true, sort: function (o) { return o.total_ov; }, html: function (o) { return pesos(o.total_ov); } },
+  ];
+
+  // ---------- Resumen por vendedor ----------
+  function resumen(rows) {
+    var porV = {};
+    function fila(v) { return porV[v] = porV[v] || { vendedor: v, ovs: 0, com: 0, a16: 0, a1011: 0, rev: 0, inc: 0, nocom: 0, base: 0, otros: 0, sinov: 0 }; }
+    rows.forEach(function (o) {
+      var f = fila(o.vendedor);
+      f.ovs++; f.base += o.base_comisionable || 0; f.otros += o.importe_otros_abo || 0;
+      if (o.comisionable) f.com++; else f.nocom++;
+      if (o.clasificacion === "ABO 16") f.a16++;
+      else if (o.clasificacion === "ABO 10 + ABO 11") f.a1011++;
+      else if (/revisar/.test(o.clasificacion)) f.rev++;
+      else if (/falta/.test(o.clasificacion)) f.inc++;
+    });
+    (D.sin_ov || []).forEach(function (o) { fila(o.vendedor).sinov++; });
+    return Object.keys(porV).map(function (k) { return porV[k]; }).sort(function (a, b) {
+      if (a.vendedor === "Sin asignar") return 1; if (b.vendedor === "Sin asignar") return -1;
+      return b.base - a.base || a.vendedor.localeCompare(b.vendedor, "es");
+    });
+  }
+
+  function render() {
+    if (!D) return;
+    var p = periodo();
+    var rowsVend = (D.ovs || []).filter(function (o) { return cumple(o, "vendedor"); });
+    var lista = resumen(rowsVend);
+    var tot = { ovs: 0, com: 0, a16: 0, a1011: 0, rev: 0, inc: 0, nocom: 0, base: 0, otros: 0, sinov: 0 };
+    lista.forEach(function (f) { Object.keys(tot).forEach(function (k) { tot[k] += f[k]; }); });
+    var todas = D.ovs || [];
+    var opsConOv = {}; todas.forEach(function (o) { opsConOv[o.oportunidad_id] = 1; });
+
+    var h = '<div class="kpi-caveat"><strong>Criterio</strong>: órdenes de venta de NetSuite relacionadas a las oportunidades ganadas del período ' +
+      "(por la oportunidad de la OV o por su presupuesto de origen), con sus líneas de abono (artículos <em>ABO</em>). " +
+      "<strong>Comisionable</strong>: <em>ABO 16</em>, o <em>ABO 10 + ABO 11</em> (el ABO 16 reemplaza a la suma; por ahora vale cualquiera de los dos). " +
+      "La <strong>base comisionable</strong> es el importe de esas líneas; <em>Otros ABO</em> suma el resto de los abonos de la OV (por ejemplo, los adicionales de comodato), que hoy no entran. " +
+      "Vendedor = representante de la oportunidad. Consultado en NetSuite el " + esc(new Date(D.generado_en).toLocaleString("es-AR", { timeZone: TZ, hour12: false })) + ".</div>";
+    (D.avisos || []).forEach(function (a) { h += '<div class="note-box note-box--warn"><p>' + esc(a) + "</p></div>"; });
+
+    h += '<div class="kpi-row">' +
+      '<div class="kpi-card"><div class="kpi-num">' + D.ganadas + '</div><div class="kpi-label">Oportunidades ganadas</div></div>' +
+      '<div class="kpi-card"><div class="kpi-num">' + Object.keys(opsConOv).length + '</div><div class="kpi-label">Ganadas con OV · ' + (D.sin_ov || []).length + " sin OV</div></div>" +
+      '<div class="kpi-card"><div class="kpi-num">' + todas.length + '</div><div class="kpi-label">Órdenes de venta relacionadas</div></div>' +
+      '<div class="kpi-card"><div class="kpi-num">' + todas.filter(function (o) { return o.comisionable; }).length + '</div><div class="kpi-label">OV con abono comisionable</div></div>' +
+      '<div class="kpi-card"><div class="kpi-num">' + pesos(todas.reduce(function (s, o) { return s + (o.base_comisionable || 0); }, 0)) + '</div><div class="kpi-label">Base comisionable total (mensual)</div></div>' +
+      "</div>";
+
+    h += "<h3>Resumen por vendedor</h3>" +
+      '<div class="com-ayuda">Respeta los filtros de la tabla (salvo el de vendedor). Click en un vendedor para filtrar.</div>' +
+      '<div class="com-scroll-res"><table class="com-tabla com-resumen"><thead><tr>' +
+      "<th>Vendedor</th><th class=\"num\">OV</th><th class=\"num\">Comisionables</th><th class=\"num\">ABO 16</th><th class=\"num\">ABO 10 + 11</th>" +
+      "<th class=\"num\">Revisar</th><th class=\"num\">Incompletas</th><th class=\"num\">No comisionables</th><th class=\"num\">Ganadas sin OV</th>" +
+      "<th class=\"num\">Base comisionable</th><th class=\"num\">Otros ABO</th></tr></thead><tbody>";
+    if (!lista.length) h += '<tr><td colspan="11" class="com-vacio">Sin datos con estos filtros.</td></tr>';
+    lista.forEach(function (f) {
+      h += '<tr class="' + (F.vendedor === f.vendedor ? "activo" : "") + '" data-vend="' + esc(f.vendedor) + '">' +
+        "<td>" + esc(f.vendedor) + '</td><td class="num">' + f.ovs + '</td><td class="num">' + f.com + '</td><td class="num">' + f.a16 +
+        '</td><td class="num">' + f.a1011 + '</td><td class="num">' + f.rev + '</td><td class="num">' + f.inc + '</td><td class="num">' + f.nocom +
+        '</td><td class="num">' + f.sinov + '</td><td class="num"><b>' + pesos(f.base) + '</b></td><td class="num">' + pesos(f.otros) + "</td></tr>";
+    });
+    h += '</tbody><tfoot><tr><td>Total</td><td class="num">' + tot.ovs + '</td><td class="num">' + tot.com + '</td><td class="num">' + tot.a16 +
+      '</td><td class="num">' + tot.a1011 + '</td><td class="num">' + tot.rev + '</td><td class="num">' + tot.inc + '</td><td class="num">' + tot.nocom +
+      '</td><td class="num">' + tot.sinov + '</td><td class="num">' + pesos(tot.base) + '</td><td class="num">' + pesos(tot.otros) + "</td></tr></tfoot></table></div>";
+
+    // Filtros
+    var abos = {};
+    todas.forEach(function (o) { (o.abonos || []).forEach(function (a) { abos[a.codigo || a.articulo] = a.articulo || a.codigo; }); });
+    var listaAbos = Object.keys(abos).sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); });
+    h += "<h3>Órdenes de venta y abonos</h3>" +
+      '<div class="com-filtros">' +
+        '<label class="com-f">Buscar<input type="search" data-f="q" placeholder="OV, oportunidad, cliente, artículo…" value="' + esc(F.q) + '"></label>' +
+        select("vendedor", "Vendedor", valores(function (o) { return o.vendedor; })) +
+        select("clasif", "Clasificación ABO", D.clasificaciones || valores(function (o) { return o.clasificacion; }), "Todas") +
+        select("abo", "Artículo ABO", listaAbos, "Todos", abos) +
+        select("modalidad", "Modalidad", ["Comodato", "Venta"], "Todas") +
+        select("tipo_ov", "Tipo de OV", valores(function (o) { return sd(o.tipo_ov); })) +
+        select("estado", "Estado OV", valores(function (o) { return sd(o.estado_ov); })) +
+        select("unidad", "Unidad de negocio", valores(function (o) { return sd(o.unidad_negocio); }), "Todas") +
+        select("tipo_est", "Tipo de establecimiento", valores(function (o) { return sd(o.tipo_establecimiento); })) +
+        select("vinculo", "Vínculo OV", valores(function (o) { return o.vinculo; })) +
+        '<label class="com-f">Fecha OV desde<input type="date" data-f="desde" value="' + esc(F.desde) + '"></label>' +
+        '<label class="com-f">Fecha OV hasta<input type="date" data-f="hasta" value="' + esc(F.hasta) + '"></label>' +
+        '<label class="com-check"><input type="checkbox" data-f="solo_com"' + (F.solo_com ? " checked" : "") + "> Solo comisionables</label>" +
+        '<button type="button" class="explorer-clear" onclick="comLimpiar()">Limpiar filtros</button>' +
+        '<span class="com-cuenta" id="com-cuenta"></span>' +
+      "</div>" +
+      '<div class="com-scroll"><table class="com-tabla" id="com-tabla"></table></div>' +
+      '<details class="com-sinov" id="com-sinov"' + (($("com-sinov") || {}).open ? " open" : "") + '><summary id="com-sinov-tit"></summary><div id="com-sinov-body"></div></details>';
+    $("com-body").innerHTML = h;
+    $("com-periodo").textContent = "Oportunidades ganadas del " + fmtDia(D.desde) + " al " + fmtDia(D.hasta) +
+      (p.desde !== D.desde || p.hasta !== D.hasta ? " (el período del informe cambió: tocá «Volver a consultar»)" : "");
+
+    // Eventos de filtros y resumen
+    Array.prototype.forEach.call($("com-body").querySelectorAll("[data-f]"), function (el) {
+      var campo = el.getAttribute("data-f");
+      if (el.type === "search") {
+        el.addEventListener("input", function () { F.q = el.value; renderTabla(); });
+      } else if (el.type === "checkbox") {
+        el.addEventListener("change", function () { comFiltro(campo, el.checked); });
+      } else {
+        el.addEventListener("change", function () { comFiltro(campo, el.value); });
+      }
+    });
+    Array.prototype.forEach.call($("com-body").querySelectorAll(".com-resumen tbody tr[data-vend]"), function (tr) {
+      tr.addEventListener("click", function () { var v = tr.getAttribute("data-vend"); comFiltro("vendedor", F.vendedor === v ? "" : v); });
+    });
+    renderTabla();
+  }
+
+  function renderTabla() {
+    var rows = filasFiltradas();
+    var h = "<thead><tr>" + COLS.map(function (c) {
+      var activa = ORDEN.key === c.key;
+      return '<th class="th-sort' + (c.num ? " num" : "") + (activa ? " th-sort-active" : "") + '" onclick="comOrden(\'' + c.key + '\')">' + esc(c.label) +
+        '<span class="sort-arrow">' + (activa ? (ORDEN.dir > 0 ? "▲" : "▼") : "↕") + "</span></th>";
+    }).join("") + "</tr></thead><tbody>";
+    if (!rows.length) h += '<tr><td colspan="' + COLS.length + '" class="com-vacio">No hay órdenes de venta con estos filtros.</td></tr>';
+    rows.forEach(function (o) {
+      h += '<tr class="com-fila" onclick="comToggle(' + o.ov_id + ')">' + COLS.map(function (c) {
+        return "<td" + (c.num ? ' class="num"' : "") + ">" + c.html(o) + "</td>";
+      }).join("") + "</tr>";
+      h += '<tr class="com-det" id="com-det-' + o.ov_id + '"' + (ABIERTAS[o.ov_id] ? "" : " hidden") + '><td colspan="' + COLS.length + '">' + detalle(o) + "</td></tr>";
+    });
+    var base = rows.reduce(function (s, o) { return s + (o.base_comisionable || 0); }, 0);
+    var otros = rows.reduce(function (s, o) { return s + (o.importe_otros_abo || 0); }, 0);
+    var total = rows.reduce(function (s, o) { return s + (o.total_ov || 0); }, 0);
+    h += "</tbody>";
+    if (rows.length) {
+      h += '<tfoot><tr><td colspan="' + (COLS.length - 3) + '">Total (' + rows.length + " OV)</td>" +
+        '<td class="num">' + pesos(base) + '</td><td class="num">' + pesos(otros) + '</td><td class="num">' + pesos(total) + "</td></tr></tfoot>";
+    }
+    $("com-tabla").innerHTML = h;
+    $("com-cuenta").textContent = rows.length + " de " + (D.ovs || []).length + " OV";
+
+    var sin = sinOvFiltradas();
+    $("com-sinov-tit").textContent = "Oportunidades ganadas sin orden de venta (" + sin.length + ")";
+    $("com-sinov-body").innerHTML = !sin.length ? '<div class="com-vacio">Todas las oportunidades ganadas tienen OV.</div>' :
+      '<div class="com-scroll-res"><table class="com-tabla"><thead><tr><th>Oportunidad</th><th>Fecha</th><th>Estado</th><th>Vendedor</th><th>Cliente</th>' +
+      "<th>Unidad de negocio</th><th>Tipo establ.</th><th>Comodato (oportunidad)</th></tr></thead><tbody>" +
+      sin.map(function (o) {
+        return "<tr><td>" + esc(o.oportunidad) + "</td><td>" + esc(fmtDia(o.fecha_oportunidad)) + "</td><td>" + esc(sd(o.estado_oportunidad)) +
+          "</td><td>" + esc(o.vendedor) + "</td><td>" + esc(o.cliente) + (o.nro_cliente ? ' <span class="com-sub">' + esc(o.nro_cliente) + "</span>" : "") +
+          "</td><td>" + esc(sd(o.unidad_negocio)) + "</td><td>" + esc(sd(o.tipo_establecimiento)) + "</td><td>" +
+          (o.comodato_oportunidad === true ? "Sí" : o.comodato_oportunidad === false ? "No" : "Sin dato") + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
+  function detalle(o) {
+    var info = [
+      ["Vínculo", o.vinculo], ["Presupuesto de origen", o.presupuesto], ["Representante de la OV", o.representante_ov],
+      ["Unidad de negocio", o.unidad_negocio], ["Unidad comercial (OV)", o.unidad_comercial], ["Categoría", o.categoria],
+      ["Estado oportunidad", o.estado_oportunidad],
+    ].filter(function (x) { return x[1]; }).map(function (x) { return "<span>" + esc(x[0]) + ": <b>" + esc(x[1]) + "</b></span>"; }).join("");
+    var h = '<div class="com-det-info">' + info + "</div>";
+    if (!(o.abonos || []).length) return h + '<div class="com-sub">La OV no tiene líneas de abono (ABO).</div>';
+    h += '<table class="com-lineas"><thead><tr><th>Código</th><th>Artículo</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th><th>Cuenta para comisión</th></tr></thead><tbody>';
+    o.abonos.forEach(function (a) {
+      h += "<tr><td>" + esc(a.codigo) + "</td><td>" + esc(a.articulo) + '</td><td class="num">' + esc(a.cantidad === null ? "—" : a.cantidad) +
+        '</td><td class="num">' + pesos(a.precio) + '</td><td class="num">' + pesos(a.importe) + "</td><td>" +
+        (a.cuenta ? '<span class="com-abo com-abo--cuenta">Sí</span>' : '<span class="com-sub">No</span>') + "</td></tr>";
+    });
+    return h + "</tbody></table>";
+  }
+
+  // ---------- Excel ----------
+  function cargarXlsx() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (!window.__xlsxCarga) {
+      window.__xlsxCarga = new Promise(function (ok, mal) {
+        var s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        s.onload = function () { ok(window.XLSX); };
+        s.onerror = function () { window.__xlsxCarga = null; mal(new Error("No se pudo cargar la librería de Excel.")); };
+        document.head.appendChild(s);
+      });
+    }
+    return window.__xlsxCarga;
+  }
+  function hoja(XLSX, filas, nombreVacio) {
+    var h = XLSX.utils.json_to_sheet(filas.length ? filas : [{ "": nombreVacio }]);
+    var cols = filas.length ? Object.keys(filas[0]) : [""];
+    h["!cols"] = cols.map(function (k) {
+      var largo = k.length;
+      filas.forEach(function (f) { var n = String(f[k] === null || f[k] === undefined ? "" : f[k]).length; if (n > largo) largo = n; });
+      return { wch: Math.min(Math.max(largo + 2, 8), 60) };
+    });
+    if (filas.length) h["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filas.length, c: cols.length - 1 } }) };
+    return h;
+  }
+  function exportar(btn) {
+    if (!D) return;
+    var texto = btn.textContent; btn.disabled = true; btn.textContent = "Generando…";
+    var rows = filasFiltradas();
+    cargarXlsx().then(function (XLSX) {
+      var ov = rows.map(function (o) {
+        return {
+          "Vendedor": o.vendedor, "OV": o.ov_numero, "Fecha OV": fmtDia(o.fecha_ov), "Estado OV": o.estado_ov, "Tipo de OV": o.tipo_ov,
+          "Modalidad": modalidad(o), "Representante OV": o.representante_ov, "Cliente": o.cliente, "Nro. cliente": o.nro_cliente,
+          "Oportunidad": o.oportunidad, "Fecha oportunidad": fmtDia(o.fecha_oportunidad), "Presupuesto": o.presupuesto, "Vínculo": o.vinculo,
+          "Unidad de negocio": o.unidad_negocio, "Tipo de establecimiento": o.tipo_establecimiento, "Categoría": o.categoria,
+          "Abonos": (o.abonos || []).map(function (a) { return a.codigo + (a.cantidad && a.cantidad !== 1 ? " x" + a.cantidad : ""); }).join(", "),
+          "Clasificación": o.clasificacion, "Comisionable": o.comisionable ? "Sí" : "No",
+          "Base comisionable": o.base_comisionable || 0, "Otros ABO": o.importe_otros_abo || 0, "Total OV": o.total_ov,
+        };
+      });
+      var lineas = [];
+      rows.forEach(function (o) {
+        (o.abonos || []).forEach(function (a) {
+          lineas.push({ "Vendedor": o.vendedor, "OV": o.ov_numero, "Fecha OV": fmtDia(o.fecha_ov), "Modalidad": modalidad(o), "Cliente": o.cliente,
+            "Oportunidad": o.oportunidad, "Código": a.codigo, "Artículo": a.articulo, "Cantidad": a.cantidad, "Precio": a.precio, "Importe": a.importe,
+            "Cuenta para comisión": a.cuenta ? "Sí" : "No", "Clasificación OV": o.clasificacion });
+        });
+      });
+      var porV = resumen(rows).map(function (f) {
+        return { "Vendedor": f.vendedor, "OV": f.ovs, "Comisionables": f.com, "ABO 16": f.a16, "ABO 10 + 11": f.a1011, "Revisar": f.rev,
+          "Incompletas": f.inc, "No comisionables": f.nocom, "Ganadas sin OV": f.sinov, "Base comisionable": Math.round(f.base * 100) / 100,
+          "Otros ABO": Math.round(f.otros * 100) / 100 };
+      });
+      var sin = sinOvFiltradas().map(function (o) {
+        return { "Vendedor": o.vendedor, "Oportunidad": o.oportunidad, "Fecha": fmtDia(o.fecha_oportunidad), "Estado": o.estado_oportunidad,
+          "Cliente": o.cliente, "Nro. cliente": o.nro_cliente, "Unidad de negocio": o.unidad_negocio, "Tipo de establecimiento": o.tipo_establecimiento };
+      });
+      var libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, hoja(XLSX, porV, "Sin datos"), "Por vendedor");
+      XLSX.utils.book_append_sheet(libro, hoja(XLSX, ov, "Sin OV con estos filtros"), "OV");
+      XLSX.utils.book_append_sheet(libro, hoja(XLSX, lineas, "Sin abonos"), "Abonos");
+      XLSX.utils.book_append_sheet(libro, hoja(XLSX, sin, "Todas las ganadas tienen OV"), "Ganadas sin OV");
+      XLSX.writeFile(libro, "Comisiones_por_vendedor_" + D.desde + "_al_" + D.hasta + ".xlsx");
+      btn.textContent = texto;
+    }).catch(function (e) {
+      btn.textContent = "Error: " + e.message;
+      setTimeout(function () { btn.textContent = texto; }, 3000);
+    }).then(function () { btn.disabled = false; });
+  }
+})();
+</script>
 </body>
 </html>
