@@ -420,8 +420,9 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   var TIPOS_EXCLUIDOS = ["Comunicaciones Lantrix", "Proyecto Especial", "Ampliacion Cámaras"];
   // Demoras y variaciones: los casos de 30 días o más se toman como error de carga (igual que el Power BI).
   var TOPE_DIAS = 30;
-  // Demora estimada: meses completos que se promedian para el ritmo de finalización.
-  var MESES_RITMO = 3;
+  // Demora estimada: el ritmo de finalización se promedia desde este mes (AAAA-MM)
+  // hasta el último mes completo. Enero 2026 es el primer mes de datos (casos desde el 2/1/2026).
+  var RITMO_DESDE = "2026-01";
   // Subcategorías destacadas en la pestaña Elementos (tarjetas del Power BI).
   var DESTACADAS = [["Centrales de Alarma", "Centrales instaladas"], ["Cámaras", "Cámaras instaladas"], ["Sensor Movimiento", "Sensores de movimiento instalados"]];
   var URL_CASO = "https://7138551.app.netsuite.com/app/crm/support/supportcase.nl?id=";
@@ -822,8 +823,8 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   // Demora estimada (version corregida)
   // =====================================================================
   // Pendientes = instalaciones No iniciadas + Escaladas que nunca se iniciaron.
-  // Ritmo = instalaciones finalizadas por dia habil en los ultimos MESES_RITMO
-  // meses completos. Demora = pendientes / ritmo, en dias habiles.
+  // Ritmo = instalaciones finalizadas por dia habil desde RITMO_DESDE hasta el
+  // ultimo mes completo. Demora = pendientes / ritmo, en dias habiles.
   // No depende de los filtros de la pagina (como la tarjeta del Power BI).
   function demoraEstimada() {
     var hoy = hoyAR();
@@ -833,8 +834,8 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     var pendientes = distintos(pend, function (c) { return c.id_inst; });
     var a = +hoy.slice(0, 4), m = +hoy.slice(5, 7);
     var fin = new Date(Date.UTC(a, m - 1, 0));                 // ultimo dia del mes anterior
-    var ini = new Date(Date.UTC(a, m - 1 - MESES_RITMO, 1));   // primer dia de la ventana
-    var desde = ini.toISOString().slice(0, 10), hasta = fin.toISOString().slice(0, 10);
+    var desde = RITMO_DESDE + "-01", hasta = fin.toISOString().slice(0, 10);
+    var meses = (+hasta.slice(0, 4) - +desde.slice(0, 4)) * 12 + (+hasta.slice(5, 7) - +desde.slice(5, 7)) + 1;
     var finalizadas = distintos(DATOS.casos.filter(function (c) {
       return c.fecha_fin_inst && c.fecha_fin_inst >= desde && c.fecha_fin_inst <= hasta;
     }), function (c) { return c.id_inst; });
@@ -842,7 +843,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     var porDia = habiles > 0 ? finalizadas / habiles : 0;
     return {
       pendientes: pendientes, noIniciadas: noIni, escaladas: escal,
-      finalizadas: finalizadas, porMes: finalizadas / MESES_RITMO, desde: desde, hasta: hasta,
+      finalizadas: finalizadas, porMes: meses > 0 ? finalizadas / meses : 0, meses: meses, desde: desde, hasta: hasta,
       dias: porDia > 0 ? Math.ceil(pendientes / porDia) : null,
     };
   }
@@ -868,8 +869,8 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
     ]);
     $("nota-demora").innerHTML =
       "<strong>Demora estimada</strong>: cuántos días hábiles llevaría iniciar todas las instalaciones pendientes al ritmo actual. " +
-      "Pendientes = casos No iniciados + Escalados sin fecha de inicio (" + d.pendientes + "). Ritmo = instalaciones finalizadas en los últimos " +
-      MESES_RITMO + " meses completos (" + d.finalizadas + ") por día hábil. Las tarjetas no cambian con los filtros. " +
+      "Pendientes = casos No iniciados + Escalados sin fecha de inicio (" + d.pendientes + "). Ritmo = instalaciones finalizadas de " +
+      etiquetaMes(d.desde.slice(0, 7)) + " a " + etiquetaMes(d.hasta.slice(0, 7)) + " (" + d.finalizadas + " en " + d.meses + " meses completos) por día hábil. Las tarjetas no cambian con los filtros. " +
       "No se incluyen los tipos de proyecto " + esc(TIPOS_EXCLUIDOS.join(", ")) + " ni los casos sin tipo de proyecto.";
   }
 

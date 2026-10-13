@@ -94,7 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Una sola carga (no depende de 'sp:auth-ready', que se dispara varias
     // veces y haría recargar el iframe en ciclo). El permiso lo controlan
     // page-guard.js en esta página y la propia página del área.
-    frame.src = area.archivo;
+    // ?v= evita que el navegador muestre una version vieja de la pagina del area
+    // despues de un deploy (el iframe no se recarga con Ctrl+F5).
+    frame.src = area.archivo + '?v=' + Date.now();
     return;
   }
 
