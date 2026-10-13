@@ -26,6 +26,14 @@ window.INDICADORES_AREAS = [
     icono: 'ti-tool',
     descripcion: 'Relevamientos posventa, instalaciones finalizadas y encuestas de satisfacción.',
   },
+  {
+    id: 'instalaciones',
+    label: 'Instalaciones',
+    archivo: 'instalaciones.html',
+    seccion: 'indicadores-instalaciones',
+    icono: 'ti-tools',
+    descripcion: 'Instalaciones finalizadas, demora estimada, elementos instalados, demoras y facturación.',
+  },
 ];
 
 function indicadoresAreaActual() {

@@ -818,7 +818,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
   var iniciado = false;
   async function cargarDatos() {
     var res = await Promise.all([
-      leerTodo("ind_posventa_caso", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id"),
+      leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id"),
       leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl", "relevamiento_id"),
       leerTodo("ind_posventa_encuesta", "contact_id,contacto,estado,fecha,calificacion,expectativa,comentarios", "contact_id"),
     ]);

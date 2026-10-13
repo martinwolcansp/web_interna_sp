@@ -1,7 +1,9 @@
 # app/areas/posventa.py — Indicadores de Posventa.
 #
 # Reemplaza el Power BI "Analisis Posventa V3" y su RESTlet:
-#   - Casos de instalacion  = busqueda guardada 2560 (supportcase)
+#   - Casos de instalacion  = busqueda guardada 2560 (supportcase). Tabla comun
+#                             ind_caso_instalacion (app/fuentes/casos.py),
+#                             compartida con Instalaciones.
 #   - Relevamientos         = busqueda guardada 2557 (customrecord_ap_sp_relevamiento_posventa)
 #   - Encuestas posventa    = GHL: contactos con etiqueta enviar_encuesta /
 #                             enviar_encuesta_finalizada + objeto de encuestas
@@ -17,11 +19,11 @@ from zoneinfo import ZoneInfo
 
 from app import config, ghl, netsuite
 from app import supabase_rest as sb
+from app.fuentes import casos as fuente_casos
+from app.fuentes.comun import primera_palabra as _primera_palabra
+from app.fuentes.comun import texto as _texto
 
 SECCION = "indicadores-posventa"
-
-# Criterio de la busqueda 2560: estado del establecimiento del cliente.
-ESTADOS_ESTABLECIMIENTO = (1, 2, 3, 4, 5, 6)
 
 TAGS_ENCUESTA = ("enviar_encuesta", "enviar_encuesta_finalizada")
 
@@ -43,34 +45,6 @@ RESPUESTAS = {
 # ---------------------------------------------------------------------------
 # Consultas SuiteQL
 # ---------------------------------------------------------------------------
-
-def consulta_casos(desde, asignado):
-    estados = ", ".join(str(e) for e in ESTADOS_ESTABLECIMIENTO)
-    return f"""
-        SELECT
-            sc.id                                                   AS caso_id,
-            sc.casenumber                                           AS numero,
-            TO_CHAR(sc.datecreated, 'YYYY-MM-DD')                   AS fecha_creacion,
-            TO_CHAR(sc.custevent_3k_fecha_real_inst, 'YYYY-MM-DD')  AS fecha_inicio_inst,
-            TO_CHAR(sc.custevent_ap_sp_fecha_fin_instal, 'YYYY-MM-DD') AS fecha_fin_inst,
-            TO_CHAR(sc.enddate, 'YYYY-MM-DD')                       AS fecha_cerrada,
-            c.id                                                    AS cliente_id,
-            c.altname                                               AS cliente,
-            BUILTIN.DF(c.custentity_3k_nro_cuenta)                  AS nro_cuenta,
-            BUILTIN.DF(sc.custevent_3k_tecnico_asignado_caso)       AS tecnico,
-            BUILTIN.DF(sc.custevent_ap_sp_tipo_proyecto_presup_sp)  AS tipo_proyecto,
-            BUILTIN.DF(sc.status)                                   AS estado_caso,
-            BUILTIN.DF(sc.custevent3k_estado_sp)                    AS estado_instalacion,
-            BUILTIN.DF(sc.custevent_mw_sp_tipo_posventa)            AS tipo_posventa,
-            BUILTIN.DF(sc.assigned)                                 AS asignado_a
-        FROM supportcase sc
-        LEFT JOIN customer c ON c.id = sc.company
-        WHERE sc.datecreated >= TO_DATE('{desde.isoformat()}', 'YYYY-MM-DD')
-          AND sc.assigned = {int(asignado)}
-          AND c.custentity_3k_estado_establecimiento IN ({estados})
-        ORDER BY sc.id
-    """
-
 
 def consulta_relevamientos(desde):
     return f"""
@@ -103,53 +77,8 @@ def consulta_relevamientos(desde):
 # Transformaciones (mismas reglas que el Power Query del informe)
 # ---------------------------------------------------------------------------
 
-def _primera_palabra(texto):
-    """'Presencial (Instalaciones de alta complejidad)' -> 'Presencial'."""
-    return str(texto).split(" ", 1)[0] if texto else None
-
-
-def _sin_prefijo_dai(texto):
-    """El Power BI quitaba el prefijo 'DAI ' del tecnico asignado."""
-    if not texto:
-        return None
-    return texto.split("DAI ", 1)[1] if "DAI " in texto else texto
-
-
 def _bool(valor):
     return None if valor is None else str(valor).upper() == "T"
-
-
-def _texto(valor):
-    return None if valor is None or str(valor).strip() == "" else str(valor).strip()
-
-
-def filas_casos(crudas, corrida_id):
-    filas = []
-    for f in crudas:
-        fini, ffin, cliente_id = f.get("fecha_inicio_inst"), f.get("fecha_fin_inst"), f.get("cliente_id")
-        filas.append({
-            "caso_id": int(f["caso_id"]),
-            "numero": f.get("numero"),
-            # Una instalacion puede tener dos casos (alarma y camaras): se agrupan
-            # por fecha de inicio + fecha de fin + cliente (ID_inst del Power BI).
-            "id_inst": "_".join(str(x) for x in (fini, ffin, cliente_id) if x),
-            "fecha_creacion": f.get("fecha_creacion"),
-            "fecha_inicio_inst": fini,
-            "fecha_fin_inst": ffin,
-            "fecha_cerrada": f.get("fecha_cerrada"),
-            "cliente_id": int(cliente_id) if cliente_id else None,
-            "cliente": _texto(f.get("cliente")),
-            "nro_cuenta": _texto(f.get("nro_cuenta")),
-            "tecnico": _sin_prefijo_dai(_texto(f.get("tecnico"))),
-            "tipo_proyecto": _texto(f.get("tipo_proyecto")),
-            "estado_caso": _texto(f.get("estado_caso")),
-            "estado_instalacion": _texto(f.get("estado_instalacion")),
-            "tipo_posventa": _primera_palabra(_texto(f.get("tipo_posventa"))),
-            "asignado_a": _texto(f.get("asignado_a")),
-            "corrida_id": corrida_id,
-            "actualizado_en": sb.ahora_iso(),
-        })
-    return filas
 
 
 def filas_relevamientos(crudas, corrida_id):
@@ -276,11 +205,7 @@ def filas_encuestas(contactos_por_tag, registros, corrida_id):
 # ---------------------------------------------------------------------------
 
 def traer_casos(log, corrida_id=None):
-    crudas = netsuite.suiteql(consulta_casos(config.POSVENTA_CASOS_DESDE, config.POSVENTA_ASIGNADO_A))
-    filas = filas_casos(crudas, corrida_id)
-    log(f"NetSuite: {len(filas)} casos de instalacion desde {config.POSVENTA_CASOS_DESDE} "
-        f"(asignados a {config.POSVENTA_ASIGNADO_A}).")
-    return filas
+    return fuente_casos.traer(log, corrida_id)
 
 
 def traer_relevamientos(log, corrida_id=None):
@@ -319,8 +244,7 @@ def actualizar(token, corrida_id, log, paso):
                            "no se actualiza para no dejar el informe vacio.")
 
     paso("Guardando casos y relevamientos")
-    sb.upsert(token, "ind_posventa_caso", casos, "caso_id")
-    sb.borrar_no_vistos(token, "ind_posventa_caso", corrida_id)
+    fuente_casos.guardar(token, casos, corrida_id)
     sb.upsert(token, "ind_posventa_relevamiento", relevamientos, "relevamiento_id")
     sb.borrar_no_vistos(token, "ind_posventa_relevamiento", corrida_id)
 

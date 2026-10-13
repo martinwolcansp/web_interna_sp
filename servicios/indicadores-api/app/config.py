@@ -32,13 +32,19 @@ GHL_OBJETO_ENCUESTAS = os.getenv("GHL_OBJETO_ENCUESTAS", "").strip()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
+# ---------- Casos de instalacion (tabla comun ind_caso_instalacion) ----------
+# Busqueda 2560: casos "creado despues del 1/1/2026 23:59" (desde inclusive),
+# asignados a 133 (parametro case_assigned de los RESTlets de Power BI). La
+# usan Posventa e Instalaciones. Se aceptan los nombres viejos POSVENTA_* para
+# no tener que tocar las variables ya cargadas en Coolify.
+CASOS_INSTALACION_DESDE = date.fromisoformat(
+    os.getenv("CASOS_INSTALACION_DESDE") or os.getenv("POSVENTA_CASOS_DESDE") or "2026-01-02")
+CASOS_INSTALACION_ASIGNADO_A = int(
+    os.getenv("CASOS_INSTALACION_ASIGNADO_A") or os.getenv("POSVENTA_ASIGNADO_A") or "133")
+
 # ---------- Posventa ----------
-# Mismos criterios de fecha que las busquedas guardadas 2560 ("creado despues del
-# 1/1/2026 23:59") y 2557 ("creado despues del 1/5/2025 23:59"): desde inclusive.
-POSVENTA_CASOS_DESDE = date.fromisoformat(os.getenv("POSVENTA_CASOS_DESDE", "2026-01-02"))
+# Busqueda 2557: relevamientos "creado despues del 1/5/2025 23:59".
 POSVENTA_RELEV_DESDE = date.fromisoformat(os.getenv("POSVENTA_RELEV_DESDE", "2025-05-02"))
-# Empleado asignado al caso (parametro case_assigned del RESTlet de Power BI).
-POSVENTA_ASIGNADO_A = int(os.getenv("POSVENTA_ASIGNADO_A", "133"))
 
 # ---------- General ----------
 ZONA_HORARIA = os.getenv("ZONA_HORARIA", "America/Argentina/Buenos_Aires")

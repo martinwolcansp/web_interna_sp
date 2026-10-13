@@ -4,12 +4,17 @@
 #   SECCION                       id de la seccion de permisos (indicadores-<area>)
 #   actualizar(token, corrida_id, log, paso) -> (stats, advertencias)
 #
+# Los datos que usan varias areas (casos de instalacion, OV y articulos) se
+# traen con app/fuentes/*.py y se guardan en tablas comunes ind_caso_*.
+#
 # Para sumar un area: crear app/areas/<area>.py, agregarlo aca, crear su
-# seccion y sus tablas en una migracion de Supabase y su pagina en
+# seccion y sus tablas en una migracion de Supabase (y registrar en
+# ind_tabla_area las tablas comunes que usa) y su pagina en
 # pages/indicadores-area/<area>.html.
 
-from app.areas import posventa
+from app.areas import instalaciones, posventa
 
 AREAS = {
     "posventa": posventa,
+    "instalaciones": instalaciones,
 }

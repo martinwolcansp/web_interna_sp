@@ -1,15 +1,38 @@
 # indicadores-api
 
-Servicio que actualiza **Indicadores por Área** de la web interna. Un módulo por área en `app/areas/`; la primera es **Posventa**, que reemplaza el Power BI "Análisis Posventa V3" y el RESTlet `powerbi-netsuite-api`.
+Servicio que actualiza **Indicadores por Área** de la web interna. Un módulo por área en `app/areas/`: **Posventa** (reemplaza el Power BI "Análisis Posventa V3") e **Instalaciones** (reemplaza "Análisis Instalaciones V2"). Los dos reemplazan el RESTlet `powerbi-netsuite-api`.
+
+## Tablas comunes
+
+Los datos que usan varias áreas se traen con `app/fuentes/` y se guardan en tablas comunes. Qué área usa cada tabla queda en `ind_tabla_area`, y de ahí salen los permisos (RLS): ve la tabla quien puede ver alguna de esas áreas.
+
+| Tabla | Fuente | Búsqueda que replica | Áreas |
+|---|---|---|---|
+| `ind_caso_instalacion` | `fuentes/casos.py` | 2560, asignado 133 | posventa, instalaciones |
+| `ind_caso_ov` | `fuentes/ov.py` | 2439 (facturación) | instalaciones |
+| `ind_caso_ov_linea` | `fuentes/ov.py` | 2833 (artículos por caso) | instalaciones |
+
+Cada área actualiza con su propio botón y solo reescribe lo de su alcance. Posventa e Instalaciones traen los mismos casos, así que actualizar cualquiera de las dos refresca `ind_caso_instalacion` para ambas.
+
+## Qué hace una corrida de Instalaciones
+
+1. Casos de instalación (la misma consulta que Posventa).
+2. OV de productos de cada caso: el campo "OV de productos" del caso más las OV con alguna línea cuya "Orden de instalación" es el caso. Solo OV con tipo de orden de venta 1. Se consulta por listas de ids, lo que tarda unos segundos; con un único JOIN tardaba más de un minuto.
+3. Líneas de esas OV, con categoría y subcategoría según las reglas de `PatronesCategorias` del Power BI, más dos patrones agregados: "Control remoto" y "Tarjeta memoria". `es_elemento` excluye IVA, descuentos, subtotales, mano de obra, cable (se vende por metro) y las categorías Servicios, Administrativo e Interno.
+4. Los indicadores se calculan en `pages/indicadores-area/instalaciones.html`.
+
+Validado el 13/10/2026: 520 de 528 pares caso-OV iguales a la búsqueda 2833.
+
+Prueba sin tocar Supabase: `python probar_instalaciones.py`.
 
 ## Qué hace una corrida de Posventa
 
 1. Trae de NetSuite por **SuiteQL** los casos de instalación (replica la búsqueda **2560**, filtrada por el asignado **133**) y los relevamientos posventa (búsqueda **2557**). Validado el 07/10/2026 contra las búsquedas: 459 casos y 356 relevamientos, con las mismas fechas, tipo de proyecto y tipo de posventa.
 2. Trae de GHL los contactos con etiqueta `enviar_encuesta` / `enviar_encuesta_finalizada` y las respuestas del objeto personalizado de encuestas.
-3. Hace upsert en `ind_posventa_caso`, `ind_posventa_relevamiento` e `ind_posventa_encuesta` y borra lo que ya no vino. Si GHL falla, se conservan las encuestas anteriores y la corrida termina con aviso.
+3. Hace upsert en `ind_caso_instalacion` (tabla común), `ind_posventa_relevamiento` e `ind_posventa_encuesta` y borra lo que ya no vino. Si GHL falla, se conservan las encuestas anteriores y la corrida termina con aviso.
 4. Registra la corrida en `ind_corrida`. La página `pages/indicadores-area/posventa.html` lee las tablas directo de Supabase.
 
-Trae todo desde las fechas de corte de las búsquedas (`POSVENTA_CASOS_DESDE`, `POSVENTA_RELEV_DESDE`). Son pocos cientos de registros, así que no hace falta rango.
+Trae todo desde las fechas de corte de las búsquedas (`CASOS_INSTALACION_DESDE` (acepta el nombre viejo `POSVENTA_CASOS_DESDE`), `POSVENTA_RELEV_DESDE`). Son pocos cientos de registros, así que no hace falta rango.
 
 Diferencias con el Power BI:
 
@@ -21,7 +44,7 @@ Diferencias con el Power BI:
 
 ### 1. Supabase
 
-Correr `supabase/migracion_21_indicadores_area_posventa.sql` en el SQL Editor. Crea las secciones `indicadores-area` (mosaico) e `indicadores-posventa`, las tablas y las políticas RLS.
+Correr `supabase/migracion_21_indicadores_area_posventa.sql` y después `migracion_26_indicadores_instalaciones.sql` en el SQL Editor. La 26 renombra `ind_posventa_caso` a `ind_caso_instalacion`: correrla y desplegar enseguida el servicio y las páginas. No volver a correr la 21 después de la 26, porque recrearía la tabla vieja vacía. Crea las secciones `indicadores-area` (mosaico) e `indicadores-posventa`, las tablas y las políticas RLS.
 
 Permisos (Permisos por Área):
 
@@ -84,4 +107,5 @@ Necesita un usuario técnico de Supabase (`INDICADORES_BOT_EMAIL` / `INDICADORES
 
 1. `app/areas/<area>.py` con `SECCION` y `actualizar(token, corrida_id, log, paso)`; registrarlo en `app/areas/__init__.py`.
 2. Migración con la sección `indicadores-<area>` y sus tablas `ind_<area>_*` (mismo esquema de RLS).
-3. `pages/indicadores-area/<area>.html` y una entrada en `INDICADORES_AREAS` de `js/indicadores-area.js`.
+3. Si usa tablas comunes, insertar en `ind_tabla_area` las filas (tabla, área).
+4. `pages/indicadores-area/<area>.html` y una entrada en `INDICADORES_AREAS` de `js/indicadores-area.js`.
