@@ -24,9 +24,9 @@ Requisitos: migración `migracion_22_informe_mkt_visitas_presupuestos.sql` y que
 Botón **Comisiones por vendedor** en el *Informe por vendedor*: abre un pop up con las órdenes de venta de las oportunidades ganadas del período y sus abonos. Lo arma `POST /informe-mkt/comisiones {desde, hasta}` (`app/comisiones.py`), que consulta NetSuite en vivo y no guarda nada (permiso **ver** en Informes de MKT).
 
 - **Oportunidades ganadas**: las mismas del informe (búsqueda 2933, estados 12 / 13).
-- **OV relacionadas**: `SalesOrd` cuya oportunidad (`opportunity`) es una ganada, o cuyo presupuesto de origen (`custbody_3k_trans_orig_ov`) es de una ganada. Cualquier tipo de orden de venta.
-- **Abonos**: líneas cuyo artículo empieza con `ABO` (`ABO-10`, `ABO-16`, `ABO-57`…). En las OV de comodato entran varios.
-- **Comisionable**: `ABO 16`, o `ABO 10` + `ABO 11` (el 16 reemplaza a la suma; por ahora vale cualquiera). Base = importe de esas líneas. Con ABO 16 y también 10 / 11 se toma el 16 y la OV queda "revisar"; con solo 10 o solo 11 queda "incompleta". El resto de los ABO se informa como *Otros ABO*.
+- **OV relacionadas**: `SalesOrd` cuya oportunidad (`opportunity`) es una ganada, o cuyo presupuesto de origen (`custbody_3k_trans_orig_ov`) es de una ganada. Solo las de tipo *ABONOS (Contrato)* (incluye *PRODUCTOS y ABONOS (Contrato)*); las de *PRODUCTOS* se cuentan en una nota y no se listan.
+- **Abonos**: líneas cuyo artículo empieza con `ABO` (nombre por `BUILTIN.DF(tl.item)`: el rol no puede leer la tabla `item`). En las OV de comodato entran varios.
+- **Comisionable** (definido el 13/10/2026): monitoreo `ABO 16`, `ABO 10` + `ABO 11` o `ABO 20` + `ABO 21` (el 16 reemplaza a la suma; por ahora vale cualquiera), más los kits de Comercio Seguro en comodato `ABO 60`, `ABO 70` y `ABO 71` (suman junto con el monitoreo). Base = importe de esas líneas. Con ABO 16 y también 10 / 11 / 20 / 21 se toma el 16 y la OV queda "revisar"; con solo una mitad del par queda "incompleta". El resto de los ABO se informa como *Otros ABO*.
 - **Vendedor**: representante de la oportunidad (el de la OV se muestra aparte).
 
 En la página: KPIs, resumen por vendedor, tabla de OV con filtros (búsqueda, vendedor, clasificación, artículo ABO, modalidad, tipo y estado de OV, unidad de negocio, tipo de establecimiento, vínculo, fecha de OV, solo comisionables), orden por columna, detalle de líneas al hacer click, ganadas sin OV y Exportar a Excel (Por vendedor, OV, Abonos, Ganadas sin OV).

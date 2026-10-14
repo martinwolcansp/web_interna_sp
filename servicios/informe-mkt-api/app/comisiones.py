@@ -4,18 +4,25 @@
 # vivo a NetSuite (no se guarda nada), para el boton "Comisiones por vendedor"
 # del Informe por vendedor.
 #
-# Criterio:
+# Criterio (definido por Martin el 13/10/2026):
 #   - Oportunidades ganadas del periodo: las mismas del informe (busqueda 2933,
 #     fecha de oportunidad en el rango, estado 12 / 13 = "Aprobada").
 #   - OV relacionadas: ordenes de venta (SalesOrd) cuya oportunidad es una de
 #     las ganadas, o cuyo presupuesto de origen (custbody_3k_trans_orig_ov)
-#     pertenece a una de las ganadas. Cualquier tipo de orden de venta.
-#   - Abonos: lineas de la OV cuyo articulo empieza con "ABO" (ABO-10, ABO-16,
-#     ABO-57 ...). En las OV de comodato entran varios abonos.
-#   - Comisionable: ABO 16, o ABO 10 + ABO 11 (el ABO 16 reemplaza a la suma;
-#     por ahora vale cualquiera de los dos). La base es el importe de esas
-#     lineas. Si una OV tiene ABO 16 y tambien ABO 10 / 11, se toma el ABO 16
-#     y la OV queda marcada para revisar.
+#     pertenece a una de las ganadas. Solo las de tipo ABONOS (Contrato):
+#     "Orden de Venta ABONOS (Contrato)" y "PRODUCTOS y ABONOS (Contrato)".
+#     Las de PRODUCTOS se cuentan aparte y no se listan.
+#   - Abonos: lineas de la OV cuyo articulo empieza con "ABO".
+#   - Comisionable (la base es el importe de esas lineas):
+#       * Monitoreo: ABO 16, o ABO 10 + ABO 11, o ABO 20 + ABO 21 (sin movil
+#         Acuda, se trata igual que 10 + 11). El ABO 16 reemplaza a la suma;
+#         si una OV tiene ABO 16 y tambien 10 / 11 / 20 / 21, se toma el 16 y
+#         queda para revisar. Solo una mitad del par (ej. solo ABO 10) no
+#         cuenta y queda "incompleta".
+#       * Kit Comercio Seguro (comodato): ABO 60, ABO 70 y ABO 71. Suman a la
+#         base junto con el monitoreo, si la OV tiene los dos.
+#     El resto de los ABO (adicionales de comodato, video verificacion, MDI...)
+#     se informa como "Otros ABO" y no entra.
 # Vendedor = representante de ventas de la oportunidad (normalizado como en el
 # resto del informe). El representante de la OV viaja aparte.
 
@@ -27,16 +34,20 @@ from app import config, netsuite
 from app.resumen_ejecutivo import normalizar_vendedor_netsuite
 
 ABO_16 = 16
-ABO_10, ABO_11 = 10, 11
+PARES_MONITOREO = [(10, 11), (20, 21)]  # se reemplazan por el ABO 16
+KITS_COMERCIO_SEGURO = {60, 70, 71}
 
-CLASIF_16 = "ABO 16"
-CLASIF_10_11 = "ABO 10 + ABO 11"
-CLASIF_AMBOS = "ABO 16 y ABO 10/11 (revisar)"
-CLASIF_SOLO_10 = "Solo ABO 10 (falta ABO 11)"
-CLASIF_SOLO_11 = "Solo ABO 11 (falta ABO 10)"
+MON_16 = "ABO 16"
+MON_PARES = {par: f"ABO {par[0]} + ABO {par[1]}" for par in PARES_MONITOREO}
+KIT = "Kit Comercio Seguro"
 CLASIF_OTROS = "Solo otros ABO"
 CLASIF_SIN = "Sin ABO"
-COMISIONABLES = {CLASIF_16, CLASIF_10_11, CLASIF_AMBOS}
+
+
+def es_ov_abonos(tipo_ov):
+    """Solo OV de tipo ABONOS (Contrato), incluida PRODUCTOS y ABONOS (Contrato)."""
+    return "ABONOS" in str(tipo_ov or "").upper()
+
 
 LOTE = 300
 _RE_ABO = re.compile(r"^\s*ABO[\s\-_.]*0*(\d+)", re.I)
@@ -194,25 +205,44 @@ def _lineas_abo(ov_ids, log):
 # ------------------------------------------------------------- clasificacion
 
 def clasificar(abonos):
-    """(clasificacion, comisionable, base, numeros que cuentan)."""
+    """dict con clasificacion (texto), monitoreo (MON_16 / par / None), kit,
+    revisar, incompleta, comisionable, base y cuentan (numeros de ABO que
+    suman a la base)."""
     nums = {a["numero"] for a in abonos if a.get("numero") is not None}
-    tiene16, tiene10, tiene11 = ABO_16 in nums, ABO_10 in nums, ABO_11 in nums
-    if tiene16 and (tiene10 or tiene11):
-        clasif, cuentan = CLASIF_AMBOS, {ABO_16}
-    elif tiene16:
-        clasif, cuentan = CLASIF_16, {ABO_16}
-    elif tiene10 and tiene11:
-        clasif, cuentan = CLASIF_10_11, {ABO_10, ABO_11}
-    elif tiene10:
-        clasif, cuentan = CLASIF_SOLO_10, set()
-    elif tiene11:
-        clasif, cuentan = CLASIF_SOLO_11, set()
-    elif abonos:
-        clasif, cuentan = CLASIF_OTROS, set()
+    partes, cuentan, monitoreo, revisar, faltan = [], set(), None, False, []
+    nums_pares = {n for par in PARES_MONITOREO for n in par}
+    if ABO_16 in nums:
+        monitoreo, cuentan = MON_16, {ABO_16}
+        revisar = bool(nums & nums_pares)
+        partes.append(MON_16 + (" (también " + " / ".join(f"ABO {n}" for n in sorted(nums & nums_pares)) + ": revisar)"
+                                if revisar else ""))
     else:
-        clasif, cuentan = CLASIF_SIN, set()
-    base = sum((a.get("importe") or 0) for a in abonos if a.get("numero") in cuentan)
-    return clasif, clasif in COMISIONABLES, round(base, 2), cuentan
+        for a, b in PARES_MONITOREO:
+            if a in nums and b in nums and monitoreo is None:
+                monitoreo, cuentan = MON_PARES[(a, b)], {a, b}
+                partes.append(monitoreo)
+            elif (a in nums) != (b in nums):
+                tiene, falta = (a, b) if a in nums else (b, a)
+                faltan.append(f"Solo ABO {tiene} (falta ABO {falta})")
+        partes.extend(faltan if monitoreo is None else [])
+    kits = nums & KITS_COMERCIO_SEGURO
+    if kits:
+        cuentan |= kits
+        partes.append(KIT)
+    comisionable = bool(monitoreo or kits)
+    if not partes:
+        partes.append(CLASIF_OTROS if abonos else CLASIF_SIN)
+    base = sum((a.get("importe") or 0) for a in abonos if a.get("numero") in cuentan) if comisionable else 0
+    return {
+        "clasificacion": " + ".join(partes),
+        "monitoreo": monitoreo,
+        "kit": bool(kits),
+        "revisar": revisar,
+        "incompleta": bool(faltan) and monitoreo is None,
+        "comisionable": comisionable,
+        "base": round(base, 2),
+        "cuentan": cuentan,
+    }
 
 
 # ------------------------------------------------------------------- armado
@@ -255,6 +285,14 @@ def generar(desde, hasta, log):
                     ovs[ov_id] = f
         except RuntimeError as e:
             aviso(f"No se pudieron buscar OV por presupuesto de origen; solo se usan las vinculadas a la oportunidad: {str(e)[:300]}")
+    # Solo OV de abonos (Contrato); las de productos se cuentan y no se listan.
+    excluidas = {}
+    for ov_id in list(ovs):
+        if not es_ov_abonos(ovs[ov_id].get("tipo_ov")):
+            tipo = _texto(ovs.pop(ov_id).get("tipo_ov")) or "Sin tipo"
+            excluidas[tipo] = excluidas.get(tipo, 0) + 1
+    if excluidas:
+        log("Comisiones: OV excluidas por tipo: " + ", ".join(f"{k} ({v})" for k, v in sorted(excluidas.items())))
     lineas = _lineas_abo(ovs, log) if ovs else {}
 
     filas = []
@@ -268,9 +306,9 @@ def generar(desde, hasta, log):
             continue
         con_ov.add(opp_id)
         abonos = lineas.get(ov_id, [])
-        clasif, comisionable, base, cuentan = clasificar(abonos)
+        c = clasificar(abonos)
         for a in abonos:
-            a["cuenta"] = a.get("numero") in cuentan
+            a["cuenta"] = c["comisionable"] and a.get("numero") in c["cuentan"]
         filas.append(dict(
             o,
             ov_id=ov_id,
@@ -285,15 +323,19 @@ def generar(desde, hasta, log):
             presupuesto=_texto(f.get("presupuesto")),
             vinculo=f.get("vinculo"),
             abonos=abonos,
-            clasificacion=clasif,
-            comisionable=comisionable,
-            base_comisionable=base if comisionable else 0,
+            clasificacion=c["clasificacion"],
+            monitoreo=c["monitoreo"],
+            kit=c["kit"],
+            revisar=c["revisar"],
+            incompleta=c["incompleta"],
+            comisionable=c["comisionable"],
+            base_comisionable=c["base"],
             importe_otros_abo=round(sum((a.get("importe") or 0) for a in abonos if not a["cuenta"]), 2),
         ))
 
     sin_ov = [o for k, o in sorted(opps.items()) if k not in con_ov]
     log(f"Comisiones: {len(opps)} oportunidades ganadas, {len(filas)} OV relacionadas "
-        f"({sum(1 for f in filas if f['comisionable'])} con ABO comisionable), {len(sin_ov)} ganadas sin OV.")
+        f"de abonos ({sum(1 for f in filas if f['comisionable'])} con ABO comisionable), {len(sin_ov)} ganadas sin OV de abonos.")
     return {
         "version": 1,
         "desde": desde.isoformat(),
@@ -302,7 +344,6 @@ def generar(desde, hasta, log):
         "ganadas": len(opps),
         "ovs": filas,
         "sin_ov": sin_ov,
-        "clasificaciones": [CLASIF_16, CLASIF_10_11, CLASIF_AMBOS, CLASIF_SOLO_10, CLASIF_SOLO_11, CLASIF_OTROS, CLASIF_SIN],
-        "comisionables": sorted(COMISIONABLES),
+        "ov_excluidas_por_tipo": excluidas,
         "avisos": avisos,
     }
