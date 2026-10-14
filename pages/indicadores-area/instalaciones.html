@@ -214,6 +214,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 .estado-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .estado-curso { background: #e3eefb; color: #185fa5; }
 .estado-pendiente { background: #fdeee3; color: #9a4a12; }
+.estado-finalizada { background: #e6f4ec; color: #1e7a44; }
+.estado-otra { background: #eeeeee; color: #52514e; }
 </style>
 </head>
 <body>
@@ -276,7 +278,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         <div id="inst-tec-tipo"></div>
       </div>
       <div class="bloque">
-        <h3>Instalaciones en curso y pendientes de iniciar</h3>
+        <h3>Detalle de instalaciones</h3>
         <div class="seg-bar" id="seg-estado" role="group" aria-label="Estado de las instalaciones"></div>
         <div class="explorer">
           <div class="explorer-bar">
@@ -286,7 +288,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           </div>
           <div class="table-scroll"><table class="data-table inst-tabla" id="tabla-seg"></table></div>
         </div>
-        <div class="bloque-nota">Días hábiles: en curso, desde el inicio de la instalación; pendientes, desde la creación del caso. Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras). Responde a los filtros de la pestaña: Año y Mes por fecha de creación (estas instalaciones todavía no tienen fecha de fin); Estado del caso y de la instalación sobre cada caso.</div>
+        <div class="bloque-nota">Días hábiles: en curso, desde el inicio hasta hoy; pendientes, desde la creación hasta hoy; finalizadas, desde la creación hasta el fin. Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras). Filtros: Año y Mes por fecha de fin en las finalizadas y por fecha de creación en las demás (todavía no tienen fin); Estado del caso sobre cada caso.</div>
       </div>
     </section>
 
@@ -944,7 +946,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   function casosInst() {
     return DATOS.casos.filter(function (c) {
-      return fInst.periodo(c.fecha_fin_inst) && fInst.pasa("estado", c.estado_caso) && fInst.pasa("estadoInst", c.estado_instalacion);
+      return fInst.periodo(c.fecha_fin_inst) && fInst.pasa("estado", c.estado_caso);
     });
   }
 
@@ -961,42 +963,53 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // ---------------------------------------------------------------------
   // Seguimiento: instalaciones en curso y pendientes de iniciar
   // ---------------------------------------------------------------------
-  var SEG = { filtro: "todas", abiertas: {}, orden: "dias", asc: false, armado: false };
+  var SEG = { filtro: "todas", abiertas: {}, orden: "estado", asc: true, armado: false };
   function esPendiente(c) { return c.estado_caso === "No iniciado" || (c.estado_caso === "Escalado" && !c.fecha_inicio_inst); }
 
   // Una fila por instalacion con algun caso en curso o pendiente (con todos sus casos).
-  function instalacionesAbiertas() {
+  // Una fila por instalacion (todas: en curso, pendientes, finalizadas y otras).
+  var GRUPOS_SEG = [["todas", "Todas"], ["curso", "En curso"], ["pendiente", "Pendientes de iniciar"], ["finalizada", "Finalizadas"], ["otra", "Otras"]];
+  var RANGO_GRUPO = { curso: 1, pendiente: 2, otra: 3, finalizada: 4 };
+  function instalacionesDetalle() {
     var porInst = {};
-    // Filtros de la pestaña: Año/Mes por fecha de creación (no tienen fecha de fin) y estados por caso.
-    DATOS.casos.filter(function (c) {
-      return fInst.periodo(c.fecha_creacion) && fInst.pasa("estado", c.estado_caso) && fInst.pasa("estadoInst", c.estado_instalacion);
-    }).forEach(function (c) { (porInst[c.id_inst] = porInst[c.id_inst] || []).push(c); });
+    // Estado del caso: filtro por caso, antes de agrupar.
+    DATOS.casos.filter(function (c) { return fInst.pasa("estado", c.estado_caso); })
+      .forEach(function (c) { (porInst[c.id_inst] = porInst[c.id_inst] || []).push(c); });
     var hoy = hoyAR(), salida = [];
     Object.keys(porInst).forEach(function (k) {
       var casos = porInst[k].slice().sort(function (a, b) { return a.caso_id - b.caso_id; });
-      var enCurso = casos.some(function (c) { return c.estado_caso === "En curso"; });
-      var pend = casos.some(esPendiente);
-      if (!enCurso && !pend) return;
       var min = function (campo) { return casos.map(function (c) { return c[campo]; }).filter(Boolean).sort()[0] || null; };
+      var max = function (campo) { return casos.map(function (c) { return c[campo]; }).filter(Boolean).sort().pop() || null; };
       var unicos = function (f) { return Array.from(new Set(casos.map(f).filter(Boolean))).join(", "); };
-      var inicio = min("fecha_inicio_inst"), creacion = min("fecha_creacion");
-      var estado = enCurso ? "En curso" : casos.some(function (c) { return c.estado_caso === "No iniciado"; }) ? "No iniciada" : "Escalada sin iniciar";
+      var inicio = min("fecha_inicio_inst"), creacion = min("fecha_creacion"), fin = max("fecha_fin_inst");
+      var grupo, estado, dias;
+      if (casos.some(function (c) { return c.estado_caso === "En curso"; })) {
+        grupo = "curso"; estado = "En curso"; dias = inicio ? diasHabiles(inicio, hoy) : null;
+      } else if (casos.some(esPendiente)) {
+        grupo = "pendiente"; dias = creacion ? diasHabiles(creacion, hoy) : null;
+        estado = casos.some(function (c) { return c.estado_caso === "No iniciado"; }) ? "No iniciada" : "Escalada sin iniciar";
+      } else if (casos.every(function (c) { return c.fecha_fin_inst; })) {
+        grupo = "finalizada"; estado = "Finalizada"; dias = creacion ? diasHabiles(creacion, fin) : null;
+      } else {
+        grupo = "otra"; estado = unicos(function (c) { return c.estado_caso; }) || "Sin estado"; dias = null;
+      }
+      // Año/Mes: finalizadas por fecha de fin (como el resto de la pestaña); las demás, por creación.
+      if (!fInst.periodo(grupo === "finalizada" ? fin : creacion)) return;
       salida.push({
-        id: k, casos: casos, estado: estado, grupo: enCurso ? "curso" : "pendiente",
+        id: k, casos: casos, estado: estado, grupo: grupo,
         cliente: casos[0].cliente || "", nro_cuenta: casos[0].nro_cuenta || "",
         tipos: unicos(function (c) { return c.tipo_proyecto; }), tecnicos: unicos(function (c) { return c.tecnico; }),
-        creacion: creacion, inicio: inicio,
-        dias: enCurso ? (inicio ? diasHabiles(inicio, hoy) : null) : (creacion ? diasHabiles(creacion, hoy) : null),
+        creacion: creacion, inicio: inicio, fin: fin, dias: dias,
       });
     });
     return salida;
   }
 
   function pintarSeguimiento() {
-    var todas = instalacionesAbiertas();
-    var cuenta = { todas: todas.length, curso: 0, pendiente: 0 };
+    var todas = instalacionesDetalle();
+    var cuenta = { todas: todas.length, curso: 0, pendiente: 0, finalizada: 0, otra: 0 };
     todas.forEach(function (i) { cuenta[i.grupo]++; });
-    $("seg-estado").innerHTML = [["todas", "Todas"], ["curso", "En curso"], ["pendiente", "Pendientes de iniciar"]].map(function (o) {
+    $("seg-estado").innerHTML = GRUPOS_SEG.filter(function (o) { return o[0] !== "otra" || cuenta.otra; }).map(function (o) {
       return '<button type="button" class="seg-btn' + (SEG.filtro === o[0] ? " activo" : "") + '" data-seg="' + o[0] + '">' + o[1] + " <span>" + cuenta[o[0]] + "</span></button>";
     }).join("");
     if (!SEG.armado) {
@@ -1021,12 +1034,15 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     });
     var cols = [
       ["casos", "Caso(s)"], ["cliente", "Cliente"], ["nro_cuenta", "Nro cuenta"], ["estado", "Estado"], ["tipos", "Tipo de proyecto"],
-      ["tecnicos", "Técnico"], ["creacion", "Creación"], ["inicio", "Inicio"], ["dias", "Días hábiles"],
+      ["tecnicos", "Técnico"], ["creacion", "Creación"], ["inicio", "Inicio"], ["fin", "Fin"], ["dias", "Días hábiles"],
     ];
     filas.sort(function (a, b) {
-      var x = SEG.orden === "casos" ? a.casos.length : a[SEG.orden], y = SEG.orden === "casos" ? b.casos.length : b[SEG.orden];
+      var val = function (i) { return SEG.orden === "casos" ? i.casos.length : SEG.orden === "estado" ? RANGO_GRUPO[i.grupo] : i[SEG.orden]; };
+      var x = val(a), y = val(b);
       x = x === null || x === undefined ? "" : x; y = y === null || y === undefined ? "" : y;
-      return (x < y ? -1 : x > y ? 1 : 0) * (SEG.asc ? 1 : -1);
+      var r = (x < y ? -1 : x > y ? 1 : 0) * (SEG.asc ? 1 : -1);
+      // Desempate: las de más días primero.
+      return r || ((b.dias === null ? -1 : b.dias) - (a.dias === null ? -1 : a.dias));
     });
     var cuerpo = filas.map(function (i) {
       var multi = i.casos.length > 1, abierta = multi && SEG.abiertas[i.id];
@@ -1034,7 +1050,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       var fila = '<tr class="inst-fila' + (multi ? " inst-multi" : "") + (abierta ? " inst-abierta" : "") + '" data-k="' + esc(i.id) + '">' +
         '<td class="nowrap">' + casoTxt + "</td><td>" + esc(i.cliente) + "</td><td>" + esc(i.nro_cuenta) + "</td>" +
         '<td><span class="estado-tag estado-' + i.grupo + '">' + esc(i.estado) + "</span></td><td>" + esc(i.tipos) + "</td><td>" + esc(i.tecnicos) + "</td>" +
-        '<td class="nowrap">' + esc(fmtDia(i.creacion)) + '</td><td class="nowrap">' + esc(fmtDia(i.inicio)) + '</td><td class="num">' + (i.dias === null ? "" : fmtNum(i.dias)) + "</td></tr>";
+        '<td class="nowrap">' + esc(fmtDia(i.creacion)) + '</td><td class="nowrap">' + esc(fmtDia(i.inicio)) + '</td><td class="nowrap">' + esc(fmtDia(i.fin)) + '</td><td class="num">' + (i.dias === null ? "" : fmtNum(i.dias)) + "</td></tr>";
       if (!abierta) return fila;
       return fila + '<tr class="inst-det"><td colspan="' + cols.length + '"><table class="sub-tabla"><thead><tr>' +
         "<th>Caso</th><th>Tipo de proyecto</th><th>Estado del caso</th><th>Estado de la instalación</th><th>Técnico</th><th>Tipo de posventa</th><th>Creación</th><th>Inicio</th><th>Fin</th></tr></thead><tbody>" +
@@ -1284,10 +1300,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
     var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
     var estados = valoresDe(DATOS.casos, function (c) { return c.estado_caso; });
-    var estadosInst = valoresDe(DATOS.casos, function (c) { return c.estado_instalacion; });
     fInst = crearFiltrosTab("filtros-inst", fechas, [
       { clave: "estado", nombre: "Estado del caso", valores: estados },
-      { clave: "estadoInst", nombre: "Estado de la instalación", valores: estadosInst },
     ], pintarInstalaciones);
     fFact = crearFiltrosTab("filtros-fact", fechas, [
       { clave: "vc", nombre: "Venta / Comodato", valores: ["Venta", "Comodato"] },
