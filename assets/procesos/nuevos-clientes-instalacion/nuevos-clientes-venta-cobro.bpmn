@@ -12,8 +12,8 @@
       <bpmn:lane id="Lane_Ventas" name="Ventas"><bpmn:flowNodeRef>Start_Oportunidad</bpmn:flowNodeRef><bpmn:flowNodeRef>Sub_VentaConsultiva</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Confirma</bpmn:flowNodeRef><bpmn:flowNodeRef>End_OportunidadPerdida</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Formalizar</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_InformarPasos</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Derivar</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ActualizarPresupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_VendedorRetoma</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_ClienteConfirmaPago</bpmn:flowNodeRef><bpmn:flowNodeRef>End_VentaPerdida</bpmn:flowNodeRef></bpmn:lane>
       <bpmn:lane id="Lane_AtencionCliente" name="Atención al Cliente"><bpmn:flowNodeRef>Task_RecibirTraspaso</bpmn:flowNodeRef><bpmn:flowNodeRef>Sub_GestionCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_ResultadoCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_GenerarCaso</bpmn:flowNodeRef><bpmn:flowNodeRef>End_CasoGenerado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AvisoVencimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>End_AvisoEnviado</bpmn:flowNodeRef><bpmn:flowNodeRef>Bnd_AvisoVencimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Bnd_PresupuestoVencido</bpmn:flowNodeRef></bpmn:lane>
     </bpmn:laneSet>
-      <bpmn:startEvent id="Start_Oportunidad" name="Oportunidad calificada"><bpmn:outgoing>F1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:subProcess id="Sub_VentaConsultiva" name="Venta consultiva (etapas 1 a 5)"><bpmn:incoming>F1</bpmn:incoming><bpmn:outgoing>F2</bpmn:outgoing></bpmn:subProcess>
+      <bpmn:startEvent id="Start_Oportunidad" name="Primer contacto del prospecto"><bpmn:outgoing>F1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:callActivity id="Sub_VentaConsultiva" name="Venta consultiva (etapas 1 a 5)" calledElement="Process_VentaConsultiva"><bpmn:documentation>Llama al proceso "Venta consultiva" (archivo nuevos-clientes-venta-consultiva.bpmn).</bpmn:documentation><bpmn:incoming>F1</bpmn:incoming><bpmn:outgoing>F2</bpmn:outgoing></bpmn:callActivity>
       <bpmn:exclusiveGateway id="Gw_Confirma" name="¿El cliente confirma la venta?"><bpmn:incoming>F2</bpmn:incoming><bpmn:outgoing>F3</bpmn:outgoing><bpmn:outgoing>F4</bpmn:outgoing></bpmn:exclusiveGateway>
       <bpmn:endEvent id="End_OportunidadPerdida" name="Oportunidad perdida"><bpmn:incoming>F3</bpmn:incoming></bpmn:endEvent>
       <bpmn:task id="Task_Formalizar" name="Formalizar la venta (etapa 6)"><bpmn:incoming>F4</bpmn:incoming><bpmn:outgoing>F5</bpmn:outgoing></bpmn:task>
@@ -86,6 +86,8 @@
       <bpmn:association id="Ann_Vigencia_Assoc" sourceRef="Ann_Vigencia" targetRef="Task_AvisoVencimiento" />
       <bpmn:textAnnotation id="Ann_VentaPerdida"><bpmn:text>A definir (R2): criterio y plazo para pasar un presupuesto no cobrado a venta perdida</bpmn:text></bpmn:textAnnotation>
       <bpmn:association id="Ann_VentaPerdida_Assoc" sourceRef="Ann_VentaPerdida" targetRef="End_VentaPerdida" />
+      <bpmn:textAnnotation id="Ann_DetalleVentaConsultiva"><bpmn:text>Actividad de llamada: el detalle está en el diagrama "Venta consultiva" (etapas 1 a 5)</bpmn:text></bpmn:textAnnotation>
+      <bpmn:association id="Ann_DetalleVentaConsultiva_Assoc" sourceRef="Ann_DetalleVentaConsultiva" targetRef="Sub_VentaConsultiva" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_Main">
     <bpmndi:BPMNPlane id="BPMNPlane_Main" bpmnElement="Collaboration_VentaCobro">
@@ -94,7 +96,7 @@
       <bpmndi:BPMNShape id="Lane_Ventas_di" bpmnElement="Lane_Ventas" isHorizontal="true"><dc:Bounds x="190" y="160" width="2195" height="310" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_AtencionCliente_di" bpmnElement="Lane_AtencionCliente" isHorizontal="true"><dc:Bounds x="190" y="470" width="2195" height="310" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Start_Oportunidad_di" bpmnElement="Start_Oportunidad"><dc:Bounds x="272" y="232" width="36" height="36" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Sub_VentaConsultiva_di" bpmnElement="Sub_VentaConsultiva" isExpanded="false"><dc:Bounds x="415" y="210" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sub_VentaConsultiva_di" bpmnElement="Sub_VentaConsultiva"><dc:Bounds x="415" y="210" width="100" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Gw_Confirma_di" bpmnElement="Gw_Confirma" isMarkerVisible="true"><dc:Bounds x="615" y="225" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="575" y="194" width="130" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="End_OportunidadPerdida_di" bpmnElement="End_OportunidadPerdida"><dc:Bounds x="622" y="362" width="36" height="36" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_Formalizar_di" bpmnElement="Task_Formalizar"><dc:Bounds x="765" y="210" width="100" height="80" /></bpmndi:BPMNShape>
@@ -144,6 +146,8 @@
       <bpmndi:BPMNEdge id="Ann_VentaPerdida_Assoc_di" bpmnElement="Ann_VentaPerdida_Assoc"><di:waypoint x="2145" y="380" /><di:waypoint x="2058" y="380" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="MF1_di" bpmnElement="MF1"><di:waypoint x="990" y="210" /><di:waypoint x="990" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="998" y="150" width="150" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="MF2_di" bpmnElement="MF2"><di:waypoint x="1690" y="340" /><di:waypoint x="1690" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="1698" y="150" width="110" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_DetalleVentaConsultiva_di" bpmnElement="Ann_DetalleVentaConsultiva"><dc:Bounds x="340" y="335" width="200" height="45" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_DetalleVentaConsultiva_Assoc_di" bpmnElement="Ann_DetalleVentaConsultiva_Assoc"><di:waypoint x="465" y="335" /><di:waypoint x="465" y="290" /></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
   <bpmndi:BPMNDiagram id="BPMNDiagram_GestionCobro">

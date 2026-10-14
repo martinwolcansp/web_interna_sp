@@ -254,17 +254,60 @@
         return;
       }
       viewer = new BpmnJS({ container: '#proc-viewer-canvas' });
+      // Vínculos entre diagramas: clic en el elemento vinculado abre el otro diagrama
+      viewer.get('eventBus').on('element.click', (e) => {
+        const v = vinculoDe(e.element.id);
+        if (v) irAVinculo(v);
+      });
     }
     try {
       const res = await fetch(url(d.archivo), { cache: 'no-cache' });
       if (!res.ok) throw new Error(res.status);
       await viewer.importXML(await res.text());
+      agregarVinculos(d);
       viewer.get('canvas').zoom('fit-viewport', 'auto');
     } catch (err) {
       console.error('[procesos-proceso.js] error abriendo diagrama', err);
       document.getElementById('proc-viewer-canvas').insertAdjacentHTML('beforeend',
         '<p class="proc-loading">No se pudo abrir el diagrama.</p>');
     }
+  }
+
+  // ── Vínculos entre diagramas ──
+  // En proceso.json, cada diagrama puede declarar:
+  //   "vinculos": [{ "elemento": "<id BPMN>", "diagrama": "<archivo .bpmn>",
+  //                  "etiqueta": "Texto del botón", "posicion": "abajo" | "arriba" | "derecha" }]
+  // El elemento queda resaltado, con un botón que abre el diagrama vinculado.
+  function vinculoDe(elementoId) {
+    return ((diagramaActual && diagramaActual.vinculos) || []).find(v => v.elemento === elementoId);
+  }
+
+  function irAVinculo(v) {
+    const j = data.diagramas.findIndex(x => x.archivo === v.diagrama);
+    if (j >= 0) abrirDiagrama(j);
+  }
+
+  function agregarVinculos(d) {
+    const overlays = viewer.get('overlays');
+    const registry = viewer.get('elementRegistry');
+    const canvas = viewer.get('canvas');
+    (d.vinculos || []).forEach(v => {
+      const el = registry.get(v.elemento);
+      if (!el || data.diagramas.findIndex(x => x.archivo === v.diagrama) < 0) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'proc-bpmn-link';
+      btn.title = 'Abrir el diagrama vinculado';
+      btn.innerHTML = `<i class="ti ti-arrow-forward-up" aria-hidden="true"></i> ${esc(v.etiqueta || 'Ver diagrama')}`;
+      btn.addEventListener('click', (ev) => { ev.stopPropagation(); irAVinculo(v); });
+      const position = v.posicion === 'derecha'
+        ? { top: Math.max(el.height / 2 - 12, 0), left: el.width + 8 }
+        : v.posicion === 'arriba'
+          ? { top: -32, left: el.width / 2 - 110 }
+          : { bottom: -8, left: 0 };
+      overlays.add(el, { position, html: btn });
+      canvas.addMarker(el, 'proc-linked');
+    });
   }
 
   async function accionVisor(accion) {

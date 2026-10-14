@@ -444,3 +444,16 @@ button.doc-link { font-family: inherit; cursor: pointer; }
   display: block; margin-top: 4px;
   font-size: var(--font-size-sm); font-weight: normal; color: var(--color-text-body); line-height: 1.45;
 }
+
+/* Vínculos entre diagramas (elemento que abre otro diagrama) */
+.proc-viewer .proc-linked { cursor: pointer; }
+.proc-viewer .proc-linked .djs-visual > :first-child { stroke: var(--color-blue) !important; }
+.proc-bpmn-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  white-space: nowrap;
+  font-family: var(--font-base); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  color: #fff; background: var(--color-blue);
+  border: 0; border-radius: var(--radius-pill);
+  padding: 3px 10px; box-shadow: var(--shadow-xs); cursor: pointer;
+}
+.proc-bpmn-link:hover { background: var(--color-navy); }

@@ -1,15 +1,15 @@
 {
   "id": "nuevos-clientes-instalacion",
   "categoria": "Proceso operativo",
-  "nombre": "Nuevos clientes con instalación de alarmas y/o cámaras",
-  "descripcion": "Recorrido de un cliente nuevo desde la confirmación de la venta hasta la instalación, la activación del sistema y el seguimiento de posventa.",
+  "nombre": "Nuevos clientes con alarmas y/o cámaras: del primer contacto a la posventa",
+  "descripcion": "Recorrido de un cliente nuevo desde el primer contacto del prospecto, la venta consultiva y la confirmación de la venta hasta la instalación, la activación del sistema y el seguimiento de posventa.",
   "estado": "En relevamiento",
   "version": "v0.1",
-  "actualizado": "07/10/2026",
+  "actualizado": "14/10/2026",
   "responsable": "Procesos y Mejora Continua",
   "resumen": {
     "objetivo": "Definir hitos formales que marquen cuándo termina la responsabilidad de un área y empieza la de otra, para que el cliente sepa con quién hablar en cada etapa y ningún caso quede sin dueño.",
-    "alcance": "Desde el cierre de la venta hasta la resolución de los pendientes posteriores a la instalación. La implementación se apoya en GHL, continuando lo hecho en Ventas y Posventa.",
+    "alcance": "Desde el primer contacto del prospecto (redes o WhatsApp, atendido por el Bot IA comercial) hasta la resolución de los pendientes posteriores a la instalación. La implementación se apoya en GHL, continuando lo hecho en Ventas y Posventa.",
     "diagnostico": "La causa de los roces entre áreas no es la falta de comunicación en sí, sino la ausencia de hitos formales de traspaso. Ventas termina siendo el único canal vivo con el cliente y recibe reclamos que no le corresponden; los pendientes del acta de instalación quedan sin responsable ni plazo.",
     "areas": [
       "Ventas",
@@ -235,12 +235,36 @@
   ],
   "diagramas": [
     {
+      "nombre": "Venta consultiva (etapas 1 a 5)",
+      "archivo": "nuevos-clientes-venta-consultiva.bpmn",
+      "version": "v0.1",
+      "fecha": "14/10/2026",
+      "estado": "Borrador",
+      "descripcion": "Desde el primer contacto del prospecto (Bot IA comercial y agente comercial de Ventas) hasta que el cliente confirma la venta. Cada etapa del relevamiento está marcada en el diagrama. Al confirmar, continúa en \"Confirmación de la venta y cobro\" (etapa 6).",
+      "vinculos": [
+        {
+          "elemento": "End_ClienteConfirma",
+          "diagrama": "nuevos-clientes-venta-cobro.bpmn",
+          "etiqueta": "Ir a Confirmación de la venta y cobro",
+          "posicion": "arriba"
+        }
+      ]
+    },
+    {
       "nombre": "Confirmación de la venta y cobro",
       "archivo": "nuevos-clientes-venta-cobro.bpmn",
       "version": "v0.1",
-      "fecha": "06/10/2026",
+      "fecha": "14/10/2026",
       "estado": "Borrador",
-      "descripcion": "Subproceso Ventas → Atención al Cliente (hitos 1 y 2). Surge de la reunión R2. Los puntos abiertos están marcados en el diagrama como \"A definir (R2)\". El subproceso \"Gestión del cobro\" muestra el ciclo de intentos de contacto con el cliente. Actualizado 06/10: la forma de pago forma parte de los datos mínimos del traspaso."
+      "descripcion": "Subproceso Ventas → Atención al Cliente (hitos 1 y 2). Surge de la reunión R2. Los puntos abiertos están marcados en el diagrama como \"A definir (R2)\". El subproceso \"Gestión del cobro\" muestra el ciclo de intentos de contacto con el cliente. Actualizado 06/10: la forma de pago forma parte de los datos mínimos del traspaso. Actualizado 14/10: \"Venta consultiva (etapas 1 a 5)\" pasa a ser una actividad de llamada vinculada a su propio diagrama.",
+      "vinculos": [
+        {
+          "elemento": "Sub_VentaConsultiva",
+          "diagrama": "nuevos-clientes-venta-consultiva.bpmn",
+          "etiqueta": "Ver Venta consultiva",
+          "posicion": "abajo"
+        }
+      ]
     }
   ],
   "documentos": [

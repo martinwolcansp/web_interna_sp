@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_NuevosClientesVentaConsultiva" targetNamespace="http://sp-seguridad.com/procesos" exporter="bpmn-js" exporterVersion="18.30.1">
+  <bpmn:category id="Category_Etapas">
+    <bpmn:categoryValue id="CV_Grp_E1" value="Etapa 1 · Primer contacto" />
+    <bpmn:categoryValue id="CV_Grp_E2" value="Etapa 2 · Concertación de la visita" />
+    <bpmn:categoryValue id="CV_Grp_E3" value="Etapa 3 · Visita" />
+    <bpmn:categoryValue id="CV_Grp_E4" value="Etapa 4 · Presupuesto" />
+    <bpmn:categoryValue id="CV_Grp_E5" value="Etapa 5 · Seguimiento" />
+  </bpmn:category>
+  <bpmn:collaboration id="Collaboration_VentaConsultiva">
+    <bpmn:documentation>Proceso: Nuevos clientes con instalación de alarmas y/o cámaras. Subproceso: Venta consultiva (etapas 1 a 5, Ventas), desde el primer contacto hasta la confirmación del cliente. Es el proceso llamado por la actividad "Venta consultiva (etapas 1 a 5)" del diagrama "Confirmación de la venta y cobro". Borrador v0.1 — 14/10/2026 — basado en el documento "Proceso de venta y atención por áreas". Continúa en "Confirmación de la venta y cobro" (etapa 6).</bpmn:documentation>
+    <bpmn:participant id="Participant_Cliente" name="Prospecto / cliente" />
+    <bpmn:participant id="Participant_SP" name="SP Seguridad Privada" processRef="Process_VentaConsultiva" />
+    <bpmn:messageFlow id="MF1" name="Consulta" sourceRef="Participant_Cliente" targetRef="Start_Consulta" />
+    <bpmn:messageFlow id="MF2" name="Día y horario de la visita" sourceRef="Task_AgendarVisita" targetRef="Participant_Cliente" />
+    <bpmn:messageFlow id="MF3" name="Presupuesto" sourceRef="Task_Presupuesto" targetRef="Participant_Cliente" />
+    <bpmn:messageFlow id="MF4" name="Seguimiento" sourceRef="Task_Seguimiento" targetRef="Participant_Cliente" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_VentaConsultiva" name="Nuevos clientes – Venta consultiva (etapas 1 a 5)" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_SP">
+      <bpmn:lane id="Lane_Ventas" name="Ventas"><bpmn:flowNodeRef>Start_Consulta</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotResponde</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotReleva</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Derivar</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ConsultaBot</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AtenderDerivada</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Calificar</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Calificado</bpmn:flowNodeRef><bpmn:flowNodeRef>End_LeadDescartado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AgendarVisita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ConfirmarCita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Visita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarRelevamiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Presupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Seguimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Acepta</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ClienteConfirma</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_PideAjuste</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AjustarPresupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>End_OportunidadPerdida</bpmn:flowNodeRef>
+        <bpmn:childLaneSet id="LaneSet_Ventas">
+          <bpmn:lane id="Lane_BotIA" name="Bot IA comercial (GHL)"><bpmn:flowNodeRef>Start_Consulta</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotResponde</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotReleva</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Derivar</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ConsultaBot</bpmn:flowNodeRef></bpmn:lane>
+          <bpmn:lane id="Lane_AgenteComercial" name="Agente comercial"><bpmn:flowNodeRef>Task_AtenderDerivada</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Calificar</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Calificado</bpmn:flowNodeRef><bpmn:flowNodeRef>End_LeadDescartado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AgendarVisita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ConfirmarCita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Visita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarRelevamiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Presupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Seguimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Acepta</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ClienteConfirma</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_PideAjuste</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AjustarPresupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>End_OportunidadPerdida</bpmn:flowNodeRef></bpmn:lane>
+        </bpmn:childLaneSet>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_Consulta" name="Consulta del prospecto (redes o WhatsApp)"><bpmn:outgoing>F1</bpmn:outgoing><bpmn:messageEventDefinition id="Start_Consulta_Def" /></bpmn:startEvent>
+    <bpmn:task id="Task_BotResponde" name="Responder preguntas frecuentes"><bpmn:incoming>F1</bpmn:incoming><bpmn:outgoing>F2</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="Task_BotReleva" name="Relevar datos básicos del prospecto"><bpmn:incoming>F2</bpmn:incoming><bpmn:outgoing>F3</bpmn:outgoing></bpmn:task>
+    <bpmn:exclusiveGateway id="Gw_Derivar" name="¿Excede al bot o hay intención de avanzar?"><bpmn:incoming>F3</bpmn:incoming><bpmn:outgoing>F4</bpmn:outgoing><bpmn:outgoing>F5</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_ConsultaBot" name="Consulta atendida por el bot"><bpmn:incoming>F4</bpmn:incoming></bpmn:endEvent>
+    <bpmn:task id="Task_AtenderDerivada" name="Atender la consulta derivada por el bot"><bpmn:incoming>F5</bpmn:incoming><bpmn:outgoing>F6</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="Task_Calificar" name="Calificar al prospecto y registrar el lead"><bpmn:incoming>F6</bpmn:incoming><bpmn:outgoing>F7</bpmn:outgoing></bpmn:task>
+    <bpmn:exclusiveGateway id="Gw_Calificado" name="¿Calificado y en zona de cobertura?"><bpmn:incoming>F7</bpmn:incoming><bpmn:outgoing>F8</bpmn:outgoing><bpmn:outgoing>F9</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_LeadDescartado" name="Lead descartado"><bpmn:incoming>F8</bpmn:incoming></bpmn:endEvent>
+    <bpmn:task id="Task_AgendarVisita" name="Coordinar y agendar la visita (etapa 2)"><bpmn:incoming>F9</bpmn:incoming><bpmn:outgoing>F10</bpmn:outgoing></bpmn:task>
+    <bpmn:sendTask id="Task_ConfirmarCita" name="Confirmar la cita y enviar recordatorio"><bpmn:incoming>F10</bpmn:incoming><bpmn:outgoing>F11</bpmn:outgoing></bpmn:sendTask>
+    <bpmn:task id="Task_Visita" name="Realizar la visita: relevamiento y propuesta de valor (etapa 3)"><bpmn:incoming>F11</bpmn:incoming><bpmn:outgoing>F12</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="Task_RegistrarRelevamiento" name="Registrar el relevamiento en el sistema"><bpmn:incoming>F12</bpmn:incoming><bpmn:outgoing>F13</bpmn:outgoing></bpmn:task>
+    <bpmn:sendTask id="Task_Presupuesto" name="Elaborar y enviar el presupuesto (etapa 4)"><bpmn:incoming>F13</bpmn:incoming><bpmn:incoming>F20</bpmn:incoming><bpmn:outgoing>F14</bpmn:outgoing></bpmn:sendTask>
+    <bpmn:task id="Task_Seguimiento" name="Seguimiento del presupuesto (etapa 5)"><bpmn:incoming>F14</bpmn:incoming><bpmn:outgoing>F15</bpmn:outgoing></bpmn:task>
+    <bpmn:exclusiveGateway id="Gw_Acepta" name="¿El cliente acepta el presupuesto?"><bpmn:incoming>F15</bpmn:incoming><bpmn:outgoing>F16</bpmn:outgoing><bpmn:outgoing>F17</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_ClienteConfirma" name="El cliente confirma la venta"><bpmn:incoming>F16</bpmn:incoming><bpmn:messageEventDefinition id="End_ClienteConfirma_Def" /></bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gw_PideAjuste" name="¿Pide un ajuste?"><bpmn:incoming>F17</bpmn:incoming><bpmn:outgoing>F18</bpmn:outgoing><bpmn:outgoing>F19</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:task id="Task_AjustarPresupuesto" name="Ajustar el presupuesto (equipo, plan o condiciones)"><bpmn:incoming>F18</bpmn:incoming><bpmn:outgoing>F20</bpmn:outgoing></bpmn:task>
+    <bpmn:endEvent id="End_OportunidadPerdida" name="Oportunidad perdida (rechazo o vencimiento)"><bpmn:incoming>F19</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="F1" sourceRef="Start_Consulta" targetRef="Task_BotResponde" />
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_BotResponde" targetRef="Task_BotReleva" />
+    <bpmn:sequenceFlow id="F3" sourceRef="Task_BotReleva" targetRef="Gw_Derivar" />
+    <bpmn:sequenceFlow id="F4" name="No" sourceRef="Gw_Derivar" targetRef="End_ConsultaBot" />
+    <bpmn:sequenceFlow id="F5" name="Sí: deriva a un agente" sourceRef="Gw_Derivar" targetRef="Task_AtenderDerivada" />
+    <bpmn:sequenceFlow id="F6" sourceRef="Task_AtenderDerivada" targetRef="Task_Calificar" />
+    <bpmn:sequenceFlow id="F7" sourceRef="Task_Calificar" targetRef="Gw_Calificado" />
+    <bpmn:sequenceFlow id="F8" name="No" sourceRef="Gw_Calificado" targetRef="End_LeadDescartado" />
+    <bpmn:sequenceFlow id="F9" name="Sí" sourceRef="Gw_Calificado" targetRef="Task_AgendarVisita" />
+    <bpmn:sequenceFlow id="F10" sourceRef="Task_AgendarVisita" targetRef="Task_ConfirmarCita" />
+    <bpmn:sequenceFlow id="F11" sourceRef="Task_ConfirmarCita" targetRef="Task_Visita" />
+    <bpmn:sequenceFlow id="F12" sourceRef="Task_Visita" targetRef="Task_RegistrarRelevamiento" />
+    <bpmn:sequenceFlow id="F13" sourceRef="Task_RegistrarRelevamiento" targetRef="Task_Presupuesto" />
+    <bpmn:sequenceFlow id="F14" sourceRef="Task_Presupuesto" targetRef="Task_Seguimiento" />
+    <bpmn:sequenceFlow id="F15" sourceRef="Task_Seguimiento" targetRef="Gw_Acepta" />
+    <bpmn:sequenceFlow id="F16" name="Sí" sourceRef="Gw_Acepta" targetRef="End_ClienteConfirma" />
+    <bpmn:sequenceFlow id="F17" name="No" sourceRef="Gw_Acepta" targetRef="Gw_PideAjuste" />
+    <bpmn:sequenceFlow id="F18" name="Sí" sourceRef="Gw_PideAjuste" targetRef="Task_AjustarPresupuesto" />
+    <bpmn:sequenceFlow id="F19" name="No" sourceRef="Gw_PideAjuste" targetRef="End_OportunidadPerdida" />
+    <bpmn:sequenceFlow id="F20" sourceRef="Task_AjustarPresupuesto" targetRef="Task_Presupuesto" />
+    <bpmn:textAnnotation id="Ann_Oportunidad"><bpmn:text>A definir: en qué momento el agente IA crea la oportunidad en GHL (hoy solo deriva la conversación a un humano)</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Oportunidad_Assoc" sourceRef="Ann_Oportunidad" targetRef="Gw_Derivar" />
+    <bpmn:textAnnotation id="Ann_SLA"><bpmn:text>A definir: SLA de primera respuesta a la consulta derivada</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_SLA_Assoc" sourceRef="Ann_SLA" targetRef="Task_AtenderDerivada" />
+    <bpmn:textAnnotation id="Ann_PlazoContacto"><bpmn:text>A definir: plazo para contactar al lead desde su calificación</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_PlazoContacto_Assoc" sourceRef="Ann_PlazoContacto" targetRef="Task_AgendarVisita" />
+    <bpmn:textAnnotation id="Ann_Cadencia"><bpmn:text>Cadencia sugerida: 24-48 hs y luego semanal. Puede intervenir el bot</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Cadencia_Assoc" sourceRef="Ann_Cadencia" targetRef="Task_Seguimiento" />
+    <bpmn:textAnnotation id="Ann_Continua"><bpmn:text>Vuelve al diagrama "Confirmación de la venta y cobro": etapa 6, formalización y traspaso a Atención al Cliente</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Continua_Assoc" sourceRef="Ann_Continua" targetRef="End_ClienteConfirma" />
+    <bpmn:group id="Grp_E1" categoryValueRef="CV_Grp_E1" />
+    <bpmn:group id="Grp_E2" categoryValueRef="CV_Grp_E2" />
+    <bpmn:group id="Grp_E3" categoryValueRef="CV_Grp_E3" />
+    <bpmn:group id="Grp_E4" categoryValueRef="CV_Grp_E4" />
+    <bpmn:group id="Grp_E5" categoryValueRef="CV_Grp_E5" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_VentaConsultiva">
+    <bpmndi:BPMNPlane id="BPMNPlane_VentaConsultiva" bpmnElement="Collaboration_VentaConsultiva">
+      <bpmndi:BPMNShape id="Participant_Cliente_di" bpmnElement="Participant_Cliente" isHorizontal="true"><dc:Bounds x="160" y="40" width="2610" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_SP_di" bpmnElement="Participant_SP" isHorizontal="true"><dc:Bounds x="160" y="160" width="2610" height="490" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Ventas_di" bpmnElement="Lane_Ventas" isHorizontal="true"><dc:Bounds x="190" y="160" width="2580" height="490" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_BotIA_di" bpmnElement="Lane_BotIA" isHorizontal="true"><dc:Bounds x="220" y="160" width="2550" height="200" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_AgenteComercial_di" bpmnElement="Lane_AgenteComercial" isHorizontal="true"><dc:Bounds x="220" y="360" width="2550" height="290" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Grp_E1_di" bpmnElement="Grp_E1"><dc:Bounds x="270" y="172" width="1065" height="468" /><bpmndi:BPMNLabel><dc:Bounds x="278" y="620" width="220" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Grp_E2_di" bpmnElement="Grp_E2"><dc:Bounds x="1388" y="372" width="284" height="268" /><bpmndi:BPMNLabel><dc:Bounds x="1396" y="620" width="220" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Grp_E3_di" bpmnElement="Grp_E3"><dc:Bounds x="1708" y="372" width="284" height="268" /><bpmndi:BPMNLabel><dc:Bounds x="1716" y="620" width="220" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Grp_E4_di" bpmnElement="Grp_E4"><dc:Bounds x="2015" y="372" width="150" height="268" /><bpmndi:BPMNLabel><dc:Bounds x="2023" y="620" width="134" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Grp_E5_di" bpmnElement="Grp_E5"><dc:Bounds x="2188" y="372" width="267" height="268" /><bpmndi:BPMNLabel><dc:Bounds x="2196" y="620" width="220" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Consulta_di" bpmnElement="Start_Consulta"><dc:Bounds x="312" y="242" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BotResponde_di" bpmnElement="Task_BotResponde"><dc:Bounds x="440" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_BotReleva_di" bpmnElement="Task_BotReleva"><dc:Bounds x="600" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Derivar_di" bpmnElement="Gw_Derivar" isMarkerVisible="true"><dc:Bounds x="785" y="235" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="645" y="293" width="135" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ConsultaBot_di" bpmnElement="End_ConsultaBot"><dc:Bounds x="952" y="242" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AtenderDerivada_di" bpmnElement="Task_AtenderDerivada"><dc:Bounds x="920" y="390" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Calificar_di" bpmnElement="Task_Calificar"><dc:Bounds x="1080" y="390" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Calificado_di" bpmnElement="Gw_Calificado" isMarkerVisible="true"><dc:Bounds x="1265" y="405" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1220" y="371" width="140" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_LeadDescartado_di" bpmnElement="End_LeadDescartado"><dc:Bounds x="1272" y="542" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AgendarVisita_di" bpmnElement="Task_AgendarVisita"><dc:Bounds x="1400" y="390" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ConfirmarCita_di" bpmnElement="Task_ConfirmarCita"><dc:Bounds x="1560" y="390" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Visita_di" bpmnElement="Task_Visita"><dc:Bounds x="1720" y="390" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RegistrarRelevamiento_di" bpmnElement="Task_RegistrarRelevamiento"><dc:Bounds x="1880" y="390" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Presupuesto_di" bpmnElement="Task_Presupuesto"><dc:Bounds x="2040" y="390" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Seguimiento_di" bpmnElement="Task_Seguimiento"><dc:Bounds x="2200" y="390" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Acepta_di" bpmnElement="Gw_Acepta" isMarkerVisible="true"><dc:Bounds x="2385" y="405" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="2340" y="371" width="140" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ClienteConfirma_di" bpmnElement="End_ClienteConfirma"><dc:Bounds x="2552" y="412" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_PideAjuste_di" bpmnElement="Gw_PideAjuste" isMarkerVisible="true"><dc:Bounds x="2385" y="535" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="2440" y="581" width="100" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AjustarPresupuesto_di" bpmnElement="Task_AjustarPresupuesto"><dc:Bounds x="2200" y="520" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_OportunidadPerdida_di" bpmnElement="End_OportunidadPerdida"><dc:Bounds x="2552" y="542" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F1_di" bpmnElement="F1"><di:waypoint x="348" y="260" /><di:waypoint x="440" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F2_di" bpmnElement="F2"><di:waypoint x="540" y="260" /><di:waypoint x="600" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F3_di" bpmnElement="F3"><di:waypoint x="700" y="260" /><di:waypoint x="785" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F4_di" bpmnElement="F4"><di:waypoint x="835" y="260" /><di:waypoint x="952" y="260" /><bpmndi:BPMNLabel><dc:Bounds x="841" y="240" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F5_di" bpmnElement="F5"><di:waypoint x="810" y="285" /><di:waypoint x="810" y="430" /><di:waypoint x="920" y="430" /><bpmndi:BPMNLabel><dc:Bounds x="818" y="388" width="95" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F6_di" bpmnElement="F6"><di:waypoint x="1020" y="430" /><di:waypoint x="1080" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F7_di" bpmnElement="F7"><di:waypoint x="1180" y="430" /><di:waypoint x="1265" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F8_di" bpmnElement="F8"><di:waypoint x="1290" y="455" /><di:waypoint x="1290" y="542" /><bpmndi:BPMNLabel><dc:Bounds x="1296" y="463" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F9_di" bpmnElement="F9"><di:waypoint x="1315" y="430" /><di:waypoint x="1400" y="430" /><bpmndi:BPMNLabel><dc:Bounds x="1321" y="410" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F10_di" bpmnElement="F10"><di:waypoint x="1500" y="430" /><di:waypoint x="1560" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F11_di" bpmnElement="F11"><di:waypoint x="1660" y="430" /><di:waypoint x="1720" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F12_di" bpmnElement="F12"><di:waypoint x="1820" y="430" /><di:waypoint x="1880" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F13_di" bpmnElement="F13"><di:waypoint x="1980" y="430" /><di:waypoint x="2040" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F14_di" bpmnElement="F14"><di:waypoint x="2140" y="430" /><di:waypoint x="2200" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F15_di" bpmnElement="F15"><di:waypoint x="2300" y="430" /><di:waypoint x="2385" y="430" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F16_di" bpmnElement="F16"><di:waypoint x="2435" y="430" /><di:waypoint x="2552" y="430" /><bpmndi:BPMNLabel><dc:Bounds x="2441" y="410" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F17_di" bpmnElement="F17"><di:waypoint x="2410" y="455" /><di:waypoint x="2410" y="535" /><bpmndi:BPMNLabel><dc:Bounds x="2416" y="463" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F18_di" bpmnElement="F18"><di:waypoint x="2385" y="560" /><di:waypoint x="2300" y="560" /><bpmndi:BPMNLabel><dc:Bounds x="2359" y="540" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F19_di" bpmnElement="F19"><di:waypoint x="2435" y="560" /><di:waypoint x="2552" y="560" /><bpmndi:BPMNLabel><dc:Bounds x="2441" y="540" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F20_di" bpmnElement="F20"><di:waypoint x="2200" y="560" /><di:waypoint x="2090" y="560" /><di:waypoint x="2090" y="470" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF1_di" bpmnElement="MF1"><di:waypoint x="330" y="120" /><di:waypoint x="330" y="242" /><bpmndi:BPMNLabel><dc:Bounds x="336" y="135" width="60" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF2_di" bpmnElement="MF2"><di:waypoint x="1450" y="390" /><di:waypoint x="1450" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="1456" y="135" width="140" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF3_di" bpmnElement="MF3"><di:waypoint x="2070" y="390" /><di:waypoint x="2070" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="2076" y="135" width="80" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF4_di" bpmnElement="MF4"><di:waypoint x="2250" y="390" /><di:waypoint x="2250" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="2256" y="135" width="80" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Oportunidad_di" bpmnElement="Ann_Oportunidad"><dc:Bounds x="1020" y="175" width="250" height="70" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Oportunidad_Assoc_di" bpmnElement="Ann_Oportunidad_Assoc"><di:waypoint x="1020" y="210" /><di:waypoint x="810" y="235" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_SLA_di" bpmnElement="Ann_SLA"><dc:Bounds x="770" y="535" width="190" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_SLA_Assoc_di" bpmnElement="Ann_SLA_Assoc"><di:waypoint x="960" y="560" /><di:waypoint x="970" y="470" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_PlazoContacto_di" bpmnElement="Ann_PlazoContacto"><dc:Bounds x="1395" y="535" width="210" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_PlazoContacto_Assoc_di" bpmnElement="Ann_PlazoContacto_Assoc"><di:waypoint x="1450" y="535" /><di:waypoint x="1450" y="470" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Cadencia_di" bpmnElement="Ann_Cadencia"><dc:Bounds x="2265" y="230" width="200" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Cadencia_Assoc_di" bpmnElement="Ann_Cadencia_Assoc"><di:waypoint x="2280" y="280" /><di:waypoint x="2280" y="390" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Continua_di" bpmnElement="Ann_Continua"><dc:Bounds x="2510" y="190" width="220" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Continua_Assoc_di" bpmnElement="Ann_Continua_Assoc"><di:waypoint x="2570" y="270" /><di:waypoint x="2570" y="412" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
