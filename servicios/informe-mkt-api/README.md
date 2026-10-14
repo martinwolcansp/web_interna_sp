@@ -25,6 +25,7 @@ Botón **Comisiones por vendedor** en el *Informe por vendedor*: abre un pop up 
 
 - **Oportunidades ganadas**: las mismas del informe (búsqueda 2933, estados 12 / 13).
 - **OV relacionadas**: `SalesOrd` cuya oportunidad (`opportunity`) es una ganada, o cuyo presupuesto de origen (`custbody_3k_trans_orig_ov`) es de una ganada. Solo las de tipo *ABONOS (Contrato)* (incluye *PRODUCTOS y ABONOS (Contrato)*); las de *PRODUCTOS* se cuentan en una nota y no se listan.
+- **Una OV por oportunidad** (14/10/2026): el contrato de abonos genera una OV nueva cada mes con el mismo presupuesto de origen; se toma la primera (por fecha) que no esté *Cerrada* y las demás viajan como `ov_mensuales` (no suman).
 - **Abonos**: líneas cuyo artículo empieza con `ABO` (nombre por `BUILTIN.DF(tl.item)`: el rol no puede leer la tabla `item`). En las OV de comodato entran varios.
 - **Comisionable** (definido el 13/10/2026): monitoreo `ABO 16`, `ABO 10` + `ABO 11` o `ABO 20` + `ABO 21` (el 16 reemplaza a la suma; por ahora vale cualquiera), más los kits de Comercio Seguro en comodato `ABO 60`, `ABO 70` y `ABO 71` (suman junto con el monitoreo). Base = importe de esas líneas. Con ABO 16 y también 10 / 11 / 20 / 21 se toma el 16 y la OV queda "revisar"; con solo una mitad del par queda "incompleta". El resto de los ABO se informa como *Otros ABO*.
 - **Vendedor**: representante de la oportunidad (el de la OV se muestra aparte).

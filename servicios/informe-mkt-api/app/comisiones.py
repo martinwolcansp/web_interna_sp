@@ -12,6 +12,11 @@
 #     pertenece a una de las ganadas. Solo las de tipo ABONOS (Contrato):
 #     "Orden de Venta ABONOS (Contrato)" y "PRODUCTOS y ABONOS (Contrato)".
 #     Las de PRODUCTOS se cuentan aparte y no se listan.
+#   - Una sola OV de abonos por oportunidad (14/10/2026): el contrato de
+#     abonos genera una OV nueva cada mes con el mismo presupuesto de origen.
+#     Se toma la primera (por fecha y numero) que no este "Cerrada"; si estan
+#     todas cerradas, la primera. Las demas viajan como "ov_mensuales" en la
+#     fila (solo informativo, no suman).
 #   - Abonos: lineas de la OV cuyo articulo empieza con "ABO".
 #   - Comisionable (la base es el importe de esas lineas):
 #       * Monitoreo: ABO 16, o ABO 10 + ABO 11, o ABO 20 + ABO 21 (sin movil
@@ -73,8 +78,10 @@ def _num(v):
 
 
 def _texto(v):
-    v = None if v is None else str(v).strip()
-    return v or None
+    if v is None or (isinstance(v, float) and v != v):  # None o NaN de pandas
+        return None
+    v = str(v).strip()
+    return None if not v or v.lower() == "nan" else v
 
 
 def _si(v):
@@ -293,17 +300,34 @@ def generar(desde, hasta, log):
             excluidas[tipo] = excluidas.get(tipo, 0) + 1
     if excluidas:
         log("Comisiones: OV excluidas por tipo: " + ", ".join(f"{k} ({v})" for k, v in sorted(excluidas.items())))
-    lineas = _lineas_abo(ovs, log) if ovs else {}
-
-    filas = []
-    con_ov = set()
-    for ov_id, f in sorted(ovs.items()):
+    # Oportunidad de cada OV y una sola OV por oportunidad (la del alta del
+    # contrato; las mensuales posteriores no suman).
+    por_opp = {}
+    for ov_id, f in ovs.items():
         opp_id = int(f["oportunidad_id"]) if f.get("oportunidad_id") else None
         if opp_id not in opps and f.get("presupuesto_id"):
             opp_id = pres.get(int(f["presupuesto_id"]), (None, None))[0]
-        o = opps.get(opp_id)
-        if not o:  # OV de una oportunidad que no es ganada del periodo
-            continue
+        if opp_id in opps:  # si no, es de una oportunidad que no es ganada del periodo
+            por_opp.setdefault(opp_id, []).append(ov_id)
+    elegidas, mensuales = {}, {}
+    for opp_id, ids in por_opp.items():
+        ids.sort(key=lambda i: (_fecha(ovs[i].get("fecha_ov")) or "9999", i))
+        abiertas = [i for i in ids if "CERRADA" not in str(ovs[i].get("estado_ov") or "").upper()]
+        elegida = (abiertas or ids)[0]
+        elegidas[elegida] = opp_id
+        mensuales[elegida] = [{"ov_numero": _texto(ovs[i].get("ov_numero")), "fecha_ov": _fecha(ovs[i].get("fecha_ov")),
+                               "estado_ov": _texto(ovs[i].get("estado_ov")), "total_ov": _num(ovs[i].get("total_ov"))}
+                              for i in ids if i != elegida]
+    n_mensuales = sum(len(v) for v in mensuales.values())
+    if n_mensuales:
+        log(f"Comisiones: {n_mensuales} OV mensuales posteriores del mismo contrato no se cuentan (una OV por oportunidad).")
+    lineas = _lineas_abo(elegidas, log) if elegidas else {}
+
+    filas = []
+    con_ov = set()
+    for ov_id, opp_id in sorted(elegidas.items()):
+        f = ovs[ov_id]
+        o = opps[opp_id]
         con_ov.add(opp_id)
         abonos = lineas.get(ov_id, [])
         c = clasificar(abonos)
@@ -323,6 +347,7 @@ def generar(desde, hasta, log):
             presupuesto=_texto(f.get("presupuesto")),
             vinculo=f.get("vinculo"),
             abonos=abonos,
+            ov_mensuales=mensuales.get(ov_id, []),
             clasificacion=c["clasificacion"],
             monitoreo=c["monitoreo"],
             kit=c["kit"],
@@ -345,5 +370,6 @@ def generar(desde, hasta, log):
         "ovs": filas,
         "sin_ov": sin_ov,
         "ov_excluidas_por_tipo": excluidas,
+        "ov_mensuales_no_contadas": n_mensuales,
         "avisos": avisos,
     }

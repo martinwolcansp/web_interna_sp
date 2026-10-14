@@ -2111,7 +2111,11 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   // ---------- Columnas de la tabla de OV ----------
   var COLS = [
     { key: "ov_numero", label: "OV", sort: function (o) { return o.ov_numero; },
-      html: function (o) { return "<b>" + esc(o.ov_numero) + "</b>" + (o.presupuesto ? '<div class="com-sub">' + esc(o.presupuesto) + "</div>" : ""); } },
+      html: function (o) {
+        var n = (o.ov_mensuales || []).length;
+        return "<b>" + esc(o.ov_numero) + "</b>" + (o.presupuesto ? '<div class="com-sub">' + esc(o.presupuesto) + "</div>" : "") +
+          (n ? '<div class="com-sub" title="OV mensuales posteriores del mismo contrato (no suman)">+' + n + " mensual" + (n === 1 ? "" : "es") + "</div>" : "");
+      } },
     { key: "fecha_ov", label: "Fecha OV", sort: function (o) { return o.fecha_ov; }, html: function (o) { return esc(fmtDia(o.fecha_ov)); } },
     { key: "estado_ov", label: "Estado OV", sort: function (o) { return o.estado_ov; }, html: function (o) { return esc(sd(o.estado_ov)); } },
     { key: "tipo_ov", label: "Tipo OV", sort: function (o) { return o.tipo_ov; }, html: function (o) { return esc(sd(o.tipo_ov).replace(/^Orden de Venta\s+/i, "")); } },
@@ -2223,6 +2227,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       '<div class="com-sub">Período completo, sin los filtros de la tabla.</div>' +
       '<p class="com-info-linea"><b>Ganadas:</b> ' + D.ganadas + " · <b>OV de abonos relacionadas:</b> " + ovs.length +
         " · <b>Ganadas sin OV de abonos:</b> " + (D.sin_ov || []).length + "</p>" +
+      '<p class="com-info-linea"><b>OV mensuales posteriores no contadas</b> (una OV por oportunidad): ' + (D.ov_mensuales_no_contadas || 0) + "</p>" +
       '<p class="com-info-linea"><b>OV excluidas por tipo:</b> ' +
         (nExcl ? Object.keys(excl).sort().map(function (k) { return esc(k) + " (" + excl[k] + ")"; }).join(", ") : "ninguna") + "</p>" +
       '<div class="com-info-grid">' +
@@ -2251,6 +2256,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     var excl = D.ov_excluidas_por_tipo || {}, nExcl = Object.keys(excl).reduce(function (s, k) { return s + excl[k]; }, 0);
     var h = '<div class="kpi-caveat"><strong>Criterio</strong>: órdenes de venta de tipo <em>ABONOS (Contrato)</em> relacionadas a las oportunidades ganadas del período ' +
       "(por la oportunidad de la OV o por su presupuesto de origen), con sus líneas de abono (artículos <em>ABO</em>). " +
+      "Se cuenta <strong>una OV por oportunidad</strong>: la del alta del contrato (la primera que no esté Cerrada); las OV mensuales posteriores del mismo contrato no suman. " +
       "<strong>Comisionable</strong>: monitoreo <em>ABO 16</em>, <em>ABO 10 + ABO 11</em> o <em>ABO 20 + ABO 21</em> (el ABO 16 reemplaza a la suma; por ahora vale cualquiera), " +
       "y los kits de <em>Comercio Seguro</em> en comodato (<em>ABO 60, 70 y 71</em>). " +
       "La <strong>base comisionable</strong> es el importe de esas líneas; <em>Otros ABO</em> suma el resto de los abonos de la OV (adicionales de comodato, video verificación, MDI…), que no entran. " +
@@ -2292,7 +2298,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     h += "<h3>Órdenes de venta y abonos</h3>" +
       '<div class="com-filtros">' +
         '<label class="com-f">Buscar<input type="search" data-f="q" placeholder="OV, oportunidad, cliente, artículo…" value="' + esc(F.q) + '"></label>' +
-        select("vendedor", "Vendedor", valores(function (o) { return o.vendedor; })) +
+        select("vendedor", "Vendedor", resumen().map(function (f) { return f.vendedor; }).sort(function (a, b) { return a.localeCompare(b, "es"); })) +
         select("clasif", "Clasificación ABO", valores(function (o) { return o.clasificacion; }), "Todas") +
         select("abo", "Artículo ABO", listaAbos, "Todos", abos) +
         select("modalidad", "Modalidad", ["Comodato", "Venta"], "Todas") +
@@ -2375,6 +2381,10 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       ["Estado oportunidad", o.estado_oportunidad],
     ].filter(function (x) { return x[1]; }).map(function (x) { return "<span>" + esc(x[0]) + ": <b>" + esc(x[1]) + "</b></span>"; }).join("");
     var h = '<div class="com-det-info">' + info + "</div>";
+    if ((o.ov_mensuales || []).length) {
+      h += '<div class="com-sub" style="margin:0 0 6px">OV mensuales posteriores del mismo contrato (no suman, se cuenta una OV por oportunidad): ' +
+        o.ov_mensuales.map(function (m) { return esc(m.ov_numero) + " (" + esc(fmtDia(m.fecha_ov)) + ", " + esc(sd(m.estado_ov)).replace(/^Orden de venta : /, "") + ")"; }).join(" · ") + "</div>";
+    }
     if (!(o.abonos || []).length) return h + '<div class="com-sub">La OV no tiene líneas de abono (ABO).</div>';
     h += '<table class="com-lineas"><thead><tr><th>Código</th><th>Artículo</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th><th>Cuenta para comisión</th></tr></thead><tbody>';
     o.abonos.forEach(function (a) {

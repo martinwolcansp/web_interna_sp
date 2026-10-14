@@ -21,6 +21,7 @@ r = comisiones.generar(desde, hasta, print)
 
 print(f"\nGanadas: {r['ganadas']} · OV de abonos relacionadas: {len(r['ovs'])} · Ganadas sin OV de abonos: {len(r['sin_ov'])}")
 print("OV excluidas por tipo:", r.get("ov_excluidas_por_tipo") or "ninguna")
+print("OV mensuales posteriores no contadas (una OV por oportunidad):", r.get("ov_mensuales_no_contadas", 0))
 print("\nOV por clasificacion:")
 for k, n in Counter(f["clasificacion"] for f in r["ovs"]).most_common():
     print(f"  {n:4d}  {k}")
