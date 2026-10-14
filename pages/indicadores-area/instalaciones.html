@@ -263,20 +263,6 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <div class="kpi-row" id="kpi-inst"></div>
       <div class="note-box" id="nota-demora"></div>
 
-      <div class="bloque">
-        <h3>Instalaciones en curso y pendientes de iniciar</h3>
-        <div class="seg-bar" id="seg-estado" role="group" aria-label="Estado de las instalaciones"></div>
-        <div class="explorer">
-          <div class="explorer-bar">
-            <span class="explorer-title">Una fila por instalación · click para ver sus casos</span>
-            <input type="search" class="explorer-search" id="buscar-seg" placeholder="Buscar cliente, cuenta, caso, técnico…">
-            <span class="explorer-count" id="cuenta-seg"></span>
-          </div>
-          <div class="table-scroll"><table class="data-table inst-tabla" id="tabla-seg"></table></div>
-        </div>
-        <div class="bloque-nota">Días hábiles: en curso, desde el inicio de la instalación; pendientes, desde la creación del caso. Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras). No depende de los filtros de abajo.</div>
-      </div>
-
       <div class="filtros" id="filtros-inst">
         <span class="filtros-titulo">Filtros</span>
       </div>
@@ -288,6 +274,19 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <div class="bloque">
         <h3>Instalaciones finalizadas por técnico y tipo de proyecto</h3>
         <div id="inst-tec-tipo"></div>
+      </div>
+      <div class="bloque">
+        <h3>Instalaciones en curso y pendientes de iniciar</h3>
+        <div class="seg-bar" id="seg-estado" role="group" aria-label="Estado de las instalaciones"></div>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Una fila por instalación · click para ver sus casos</span>
+            <input type="search" class="explorer-search" id="buscar-seg" placeholder="Buscar cliente, cuenta, caso, técnico…">
+            <span class="explorer-count" id="cuenta-seg"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table inst-tabla" id="tabla-seg"></table></div>
+        </div>
+        <div class="bloque-nota">Días hábiles: en curso, desde el inicio de la instalación; pendientes, desde la creación del caso. Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras). Responde a los filtros de la pestaña: Año y Mes por fecha de creación (estas instalaciones todavía no tienen fecha de fin); Estado del caso y de la instalación sobre cada caso.</div>
       </div>
     </section>
 
@@ -956,6 +955,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "distintos", valor: porInst });
     $("inst-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
       col: function (c) { return c._tipo; }, medida: "distintos", valor: porInst });
+    pintarSeguimiento();
   }
 
   // ---------------------------------------------------------------------
@@ -967,7 +967,10 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // Una fila por instalacion con algun caso en curso o pendiente (con todos sus casos).
   function instalacionesAbiertas() {
     var porInst = {};
-    DATOS.casos.forEach(function (c) { (porInst[c.id_inst] = porInst[c.id_inst] || []).push(c); });
+    // Filtros de la pestaña: Año/Mes por fecha de creación (no tienen fecha de fin) y estados por caso.
+    DATOS.casos.filter(function (c) {
+      return fInst.periodo(c.fecha_creacion) && fInst.pasa("estado", c.estado_caso) && fInst.pasa("estadoInst", c.estado_instalacion);
+    }).forEach(function (c) { (porInst[c.id_inst] = porInst[c.id_inst] || []).push(c); });
     var hoy = hoyAR(), salida = [];
     Object.keys(porInst).forEach(function (k) {
       var casos = porInst[k].slice().sort(function (a, b) { return a.caso_id - b.caso_id; });
@@ -1319,7 +1322,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   var PESTANA_ACTIVA = "instalaciones", PINTADAS = {}, LEYENDO_ELEM = null;
   var PESTANAS = {
-    instalaciones: { pintar: function () { pintarKpisInstalaciones(); pintarSeguimiento(); pintarInstalaciones(); } },
+    instalaciones: { pintar: function () { pintarKpisInstalaciones(); pintarInstalaciones(); } },
     casos: { pintar: pintarCasos, elementos: true },
     facturacion: { pintar: pintarFacturacion },
     demoras: { pintar: pintarDemoras },
