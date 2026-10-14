@@ -449,7 +449,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   var URL_OV = "https://7138551.app.netsuite.com/app/accounting/transactions/salesord.nl?id=";
 
   var sb = window.supabaseClient;
-  var DATOS = { casos: [], ovs: [], lineas: [] };
+  // lineasMo: lineas de mano de obra (se leen al entrar). lineasElem: elementos
+  // instalados, se leen recien al abrir una pestaña que los usa (null = sin leer).
+  var DATOS = { casos: [], ovs: [], lineasMo: [], lineasElem: null };
   var puedeEditar = false;
   var pollTimer = null;
 
@@ -837,32 +839,36 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // =====================================================================
   // Datos derivados por caso
   // =====================================================================
-  var LINEAS_POR_CASO = {}, OV_POR_CASO = {}, CASO_POR_ID = {};
+  var MO_POR_CASO = {}, ELEM_POR_CASO = {}, OV_POR_CASO = {}, CASO_POR_ID = {};
 
   function prepararDatos() {
-    LINEAS_POR_CASO = {}; OV_POR_CASO = {}; CASO_POR_ID = {};
-    DATOS.lineas.forEach(function (l) { (LINEAS_POR_CASO[l.caso_id] = LINEAS_POR_CASO[l.caso_id] || []).push(l); });
+    MO_POR_CASO = {}; OV_POR_CASO = {}; CASO_POR_ID = {};
+    DATOS.lineasMo.forEach(function (l) { (MO_POR_CASO[l.caso_id] = MO_POR_CASO[l.caso_id] || []).push(l); });
     DATOS.ovs.forEach(function (o) { (OV_POR_CASO[o.caso_id] = OV_POR_CASO[o.caso_id] || []).push(o); });
     var hoy = hoyAR();
     DATOS.casos.forEach(function (c) {
       CASO_POR_ID[c.caso_id] = c;
-      var lineas = LINEAS_POR_CASO[c.caso_id] || [];
+      var mo = MO_POR_CASO[c.caso_id] || [];
       // Demora por agenda: creacion del caso -> inicio de la instalacion (dias corridos).
       c._demora = c.fecha_creacion && c.fecha_inicio_inst ? diasEntre(c.fecha_creacion, c.fecha_inicio_inst) : null;
       // Mano de obra: dias presupuestados (lineas MO de la OV) vs dias reales del caso.
       // El Power BI sumaba los dias reales una vez por linea de MO; aca se toman una vez por caso.
-      var mo = lineas.filter(function (l) { return l.es_mo; });
       c._mo_presup = mo.length ? suma(mo, function (l) { return +l.cantidad; }) : null;
       c._mo_reales = c.dias_reales_trabajo === null || c.dias_reales_trabajo === undefined ? null : +c.dias_reales_trabajo;
       c._variacion = c._mo_presup !== null && c._mo_reales !== null ? c._mo_reales - c._mo_presup : null;
       c._monto = OV_POR_CASO[c.caso_id] ? suma(OV_POR_CASO[c.caso_id], function (o) { return +o.monto; }) : null;
-      c._elementos = suma(lineas, function (l) { return l.es_elemento ? +l.cantidad : 0; });
+      c._elementos = null; // se completa en prepararElementos()
       // Dias habiles trabajados hasta hoy, solo para las instalaciones en curso.
       c._dias_hoy = c.estado_caso === "En curso" && c.fecha_inicio_inst ? diasHabiles(c.fecha_inicio_inst, hoy) : null;
       c._finalizada = !!c.fecha_fin_inst;
       c._tipo = c.tipo_proyecto || "(Sin tipo)";
       c._tecnico = c.tecnico || "(Sin técnico)";
     });
+  }
+  function prepararElementos() {
+    ELEM_POR_CASO = {};
+    (DATOS.lineasElem || []).forEach(function (l) { (ELEM_POR_CASO[l.caso_id] = ELEM_POR_CASO[l.caso_id] || []).push(l); });
+    DATOS.casos.forEach(function (c) { c._elementos = suma(ELEM_POR_CASO[c.caso_id] || [], function (l) { return +l.cantidad; }); });
   }
   function demoraValida(c) { return c._demora !== null && c._demora < TOPE_DIAS; }
   function variacionValida(c) { return c._variacion !== null && Math.abs(c._variacion) < TOPE_DIAS; }
@@ -954,8 +960,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function elementosDe(casos) {
     var salida = [];
     casos.forEach(function (c) {
-      (LINEAS_POR_CASO[c.caso_id] || []).forEach(function (l) {
-        if (l.es_elemento && fCasos.pasa("sub", l.subcategoria)) salida.push({ caso: c, linea: l });
+      (ELEM_POR_CASO[c.caso_id] || []).forEach(function (l) {
+        if (fCasos.pasa("sub", l.subcategoria)) salida.push({ caso: c, linea: l });
       });
     });
     return salida;
@@ -1052,7 +1058,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var elems = [];
     DATOS.casos.forEach(function (c) {
       if (!fElem.periodo(c.fecha_fin_inst)) return;
-      (LINEAS_POR_CASO[c.caso_id] || []).forEach(function (l) { if (l.es_elemento) elems.push({ caso: c, linea: l }); });
+      (ELEM_POR_CASO[c.caso_id] || []).forEach(function (l) { elems.push({ caso: c, linea: l }); });
     });
     var cant = function (e) { return +e.linea.cantidad || 0; };
     kpis("kpi-elem", DESTACADAS.map(function (d) {
@@ -1077,10 +1083,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // Carga de datos
   // =====================================================================
   // orden: columnas de la clave primaria (el paginado necesita un orden sin empates).
-  async function leerTodo(tabla, select, orden) {
+  // filtro: [columna, valor] opcional (igualdad).
+  async function leerTodo(tabla, select, orden, filtro) {
     var filas = [], desde = 0, PAG = 1000;
     for (;;) {
       var q = sb.from(tabla).select(select);
+      if (filtro) q = q.eq(filtro[0], filtro[1]);
       orden.forEach(function (col) { q = q.order(col, { ascending: true }); });
       var r = await q.range(desde, desde + PAG - 1);
       if (r.error) throw new Error(tabla + ": " + r.error.message);
@@ -1163,12 +1171,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var res = await Promise.all([
       leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_creacion,fecha_inicio_inst,fecha_fin_inst,cliente,nro_cuenta,tecnico,tipo_proyecto,estado_caso,estado_instalacion,tipo_posventa,dias_reales_trabajo", ["caso_id"]),
       leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto,es_comodato,unidad_comercial,presupuesto", ["caso_id", "ov_id"]),
-      leerTodo("ind_caso_ov_linea", "caso_id,ov_id,linea_id,articulo,cantidad,subcategoria,es_mo,es_elemento", ["caso_id", "ov_id", "linea_id"]),
+      leerTodo("ind_caso_ov_linea", "caso_id,cantidad", ["caso_id", "ov_id", "linea_id"], ["es_mo", true]),
     ]);
     // Filtro general del informe (como el Power BI): sin tipo de proyecto o tipos ajenos.
     DATOS.casos = res[0].filter(function (c) { return c.tipo_proyecto && TIPOS_EXCLUIDOS.indexOf(c.tipo_proyecto) < 0; });
     DATOS.ovs = res[1];
-    DATOS.lineas = res[2];
+    DATOS.lineasMo = res[2];
+    DATOS.lineasElem = null;
     prepararDatos();
 
     var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
@@ -1178,12 +1187,6 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       { clave: "estado", nombre: "Estado del caso", valores: estados },
       { clave: "estadoInst", nombre: "Estado de la instalación", valores: estadosInst },
     ], pintarInstalaciones);
-    fCasos = crearFiltrosTab("filtros-casos", fechas, [
-      { clave: "estado", nombre: "Estado del caso", valores: estados },
-      { clave: "estadoInst", nombre: "Estado de la instalación", valores: estadosInst },
-      { clave: "tecnico", nombre: "Técnico", valores: valoresDe(DATOS.casos, function (c) { return c._tecnico; }) },
-      { clave: "sub", nombre: "Elementos", valores: valoresDe(DATOS.lineas.filter(function (l) { return l.es_elemento; }), function (l) { return l.subcategoria; }) },
-    ], pintarCasos);
     fFact = crearFiltrosTab("filtros-fact", fechas, [
       { clave: "vc", nombre: "Venta / Comodato", valores: ["Venta", "Comodato"] },
       { clave: "uc", nombre: "Unidad comercial", valores: valoresDe(DATOS.ovs, function (o) { return o.unidad_comercial; }) },
@@ -1192,15 +1195,56 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     fDem = crearFiltrosTab("filtros-dem", fechas, [
       { clave: "estado", nombre: "Estado del caso", valores: estados },
     ], pintarDemoras);
-    fElem = crearFiltrosTab("filtros-elem", fechas, [], pintarElementos);
 
     if (!iniciado) { iniciado = true; armarTablas(); }
-    pintarKpisInstalaciones();
-    pintarInstalaciones();
-    pintarCasos();
-    pintarFacturacion();
-    pintarDemoras();
-    pintarElementos();
+    // Cada pestaña se dibuja (y lee sus datos extra) recien cuando se abre.
+    PINTADAS = {};
+    await abrirPestana(PESTANA_ACTIVA, true);
+  }
+
+  // Elementos instalados: lineas de OV con es_elemento. Son la mayor parte de los
+  // datos del informe, por eso se leen solo al abrir Casos y elementos o Elementos.
+  async function cargarElementos() {
+    DATOS.lineasElem = await leerTodo("ind_caso_ov_linea", "caso_id,ov_id,linea_id,articulo,cantidad,subcategoria",
+      ["caso_id", "ov_id", "linea_id"], ["es_elemento", true]);
+    prepararElementos();
+    var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
+    fCasos = crearFiltrosTab("filtros-casos", fechas, [
+      { clave: "estado", nombre: "Estado del caso", valores: valoresDe(DATOS.casos, function (c) { return c.estado_caso; }) },
+      { clave: "estadoInst", nombre: "Estado de la instalación", valores: valoresDe(DATOS.casos, function (c) { return c.estado_instalacion; }) },
+      { clave: "tecnico", nombre: "Técnico", valores: valoresDe(DATOS.casos, function (c) { return c._tecnico; }) },
+      { clave: "sub", nombre: "Elementos", valores: valoresDe(DATOS.lineasElem, function (l) { return l.subcategoria; }) },
+    ], pintarCasos);
+    fElem = crearFiltrosTab("filtros-elem", fechas, [], pintarElementos);
+  }
+
+  var PESTANA_ACTIVA = "instalaciones", PINTADAS = {}, LEYENDO_ELEM = null;
+  var PESTANAS = {
+    instalaciones: { pintar: function () { pintarKpisInstalaciones(); pintarInstalaciones(); } },
+    casos: { pintar: pintarCasos, elementos: true },
+    facturacion: { pintar: pintarFacturacion },
+    demoras: { pintar: pintarDemoras },
+    elementos: { pintar: pintarElementos, elementos: true },
+  };
+  // enCarga: ya hay un aviso de carga activo (lo maneja cargarDatos).
+  async function abrirPestana(id, enCarga) {
+    var p = PESTANAS[id];
+    if (!p || !DATOS.casos.length && !iniciado) return;
+    if (p.elementos && DATOS.lineasElem === null) {
+      if (!enCarga) mostrarCargando(true);
+      try {
+        // Una sola lectura aunque se cambie de pestaña mientras carga.
+        LEYENDO_ELEM = LEYENDO_ELEM || cargarElementos();
+        await LEYENDO_ELEM;
+      } catch (e) {
+        setEstado("No se pudieron leer los elementos instalados: " + e.message, "error");
+        return;
+      } finally {
+        LEYENDO_ELEM = null;
+        if (!enCarga) mostrarCargando(false);
+      }
+    }
+    if (!PINTADAS[id]) { p.pintar(); PINTADAS[id] = true; }
   }
 
   // =====================================================================
@@ -1324,6 +1368,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           b.setAttribute("aria-selected", b === btn ? "true" : "false");
         });
         document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.toggle("active", p.id === "panel-" + id); });
+        PESTANA_ACTIVA = id;
+        if (iniciado) abrirPestana(id);
       });
     });
   }
