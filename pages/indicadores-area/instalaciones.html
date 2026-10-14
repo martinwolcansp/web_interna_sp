@@ -197,6 +197,23 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 main.main--cargando { opacity: .35; pointer-events: none; }
 .pivot tr.pv-grupo td { font-weight: 700; color: var(--navy); background: var(--light-fill); }
 .pivot tr.pv-sub td.pv-fila { padding-left: 28px; color: var(--second); }
+.seg-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.seg-btn { appearance: none; border: 1px solid var(--rule); background: var(--surface); color: var(--second); font: inherit; font-size: 13.5px; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.seg-btn span { font-weight: 700; color: var(--navy); margin-left: 4px; }
+.seg-btn:hover { border-color: var(--navy); }
+.seg-btn.activo { background: var(--navy); border-color: var(--navy); color: #fff; }
+.seg-btn.activo span { color: #fff; }
+.inst-tabla tr.inst-multi { cursor: pointer; }
+.inst-tabla tr.inst-multi:hover td { background: var(--light-fill); }
+.inst-tabla tr.inst-abierta td { background: #e7edf6; border-bottom: 0; }
+.inst-toggle { color: var(--navy); font-weight: 700; white-space: nowrap; }
+.inst-tabla tr.inst-det > td { background: #f4f6fa; padding: 4px 10px 12px 34px; }
+.sub-tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); border: 1px solid var(--rule); }
+.sub-tabla th { background: #dfe6f2; color: var(--navy); text-align: left; padding: 6px 8px; font-weight: 600; white-space: nowrap; }
+.sub-tabla td { padding: 6px 8px; border-top: 1px solid var(--rule); }
+.estado-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.estado-curso { background: #e3eefb; color: #185fa5; }
+.estado-pendiente { background: #fdeee3; color: #9a4a12; }
 </style>
 </head>
 <body>
@@ -233,9 +250,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   <nav class="tabs" role="tablist" aria-label="Reportes de Instalaciones">
     <button type="button" class="tab-btn active" data-tab="instalaciones" role="tab" aria-selected="true" aria-controls="panel-instalaciones">Instalaciones</button>
-    <button type="button" class="tab-btn" data-tab="casos" role="tab" aria-selected="false" aria-controls="panel-casos">Casos y elementos instalados</button>
-    <button type="button" class="tab-btn" data-tab="facturacion" role="tab" aria-selected="false" aria-controls="panel-facturacion">Facturación</button>
     <button type="button" class="tab-btn" data-tab="demoras" role="tab" aria-selected="false" aria-controls="panel-demoras">Demoras y variaciones</button>
+    <button type="button" class="tab-btn" data-tab="facturacion" role="tab" aria-selected="false" aria-controls="panel-facturacion">Facturación</button>
+    <button type="button" class="tab-btn" data-tab="casos" role="tab" aria-selected="false" aria-controls="panel-casos">Casos y elementos instalados</button>
     <button type="button" class="tab-btn" data-tab="elementos" role="tab" aria-selected="false" aria-controls="panel-elementos">Elementos</button>
   </nav>
 
@@ -245,6 +262,20 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Análisis de instalaciones por fecha de finalización</h2>
       <div class="kpi-row" id="kpi-inst"></div>
       <div class="note-box" id="nota-demora"></div>
+
+      <div class="bloque">
+        <h3>Instalaciones en curso y pendientes de iniciar</h3>
+        <div class="seg-bar" id="seg-estado" role="group" aria-label="Estado de las instalaciones"></div>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Una fila por instalación · click para ver sus casos</span>
+            <input type="search" class="explorer-search" id="buscar-seg" placeholder="Buscar cliente, cuenta, caso, técnico…">
+            <span class="explorer-count" id="cuenta-seg"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table inst-tabla" id="tabla-seg"></table></div>
+        </div>
+        <div class="bloque-nota">Días hábiles: en curso, desde el inicio de la instalación; pendientes, desde la creación del caso. Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras). No depende de los filtros de abajo.</div>
+      </div>
 
       <div class="filtros" id="filtros-inst">
         <span class="filtros-titulo">Filtros</span>
@@ -258,25 +289,82 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         <h3>Instalaciones finalizadas por técnico y tipo de proyecto</h3>
         <div id="inst-tec-tipo"></div>
       </div>
+    </section>
+
+    <!-- ============ Pestaña 2: Demoras y variaciones ============ -->
+    <section class="tab-panel" id="panel-demoras" role="tabpanel">
+      <h2>Demoras y variaciones de mano de obra</h2>
+      <div class="filtros" id="filtros-dem">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
       <div class="grid-2b">
         <div class="bloque">
           <h3>Promedio de demora por agenda</h3>
-          <div id="inst-demora"></div>
-          <div class="bloque-nota">Días corridos entre la creación del caso y el inicio de la instalación, por mes de fin. Sin los casos de 30 días o más.</div>
+          <div id="dem-linea"></div>
         </div>
         <div class="bloque">
           <h3>Promedio de variación de mano de obra</h3>
-          <div id="inst-variacion"></div>
-          <div class="bloque-nota">Días reales de trabajo menos días de MO presupuestados, promedio por caso. Sin los casos con 30 días o más de diferencia.</div>
+          <div id="var-linea"></div>
         </div>
       </div>
       <div class="bloque">
-        <h3>Facturación de casos de instalación por tipo de proyecto</h3>
-        <div id="inst-fact"></div>
+        <h3>Promedio de demora por agenda por tipo de proyecto (días)</h3>
+        <div id="dem-tipo-mes"></div>
+        <div class="bloque-nota">Días corridos entre la creación del caso y el inicio de la instalación. Sin los casos de 30 días o más.</div>
+      </div>
+      <div class="bloque">
+        <h3>Suma de variaciones de mano de obra por tipo de proyecto (días reales − presupuestados)</h3>
+        <div id="var-tipo-mes"></div>
+        <div class="bloque-nota">Positivo: se trabajaron más días de los presupuestados. Solo casos con mano de obra en la OV y días reales cargados; sin los de 30 días o más de diferencia.</div>
+      </div>
+      <div class="bloque">
+        <h3>Detalle</h3>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Demoras y mano de obra por caso</span>
+            <input type="search" class="explorer-search" id="buscar-dem" placeholder="Buscar caso, cliente, técnico…">
+            <span class="explorer-count" id="cuenta-dem"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table" id="tabla-dem"></table></div>
+        </div>
       </div>
     </section>
 
-    <!-- ============ Pestaña 2: Casos y elementos instalados ============ -->
+    <!-- ============ Pestaña 3: Facturación ============ -->
+    <section class="tab-panel" id="panel-facturacion" role="tabpanel">
+      <h2>Facturación de instalaciones por fecha de finalización</h2>
+      <div class="filtros" id="filtros-fact">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
+      <div class="kpi-row" id="kpi-fact"></div>
+      <div class="bloque">
+        <h3>Facturación por Venta / Comodato y unidad comercial</h3>
+        <div id="fact-vc-uc"></div>
+        <div class="bloque-nota">Venta o comodato según el campo Comodato de la OV. Unidad comercial: la de la OV; si no la tiene, la del presupuesto de origen; si no, la de la oportunidad. El campo es reciente, por eso muchas OV anteriores figuran "Sin unidad comercial".</div>
+      </div>
+      <div class="bloque">
+        <h3>Monto de las OV de productos por tipo de proyecto y mes</h3>
+        <div id="fact-tipo-mes"></div>
+        <div class="bloque-nota">Total de las órdenes de venta de productos vinculadas a cada caso, por mes de fin de la instalación.</div>
+      </div>
+      <div class="bloque">
+        <h3>OV por estado</h3>
+        <div id="fact-estado"></div>
+      </div>
+      <div class="bloque">
+        <h3>Detalle de OV</h3>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Órdenes de venta de productos</span>
+            <input type="search" class="explorer-search" id="buscar-fact" placeholder="Buscar OV, caso, cliente…">
+            <span class="explorer-count" id="cuenta-fact"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table" id="tabla-fact"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Pestaña 4: Casos y elementos instalados ============ -->
     <section class="tab-panel" id="panel-casos" role="tabpanel">
       <h2>Casos y elementos instalados</h2>
       <div class="filtros" id="filtros-casos">
@@ -325,79 +413,6 @@ main.main--cargando { opacity: .35; pointer-events: none; }
             <span class="explorer-count" id="cuenta-arts"></span>
           </div>
           <div class="table-scroll"><table class="data-table" id="tabla-arts"></table></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ Pestaña 3: Facturación ============ -->
-    <section class="tab-panel" id="panel-facturacion" role="tabpanel">
-      <h2>Facturación de instalaciones por fecha de finalización</h2>
-      <div class="filtros" id="filtros-fact">
-        <span class="filtros-titulo">Filtros</span>
-      </div>
-      <div class="kpi-row" id="kpi-fact"></div>
-      <div class="bloque">
-        <h3>Facturación por Venta / Comodato y unidad comercial</h3>
-        <div id="fact-vc-uc"></div>
-        <div class="bloque-nota">Venta o comodato según el campo Comodato de la OV. Unidad comercial: la de la OV; si no la tiene, la del presupuesto de origen; si no, la de la oportunidad. El campo es reciente, por eso muchas OV anteriores figuran "Sin unidad comercial".</div>
-      </div>
-      <div class="bloque">
-        <h3>Monto de las OV de productos por tipo de proyecto y mes</h3>
-        <div id="fact-tipo-mes"></div>
-        <div class="bloque-nota">Total de las órdenes de venta de productos vinculadas a cada caso, por mes de fin de la instalación.</div>
-      </div>
-      <div class="bloque">
-        <h3>OV por estado</h3>
-        <div id="fact-estado"></div>
-      </div>
-      <div class="bloque">
-        <h3>Detalle de OV</h3>
-        <div class="explorer">
-          <div class="explorer-bar">
-            <span class="explorer-title">Órdenes de venta de productos</span>
-            <input type="search" class="explorer-search" id="buscar-fact" placeholder="Buscar OV, caso, cliente…">
-            <span class="explorer-count" id="cuenta-fact"></span>
-          </div>
-          <div class="table-scroll"><table class="data-table" id="tabla-fact"></table></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ Pestaña 4: Demoras y variaciones ============ -->
-    <section class="tab-panel" id="panel-demoras" role="tabpanel">
-      <h2>Demoras y variaciones de mano de obra</h2>
-      <div class="filtros" id="filtros-dem">
-        <span class="filtros-titulo">Filtros</span>
-      </div>
-      <div class="grid-2b">
-        <div class="bloque">
-          <h3>Promedio de demora por agenda</h3>
-          <div id="dem-linea"></div>
-        </div>
-        <div class="bloque">
-          <h3>Promedio de variación de mano de obra</h3>
-          <div id="var-linea"></div>
-        </div>
-      </div>
-      <div class="bloque">
-        <h3>Promedio de demora por agenda por tipo de proyecto (días)</h3>
-        <div id="dem-tipo-mes"></div>
-        <div class="bloque-nota">Días corridos entre la creación del caso y el inicio de la instalación. Sin los casos de 30 días o más.</div>
-      </div>
-      <div class="bloque">
-        <h3>Suma de variaciones de mano de obra por tipo de proyecto (días reales − presupuestados)</h3>
-        <div id="var-tipo-mes"></div>
-        <div class="bloque-nota">Positivo: se trabajaron más días de los presupuestados. Solo casos con mano de obra en la OV y días reales cargados; sin los de 30 días o más de diferencia.</div>
-      </div>
-      <div class="bloque">
-        <h3>Detalle</h3>
-        <div class="explorer">
-          <div class="explorer-bar">
-            <span class="explorer-title">Demoras y mano de obra por caso</span>
-            <input type="search" class="explorer-search" id="buscar-dem" placeholder="Buscar caso, cliente, técnico…">
-            <span class="explorer-count" id="cuenta-dem"></span>
-          </div>
-          <div class="table-scroll"><table class="data-table" id="tabla-dem"></table></div>
         </div>
       </div>
     </section>
@@ -882,7 +897,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // No depende de los filtros de la pagina (como la tarjeta del Power BI).
   function demoraEstimada() {
     var hoy = hoyAR();
-    var pend = DATOS.casos.filter(function (c) { return c.estado_caso === "No iniciado" || (c.estado_caso === "Escalado" && !c.fecha_inicio_inst); });
+    var pend = DATOS.casos.filter(esPendiente);
     var noIni = distintos(pend.filter(function (c) { return c.estado_caso === "No iniciado"; }), function (c) { return c.id_inst; });
     var escal = distintos(pend.filter(function (c) { return c.estado_caso === "Escalado"; }), function (c) { return c.id_inst; });
     var pendientes = distintos(pend, function (c) { return c.id_inst; });
@@ -941,11 +956,95 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "distintos", valor: porInst });
     $("inst-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
       col: function (c) { return c._tipo; }, medida: "distintos", valor: porInst });
-    $("inst-demora").innerHTML = lineaMeses(serieMensual(fin.filter(demoraValida), function (c) { return c.fecha_fin_inst; }, function (c) { return c._demora; }, "promedio"));
-    $("inst-variacion").innerHTML = lineaMeses(serieMensual(fin.filter(variacionValida), function (c) { return c.fecha_fin_inst; }, function (c) { return c._variacion; }, "promedio"));
-    $("inst-fact").innerHTML = tablaCruzada({ titulo: "Tipo de proyecto", items: fin.filter(function (c) { return c._monto !== null; }),
-      fila: function (c) { return c._tipo; }, col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes",
-      medida: "suma", valor: function (c) { return c._monto; }, fmt: fmtPesos });
+  }
+
+  // ---------------------------------------------------------------------
+  // Seguimiento: instalaciones en curso y pendientes de iniciar
+  // ---------------------------------------------------------------------
+  var SEG = { filtro: "todas", abiertas: {}, orden: "dias", asc: false, armado: false };
+  function esPendiente(c) { return c.estado_caso === "No iniciado" || (c.estado_caso === "Escalado" && !c.fecha_inicio_inst); }
+
+  // Una fila por instalacion con algun caso en curso o pendiente (con todos sus casos).
+  function instalacionesAbiertas() {
+    var porInst = {};
+    DATOS.casos.forEach(function (c) { (porInst[c.id_inst] = porInst[c.id_inst] || []).push(c); });
+    var hoy = hoyAR(), salida = [];
+    Object.keys(porInst).forEach(function (k) {
+      var casos = porInst[k].slice().sort(function (a, b) { return a.caso_id - b.caso_id; });
+      var enCurso = casos.some(function (c) { return c.estado_caso === "En curso"; });
+      var pend = casos.some(esPendiente);
+      if (!enCurso && !pend) return;
+      var min = function (campo) { return casos.map(function (c) { return c[campo]; }).filter(Boolean).sort()[0] || null; };
+      var unicos = function (f) { return Array.from(new Set(casos.map(f).filter(Boolean))).join(", "); };
+      var inicio = min("fecha_inicio_inst"), creacion = min("fecha_creacion");
+      var estado = enCurso ? "En curso" : casos.some(function (c) { return c.estado_caso === "No iniciado"; }) ? "No iniciada" : "Escalada sin iniciar";
+      salida.push({
+        id: k, casos: casos, estado: estado, grupo: enCurso ? "curso" : "pendiente",
+        cliente: casos[0].cliente || "", nro_cuenta: casos[0].nro_cuenta || "",
+        tipos: unicos(function (c) { return c.tipo_proyecto; }), tecnicos: unicos(function (c) { return c.tecnico; }),
+        creacion: creacion, inicio: inicio,
+        dias: enCurso ? (inicio ? diasHabiles(inicio, hoy) : null) : (creacion ? diasHabiles(creacion, hoy) : null),
+      });
+    });
+    return salida;
+  }
+
+  function pintarSeguimiento() {
+    var todas = instalacionesAbiertas();
+    var cuenta = { todas: todas.length, curso: 0, pendiente: 0 };
+    todas.forEach(function (i) { cuenta[i.grupo]++; });
+    $("seg-estado").innerHTML = [["todas", "Todas"], ["curso", "En curso"], ["pendiente", "Pendientes de iniciar"]].map(function (o) {
+      return '<button type="button" class="seg-btn' + (SEG.filtro === o[0] ? " activo" : "") + '" data-seg="' + o[0] + '">' + o[1] + " <span>" + cuenta[o[0]] + "</span></button>";
+    }).join("");
+    if (!SEG.armado) {
+      SEG.armado = true;
+      $("seg-estado").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-seg]"); if (!b) return;
+        SEG.filtro = b.getAttribute("data-seg"); pintarSeguimiento();
+      });
+      $("buscar-seg").addEventListener("input", pintarSeguimiento);
+      $("tabla-seg").addEventListener("click", function (e) {
+        var th = e.target.closest("th[data-ord]");
+        if (th) { var o = th.getAttribute("data-ord"); SEG.asc = SEG.orden === o ? !SEG.asc : true; SEG.orden = o; pintarSeguimiento(); return; }
+        var tr = e.target.closest("tr.inst-fila[data-k]");
+        if (tr && tr.classList.contains("inst-multi")) { var k = tr.getAttribute("data-k"); SEG.abiertas[k] = !SEG.abiertas[k]; pintarSeguimiento(); }
+      });
+    }
+    var q = $("buscar-seg").value.trim().toLowerCase();
+    var filas = todas.filter(function (i) {
+      if (SEG.filtro !== "todas" && i.grupo !== SEG.filtro) return false;
+      if (!q) return true;
+      return [i.cliente, i.nro_cuenta, i.tipos, i.tecnicos, i.estado].concat(i.casos.map(function (c) { return c.numero; })).join(" ").toLowerCase().indexOf(q) >= 0;
+    });
+    var cols = [
+      ["casos", "Caso(s)"], ["cliente", "Cliente"], ["nro_cuenta", "Nro cuenta"], ["estado", "Estado"], ["tipos", "Tipo de proyecto"],
+      ["tecnicos", "Técnico"], ["creacion", "Creación"], ["inicio", "Inicio"], ["dias", "Días hábiles"],
+    ];
+    filas.sort(function (a, b) {
+      var x = SEG.orden === "casos" ? a.casos.length : a[SEG.orden], y = SEG.orden === "casos" ? b.casos.length : b[SEG.orden];
+      x = x === null || x === undefined ? "" : x; y = y === null || y === undefined ? "" : y;
+      return (x < y ? -1 : x > y ? 1 : 0) * (SEG.asc ? 1 : -1);
+    });
+    var cuerpo = filas.map(function (i) {
+      var multi = i.casos.length > 1, abierta = multi && SEG.abiertas[i.id];
+      var casoTxt = multi ? '<span class="inst-toggle">' + (abierta ? "▾" : "▸") + " " + i.casos.length + " casos</span>" : linkCaso(i.casos[0]);
+      var fila = '<tr class="inst-fila' + (multi ? " inst-multi" : "") + (abierta ? " inst-abierta" : "") + '" data-k="' + esc(i.id) + '">' +
+        '<td class="nowrap">' + casoTxt + "</td><td>" + esc(i.cliente) + "</td><td>" + esc(i.nro_cuenta) + "</td>" +
+        '<td><span class="estado-tag estado-' + i.grupo + '">' + esc(i.estado) + "</span></td><td>" + esc(i.tipos) + "</td><td>" + esc(i.tecnicos) + "</td>" +
+        '<td class="nowrap">' + esc(fmtDia(i.creacion)) + '</td><td class="nowrap">' + esc(fmtDia(i.inicio)) + '</td><td class="num">' + (i.dias === null ? "" : fmtNum(i.dias)) + "</td></tr>";
+      if (!abierta) return fila;
+      return fila + '<tr class="inst-det"><td colspan="' + cols.length + '"><table class="sub-tabla"><thead><tr>' +
+        "<th>Caso</th><th>Tipo de proyecto</th><th>Estado del caso</th><th>Estado de la instalación</th><th>Técnico</th><th>Tipo de posventa</th><th>Creación</th><th>Inicio</th><th>Fin</th></tr></thead><tbody>" +
+        i.casos.map(function (c) {
+          return '<tr><td class="nowrap">' + linkCaso(c) + "</td><td>" + esc(c.tipo_proyecto || "") + "</td><td>" + esc(c.estado_caso || "") + "</td><td>" +
+            esc(c.estado_instalacion || "") + "</td><td>" + esc(c.tecnico || "") + "</td><td>" + esc(c.tipo_posventa || "") + '</td><td class="nowrap">' +
+            esc(fmtDia(c.fecha_creacion)) + '</td><td class="nowrap">' + esc(fmtDia(c.fecha_inicio_inst)) + '</td><td class="nowrap">' + esc(fmtDia(c.fecha_fin_inst)) + "</td></tr>";
+        }).join("") + "</tbody></table></td></tr>";
+    }).join("");
+    $("tabla-seg").innerHTML = "<thead><tr>" + cols.map(function (c) {
+      return '<th data-ord="' + c[0] + '">' + esc(c[1]) + '<span class="sort-arrow">' + (SEG.orden === c[0] ? (SEG.asc ? "▲" : "▼") : "↕") + "</span></th>";
+    }).join("") + "</tr></thead><tbody>" + (cuerpo || '<tr><td colspan="' + cols.length + '" class="vacio">Sin instalaciones.</td></tr>') + "</tbody>";
+    $("cuenta-seg").textContent = filas.length + " de " + todas.length;
   }
 
   // =====================================================================
@@ -1220,7 +1319,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   var PESTANA_ACTIVA = "instalaciones", PINTADAS = {}, LEYENDO_ELEM = null;
   var PESTANAS = {
-    instalaciones: { pintar: function () { pintarKpisInstalaciones(); pintarInstalaciones(); } },
+    instalaciones: { pintar: function () { pintarKpisInstalaciones(); pintarSeguimiento(); pintarInstalaciones(); } },
     casos: { pintar: pintarCasos, elementos: true },
     facturacion: { pintar: pintarFacturacion },
     demoras: { pintar: pintarDemoras },
