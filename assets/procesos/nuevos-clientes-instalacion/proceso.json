@@ -151,15 +151,6 @@
     },
     {
       "n": 5,
-      "nombre": "Ejecución de la instalación",
-      "responsable": "Instalaciones",
-      "estado": "Pendiente",
-      "etapas": [
-        10
-      ]
-    },
-    {
-      "n": 6,
       "nombre": "Cierre de la instalación y firma del acta de conformidad",
       "responsable": "Instalaciones",
       "estado": "Pendiente",
@@ -168,7 +159,7 @@
       ]
     },
     {
-      "n": 7,
+      "n": 6,
       "nombre": "Registro de pendientes en el acta con responsable y plazo",
       "responsable": "Instalaciones",
       "estado": "Pendiente",
@@ -177,7 +168,7 @@
       ]
     },
     {
-      "n": 8,
+      "n": 7,
       "nombre": "Comunicación de finalización / activación del sistema al cliente",
       "responsable": "Instalaciones",
       "estado": "Pendiente",
@@ -186,7 +177,7 @@
       ]
     },
     {
-      "n": 9,
+      "n": 8,
       "nombre": "Control de calidad y encuesta de satisfacción",
       "responsable": "Posventa",
       "estado": "Pendiente",
@@ -195,7 +186,7 @@
       ]
     },
     {
-      "n": 10,
+      "n": 9,
       "nombre": "Clasificación y canalización de reclamos según tipo",
       "responsable": "Posventa",
       "estado": "Pendiente",
@@ -205,7 +196,7 @@
       ]
     },
     {
-      "n": 11,
+      "n": 10,
       "nombre": "Escalación de un pendiente del acta no resuelto en plazo",
       "responsable": "Posventa",
       "estado": "Pendiente",
@@ -215,7 +206,7 @@
       "nota": "Propuesta a validar. Si un pendiente del acta vence sin resolverse, Posventa lo escala al jefe del área dueña (Instalaciones o Servicio Técnico), que lo resuelve con un nuevo plazo; si vuelve a vencer, pasa a la Gerencia de Operaciones. Posventa informa al cliente y confirma el cierre."
     },
     {
-      "n": 12,
+      "n": 11,
       "nombre": "Resolución de un caso técnico derivado por Posventa (SLA)",
       "responsable": "Servicio Técnico",
       "estado": "Pendiente",
@@ -224,7 +215,7 @@
       ]
     },
     {
-      "n": 13,
+      "n": 12,
       "nombre": "Resolución de una situación administrativa derivada por Posventa",
       "responsable": "Atención al Cliente",
       "estado": "Pendiente",
@@ -282,7 +273,7 @@
       "tipo": "Matriz",
       "descripcion": "Responsable de cada hito por área, quién se comunica con el cliente en cada etapa y estado de validación.",
       "version": "v0.2",
-      "fecha": "07/10/2026",
+      "fecha": "14/10/2026",
       "pdf": "matrices-responsabilidades.pdf",
       "original": "matrices-responsabilidades.xlsx"
     },
@@ -345,7 +336,7 @@
       "orden": 1,
       "fecha": "04/09/2026",
       "titulo": "Traspasos de responsabilidad entre áreas",
-      "objetivo": "Presentar el diagnóstico y tratar los hitos de mayor fricción: coordinación de la fecha de instalación (3), consultas sin fecha confirmada (4) y aviso de activación del sistema (8).",
+      "objetivo": "Presentar el diagnóstico y tratar los hitos de mayor fricción: coordinación de la fecha de instalación (3), consultas sin fecha confirmada (4) y aviso de activación del sistema (7).",
       "participantes": [
         "Gerencia de Operaciones",
         "Gerencia Comercial y Marketing",
@@ -354,8 +345,9 @@
       ],
       "temas": [
         "Diagnóstico: faltan hitos formales de traspaso entre áreas.",
-        "Los hitos 3, 4 y 8 quedaron sin definir.",
-        "Se presentó el documento \"Proceso de venta y atención por áreas\"."
+        "Los hitos 3, 4 y 7 quedaron sin definir.",
+        "Se presentó el documento \"Proceso de venta y atención por áreas\".",
+        "Los documentos de esta reunión usan la numeración anterior de hitos (13 hitos, con \"Ejecución de la instalación\" como hito 5)."
       ],
       "documentos": [
         {
