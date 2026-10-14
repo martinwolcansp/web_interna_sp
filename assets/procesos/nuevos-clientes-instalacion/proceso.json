@@ -240,7 +240,7 @@
       "version": "v0.1",
       "fecha": "14/10/2026",
       "estado": "Borrador",
-      "descripcion": "Desde el primer contacto del prospecto (Bot IA comercial y agente comercial de Ventas) hasta que el cliente confirma la venta. Cada etapa del relevamiento está marcada en el diagrama. Al confirmar, continúa en \"Confirmación de la venta y cobro\" (etapa 6).",
+      "descripcion": "Desde el primer contacto del prospecto hasta que el cliente confirma la venta. Hay dos entradas: la consulta por redes o WhatsApp que atiende el Bot IA comercial (GHL) y el contacto directo al vendedor por teléfono, WhatsApp o correo, en cuyo caso el vendedor carga el lead en GHL. Cada etapa del relevamiento está marcada en el diagrama. Al confirmar, continúa en \"Confirmación de la venta y cobro\" (etapa 6).",
       "vinculos": [
         {
           "elemento": "End_ClienteConfirma",

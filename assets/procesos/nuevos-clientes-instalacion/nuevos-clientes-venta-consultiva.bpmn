@@ -12,16 +12,17 @@
     <bpmn:participant id="Participant_Cliente" name="Prospecto / cliente" />
     <bpmn:participant id="Participant_SP" name="SP Seguridad Privada" processRef="Process_VentaConsultiva" />
     <bpmn:messageFlow id="MF1" name="Consulta" sourceRef="Participant_Cliente" targetRef="Start_Consulta" />
+    <bpmn:messageFlow id="MF5" name="Contacto directo" sourceRef="Participant_Cliente" targetRef="Start_ContactoDirecto" />
     <bpmn:messageFlow id="MF2" name="Día y horario de la visita" sourceRef="Task_AgendarVisita" targetRef="Participant_Cliente" />
     <bpmn:messageFlow id="MF3" name="Presupuesto" sourceRef="Task_Presupuesto" targetRef="Participant_Cliente" />
     <bpmn:messageFlow id="MF4" name="Seguimiento" sourceRef="Task_Seguimiento" targetRef="Participant_Cliente" />
   </bpmn:collaboration>
   <bpmn:process id="Process_VentaConsultiva" name="Nuevos clientes – Venta consultiva (etapas 1 a 5)" isExecutable="false">
     <bpmn:laneSet id="LaneSet_SP">
-      <bpmn:lane id="Lane_Ventas" name="Ventas"><bpmn:flowNodeRef>Start_Consulta</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotResponde</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotReleva</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Derivar</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ConsultaBot</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AtenderDerivada</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Calificar</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Calificado</bpmn:flowNodeRef><bpmn:flowNodeRef>End_LeadDescartado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AgendarVisita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ConfirmarCita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Visita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarRelevamiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Presupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Seguimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Acepta</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ClienteConfirma</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_PideAjuste</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AjustarPresupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>End_OportunidadPerdida</bpmn:flowNodeRef>
+      <bpmn:lane id="Lane_Ventas" name="Ventas"><bpmn:flowNodeRef>Start_ContactoDirecto</bpmn:flowNodeRef><bpmn:flowNodeRef>Start_Consulta</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotResponde</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotReleva</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Derivar</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ConsultaBot</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AtenderDerivada</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Calificar</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Calificado</bpmn:flowNodeRef><bpmn:flowNodeRef>End_LeadDescartado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AgendarVisita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ConfirmarCita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Visita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarRelevamiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Presupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Seguimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Acepta</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ClienteConfirma</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_PideAjuste</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AjustarPresupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>End_OportunidadPerdida</bpmn:flowNodeRef>
         <bpmn:childLaneSet id="LaneSet_Ventas">
           <bpmn:lane id="Lane_BotIA" name="Bot IA comercial (GHL)"><bpmn:flowNodeRef>Start_Consulta</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotResponde</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_BotReleva</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Derivar</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ConsultaBot</bpmn:flowNodeRef></bpmn:lane>
-          <bpmn:lane id="Lane_AgenteComercial" name="Agente comercial"><bpmn:flowNodeRef>Task_AtenderDerivada</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Calificar</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Calificado</bpmn:flowNodeRef><bpmn:flowNodeRef>End_LeadDescartado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AgendarVisita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ConfirmarCita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Visita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarRelevamiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Presupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Seguimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Acepta</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ClienteConfirma</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_PideAjuste</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AjustarPresupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>End_OportunidadPerdida</bpmn:flowNodeRef></bpmn:lane>
+          <bpmn:lane id="Lane_AgenteComercial" name="Agente comercial"><bpmn:flowNodeRef>Start_ContactoDirecto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AtenderDerivada</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Calificar</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Calificado</bpmn:flowNodeRef><bpmn:flowNodeRef>End_LeadDescartado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AgendarVisita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ConfirmarCita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Visita</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarRelevamiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Presupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Seguimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Acepta</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ClienteConfirma</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_PideAjuste</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AjustarPresupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>End_OportunidadPerdida</bpmn:flowNodeRef></bpmn:lane>
         </bpmn:childLaneSet>
       </bpmn:lane>
     </bpmn:laneSet>
@@ -31,7 +32,7 @@
     <bpmn:exclusiveGateway id="Gw_Derivar" name="¿Excede al bot o hay intención de avanzar?"><bpmn:incoming>F3</bpmn:incoming><bpmn:outgoing>F4</bpmn:outgoing><bpmn:outgoing>F5</bpmn:outgoing></bpmn:exclusiveGateway>
     <bpmn:endEvent id="End_ConsultaBot" name="Consulta atendida por el bot"><bpmn:incoming>F4</bpmn:incoming></bpmn:endEvent>
     <bpmn:task id="Task_AtenderDerivada" name="Atender la consulta derivada por el bot"><bpmn:incoming>F5</bpmn:incoming><bpmn:outgoing>F6</bpmn:outgoing></bpmn:task>
-    <bpmn:task id="Task_Calificar" name="Calificar al prospecto y registrar el lead"><bpmn:incoming>F6</bpmn:incoming><bpmn:outgoing>F7</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="Task_Calificar" name="Calificar al prospecto y registrar el lead"><bpmn:incoming>F6</bpmn:incoming><bpmn:incoming>F21</bpmn:incoming><bpmn:outgoing>F7</bpmn:outgoing></bpmn:task>
     <bpmn:exclusiveGateway id="Gw_Calificado" name="¿Calificado y en zona de cobertura?"><bpmn:incoming>F7</bpmn:incoming><bpmn:outgoing>F8</bpmn:outgoing><bpmn:outgoing>F9</bpmn:outgoing></bpmn:exclusiveGateway>
     <bpmn:endEvent id="End_LeadDescartado" name="Lead descartado"><bpmn:incoming>F8</bpmn:incoming></bpmn:endEvent>
     <bpmn:task id="Task_AgendarVisita" name="Coordinar y agendar la visita (etapa 2)"><bpmn:incoming>F9</bpmn:incoming><bpmn:outgoing>F10</bpmn:outgoing></bpmn:task>
@@ -67,8 +68,6 @@
     <bpmn:sequenceFlow id="F20" sourceRef="Task_AjustarPresupuesto" targetRef="Task_Presupuesto" />
     <bpmn:textAnnotation id="Ann_Oportunidad"><bpmn:text>A definir: en qué momento el agente IA crea la oportunidad en GHL (hoy solo deriva la conversación a un humano)</bpmn:text></bpmn:textAnnotation>
     <bpmn:association id="Ann_Oportunidad_Assoc" sourceRef="Ann_Oportunidad" targetRef="Gw_Derivar" />
-    <bpmn:textAnnotation id="Ann_SLA"><bpmn:text>A definir: SLA de primera respuesta a la consulta derivada</bpmn:text></bpmn:textAnnotation>
-    <bpmn:association id="Ann_SLA_Assoc" sourceRef="Ann_SLA" targetRef="Task_AtenderDerivada" />
     <bpmn:textAnnotation id="Ann_PlazoContacto"><bpmn:text>A definir: plazo para contactar al lead desde su calificación</bpmn:text></bpmn:textAnnotation>
     <bpmn:association id="Ann_PlazoContacto_Assoc" sourceRef="Ann_PlazoContacto" targetRef="Task_AgendarVisita" />
     <bpmn:textAnnotation id="Ann_Cadencia"><bpmn:text>Cadencia sugerida: 24-48 hs y luego semanal. Puede intervenir el bot</bpmn:text></bpmn:textAnnotation>
@@ -80,6 +79,10 @@
     <bpmn:group id="Grp_E3" categoryValueRef="CV_Grp_E3" />
     <bpmn:group id="Grp_E4" categoryValueRef="CV_Grp_E4" />
     <bpmn:group id="Grp_E5" categoryValueRef="CV_Grp_E5" />
+    <bpmn:startEvent id="Start_ContactoDirecto" name="Contacto directo al vendedor (teléfono, WhatsApp o correo)"><bpmn:outgoing>F21</bpmn:outgoing><bpmn:messageEventDefinition id="Start_ContactoDirecto_Def" /></bpmn:startEvent>
+    <bpmn:sequenceFlow id="F21" sourceRef="Start_ContactoDirecto" targetRef="Task_Calificar" />
+    <bpmn:textAnnotation id="Ann_RegistroLead"><bpmn:text>Contacto fuera del bot: el vendedor carga el lead en GHL para que quede registrado y entre en el seguimiento</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_RegistroLead_Assoc" sourceRef="Ann_RegistroLead" targetRef="Start_ContactoDirecto" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_VentaConsultiva">
     <bpmndi:BPMNPlane id="BPMNPlane_VentaConsultiva" bpmnElement="Collaboration_VentaConsultiva">
@@ -139,14 +142,17 @@
       <bpmndi:BPMNEdge id="MF4_di" bpmnElement="MF4"><di:waypoint x="2250" y="390" /><di:waypoint x="2250" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="2256" y="135" width="80" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_Oportunidad_di" bpmnElement="Ann_Oportunidad"><dc:Bounds x="1020" y="175" width="250" height="70" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_Oportunidad_Assoc_di" bpmnElement="Ann_Oportunidad_Assoc"><di:waypoint x="1020" y="210" /><di:waypoint x="810" y="235" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="Ann_SLA_di" bpmnElement="Ann_SLA"><dc:Bounds x="770" y="535" width="190" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Ann_SLA_Assoc_di" bpmnElement="Ann_SLA_Assoc"><di:waypoint x="960" y="560" /><di:waypoint x="970" y="470" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_PlazoContacto_di" bpmnElement="Ann_PlazoContacto"><dc:Bounds x="1395" y="535" width="210" height="50" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_PlazoContacto_Assoc_di" bpmnElement="Ann_PlazoContacto_Assoc"><di:waypoint x="1450" y="535" /><di:waypoint x="1450" y="470" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_Cadencia_di" bpmnElement="Ann_Cadencia"><dc:Bounds x="2265" y="230" width="200" height="50" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_Cadencia_Assoc_di" bpmnElement="Ann_Cadencia_Assoc"><di:waypoint x="2280" y="280" /><di:waypoint x="2280" y="390" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_Continua_di" bpmnElement="Ann_Continua"><dc:Bounds x="2510" y="190" width="220" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_Continua_Assoc_di" bpmnElement="Ann_Continua_Assoc"><di:waypoint x="2570" y="270" /><di:waypoint x="2570" y="412" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Start_ContactoDirecto_di" bpmnElement="Start_ContactoDirecto"><dc:Bounds x="552" y="542" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="510" y="582" width="120" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F21_di" bpmnElement="F21"><di:waypoint x="588" y="560" /><di:waypoint x="1130" y="560" /><di:waypoint x="1130" y="470" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF5_di" bpmnElement="MF5"><di:waypoint x="570" y="120" /><di:waypoint x="570" y="542" /><bpmndi:BPMNLabel><dc:Bounds x="576" y="135" width="90" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_RegistroLead_di" bpmnElement="Ann_RegistroLead"><dc:Bounds x="640" y="472" width="240" height="60" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_RegistroLead_Assoc_di" bpmnElement="Ann_RegistroLead_Assoc"><di:waypoint x="640" y="502" /><di:waypoint x="583" y="547" /></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>
