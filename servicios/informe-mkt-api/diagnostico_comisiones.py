@@ -12,12 +12,20 @@ import sys
 from collections import Counter
 from datetime import date
 
-from app import comisiones
+from app import comisiones, config
+from app import supabase_rest as sb
 
 if len(sys.argv) != 3:
     sys.exit("Uso: python diagnostico_comisiones.py AAAA-MM-DD AAAA-MM-DD")
 desde, hasta = date.fromisoformat(sys.argv[1]), date.fromisoformat(sys.argv[2])
-r = comisiones.generar(desde, hasta, print)
+# Configuracion de abonos (migracion 28), leida con el usuario tecnico del .env.
+try:
+    token = sb.iniciar_sesion(config.INFORME_BOT_EMAIL, config.INFORME_BOT_PASSWORD)
+    abonos = sb.leer_abonos_comision(token)
+    print(f"Configuracion: {len(abonos)} abonos, {sum(1 for a in abonos if a['incluido'])} incluidos.")
+except Exception as e:
+    sys.exit(f"No se pudo leer la configuracion de abonos (falta la migracion 28 o el usuario tecnico?): {e}")
+r = comisiones.generar(desde, hasta, print, abonos)
 
 print(f"\nGanadas: {r['ganadas']} · OV de abonos relacionadas: {len(r['ovs'])} · Ganadas sin OV de abonos: {len(r['sin_ov'])}")
 print("OV excluidas por tipo:", r.get("ov_excluidas_por_tipo") or "ninguna")
@@ -31,13 +39,12 @@ for k, n in Counter((f["tipo_ov"], "Comodato" if f["comodato"] else "Venta") for
 print("\nArticulos ABO encontrados:")
 for k, n in Counter(a["articulo"] for f in r["ovs"] for a in f["abonos"]).most_common():
     print(f"  {n:4d}  {k}")
-print("\nPor vendedor (OV comisionables / OV / base):")
-por = {}
-for f in r["ovs"]:
-    v = por.setdefault(f["vendedor"], [0, 0, 0.0])
-    v[0] += f["comisionable"]; v[1] += 1; v[2] += f["base_comisionable"]
-for k, (c, n, b) in sorted(por.items()):
-    print(f"  {k:30s} {c:3d} / {n:3d}   $ {b:,.2f}")
+print("\nPor vendedor (ganadas / OV / OV con abonos incluidos / base / comision):")
+for v in comisiones.resumen_vendedores(r):
+    print(f"  {v['vendedor']:30s} {v['ganadas']:3d} / {v['ovs']:3d} / {v['ovs_comisionables']:3d}   "
+          f"base $ {v['base_comisionable']:,.2f}   comision $ {v['comision']:,.2f}")
+    for a in v["por_abono"]:
+        print(f"      {a['codigo']:12s} {a['ovs']:3d} OV, comisionan {a['comisionan']:3d} (desde la {a['incluido_desde']}a)   $ {a['comision']:,.2f}")
 
 salida = f"diagnostico_comisiones_{desde}_{hasta}.json"
 with open(salida, "w", encoding="utf-8") as fh:

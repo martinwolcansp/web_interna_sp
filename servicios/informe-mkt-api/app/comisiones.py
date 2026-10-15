@@ -18,16 +18,18 @@
 #     todas cerradas, la primera. Las demas viajan como "ov_mensuales" en la
 #     fila (solo informativo, no suman).
 #   - Abonos: lineas de la OV cuyo articulo empieza con "ABO".
-#   - Comisionable (la base es el importe de esas lineas):
-#       * Monitoreo: ABO 16, o ABO 10 + ABO 11, o ABO 20 + ABO 21 (sin movil
-#         Acuda, se trata igual que 10 + 11). El ABO 16 reemplaza a la suma;
-#         si una OV tiene ABO 16 y tambien 10 / 11 / 20 / 21, se toma el 16 y
-#         queda para revisar. Solo una mitad del par (ej. solo ABO 10) no
-#         cuenta y queda "incompleta".
-#       * Kit Comercio Seguro (comodato): ABO 60, ABO 70 y ABO 71. Suman a la
-#         base junto con el monitoreo, si la OV tiene los dos.
-#     El resto de los ABO (adicionales de comodato, video verificacion, MDI...)
-#     se informa como "Otros ABO" y no entra.
+#   - Configuracion (migracion 28, Panel de administracion -> Comisiones):
+#     tabla comision_abono, un registro por abono (codigo ABO-xx) con
+#     "Incluido" e "Incluido desde" = N.
+#       * Base comisionable de la OV = importe de sus lineas de abonos
+#         incluidos (neto de IVA).
+#       * Comision: por vendedor, por abono incluido y por mes, las OV se
+#         ordenan por fecha de OV (y numero); desde la N-esima en adelante
+#         la linea comisiona por su importe (el primer abono del contrato).
+#         Las primeras N-1 no comisionan.
+#     Cada abono cuenta por si solo (desde el 14/10/2026 no hay reglas de
+#     pares ni de reemplazo). Un abono que aparece en una OV y no esta en la
+#     tabla se informa en "abonos_sin_configurar" y no suma.
 # Vendedor = representante de ventas de la oportunidad (normalizado como en el
 # resto del informe). El representante de la OV viaja aparte.
 
@@ -38,15 +40,16 @@ from zoneinfo import ZoneInfo
 from app import config, netsuite
 from app.resumen_ejecutivo import normalizar_vendedor_netsuite
 
-ABO_16 = 16
-PARES_MONITOREO = [(10, 11), (20, 21)]  # se reemplazan por el ABO 16
-KITS_COMERCIO_SEGURO = {60, 70, 71}
+_RE_CODIGO = re.compile(r"^\s*ABO[\s\-_.]*(\d+(?:-[A-Z0-9]+)*)", re.I)
 
-MON_16 = "ABO 16"
-MON_PARES = {par: f"ABO {par[0]} + ABO {par[1]}" for par in PARES_MONITOREO}
-KIT = "Kit Comercio Seguro"
-CLASIF_OTROS = "Solo otros ABO"
-CLASIF_SIN = "Sin ABO"
+
+def codigo_abono(articulo):
+    """Codigo con el que se configura el abono: 'ABO-10  Abono Mensual ...' ->
+    'ABO-10'; 'ABO 403-AI Obra ...' -> 'ABO-403-AI'. Si el articulo no tiene
+    codigo ABO, el nombre completo (espacios colapsados)."""
+    texto = " ".join(str(articulo or "").split())
+    m = _RE_CODIGO.match(texto)
+    return ("ABO-" + m.group(1).upper()) if m else texto
 
 
 def es_ov_abonos(tipo_ov):
@@ -157,8 +160,10 @@ _CAMPOS_IMPORTE = [
 ]
 
 
-def _lineas_abo(ov_ids, log):
-    """{ov_id: [lineas ABO]}."""
+def _lineas_abo(ov_ids, log, nombres_configurados=()):
+    """{ov_id: [lineas ABO]} (y las de articulos sin codigo ABO que esten en
+    la configuracion, identificados por nombre)."""
+    otros = {" ".join(str(n).split()) for n in nombres_configurados}
     por_ov, vistas = {}, set()
     for lote in _lotes(ov_ids):
         for i, campos in enumerate(_CAMPOS_IMPORTE):
@@ -190,15 +195,14 @@ def _lineas_abo(ov_ids, log):
                 continue
             vistas.add(clave)
             articulo = _texto(f.get("articulo"))
-            if not articulo or not articulo.upper().startswith("ABO"):
+            if not articulo or not (articulo.upper().startswith("ABO") or " ".join(articulo.split()) in otros):
                 continue
             importe = _num(f.get("importe"))
             cantidad = _num(f.get("cantidad"))
             precio = _num(f.get("precio"))
             por_ov.setdefault(clave[0], []).append({
                 "linea_id": clave[1],
-                # "ABO-16 Abono Mensual de Monitoreo" -> codigo "ABO-16"
-                "codigo": articulo.split()[0],
+                "codigo": codigo_abono(articulo),
                 "numero": numero_abo(articulo),
                 "articulo": articulo,
                 "cantidad": abs(cantidad) if cantidad is not None else None,
@@ -211,50 +215,66 @@ def _lineas_abo(ov_ids, log):
 
 # ------------------------------------------------------------- clasificacion
 
-def clasificar(abonos):
-    """dict con clasificacion (texto), monitoreo (MON_16 / par / None), kit,
-    revisar, incompleta, comisionable, base y cuentan (numeros de ABO que
-    suman a la base)."""
-    nums = {a["numero"] for a in abonos if a.get("numero") is not None}
-    partes, cuentan, monitoreo, revisar, faltan = [], set(), None, False, []
-    nums_pares = {n for par in PARES_MONITOREO for n in par}
-    if ABO_16 in nums:
-        monitoreo, cuentan = MON_16, {ABO_16}
-        revisar = bool(nums & nums_pares)
-        partes.append(MON_16 + (" (también " + " / ".join(f"ABO {n}" for n in sorted(nums & nums_pares)) + ": revisar)"
-                                if revisar else ""))
+def clasificar(abonos, cfg):
+    """Marca cada linea con "incluido" segun la configuracion y devuelve
+    (clasificacion, comisionable, base, codigos incluidos, sin configurar)."""
+    incluidos, sin_config = [], []
+    for a in abonos:
+        conf = cfg.get(a["codigo"])
+        a["incluido"] = bool(conf and conf.get("incluido"))
+        a["cuenta"] = a["incluido"]  # nombre que usa la pagina
+        if a["incluido"] and a["codigo"] not in incluidos:
+            incluidos.append(a["codigo"])
+        if conf is None and a["codigo"] not in sin_config:
+            sin_config.append(a["codigo"])
+    if incluidos:
+        clasif = " + ".join(incluidos)
+    elif abonos:
+        clasif = "Sin abonos incluidos"
     else:
-        for a, b in PARES_MONITOREO:
-            if a in nums and b in nums and monitoreo is None:
-                monitoreo, cuentan = MON_PARES[(a, b)], {a, b}
-                partes.append(monitoreo)
-            elif (a in nums) != (b in nums):
-                tiene, falta = (a, b) if a in nums else (b, a)
-                faltan.append(f"Solo ABO {tiene} (falta ABO {falta})")
-        partes.extend(faltan if monitoreo is None else [])
-    kits = nums & KITS_COMERCIO_SEGURO
-    if kits:
-        cuentan |= kits
-        partes.append(KIT)
-    comisionable = bool(monitoreo or kits)
-    if not partes:
-        partes.append(CLASIF_OTROS if abonos else CLASIF_SIN)
-    base = sum((a.get("importe") or 0) for a in abonos if a.get("numero") in cuentan) if comisionable else 0
-    return {
-        "clasificacion": " + ".join(partes),
-        "monitoreo": monitoreo,
-        "kit": bool(kits),
-        "revisar": revisar,
-        "incompleta": bool(faltan) and monitoreo is None,
-        "comisionable": comisionable,
-        "base": round(base, 2),
-        "cuentan": cuentan,
-    }
+        clasif = "Sin ABO"
+    base = sum((a.get("importe") or 0) for a in abonos if a["incluido"])
+    return clasif, bool(incluidos), round(base, 2), incluidos, sin_config
+
+
+def aplicar_incluido_desde(filas, cfg):
+    """Por vendedor y abono incluido: ordena las OV por fecha (y numero) y
+    marca desde la N-esima en adelante (N = incluido_desde) como comisionable
+    por el importe de la linea. Completa en cada linea: orden, incluido_desde,
+    comisiona, comision; y en cada OV: comision."""
+    grupos = {}
+    for f in filas:
+        for codigo in {a["codigo"] for a in f["abonos"] if a["incluido"]}:
+            grupos.setdefault((f["vendedor"], codigo), []).append(f)
+    for (_, codigo), ovs in grupos.items():
+        desde_n = max(1, int((cfg.get(codigo) or {}).get("incluido_desde") or 1))
+        ovs.sort(key=lambda f: (f.get("fecha_ov") or "9999", f.get("ov_numero") or "", f["ov_id"]))
+        for k, f in enumerate(ovs, start=1):
+            for a in f["abonos"]:
+                if a["codigo"] == codigo:
+                    a["orden"], a["incluido_desde"] = k, desde_n
+                    a["comisiona"] = k >= desde_n
+                    a["comision"] = round(a.get("importe") or 0, 2) if a["comisiona"] else 0
+    for f in filas:
+        for a in f["abonos"]:
+            a.setdefault("orden", None)
+            a.setdefault("incluido_desde", None)
+            a.setdefault("comisiona", False)
+            a.setdefault("comision", 0)
+        f["comision"] = round(sum(a["comision"] for a in f["abonos"]), 2)
+
+
+def config_desde_filas(filas):
+    """Lista de la tabla comision_abono -> {codigo: fila}."""
+    return {str(f["codigo"]).strip(): f for f in filas or [] if f.get("codigo")}
 
 
 # ------------------------------------------------------------------- armado
 
-def generar(desde, hasta, log):
+def generar(desde, hasta, log, abonos_config=None):
+    """abonos_config: filas de comision_abono (codigo, incluido,
+    incluido_desde, ...). Sin configuracion no hay abonos incluidos."""
+    cfg = config_desde_filas(abonos_config)
     avisos = []
 
     def aviso(msg):
@@ -321,18 +341,21 @@ def generar(desde, hasta, log):
     n_mensuales = sum(len(v) for v in mensuales.values())
     if n_mensuales:
         log(f"Comisiones: {n_mensuales} OV mensuales posteriores del mismo contrato no se cuentan (una OV por oportunidad).")
-    lineas = _lineas_abo(elegidas, log) if elegidas else {}
+    nombres_sin_codigo = [c for c in cfg if not c.upper().startswith("ABO")]
+    lineas = _lineas_abo(elegidas, log, nombres_sin_codigo) if elegidas else {}
 
     filas = []
     con_ov = set()
+    sin_configurar = {}
     for ov_id, opp_id in sorted(elegidas.items()):
         f = ovs[ov_id]
         o = opps[opp_id]
         con_ov.add(opp_id)
         abonos = lineas.get(ov_id, [])
-        c = clasificar(abonos)
-        for a in abonos:
-            a["cuenta"] = c["comisionable"] and a.get("numero") in c["cuentan"]
+        clasif, comisionable, base, incluidos, sin_config = clasificar(abonos, cfg)
+        for codigo in sin_config:
+            art = next((a["articulo"] for a in abonos if a["codigo"] == codigo), codigo)
+            sin_configurar.setdefault(codigo, {"codigo": codigo, "articulo": art, "ovs": 0})["ovs"] += 1
         filas.append(dict(
             o,
             ov_id=ov_id,
@@ -348,19 +371,24 @@ def generar(desde, hasta, log):
             vinculo=f.get("vinculo"),
             abonos=abonos,
             ov_mensuales=mensuales.get(ov_id, []),
-            clasificacion=c["clasificacion"],
-            monitoreo=c["monitoreo"],
-            kit=c["kit"],
-            revisar=c["revisar"],
-            incompleta=c["incompleta"],
-            comisionable=c["comisionable"],
-            base_comisionable=c["base"],
-            importe_otros_abo=round(sum((a.get("importe") or 0) for a in abonos if not a["cuenta"]), 2),
+            clasificacion=clasif,
+            codigos_incluidos=incluidos,
+            comisionable=comisionable,
+            base_comisionable=base,
+            importe_otros_abo=round(sum((a.get("importe") or 0) for a in abonos if not a["incluido"]), 2),
         ))
+    aplicar_incluido_desde(filas, cfg)
+    if not cfg:
+        aviso("No hay abonos configurados para comisiones (Panel de administración → Comisiones): ningún abono suma.")
+    if sin_configurar:
+        aviso("Abonos que no están en la configuración de comisiones (no suman): " +
+              ", ".join(f"{v['codigo']} ({v['ovs']} OV)" for v in sorted(sin_configurar.values(), key=lambda v: v["codigo"])) +
+              ". Agregalos en Panel de administración → Comisiones.")
 
     sin_ov = [o for k, o in sorted(opps.items()) if k not in con_ov]
     log(f"Comisiones: {len(opps)} oportunidades ganadas, {len(filas)} OV relacionadas "
-        f"de abonos ({sum(1 for f in filas if f['comisionable'])} con ABO comisionable), {len(sin_ov)} ganadas sin OV de abonos.")
+        f"de abonos ({sum(1 for f in filas if f['comisionable'])} con abonos incluidos), {len(sin_ov)} ganadas sin OV de abonos; "
+        f"comision ${sum(f['comision'] for f in filas):,.2f}.")
     return {
         "version": 1,
         "desde": desde.isoformat(),
@@ -371,5 +399,89 @@ def generar(desde, hasta, log):
         "sin_ov": sin_ov,
         "ov_excluidas_por_tipo": excluidas,
         "ov_mensuales_no_contadas": n_mensuales,
+        "config": [cfg[k] for k in sorted(cfg)],
+        "abonos_sin_configurar": sorted(sin_configurar.values(), key=lambda v: v["codigo"]),
         "avisos": avisos,
+    }
+
+
+# --------------------------------------------------------------- liquidacion
+
+def resumen_vendedores(r):
+    """Totales por vendedor (mismo criterio que el resumen del pop up)."""
+    por = {}
+
+    def fila(v):
+        return por.setdefault(v, {"vendedor": v, "ops": set(), "ovs": 0, "ovs_comisionables": 0,
+                                  "base_comisionable": 0.0, "comision": 0.0, "abonos": {}})
+    for f in r["ovs"]:
+        x = fila(f["vendedor"])
+        x["ops"].add(f["oportunidad_id"])
+        x["ovs"] += 1
+        x["ovs_comisionables"] += 1 if f["comisionable"] else 0
+        x["base_comisionable"] += f["base_comisionable"] or 0
+        x["comision"] += f["comision"] or 0
+        for a in f["abonos"]:
+            if not a["incluido"]:
+                continue
+            ab = x["abonos"].setdefault(a["codigo"], {"codigo": a["codigo"], "ovs": set(), "comisionan": set(),
+                                                     "base": 0.0, "comision": 0.0,
+                                                     "incluido_desde": a.get("incluido_desde")})
+            ab["ovs"].add(f["ov_id"])
+            if a["comisiona"]:
+                ab["comisionan"].add(f["ov_id"])
+            ab["base"] += a.get("importe") or 0
+            ab["comision"] += a.get("comision") or 0
+    for o in r["sin_ov"]:
+        fila(o["vendedor"])["ops"].add(o["oportunidad_id"])
+    salida = []
+    for v, x in por.items():
+        salida.append({
+            "vendedor": v,
+            "ganadas": len(x["ops"]),
+            "ovs": x["ovs"],
+            "ovs_comisionables": x["ovs_comisionables"],
+            "base_comisionable": round(x["base_comisionable"], 2),
+            "comision": round(x["comision"], 2),
+            "por_abono": [{"codigo": ab["codigo"], "ovs": len(ab["ovs"]), "comisionan": len(ab["comisionan"]),
+                           "incluido_desde": ab["incluido_desde"], "base": round(ab["base"], 2),
+                           "comision": round(ab["comision"], 2)}
+                          for ab in sorted(x["abonos"].values(), key=lambda a: a["codigo"])],
+        })
+    return sorted(salida, key=lambda x: (x["vendedor"] == "Sin asignar", -x["comision"], x["vendedor"]))
+
+
+def payload_liquidacion(r, mes, generada_por):
+    """Arma el jsonb para fn_comision_guardar_liquidacion (migracion 28)."""
+    vendedores = resumen_vendedores(r)
+    lineas = []
+    for f in r["ovs"]:
+        for a in f["abonos"]:
+            lineas.append({
+                "vendedor": f["vendedor"], "ov_id": f["ov_id"], "ov_numero": f["ov_numero"],
+                "fecha_ov": f["fecha_ov"], "modalidad": "Comodato" if f["comodato"] else "Venta",
+                "oportunidad": f["oportunidad"], "fecha_oportunidad": f["fecha_oportunidad"],
+                "cliente": f["cliente"], "nro_cliente": f["nro_cliente"],
+                "codigo": a["codigo"], "articulo": a["articulo"], "cantidad": a.get("cantidad"),
+                "importe": a.get("importe"), "incluido": a["incluido"], "orden": a.get("orden"),
+                "incluido_desde": a.get("incluido_desde"), "comisiona": a.get("comisiona", False),
+                "comision": a.get("comision", 0),
+            })
+    totales = {
+        "ganadas": r["ganadas"],
+        "ganadas_sin_ov": len(r["sin_ov"]),
+        "ovs": len(r["ovs"]),
+        "ovs_comisionables": sum(1 for f in r["ovs"] if f["comisionable"]),
+        "base_comisionable": round(sum(f["base_comisionable"] for f in r["ovs"]), 2),
+        "comision": round(sum(f["comision"] for f in r["ovs"]), 2),
+        "ov_mensuales_no_contadas": r.get("ov_mensuales_no_contadas", 0),
+        "ov_excluidas_por_tipo": r.get("ov_excluidas_por_tipo", {}),
+    }
+    sin_ov = [{k: o.get(k) for k in ("vendedor", "oportunidad", "fecha_oportunidad", "estado_oportunidad",
+                                     "cliente", "nro_cliente")} for o in r["sin_ov"]]
+    avisos = list(r.get("avisos") or [])
+    return {
+        "mes": mes.isoformat(), "desde": r["desde"], "hasta": r["hasta"], "generada_por": generada_por,
+        "config": r.get("config") or [], "totales": totales, "sin_ov": sin_ov, "avisos": avisos,
+        "vendedores": vendedores, "lineas": lineas,
     }

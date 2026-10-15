@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comisiones — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="../css/comisiones.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Panel de administración","href":"/pages/panel-admin.html"},{"label":"Comisiones"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'comisiones';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <!-- ExcelJS: exporta e importa la tabla de abonos y exporta las
+       liquidaciones, todo en el navegador (igual que Permisos por Área). -->
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+
+  <!-- ══════════════════════════════════════════════════════════
+       COMISIONES — pantalla del Panel de administración (14/10/2026).
+       - Abonos: tabla comision_abono (migracion_28_comisiones.sql): por
+         abono, "Incluido" e "Incluido desde". Editable con permiso
+         "editar" en la sección comisiones; exportar / importar Excel.
+       - Liquidaciones: una por mes. "Generar" llama a informe-mkt-api
+         (POST /comisiones/liquidar), que consulta NetSuite, calcula con la
+         configuración vigente y guarda la foto (con la configuración
+         usada). Se pueden ver, exportar y eliminar; no se editan.
+       La seguridad real la dan las políticas RLS de la migración 28.
+       ══════════════════════════════════════════════════════════ -->
+  <main class="admin-wrap com-wrap" role="main">
+
+    <div class="admin-page-header">
+      <p class="section-label">Administración</p>
+      <h1 class="admin-page-title">Comisiones</h1>
+      <p class="admin-page-subtitle">Abonos que comisionan y liquidaciones mensuales por vendedor.</p>
+    </div>
+
+    <nav class="com-tabs" role="tablist">
+      <button type="button" class="com-tab is-active" data-tab="abonos" role="tab" aria-selected="true">
+        <i class="ti ti-list-check" aria-hidden="true"></i> Abonos
+      </button>
+      <button type="button" class="com-tab" data-tab="liquidaciones" role="tab" aria-selected="false">
+        <i class="ti ti-receipt" aria-hidden="true"></i> Liquidaciones
+      </button>
+    </nav>
+
+    <!-- ───────────── ABONOS ───────────── -->
+    <section class="admin-section com-panel" id="com-panel-abonos" aria-labelledby="com-abonos-title">
+      <div class="admin-section__header com-toprow">
+        <div>
+          <h2 id="com-abonos-title" class="admin-section__title">Abonos para comisiones</h2>
+          <p class="admin-section__subtitle">
+            <b>Incluido</b>: el abono suma a la base comisionable. <b>Incluido desde</b> = N: por vendedor y por mes,
+            las OV de ese abono comisionan desde la N-ésima (las primeras N−1 no). La comisión es el importe del abono (sin IVA).
+          </p>
+        </div>
+        <div class="com-actions">
+          <button type="button" id="com-ab-exportar" class="btn btn--secondary" disabled>
+            <i class="ti ti-download" aria-hidden="true"></i> Exportar Excel
+          </button>
+          <label class="btn btn--secondary com-solo-editor" id="com-ab-importar-label">
+            <i class="ti ti-upload" aria-hidden="true"></i> Importar Excel
+            <input type="file" id="com-ab-importar" accept=".xlsx,.csv" hidden>
+          </label>
+        </div>
+      </div>
+
+      <!-- Vista previa de la importación -->
+      <div id="com-imp" class="com-imp" hidden>
+        <p class="com-imp__resumen" id="com-imp-resumen"></p>
+        <div class="admin-table-wrap com-imp__tabla">
+          <table class="admin-table">
+            <thead><tr><th>Cambio</th><th>Código</th><th>Nombre</th><th>Incluido</th><th>Incluido desde</th></tr></thead>
+            <tbody id="com-imp-tbody"></tbody>
+          </table>
+        </div>
+        <div class="com-actions">
+          <button type="button" id="com-imp-confirmar" class="btn btn--primary">Confirmar y aplicar</button>
+          <button type="button" id="com-imp-cancelar" class="btn btn--secondary">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="com-toolbar">
+        <input type="search" id="com-ab-buscar" class="admin-input com-buscar" placeholder="Buscar código o nombre…">
+        <select id="com-ab-filtro" class="admin-select">
+          <option value="">Todos</option>
+          <option value="si">Incluidos</option>
+          <option value="no">No incluidos</option>
+        </select>
+        <span class="com-cuenta" id="com-ab-cuenta"></span>
+        <span class="com-spacer"></span>
+        <button type="button" id="com-ab-agregar" class="btn btn--secondary com-solo-editor">
+          <i class="ti ti-plus" aria-hidden="true"></i> Agregar abono
+        </button>
+        <button type="button" id="com-ab-guardar" class="btn btn--primary com-solo-editor" disabled>
+          <i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar cambios
+        </button>
+      </div>
+      <p id="com-ab-status" class="com-status" role="status" aria-live="polite"></p>
+
+      <div class="admin-table-wrap com-tabla-wrap">
+        <table class="admin-table com-tabla" id="com-ab-tabla">
+          <thead>
+            <tr>
+              <th>Código</th><th>Nombre</th><th>Nombre para mostrar</th>
+              <th class="com-c">Incluido</th><th class="com-c">Incluido desde</th><th>Última modificación</th>
+              <th class="com-solo-editor"></th>
+            </tr>
+          </thead>
+          <tbody id="com-ab-tbody"><tr><td colspan="7" class="admin-loading">Cargando abonos…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ───────────── LIQUIDACIONES ───────────── -->
+    <section class="admin-section com-panel" id="com-panel-liquidaciones" hidden aria-labelledby="com-liq-title">
+      <div class="admin-section__header com-toprow">
+        <div>
+          <h2 id="com-liq-title" class="admin-section__title">Liquidaciones mensuales</h2>
+          <p class="admin-section__subtitle">
+            Una por mes: oportunidades ganadas del mes, su OV de abonos y la comisión según la configuración vigente al generarla
+            (queda guardada con la liquidación). Para regenerar un mes, eliminá su liquidación y generala de nuevo.
+          </p>
+        </div>
+        <div class="com-actions com-solo-editor">
+          <label class="com-mes">Mes <input type="month" id="com-liq-mes" class="admin-input"></label>
+          <button type="button" id="com-liq-generar" class="btn btn--primary">
+            <i class="ti ti-player-play" aria-hidden="true"></i> Generar liquidación
+          </button>
+        </div>
+      </div>
+      <p id="com-liq-status" class="com-status" role="status" aria-live="polite"></p>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table com-tabla">
+          <thead>
+            <tr>
+              <th>Mes</th><th class="com-n">Ganadas</th><th class="com-n">OV de abonos</th><th class="com-n">Base comisionable</th>
+              <th class="com-n">Comisión</th><th>Generada</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="com-liq-tbody"><tr><td colspan="7" class="admin-loading">Cargando liquidaciones…</td></tr></tbody>
+        </table>
+      </div>
+
+      <div id="com-liq-detalle" class="com-detalle" hidden></div>
+    </section>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/comisiones.js"></script>
+
+</body>
+</html>

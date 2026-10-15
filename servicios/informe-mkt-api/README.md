@@ -19,20 +19,17 @@ Después de las oportunidades, la corrida trae las **citas de los calendarios de
 
 Requisitos: migración `migracion_22_informe_mkt_visitas_presupuestos.sql` y que el token de GHL tenga permiso de calendarios (`calendars.readonly`, `calendars/events.readonly`). Prueba sin escribir nada: `python diagnostico_visitas.py 2026-09-01 2026-09-30`.
 
-### Comisiones por vendedor (13/10/2026)
+### Comisiones por vendedor (13/10/2026; configuración y liquidaciones 14/10/2026)
 
-Botón **Comisiones por vendedor** en el *Informe por vendedor*: abre un pop up con las órdenes de venta de las oportunidades ganadas del período y sus abonos. Lo arma `POST /informe-mkt/comisiones {desde, hasta}` (`app/comisiones.py`), que consulta NetSuite en vivo y no guarda nada (permiso **ver** en Informes de MKT).
+Botón **Comisiones por vendedor** en el *Informe por vendedor*: pop up con las OV de abonos de las oportunidades ganadas del período, la base comisionable y la comisión. Lo arma `POST /informe-mkt/comisiones {desde, hasta}` (`app/comisiones.py`), que consulta NetSuite en vivo (permiso **ver** en Informes de MKT o en Comisiones).
 
-- **Oportunidades ganadas**: las mismas del informe (búsqueda 2933, estados 12 / 13).
-- **OV relacionadas**: `SalesOrd` cuya oportunidad (`opportunity`) es una ganada, o cuyo presupuesto de origen (`custbody_3k_trans_orig_ov`) es de una ganada. Solo las de tipo *ABONOS (Contrato)* (incluye *PRODUCTOS y ABONOS (Contrato)*); las de *PRODUCTOS* se cuentan en una nota y no se listan.
-- **Una OV por oportunidad** (14/10/2026): el contrato de abonos genera una OV nueva cada mes con el mismo presupuesto de origen; se toma la primera (por fecha) que no esté *Cerrada* y las demás viajan como `ov_mensuales` (no suman).
-- **Abonos**: líneas cuyo artículo empieza con `ABO` (nombre por `BUILTIN.DF(tl.item)`: el rol no puede leer la tabla `item`). En las OV de comodato entran varios.
-- **Comisionable** (definido el 13/10/2026): monitoreo `ABO 16`, `ABO 10` + `ABO 11` o `ABO 20` + `ABO 21` (el 16 reemplaza a la suma; por ahora vale cualquiera), más los kits de Comercio Seguro en comodato `ABO 60`, `ABO 70` y `ABO 71` (suman junto con el monitoreo). Base = importe de esas líneas. Con ABO 16 y también 10 / 11 / 20 / 21 se toma el 16 y la OV queda "revisar"; con solo una mitad del par queda "incompleta". El resto de los ABO se informa como *Otros ABO*.
-- **Vendedor**: representante de la oportunidad (el de la OV se muestra aparte).
+- **Oportunidades ganadas**: las mismas del informe (búsqueda 2933, estados 12 / 13). Vendedor = representante de la oportunidad.
+- **OV de abonos**: `SalesOrd` cuya oportunidad es una ganada, o cuyo presupuesto de origen (`custbody_3k_trans_orig_ov`) es de una ganada; solo tipo *ABONOS (Contrato)* (incluye *PRODUCTOS y ABONOS (Contrato)*). **Una OV por oportunidad**: la primera por fecha que no esté *Cerrada*; las OV mensuales siguientes del contrato viajan como `ov_mensuales` y no suman.
+- **Abonos**: líneas cuyo artículo empieza con `ABO` (nombre por `BUILTIN.DF(tl.item)`: el rol no puede leer la tabla `item`). Código = `codigo_abono()`: `ABO-10`, `ABO-403-AC`…
+- **Configuración** (migración 28, *Panel de administración → Comisiones*): tabla `comision_abono` con **Incluido** e **Incluido desde** = N por abono. Base comisionable = importe de los abonos incluidos (sin IVA). Comisión: por vendedor, abono y mes, las OV se ordenan por fecha de OV y comisionan desde la N-ésima por el importe de la línea. Cada abono cuenta por sí solo. Un abono que no está en la tabla se avisa y no suma.
+- **Liquidaciones**: `POST /comisiones/liquidar {mes: "AAAA-MM"}` (permiso **editar** en Comisiones) calcula el mes completo y lo guarda con `fn_comision_guardar_liquidacion` en `comision_liquidacion` (+ `_vendedor`, `_linea`), junto con la configuración usada. Una por mes: si ya existe responde 409; para regenerar se elimina desde la página.
 
-En la página: KPIs, resumen por vendedor, tabla de OV con filtros (búsqueda, vendedor, clasificación, artículo ABO, modalidad, tipo y estado de OV, unidad de negocio, tipo de establecimiento, vínculo, fecha de OV, solo comisionables), orden por columna, detalle de líneas al hacer click, ganadas sin OV y Exportar a Excel (Por vendedor, OV, Abonos, Ganadas sin OV).
-
-Prueba desde la PC, sin la web: `python diagnostico_comisiones.py 2026-09-01 2026-09-30`.
+Prueba desde la PC, sin la web (lee la configuración con el usuario técnico): `python diagnostico_comisiones.py 2026-09-01 2026-09-30`.
 
 ## Puesta en marcha
 

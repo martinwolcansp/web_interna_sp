@@ -260,3 +260,27 @@ def actualizar(token, tabla, params, cambios, que):
     """PATCH por filtro (ej. marcar dias con visitas cargadas)."""
     _check(requests.patch(_rest(tabla), headers=_h(token, "return=minimal"), params=params,
                           json=_sin_nan(cambios), timeout=60), que)
+
+
+# ---------- comisiones (migracion 28) ----------
+
+def leer_abonos_comision(token):
+    """Configuracion de abonos para comisiones (comision_abono)."""
+    return leer_todo(token, "comision_abono",
+                     {"select": "codigo,nombre,nombre_mostrar,incluido,incluido_desde", "order": "codigo"},
+                     "leer configuracion de abonos (migracion 28)")
+
+
+def guardar_liquidacion_comision(token, payload):
+    """fn_comision_guardar_liquidacion: guarda la liquidacion entera en una
+    transaccion. Devuelve el id; si ya existe la del mes, RuntimeError con el
+    mensaje de la base."""
+    resp = requests.post(_rest("rpc/fn_comision_guardar_liquidacion"), headers=_h(token),
+                         json={"p": _sin_nan(payload)}, timeout=120)
+    if resp.status_code not in (200, 201):
+        try:
+            mensaje = resp.json().get("message") or resp.text
+        except ValueError:
+            mensaje = resp.text
+        raise RuntimeError(mensaje[:500])
+    return resp.json()

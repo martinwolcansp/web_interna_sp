@@ -19,9 +19,17 @@
 # POST /informe-mkt/comisiones {desde, hasta}
 #   OV de las oportunidades ganadas del rango con sus abonos (ABO), para el
 #   boton "Comisiones por vendedor" (app/comisiones.py). Consulta NetSuite en
-#   vivo, no guarda nada. Permiso: ver. Es sincronico.
+#   vivo, no guarda nada. Permiso: ver en Informes de MKT o en Comisiones.
+#   Usa la configuracion de abonos de comision_abono (migracion 28).
+#
+# POST /comisiones/liquidar {mes: "AAAA-MM"}
+#   Calcula el mes completo como el pop up y guarda la liquidacion
+#   (fn_comision_guardar_liquidacion). Permiso: editar en Comisiones. Si ya
+#   existe la del mes responde 409: hay que eliminarla para regenerarla.
 
+import calendar
 import logging
+import re
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -49,6 +57,10 @@ app.add_middleware(
 class PedidoActualizacion(BaseModel):
     desde: date
     hasta: date
+
+
+class PedidoLiquidacion(BaseModel):
+    mes: str  # "AAAA-MM"
 
 
 @app.get("/health")
@@ -101,18 +113,54 @@ def consultar(pedido: PedidoActualizacion, authorization: str = Header(None)):
 def consultar_comisiones(pedido: PedidoActualizacion, authorization: str = Header(None)):
     try:
         token = _token_valido(authorization)
-        if not sb.tiene_permiso(token, "informes-mkt", "ver"):
-            raise HTTPException(403, "Tu usuario no tiene permiso para ver el Informe de MKT.")
+        if not (sb.tiene_permiso(token, "informes-mkt", "ver") or sb.tiene_permiso(token, "comisiones", "ver")):
+            raise HTTPException(403, "Tu usuario no tiene permiso para ver el Informe de MKT ni Comisiones.")
         if pedido.desde > pedido.hasta:
             raise HTTPException(422, "La fecha 'desde' no puede ser posterior a 'hasta'.")
         if (pedido.hasta - pedido.desde).days + 1 > config.MAX_DIAS_CONSULTA:
             raise HTTPException(422, f"El rango no puede superar {config.MAX_DIAS_CONSULTA} dias.")
-        return comisiones.generar(pedido.desde, pedido.hasta, logger.info)
+        return comisiones.generar(pedido.desde, pedido.hasta, logger.info, sb.leer_abonos_comision(token))
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Error al consultar las comisiones")
         raise HTTPException(500, f"Error al consultar NetSuite para las comisiones: {e}")
+
+
+@app.post("/comisiones/liquidar")
+def liquidar_comisiones(pedido: PedidoLiquidacion, authorization: str = Header(None)):
+    try:
+        token = _token_valido(authorization)
+        if not sb.tiene_permiso(token, "comisiones", "editar"):
+            raise HTTPException(403, "Tu usuario no tiene permiso para generar liquidaciones (editar en Comisiones).")
+        if not re.fullmatch(r"\d{4}-\d{2}", pedido.mes or ""):
+            raise HTTPException(422, "El mes tiene que tener el formato AAAA-MM.")
+        anio, mes = (int(x) for x in pedido.mes.split("-"))
+        if not 1 <= mes <= 12:
+            raise HTTPException(422, "Mes inválido.")
+        desde = date(anio, mes, 1)
+        hasta = date(anio, mes, calendar.monthrange(anio, mes)[1])
+        hoy = datetime.now(ZoneInfo(config.ZONA_HORARIA)).date()
+        if desde > hoy:
+            raise HTTPException(422, "No se puede liquidar un mes que todavía no empezó.")
+        usuario = sb.verificar_usuario(token) or {}
+        r = comisiones.generar(desde, hasta, logger.info, sb.leer_abonos_comision(token))
+        payload = comisiones.payload_liquidacion(r, desde, usuario.get("email"))
+        if hasta >= hoy:
+            payload["avisos"].append(f"Liquidación generada el {hoy.strftime('%d/%m/%Y')}, con el mes todavía en curso.")
+        try:
+            liq_id = sb.guardar_liquidacion_comision(token, payload)
+        except RuntimeError as e:
+            if "Ya existe" in str(e):
+                raise HTTPException(409, str(e))
+            raise
+        return {"id": liq_id, "mes": desde.isoformat(), "totales": payload["totales"],
+                "vendedores": len(payload["vendedores"]), "lineas": len(payload["lineas"])}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error al generar la liquidacion de comisiones")
+        raise HTTPException(500, f"Error al generar la liquidación: {e}")
 
 
 @app.post("/auditoria/actualizar", status_code=202)

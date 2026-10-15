@@ -1,7 +1,7 @@
 /**
  * panel-admin.js — Punto de entrada único a las pantallas de
  * administración (Usuarios, Editor de la pizarra, Editor de fichas,
- * Permisos por Área).
+ * Permisos por Área, Comisiones).
  *
  * Sólo decide qué tarjetas mostrar según permiso — cada pantalla sigue
  * teniendo su propio chequeo de acceso (admin.js / pizarra-editor.js /
@@ -64,20 +64,23 @@ async function handleAuthReady(e) {
 
 async function calcularAccesos(perfil) {
   if (perfil.es_superadmin) {
-    return { usuarios: true, pizarra: true, fichas: true, permisos: true };
+    return { usuarios: true, pizarra: true, fichas: true, permisos: true, comisiones: true };
   }
 
-  const [pizarraRes, seccionesRes, permisosAreaRes] = await Promise.all([
+  const [pizarraRes, seccionesRes, permisosAreaRes, comisionesRes] = await Promise.all([
     window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'pizarra', p_nivel: 'editar' }),
     window.supabaseClient.rpc('fn_mis_secciones_editables'),
-    window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'permisos-area', p_nivel: 'ver' })
+    window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'permisos-area', p_nivel: 'ver' }),
+    // Comisiones (migracion_28_comisiones.sql): con "ver" se consulta, con "editar" se modifica.
+    window.supabaseClient.rpc('fn_tiene_permiso', { p_seccion_id: 'comisiones', p_nivel: 'ver' })
   ]);
 
   return {
     usuarios: false, // sólo superadmin
     pizarra: !!pizarraRes.data,
     fichas: !!(seccionesRes.data && seccionesRes.data.length > 0),
-    permisos: !!permisosAreaRes.data
+    permisos: !!permisosAreaRes.data,
+    comisiones: !!comisionesRes.data
   };
 }
 
@@ -113,6 +116,13 @@ function renderCards(accesos) {
       icon: 'ti-shield-lock',
       title: 'Permisos por Área',
       desc: 'Vista de solo lectura de qué área puede ver o editar cada sección del sitio.'
+    },
+    {
+      permitido: accesos.comisiones,
+      href: '/pages/comisiones.html',
+      icon: 'ti-coin',
+      title: 'Comisiones',
+      desc: 'Abonos que comisionan (Incluido / Incluido desde) y liquidaciones mensuales por vendedor.'
     }
   ].filter(t => t.permitido);
 
