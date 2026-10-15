@@ -602,9 +602,8 @@ async function borrarLiquidacion(id) {
   const l = EST.liquidaciones.find((x) => x.id === id);
   $('com-liq-confirm-si').disabled = true;
   status('com-liq-status', 'Eliminando…');
-  // .select() devuelve las filas borradas: si las políticas de la base no
-  // dejan borrar, Supabase no da error, simplemente no borra nada.
-  const { data, error } = await window.supabaseClient.from('comision_liquidacion').delete().eq('id', id).select('id');
+  const sb = window.supabaseClient;
+  const { error } = await sb.from('comision_liquidacion').delete().eq('id', id);
   EST.liqBorrarPendiente = null;
   $('com-liq-confirm').hidden = true;
   $('com-liq-confirm-si').disabled = false;
@@ -614,8 +613,11 @@ async function borrarLiquidacion(id) {
     renderLiquidaciones();
     return;
   }
-  if (!data || !data.length) {
-    status('com-liq-status', 'La base no eliminó la liquidación: tu usuario necesita permiso "editar" en la sección Comisiones (o falta aplicar la migración 28 completa).', 'error');
+  // Si las políticas de la base no dejan borrar, Supabase no da error,
+  // simplemente no borra nada: se verifica que ya no esté.
+  const quedo = await sb.from('comision_liquidacion').select('id').eq('id', id);
+  if (!quedo.error && quedo.data && quedo.data.length) {
+    status('com-liq-status', 'La base no eliminó la liquidación: tu usuario necesita permiso "editar" en la sección Comisiones.', 'error');
     await cargarLiquidaciones();
     return;
   }
