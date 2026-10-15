@@ -511,7 +511,11 @@ function iniciarLiquidaciones() {
     const id = b.closest('tr[data-id]').dataset.id;
     if (b.dataset.accion === 'ver') verLiquidacion(id);
     if (b.dataset.accion === 'excel') exportarLiquidacion(id, b);
-    if (b.dataset.accion === 'borrar') { EST.liqBorrarPendiente = EST.liqBorrarPendiente === id ? null : id; renderLiquidaciones(); }
+    if (b.dataset.accion === 'borrar') {
+      EST.liqBorrarPendiente = EST.liqBorrarPendiente === id ? null : id;
+      renderLiquidaciones();
+      if (EST.liqBorrarPendiente) status('com-liq-status', 'Tocá «Confirmar eliminación» para borrar la liquidación con todo su detalle.');
+    }
     if (b.dataset.accion === 'confirmar-borrar') borrarLiquidacion(id);
   });
 }
@@ -535,7 +539,7 @@ function renderLiquidaciones() {
     const t = l.totales || {};
     const borrar = !ed ? '' : (EST.liqBorrarPendiente === l.id
       ? '<button type="button" class="com-icon-btn com-icon-btn--confirm" data-accion="confirmar-borrar">Confirmar eliminación</button>'
-      : '<button type="button" class="com-icon-btn" data-accion="borrar" title="Eliminar liquidación"><i class="ti ti-trash" aria-hidden="true"></i></button>');
+      : '<button type="button" class="com-icon-btn" data-accion="borrar" title="Eliminar liquidación"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>');
     return `<tr data-id="${esc(l.id)}" class="${EST.liqSeleccionada === l.id ? 'com-liq-sel' : ''}">
       <td><b>${esc(fmtMes(l.mes))}</b>${(l.avisos || []).length ? ' <i class="ti ti-alert-triangle" title="Tiene avisos" style="color:var(--color-alert-icon)"></i>' : ''}</td>
       <td class="com-n">${esc(t.ganadas ?? '')}</td>
@@ -585,9 +589,22 @@ async function generarLiquidacion() {
 
 async function borrarLiquidacion(id) {
   const l = EST.liquidaciones.find((x) => x.id === id);
-  const { error } = await window.supabaseClient.from('comision_liquidacion').delete().eq('id', id);
+  status('com-liq-status', 'Eliminando…');
+  // .select() devuelve las filas borradas: si las políticas de la base no
+  // dejan borrar, Supabase no da error, simplemente no borra nada.
+  const { data, error } = await window.supabaseClient.from('comision_liquidacion').delete().eq('id', id).select('id');
   EST.liqBorrarPendiente = null;
-  if (error) { status('com-liq-status', 'No se pudo eliminar: ' + error.message, 'error'); renderLiquidaciones(); return; }
+  if (error) {
+    console.error('[comisiones.js] eliminar liquidación', error);
+    status('com-liq-status', 'No se pudo eliminar: ' + error.message, 'error');
+    renderLiquidaciones();
+    return;
+  }
+  if (!data || !data.length) {
+    status('com-liq-status', 'La base no eliminó la liquidación: tu usuario necesita permiso "editar" en la sección Comisiones (o falta aplicar la migración 28 completa).', 'error');
+    await cargarLiquidaciones();
+    return;
+  }
   if (EST.liqSeleccionada === id) { EST.liqSeleccionada = null; EST.liqDetalle = null; $('com-liq-detalle').hidden = true; }
   status('com-liq-status', `Se eliminó la liquidación de ${l ? fmtMes(l.mes) : ''}.`, 'ok');
   await cargarLiquidaciones();
