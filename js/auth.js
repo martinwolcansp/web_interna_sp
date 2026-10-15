@@ -120,8 +120,25 @@ function addHeaderLink(area, className, href, icon, label) {
 // hay nadie logueado" (caso normal) o "no se pudo ni averiguar" (caso de
 // error) -- cada página gateada distingue los dos casos para mostrar un
 // mensaje que tenga sentido ("iniciá sesión" vs. "probá recargar").
+//
+// Se espera a DOMContentLoaded antes de disparar: el script de cada página
+// (admin.js, pizarra-editor.js, panel-admin.js, page-guard.js, etc.) se
+// carga al final del <body> y recién ahí se suscribe a 'sp:auth-ready'.
+// Navegando desde otra página, header.html sale de la caché del navegador
+// y getSession() lee de localStorage, así que el evento podía dispararse
+// ANTES de que esos scripts existieran -- nadie lo escuchaba y la página
+// quedaba "cargando" para siempre hasta un F5 (que revalida la caché y
+// llega más tarde). Con DOMContentLoaded todos los <script> clásicos ya
+// corrieron y sus listeners están registrados.
 function notifyAuthReady(session, error) {
-  document.dispatchEvent(new CustomEvent('sp:auth-ready', { detail: { session, error: error || null } }));
+  const dispatch = () => document.dispatchEvent(
+    new CustomEvent('sp:auth-ready', { detail: { session, error: error || null } })
+  );
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', dispatch, { once: true });
+  } else {
+    dispatch();
+  }
 }
 
 function renderLoading(area) {

@@ -511,13 +511,10 @@ function iniciarLiquidaciones() {
     const id = b.closest('tr[data-id]').dataset.id;
     if (b.dataset.accion === 'ver') verLiquidacion(id);
     if (b.dataset.accion === 'excel') exportarLiquidacion(id, b);
-    if (b.dataset.accion === 'borrar') {
-      EST.liqBorrarPendiente = EST.liqBorrarPendiente === id ? null : id;
-      renderLiquidaciones();
-      if (EST.liqBorrarPendiente) status('com-liq-status', 'Tocá «Confirmar eliminación» para borrar la liquidación con todo su detalle.');
-    }
-    if (b.dataset.accion === 'confirmar-borrar') borrarLiquidacion(id);
+    if (b.dataset.accion === 'borrar') pedirBorradoLiquidacion(id);
   });
+  $('com-liq-confirm-si').addEventListener('click', () => { if (EST.liqBorrarPendiente) borrarLiquidacion(EST.liqBorrarPendiente); });
+  $('com-liq-confirm-no').addEventListener('click', () => pedirBorradoLiquidacion(null));
 }
 
 async function cargarLiquidaciones() {
@@ -533,14 +530,28 @@ async function cargarLiquidaciones() {
   renderLiquidaciones();
 }
 
+// La confirmación se muestra en un recuadro arriba de la tabla (y no dentro
+// de la fila), para que se vea aunque la tabla no entre a lo ancho.
+function pedirBorradoLiquidacion(id) {
+  EST.liqBorrarPendiente = id;
+  const l = id && EST.liquidaciones.find((x) => x.id === id);
+  $('com-liq-confirm').hidden = !l;
+  if (l) {
+    $('com-liq-confirm-texto').innerHTML = `¿Eliminar la liquidación de <b>${esc(fmtMes(l.mes))}</b>? ` +
+      'Se borra con todo su detalle y no se puede deshacer; después se puede volver a generar.';
+    $('com-liq-confirm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  status('com-liq-status', '');
+  renderLiquidaciones();
+}
+
 function renderLiquidaciones() {
   const ed = EST.puedeEditar;
   $('com-liq-tbody').innerHTML = EST.liquidaciones.length ? EST.liquidaciones.map((l) => {
     const t = l.totales || {};
-    const borrar = !ed ? '' : (EST.liqBorrarPendiente === l.id
-      ? '<button type="button" class="com-icon-btn com-icon-btn--confirm" data-accion="confirmar-borrar">Confirmar eliminación</button>'
-      : '<button type="button" class="com-icon-btn" data-accion="borrar" title="Eliminar liquidación"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>');
-    return `<tr data-id="${esc(l.id)}" class="${EST.liqSeleccionada === l.id ? 'com-liq-sel' : ''}">
+    const borrar = !ed ? '' : '<button type="button" class="com-icon-btn" data-accion="borrar" title="Eliminar liquidación"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>';
+    const clase = EST.liqBorrarPendiente === l.id ? 'com-liq-borrar' : (EST.liqSeleccionada === l.id ? 'com-liq-sel' : '');
+    return `<tr data-id="${esc(l.id)}" class="${clase}">
       <td><b>${esc(fmtMes(l.mes))}</b>${(l.avisos || []).length ? ' <i class="ti ti-alert-triangle" title="Tiene avisos" style="color:var(--color-alert-icon)"></i>' : ''}</td>
       <td class="com-n">${esc(t.ganadas ?? '')}</td>
       <td class="com-n">${esc(t.ovs ?? '')}</td>
@@ -589,11 +600,14 @@ async function generarLiquidacion() {
 
 async function borrarLiquidacion(id) {
   const l = EST.liquidaciones.find((x) => x.id === id);
+  $('com-liq-confirm-si').disabled = true;
   status('com-liq-status', 'Eliminando…');
   // .select() devuelve las filas borradas: si las políticas de la base no
   // dejan borrar, Supabase no da error, simplemente no borra nada.
   const { data, error } = await window.supabaseClient.from('comision_liquidacion').delete().eq('id', id).select('id');
   EST.liqBorrarPendiente = null;
+  $('com-liq-confirm').hidden = true;
+  $('com-liq-confirm-si').disabled = false;
   if (error) {
     console.error('[comisiones.js] eliminar liquidación', error);
     status('com-liq-status', 'No se pudo eliminar: ' + error.message, 'error');

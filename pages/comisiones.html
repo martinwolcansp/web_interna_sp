@@ -147,6 +147,15 @@
       </div>
       <p id="com-liq-status" class="com-status" role="status" aria-live="polite"></p>
 
+      <!-- Confirmación de eliminación (fuera de la tabla, siempre visible) -->
+      <div id="com-liq-confirm" class="com-confirm" role="alertdialog" aria-live="assertive" hidden>
+        <p id="com-liq-confirm-texto"></p>
+        <div class="com-actions">
+          <button type="button" id="com-liq-confirm-si" class="btn btn--primary"><i class="ti ti-trash" aria-hidden="true"></i> Confirmar eliminación</button>
+          <button type="button" id="com-liq-confirm-no" class="btn btn--secondary">Cancelar</button>
+        </div>
+      </div>
+
       <div class="admin-table-wrap">
         <table class="admin-table com-tabla">
           <thead>
