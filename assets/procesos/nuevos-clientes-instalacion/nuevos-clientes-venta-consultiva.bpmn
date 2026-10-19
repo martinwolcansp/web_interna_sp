@@ -68,8 +68,6 @@
     <bpmn:sequenceFlow id="F20" sourceRef="Task_AjustarPresupuesto" targetRef="Task_Presupuesto" />
     <bpmn:textAnnotation id="Ann_Oportunidad"><bpmn:text>A definir: en qué momento el agente IA crea la oportunidad en GHL (hoy solo deriva la conversación a un humano)</bpmn:text></bpmn:textAnnotation>
     <bpmn:association id="Ann_Oportunidad_Assoc" sourceRef="Ann_Oportunidad" targetRef="Gw_Derivar" />
-    <bpmn:textAnnotation id="Ann_PlazoContacto"><bpmn:text>A definir: plazo para contactar al lead desde su calificación</bpmn:text></bpmn:textAnnotation>
-    <bpmn:association id="Ann_PlazoContacto_Assoc" sourceRef="Ann_PlazoContacto" targetRef="Task_AgendarVisita" />
     <bpmn:textAnnotation id="Ann_Cadencia"><bpmn:text>Cadencia sugerida: 24-48 hs y luego semanal. Puede intervenir el bot</bpmn:text></bpmn:textAnnotation>
     <bpmn:association id="Ann_Cadencia_Assoc" sourceRef="Ann_Cadencia" targetRef="Task_Seguimiento" />
     <bpmn:textAnnotation id="Ann_Continua"><bpmn:text>Vuelve al diagrama "Confirmación de la venta y cobro": etapa 6, formalización y traspaso a Atención al Cliente</bpmn:text></bpmn:textAnnotation>
@@ -142,8 +140,6 @@
       <bpmndi:BPMNEdge id="MF4_di" bpmnElement="MF4"><di:waypoint x="2250" y="390" /><di:waypoint x="2250" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="2256" y="135" width="80" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_Oportunidad_di" bpmnElement="Ann_Oportunidad"><dc:Bounds x="1020" y="175" width="250" height="70" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_Oportunidad_Assoc_di" bpmnElement="Ann_Oportunidad_Assoc"><di:waypoint x="1020" y="210" /><di:waypoint x="810" y="235" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="Ann_PlazoContacto_di" bpmnElement="Ann_PlazoContacto"><dc:Bounds x="1395" y="535" width="210" height="50" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Ann_PlazoContacto_Assoc_di" bpmnElement="Ann_PlazoContacto_Assoc"><di:waypoint x="1450" y="535" /><di:waypoint x="1450" y="470" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_Cadencia_di" bpmnElement="Ann_Cadencia"><dc:Bounds x="2265" y="230" width="200" height="50" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_Cadencia_Assoc_di" bpmnElement="Ann_Cadencia_Assoc"><di:waypoint x="2280" y="280" /><di:waypoint x="2280" y="390" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_Continua_di" bpmnElement="Ann_Continua"><dc:Bounds x="2510" y="190" width="220" height="80" /></bpmndi:BPMNShape>
