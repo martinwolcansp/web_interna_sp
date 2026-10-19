@@ -219,7 +219,7 @@ function nombreUnidad(id) {
 function opcionesUnidad(sel) {
   return '<option value="">— No incluido —</option>' + EST.unidades
     .slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
-    .map((u) => `<option value="${esc(u.id)}"${u.id === sel ? ' selected' : ''}>${esc(u.nombre)} (desde ${esc(u.incluido_desde)})</option>`).join('');
+    .map((u) => `<option value="${esc(u.id)}"${u.id === sel ? ' selected' : ''}>${esc(u.nombre)} (${u.comisiona === false ? 'no comisiona' : 'desde ' + esc(u.incluido_desde)})</option>`).join('');
 }
 function actualizarFiltroUnidades() {
   const sel = $('com-ab-filtro');
@@ -356,10 +356,11 @@ async function exportarAbonos() {
   wu.columns = [
     { header: 'Unidad de comisión', key: 'nombre', width: 40 },
     { header: 'Incluido desde', key: 'incluido_desde', width: 15 },
+    { header: 'Comisiona', key: 'comisiona', width: 11 },
     { header: 'Abonos', key: 'abonos', width: 60 }
   ];
   const unidades = EST.unidades.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
-  unidades.forEach((u) => wu.addRow({ nombre: u.nombre, incluido_desde: u.incluido_desde,
+  unidades.forEach((u) => wu.addRow({ nombre: u.nombre, incluido_desde: u.incluido_desde, comisiona: u.comisiona === false ? 'No' : 'Sí',
     abonos: EST.abonos.filter((a) => a.unidad_id === u.id).map((a) => a.codigo).sort(compararCodigos).join(', ') }));
   estilarEncabezado(wu);
   if (unidades.length) {
@@ -570,9 +571,10 @@ function iniciarUnidades() {
     const tr = ev.target.closest('tr[data-id]');
     const campo = ev.target.dataset.campo;
     if (!tr || !campo) return;
-    let valor = ev.target.value;
+    let valor = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value;
     if (campo === 'incluido_desde') valor = Math.max(1, parseInt(valor, 10) || 1);
     editarUnidad(tr.dataset.id, campo, valor);
+    if (campo === 'comisiona') tr.classList.toggle('com-un-off', !valor);
     tr.classList.toggle('is-dirty', EST.unCambios.has(tr.dataset.id) && !EST.unNuevas.has(tr.dataset.id));
     actualizarBotonGuardarUnidades();
   });
@@ -583,10 +585,19 @@ function iniciarUnidades() {
 }
 
 async function cargarUnidades() {
-  const { data, error } = await window.supabaseClient
+  let { data, error } = await window.supabaseClient
     .from('comision_unidad')
-    .select('id, nombre, incluido_desde, descripcion, actualizado_en, actualizado_por')
+    .select('id, nombre, incluido_desde, comisiona, descripcion, actualizado_en, actualizado_por')
     .order('nombre');
+  EST.unSinComisiona = false;
+  if (error && /comisiona/.test(error.message || '')) { // falta la migración 30
+    ({ data, error } = await window.supabaseClient
+      .from('comision_unidad')
+      .select('id, nombre, incluido_desde, descripcion, actualizado_en, actualizado_por')
+      .order('nombre'));
+    EST.unSinComisiona = !error;
+    (data || []).forEach((u) => { u.comisiona = true; });
+  }
   if (error) {
     EST.unidades = [];
     status('com-un-status', 'No se pudieron leer las unidades (¿falta correr la migración 29?): ' + error.message, 'error');
@@ -609,7 +620,8 @@ function editarUnidad(id, campo, valor) {
   const actual = { ...(EST.unCambios.get(id) || base) };
   actual[campo] = valor;
   if (base && !EST.unNuevas.has(id) &&
-      normEspacios(actual.nombre) === normEspacios(base.nombre) && Number(actual.incluido_desde) === Number(base.incluido_desde)) {
+      normEspacios(actual.nombre) === normEspacios(base.nombre) && Number(actual.incluido_desde) === Number(base.incluido_desde) &&
+      (actual.comisiona !== false) === (base.comisiona !== false)) {
     EST.unCambios.delete(id);
     return;
   }
@@ -631,15 +643,18 @@ function renderUnidades() {
   tbody.innerHTML = lista.length ? lista.map((u) => {
     const nueva = EST.unNuevas.has(u.id);
     const abonos = EST.abonos.filter((a) => a.unidad_id === u.id).map((a) => a.codigo).sort(compararCodigos);
-    const clase = nueva ? 'is-nuevo' : (EST.unCambios.has(u.id) ? 'is-dirty' : (EST.unBorrarPendiente === u.id ? 'com-liq-borrar' : ''));
+    const clase = (nueva ? 'is-nuevo' : (EST.unCambios.has(u.id) ? 'is-dirty' : (EST.unBorrarPendiente === u.id ? 'com-liq-borrar' : ''))) +
+      (u.comisiona === false ? ' com-un-off' : '');
+    const disCom = EST.unSinComisiona ? ' disabled title="Falta correr la migración 30"' : dis;
     return `<tr data-id="${esc(u.id)}" class="${clase}">
       <td><input class="admin-input" data-campo="nombre" value="${esc(u.nombre)}" placeholder="Ej. Comercio Seguro"${dis}></td>
+      <td class="com-c"><input type="checkbox" class="admin-checkbox" data-campo="comisiona"${u.comisiona !== false ? ' checked' : ''}${disCom} aria-label="Comisiona"></td>
       <td class="com-c"><input type="number" min="1" step="1" class="admin-input com-input-num" data-campo="incluido_desde" value="${esc(u.incluido_desde || 1)}"${dis} aria-label="Incluido desde"></td>
       <td>${abonos.length ? abonos.map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ') : '<span class="com-meta">Sin abonos: asignalos en la pestaña Abonos</span>'}</td>
       <td><span class="com-meta">${nueva ? 'Nueva, sin guardar' : esc(fmtFechaHora(u.actualizado_en))}${u.actualizado_por && !nueva ? '<br>' + esc(u.actualizado_por) : ''}</span></td>
       <td class="com-solo-editor"><button type="button" class="com-icon-btn" data-accion="borrar" title="Eliminar unidad"><i class="ti ti-trash" aria-hidden="true"></i></button></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="5" class="admin-empty">Todavía no hay unidades. Agregá una y asignale abonos en la pestaña Abonos.</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="admin-empty">Todavía no hay unidades. Agregá una y asignale abonos en la pestaña Abonos.</td></tr>';
   actualizarBotonGuardarUnidades();
 }
 
@@ -647,7 +662,7 @@ function agregarUnidad() {
   let n = 1, id;
   do { id = `nueva-${n++}`; } while (unidadActual(id));
   EST.unNuevas.add(id);
-  EST.unCambios.set(id, { id, nombre: '', incluido_desde: 1 });
+  EST.unCambios.set(id, { id, nombre: '', incluido_desde: 1, comisiona: true });
   renderUnidades();
   const input = document.querySelector(`#com-un-tbody tr[data-id="${CSS.escape(id)}"] input[data-campo="nombre"]`);
   if (input) input.focus();
@@ -668,7 +683,8 @@ async function guardarUnidades() {
   status('com-un-status', 'Guardando…');
   const sb = window.supabaseClient;
   const meta = { actualizado_en: new Date().toISOString(), actualizado_por: EST.session.user.email || null };
-  const limpio = (u) => ({ nombre: normEspacios(u.nombre), incluido_desde: Math.max(1, parseInt(u.incluido_desde, 10) || 1), ...meta });
+  const limpio = (u) => ({ nombre: normEspacios(u.nombre), incluido_desde: Math.max(1, parseInt(u.incluido_desde, 10) || 1),
+    ...(EST.unSinComisiona ? {} : { comisiona: u.comisiona !== false }), ...meta });
   const nuevas = filas.filter((u) => EST.unNuevas.has(u.id)).map(limpio);
   const existentes = filas.filter((u) => !EST.unNuevas.has(u.id)).map((u) => ({ id: u.id, ...limpio(u) }));
   const r1 = nuevas.length ? await sb.from('comision_unidad').insert(nuevas) : { error: null };
@@ -939,7 +955,7 @@ function renderDetalle() {
     </tr></thead><tbody>` +
     (ls.length ? ls.map((l) => `<tr><td>${esc(l.vendedor)}</td><td>${esc(l.ov_numero)}</td><td>${esc(fmtDia(l.fecha_ov))}</td>
       <td>${esc(l.cliente)}</td><td>${esc(l.oportunidad)}</td><td title="${esc(l.articulo)}"><span class="com-codigo">${esc(l.codigo)}</span></td>
-      <td>${l.incluido ? esc(l.unidad || 'Incluido') : '<span class="com-no">No incluido</span>'}</td>
+      <td>${l.incluido ? esc(l.unidad || 'Incluido') : (l.unidad ? esc(l.unidad) + ' <span class="com-no">(no comisiona)</span>' : '<span class="com-no">No incluido</span>')}</td>
       <td class="com-n">${l.orden ? `${l.orden}${l.incluido_desde > 1 ? ' / desde ' + l.incluido_desde : ''}` : ''}</td>
       <td class="com-n">${!l.incluido ? '' : (l.factor != null ? pct(l.factor) : (l.comisiona ? '100 %' : '0 %'))}</td>
       <td class="com-n">${pesos(l.importe)}</td><td class="com-n">${l.comisiona ? '<b>' + pesos(l.comision) + '</b>' : ''}</td></tr>`).join('')
@@ -957,7 +973,7 @@ function renderDetalle() {
   const uns = liq.unidades || [];
   h += `<details class="com-config"><summary>Configuración usada (${uns.length ? uns.length + ' unidades de comisión · ' : ''}${cfg.filter((c) => c.incluido).length} abonos incluidos de ${cfg.length})</summary>` +
     (uns.length ? `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Unidad de comisión</th><th class="com-n">Incluido desde</th><th>Abonos</th></tr></thead><tbody>` +
-      uns.map((u) => `<tr><td>${esc(u.nombre)}</td><td class="com-n">${esc(u.incluido_desde)}</td><td>${(u.abonos || []).map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ')}</td></tr>`).join('') +
+      uns.map((u) => `<tr><td>${esc(u.nombre)}${u.comisiona === false ? ' <span class="com-no">(no comisiona)</span>' : ''}</td><td class="com-n">${u.comisiona === false ? '—' : esc(u.incluido_desde)}</td><td>${(u.abonos || []).map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ')}</td></tr>`).join('') +
       '</tbody></table></div>' : '') +
     `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Código</th><th>Nombre</th><th>Unidad de comisión</th>${uns.length ? '' : '<th class="com-n">Incluido desde</th>'}</tr></thead><tbody>` +
     cfg.map((c) => `<tr><td class="com-codigo">${esc(c.codigo)}</td><td>${esc(c.nombre_mostrar || c.nombre)}</td>

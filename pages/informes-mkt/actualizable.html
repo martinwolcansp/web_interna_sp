@@ -2422,7 +2422,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     o.abonos.forEach(function (a) {
       h += "<tr><td>" + esc(a.codigo) + "</td><td>" + esc(a.articulo) + '</td><td class="num">' + esc(a.cantidad === null ? "—" : a.cantidad) +
         '</td><td class="num">' + pesos(a.precio) + '</td><td class="num">' + pesos(a.importe) + "</td><td>" +
-        (a.cuenta ? '<span class="com-abo com-abo--cuenta">' + esc(a.unidad || "Incluido") + "</span>" : '<span class="com-sub">No incluido</span>') + '</td><td class="num">' +
+        (a.cuenta ? '<span class="com-abo com-abo--cuenta">' + esc(a.unidad || "Incluido") + "</span>"
+          : (a.unidad ? esc(a.unidad) + ' <span class="com-sub">(no comisiona)</span>' : '<span class="com-sub">No incluido</span>')) + '</td><td class="num">' +
         (a.orden ? a.orden + (a.incluido_desde > 1 ? ' <span class="com-sub">(desde ' + a.incluido_desde + ")</span>" : "") : "") + '</td><td class="num">' +
         (a.cuenta && a.factor !== undefined && a.factor !== null ? pct(a.factor) : "") + '</td><td class="num">' +
         (a.comisiona ? "<b>" + pesos(a.comision) + "</b>" : (a.incluido ? '<span class="com-sub">no comisiona</span>' : "")) + "</td></tr>";

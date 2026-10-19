@@ -142,7 +142,8 @@
             Agrupan abonos. Por vendedor y por mes, las <b>ventas</b> de la unidad son las OV con al menos uno de sus abonos.
             Con <b>Incluido desde</b> = N comisionan las ventas desde la N-ésima (ventas − N + 1), y la comisión es
             <b>base comisionable de la unidad × ventas que comisionan / ventas</b> (el promedio por venta). Por debajo de N, la comisión es cero.
-            El valor es el mismo para todos los vendedores.
+            El valor es el mismo para todos los vendedores. Con <b>Comisiona</b> destildado la unidad queda cargada,
+            pero sus abonos no suman a la base comisionable ni comisionan.
           </p>
         </div>
         <div class="com-actions com-solo-editor">
@@ -163,9 +164,9 @@
       <div class="admin-table-wrap">
         <table class="admin-table com-tabla">
           <thead>
-            <tr><th>Unidad</th><th class="com-c">Incluido desde</th><th>Abonos</th><th>Última modificación</th><th class="com-solo-editor"></th></tr>
+            <tr><th>Unidad</th><th class="com-c">Comisiona</th><th class="com-c">Incluido desde</th><th>Abonos</th><th>Última modificación</th><th class="com-solo-editor"></th></tr>
           </thead>
-          <tbody id="com-un-tbody"><tr><td colspan="5" class="admin-loading">Cargando unidades…</td></tr></tbody>
+          <tbody id="com-un-tbody"><tr><td colspan="6" class="admin-loading">Cargando unidades…</td></tr></tbody>
         </table>
       </div>
     </section>

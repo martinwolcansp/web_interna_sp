@@ -223,19 +223,26 @@ def clasificar(abonos, cfg, unidades):
     """Marca cada linea con "incluido" y "unidad" segun la configuracion y
     devuelve (clasificacion, comisionable, base, unidades de la OV, sin
     configurar)."""
-    nombres, sin_config = [], []
+    nombres, sin_config, sin_comision = [], [], []
     for a in abonos:
         conf = cfg.get(a["codigo"])
         uni = unidades.get((conf or {}).get("unidad_id")) if conf else None
-        a["incluido"] = uni is not None
+        # Unidad con "Comisiona" destildado (migracion 30): el abono queda
+        # asignado pero no suma a la base ni comisiona.
+        a["incluido"] = uni is not None and uni.get("comisiona", True) is not False
         a["cuenta"] = a["incluido"]  # nombre que usa la pagina
         a["unidad"] = uni["nombre"] if uni else None
-        if uni and uni["nombre"] not in nombres:
+        a["unidad_comisiona"] = a["incluido"] if uni else None
+        if a["incluido"] and uni["nombre"] not in nombres:
             nombres.append(uni["nombre"])
+        if uni and not a["incluido"] and uni["nombre"] not in sin_comision:
+            sin_comision.append(uni["nombre"])
         if conf is None and a["codigo"] not in sin_config:
             sin_config.append(a["codigo"])
     if nombres:
         clasif = " + ".join(nombres)
+    elif sin_comision:
+        clasif = " + ".join(sin_comision) + " (no comisiona)"
     elif abonos:
         clasif = "Sin abonos incluidos"
     else:
@@ -448,6 +455,7 @@ def generar(desde, hasta, log, abonos_config=None, unidades_config=None):
         "config": [dict(cfg[k], unidad=(unidades.get(cfg[k].get("unidad_id")) or {}).get("nombre"))
                    for k in sorted(cfg)],
         "unidades": [{"id": u["id"], "nombre": u["nombre"], "incluido_desde": u.get("incluido_desde") or 1,
+                      "comisiona": u.get("comisiona", True) is not False,
                       "abonos": sorted(k for k, a in cfg.items() if a.get("unidad_id") == u["id"])}
                      for u in sorted(unidades.values(), key=lambda u: u["nombre"].lower())],
         # Detalle por vendedor y unidad (ventas, comisionan, base, promedio, comision).

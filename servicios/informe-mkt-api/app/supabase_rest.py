@@ -268,7 +268,11 @@ def leer_unidades_comision(token):
     """Unidades de comision (comision_unidad, migracion 29). None si la tabla
     todavia no existe: el calculo usa cada abono incluido como unidad propia."""
     resp = requests.get(_rest("comision_unidad"), headers=_h(token),
-                        params={"select": "id,nombre,incluido_desde", "order": "nombre"}, timeout=30)
+                        params={"select": "id,nombre,incluido_desde,comisiona", "order": "nombre"}, timeout=30)
+    if resp.status_code >= 400 and "comision_unidad.comisiona" in resp.text:
+        # falta la migracion 30: todas las unidades comisionan
+        resp = requests.get(_rest("comision_unidad"), headers=_h(token),
+                            params={"select": "id,nombre,incluido_desde", "order": "nombre"}, timeout=30)
     if resp.status_code == 404 or (resp.status_code >= 400 and "comision_unidad" in resp.text):
         return None
     return _check(resp, "leer unidades de comision (migracion 29)").json()
