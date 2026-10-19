@@ -221,6 +221,7 @@ button.doc-link { font-family: inherit; cursor: pointer; }
 .proc-diagram-item:hover { border-color: var(--color-blue); }
 .proc-diagram-item.is-active { border-color: var(--color-navy); border-bottom: 2px solid var(--color-red); }
 .proc-diagram-item__name { display: block; font-size: var(--font-size-base); font-weight: var(--font-weight-bold); color: var(--color-navy); }
+.proc-diagram-item__etapas { display: block; font-weight: var(--font-weight-semibold, 600); }
 .proc-diagram-item__meta { display: block; font-size: var(--font-size-xs); color: var(--color-text-muted); }
 
 .proc-viewer {

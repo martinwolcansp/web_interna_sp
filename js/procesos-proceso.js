@@ -214,7 +214,7 @@
           <button type="button" class="proc-diagram-item" data-diagrama="${i}">
             <i class="ti ti-sitemap" aria-hidden="true"></i>
             <span>
-              <span class="proc-diagram-item__name">${esc(d.nombre)}</span>
+              <span class="proc-diagram-item__name">${esc(d.nombre)}${d.etapas ? `<span class="proc-diagram-item__etapas">${esc(d.etapas)}</span>` : ''}</span>
               <span class="proc-diagram-item__meta">${esc([d.version, d.fecha, d.estado].filter(Boolean).join(' · '))}</span>
             </span>
           </button>`).join('')}
@@ -243,7 +243,7 @@
     if (!d) return;
     diagramaActual = d;
     app.querySelectorAll('.proc-diagram-item').forEach(b => b.classList.toggle('is-active', +b.dataset.diagrama === i));
-    document.getElementById('proc-viewer-title').textContent = d.nombre;
+    document.getElementById('proc-viewer-title').textContent = d.etapas ? `${d.nombre} ${d.etapas}` : d.nombre;
     document.getElementById('proc-viewer-bpmn').href = url(d.archivo);
     document.getElementById('proc-diagram-desc').innerHTML = d.descripcion
       ? `<div class="proc-card"><p class="proc-text">${esc(d.descripcion)}</p></div>` : '';

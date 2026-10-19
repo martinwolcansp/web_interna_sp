@@ -199,7 +199,8 @@
   ],
   "diagramas": [
     {
-      "nombre": "Venta consultiva (etapas 1 a 5)",
+      "nombre": "Venta consultiva",
+      "etapas": "(etapas 1 a 5)",
       "archivo": "nuevos-clientes-venta-consultiva.bpmn",
       "version": "v0.1",
       "fecha": "19/10/2026",
@@ -216,6 +217,7 @@
     },
     {
       "nombre": "Confirmación de la venta y cobro",
+      "etapas": "(etapas 6 y 7)",
       "archivo": "nuevos-clientes-venta-cobro.bpmn",
       "version": "v0.1",
       "fecha": "19/10/2026",
@@ -237,7 +239,8 @@
       ]
     },
     {
-      "nombre": "Instalación y control de calidad (etapas 8 a 10)",
+      "nombre": "Instalación y control de calidad",
+      "etapas": "(etapas 8 a 10)",
       "archivo": "nuevos-clientes-instalacion-control.bpmn",
       "version": "v0.1",
       "fecha": "19/10/2026",
