@@ -204,7 +204,7 @@
       "version": "v0.1",
       "fecha": "19/10/2026",
       "estado": "Borrador",
-      "descripcion": "Desde el primer contacto del prospecto hasta que el cliente confirma la venta. Hay dos entradas: la consulta por redes o WhatsApp que atiende el Bot IA comercial (GHL) y el contacto directo al vendedor por teléfono, WhatsApp o correo, en cuyo caso el vendedor carga el lead en GHL. Cada etapa del relevamiento está marcada en el diagrama. Al confirmar, continúa en \"Confirmación de la venta y cobro\" (etapa 6). Actualizado 19/10: al elaborar el presupuesto, el vendedor consulta el stock en NetSuite (Depósito Central menos un stock de seguridad).",
+      "descripcion": "Desde el primer contacto del prospecto hasta que el cliente confirma la venta. Hay dos entradas: la consulta por redes o WhatsApp que atiende el Bot IA comercial (GHL) y el contacto directo al vendedor por teléfono, WhatsApp o correo, en cuyo caso el vendedor carga el lead en GHL. Cada etapa del relevamiento está marcada en el diagrama. Al confirmar, continúa en \"Confirmación de la venta y cobro\" (etapa 6). Actualizado 19/10: al elaborar el presupuesto, el vendedor consulta el stock en NetSuite (Depósito Central menos un stock de seguridad). El ícono de cada tarea indica cómo se ejecuta (persona = tarea de usuario en un sistema; engranaje = automática) y el cilindro asociado, en qué sistema: GHL o NetSuite.",
       "vinculos": [
         {
           "elemento": "End_ClienteConfirma",
