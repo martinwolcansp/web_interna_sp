@@ -9,7 +9,7 @@
   "responsable": "Procesos y Mejora Continua",
   "resumen": {
     "objetivo": "Definir hitos formales que marquen cuándo termina la responsabilidad de un área y empieza la de otra, para que el cliente sepa con quién hablar en cada etapa y ningún caso quede sin dueño.",
-    "alcance": "Desde el primer contacto del prospecto (redes o WhatsApp, atendido por el Bot IA comercial, o contacto directo al vendedor) hasta el control de calidad de Posventa posterior a la instalación: cliente activo y conforme. Los casos técnicos y las situaciones administrativas que surgen en el control de calidad salen a los procesos Mantenimiento correctivo y reclamos técnicos y Atención al cliente activo (hitos 11 y 12). La implementación se apoya en GHL, continuando lo hecho en Ventas y Posventa.",
+    "alcance": "Desde el primer contacto del prospecto (redes o WhatsApp, atendido por el Bot IA comercial, o contacto directo al vendedor) hasta el control de calidad de Posventa posterior a la instalación: cliente activo y conforme. Los casos técnicos y las situaciones administrativas que surgen en el control de calidad salen al proceso Servicio al cliente activo (hitos 11 y 12). La implementación se apoya en GHL, continuando lo hecho en Ventas y Posventa.",
     "diagnostico": "La causa de los roces entre áreas no es la falta de comunicación en sí, sino la ausencia de hitos formales de traspaso. Ventas termina siendo el único canal vivo con el cliente y recibe reclamos que no le corresponden; los pendientes del acta de instalación quedan sin responsable ni plazo.",
     "areas": [
       "Ventas",
@@ -164,7 +164,7 @@
       "etapas": [
         10
       ],
-      "nota": "Hito de salida: durante el período de control de calidad, Posventa clasifica el reclamo y lo deriva al proceso que corresponde. Después de ese período clasifica Atención al Cliente (proceso Atención al cliente activo)."
+      "nota": "Hito de salida: durante el período de control de calidad, Posventa clasifica el reclamo y lo deriva al proceso que corresponde. Después de ese período clasifica Atención al Cliente (proceso Servicio al cliente activo)."
     },
     {
       "n": 10,
@@ -184,7 +184,7 @@
       "etapas": [
         10
       ],
-      "nota": "Hito de salida: el caso continúa en el proceso Mantenimiento correctivo y reclamos técnicos, donde se fija y mide el SLA."
+      "nota": "Hito de salida: el caso continúa en el proceso Servicio al cliente activo (Mantenimiento correctivo y reclamos técnicos), donde se fija y mide el SLA."
     },
     {
       "n": 12,
@@ -194,7 +194,7 @@
       "etapas": [
         10
       ],
-      "nota": "Hito de salida: continúa en el proceso Atención al cliente activo."
+      "nota": "Hito de salida: continúa en el proceso Servicio al cliente activo (Atención al cliente activo)."
     }
   ],
   "diagramas": [

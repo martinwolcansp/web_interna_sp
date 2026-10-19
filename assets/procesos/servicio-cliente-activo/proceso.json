@@ -1,0 +1,233 @@
+{
+  "id": "servicio-cliente-activo",
+  "categoria": "Proceso operativo",
+  "nombre": "Servicio al cliente activo",
+  "descripcion": "Todo lo que necesita un cliente después del control de calidad posterior a la instalación: atención de consultas y reclamos, mantenimiento correctivo y preventivo, nuevas necesidades, cobranza recurrente y bajas.",
+  "estado": "Planteado",
+  "version": "v0.1",
+  "actualizado": "19/10/2026",
+  "responsable": "Procesos y Mejora Continua",
+  "resumen": {
+    "objetivo": "Que cada solicitud de un cliente activo tenga un área responsable, un canal y un plazo, desde que la recibe Atención al Cliente hasta que se resuelve o se deriva.",
+    "alcance": "Desde que termina el período de control de calidad del proceso Nuevos clientes hasta la baja del cliente. Recibe las salidas de Nuevos clientes: casos técnicos (hito 11) y situaciones administrativas (hito 12). Atención al Cliente es la puerta de entrada y clasifica cada solicitud; el mantenimiento preventivo y la cobranza recurrente arrancan por calendario.",
+    "areas": [
+      "Atención al Cliente",
+      "Servicio Técnico",
+      "Ampliaciones",
+      "Instalaciones",
+      "Depósito",
+      "Central de monitoreo"
+    ],
+    "puntosTitulo": "Subprocesos que lo componen",
+    "puntos": [
+      "Atención al cliente activo: recepción, clasificación y gestión administrativa (ficha v0.1).",
+      "Mantenimiento correctivo y reclamos técnicos (ficha v0.1).",
+      "Mantenimiento preventivo.",
+      "Ampliaciones: nuevas necesidades de clientes actuales.",
+      "Cobranza recurrente y gestión de mora.",
+      "Bajas y retención."
+    ]
+  },
+  "etapas": [
+    {
+      "id": 1,
+      "nombre": "Atención y clasificación de solicitudes",
+      "area": "Atención al Cliente"
+    },
+    {
+      "id": 2,
+      "nombre": "Gestión administrativa",
+      "area": "Atención al Cliente"
+    },
+    {
+      "id": 3,
+      "nombre": "Mantenimiento correctivo y reclamos técnicos",
+      "area": "Servicio Técnico"
+    },
+    {
+      "id": 4,
+      "nombre": "Mantenimiento preventivo",
+      "area": "Servicio Técnico"
+    },
+    {
+      "id": 5,
+      "nombre": "Nuevas necesidades del cliente",
+      "area": "Ampliaciones"
+    },
+    {
+      "id": 6,
+      "nombre": "Cobranza recurrente y gestión de mora",
+      "area": "Atención al Cliente"
+    },
+    {
+      "id": 7,
+      "nombre": "Bajas y retención",
+      "area": "Atención al Cliente"
+    }
+  ],
+  "hitos": [
+    {
+      "n": 1,
+      "nombre": "Recepción y clasificación de la solicitud del cliente activo",
+      "responsable": "Atención al Cliente",
+      "estado": "Pendiente",
+      "etapas": [
+        1
+      ],
+      "nota": "Canales: WhatsApp (GHL), teléfono y correo. Categorías: técnica, administrativa, comercial y baja. La central de monitoreo toma casos técnicos fuera del horario o en casos puntuales (a definir)."
+    },
+    {
+      "n": 2,
+      "nombre": "Derivación de un caso técnico a Servicio Técnico",
+      "responsable": "Atención al Cliente",
+      "estado": "Pendiente",
+      "etapas": [
+        1
+      ],
+      "nota": "También recibe los casos derivados por Posventa durante el período de control (hito 11 de Nuevos clientes)."
+    },
+    {
+      "n": 3,
+      "nombre": "Resolución del caso técnico dentro del SLA y confirmación al cliente",
+      "responsable": "Servicio Técnico",
+      "estado": "Pendiente",
+      "etapas": [
+        3
+      ],
+      "nota": "A definir: SLA por categoría o urgencia y quién confirma el cierre con el cliente."
+    },
+    {
+      "n": 4,
+      "nombre": "Pedido y devolución de materiales para el caso técnico",
+      "responsable": "Servicio Técnico",
+      "estado": "Pendiente",
+      "etapas": [
+        3
+      ],
+      "nota": "Depósito apoya, con el mismo circuito que en la instalación."
+    },
+    {
+      "n": 5,
+      "nombre": "Resolución de una situación administrativa",
+      "responsable": "Atención al Cliente",
+      "estado": "Pendiente",
+      "etapas": [
+        2
+      ],
+      "nota": "También recibe las situaciones derivadas por Posventa durante el período de control (hito 12 de Nuevos clientes)."
+    },
+    {
+      "n": 6,
+      "nombre": "Programación y ejecución del mantenimiento preventivo",
+      "responsable": "Servicio Técnico",
+      "estado": "Pendiente",
+      "etapas": [
+        4
+      ],
+      "nota": "A definir: si se hace hoy, frecuencia y quién lo programa."
+    },
+    {
+      "n": 7,
+      "nombre": "Falla detectada en un preventivo que pasa a correctivo",
+      "responsable": "Servicio Técnico",
+      "estado": "Pendiente",
+      "etapas": [
+        4
+      ]
+    },
+    {
+      "n": 8,
+      "nombre": "Derivación de una nueva necesidad del cliente a Ampliaciones",
+      "responsable": "Atención al Cliente",
+      "estado": "Pendiente",
+      "etapas": [
+        1,
+        5
+      ]
+    },
+    {
+      "n": 9,
+      "nombre": "Gestión de la mora y aviso al cliente",
+      "responsable": "Atención al Cliente",
+      "estado": "Pendiente",
+      "etapas": [
+        6
+      ]
+    },
+    {
+      "n": 10,
+      "nombre": "Derivación de la mora no resuelta a Bajas",
+      "responsable": "Atención al Cliente",
+      "estado": "Pendiente",
+      "etapas": [
+        6
+      ],
+      "nota": "A definir: plazo y criterio para considerar la mora no resuelta."
+    },
+    {
+      "n": 11,
+      "nombre": "Gestión del pedido de baja e intento de retención",
+      "responsable": "Atención al Cliente",
+      "estado": "Pendiente",
+      "etapas": [
+        7
+      ]
+    },
+    {
+      "n": 12,
+      "nombre": "Retiro del equipo en comodato y reingreso a Depósito",
+      "responsable": "Instalaciones",
+      "estado": "Pendiente",
+      "etapas": [
+        7
+      ],
+      "nota": "Solo para comodato. Depósito apoya."
+    },
+    {
+      "n": 13,
+      "nombre": "Baja formal en los sistemas (NetSuite y central de monitoreo)",
+      "responsable": "Atención al Cliente",
+      "estado": "Pendiente",
+      "etapas": [
+        7
+      ],
+      "nota": "La central de monitoreo apoya dando de baja la cuenta."
+    }
+  ],
+  "diagramas": [],
+  "documentos": [
+    {
+      "nombre": "Matrices de responsabilidades y comunicación",
+      "tipo": "Matriz",
+      "descripcion": "Hitos propuestos con el responsable de cada área y quién se comunica con el cliente. Planteado: a relevar con las áreas.",
+      "version": "v0.1",
+      "fecha": "19/10/2026",
+      "pdf": "matrices-responsabilidades.pdf",
+      "original": "matrices-responsabilidades.xlsx"
+    },
+    {
+      "nombre": "Ficha del subproceso Atención al cliente activo",
+      "tipo": "Ficha",
+      "descripcion": "Objetivo, alcance, áreas, entradas y salidas, y temas a definir.",
+      "version": "v0.1",
+      "fecha": "19/10/2026",
+      "pdf": "ficha-proceso-atencion-cliente-activo.pdf",
+      "original": "ficha-proceso-atencion-cliente-activo.docx"
+    },
+    {
+      "nombre": "Ficha del subproceso Mantenimiento correctivo y reclamos técnicos",
+      "tipo": "Ficha",
+      "descripcion": "Objetivo, alcance, áreas, entradas y salidas, y temas a definir.",
+      "version": "v0.1",
+      "fecha": "19/10/2026",
+      "pdf": "ficha-proceso-mantenimiento-correctivo.pdf",
+      "original": "ficha-proceso-mantenimiento-correctivo.docx"
+    }
+  ],
+  "reuniones": [],
+  "estadosValidacion": {
+    "Pendiente": "Relevamiento del hito aún no iniciado; responsable tomado del documento de relevamiento.",
+    "En proceso": "Relevamiento en curso: reuniones con las áreas y minutas.",
+    "Validado": "Relevamiento realizado, reuniones con sus minutas y validación formal del sector."
+  }
+}
