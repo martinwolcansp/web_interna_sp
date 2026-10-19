@@ -22,10 +22,12 @@ desde, hasta = date.fromisoformat(sys.argv[1]), date.fromisoformat(sys.argv[2])
 try:
     token = sb.iniciar_sesion(config.INFORME_BOT_EMAIL, config.INFORME_BOT_PASSWORD)
     abonos = sb.leer_abonos_comision(token)
-    print(f"Configuracion: {len(abonos)} abonos, {sum(1 for a in abonos if a['incluido'])} incluidos.")
+    unidades = sb.leer_unidades_comision(token)
+    print(f"Configuracion: {len(abonos)} abonos, {sum(1 for a in abonos if a['incluido'])} incluidos, "
+          f"{'sin tabla de unidades (falta la migracion 29)' if unidades is None else str(len(unidades)) + ' unidades'}.")
 except Exception as e:
     sys.exit(f"No se pudo leer la configuracion de abonos (falta la migracion 28 o el usuario tecnico?): {e}")
-r = comisiones.generar(desde, hasta, print, abonos)
+r = comisiones.generar(desde, hasta, print, abonos, unidades)
 
 print(f"\nGanadas: {r['ganadas']} · OV de abonos relacionadas: {len(r['ovs'])} · Ganadas sin OV de abonos: {len(r['sin_ov'])}")
 print("OV excluidas por tipo:", r.get("ov_excluidas_por_tipo") or "ninguna")
@@ -43,8 +45,9 @@ print("\nPor vendedor (ganadas / OV / OV con abonos incluidos / base / comision)
 for v in comisiones.resumen_vendedores(r):
     print(f"  {v['vendedor']:30s} {v['ganadas']:3d} / {v['ovs']:3d} / {v['ovs_comisionables']:3d}   "
           f"base $ {v['base_comisionable']:,.2f}   comision $ {v['comision']:,.2f}")
-    for a in v["por_abono"]:
-        print(f"      {a['codigo']:12s} {a['ovs']:3d} OV, comisionan {a['comisionan']:3d} (desde la {a['incluido_desde']}a)   $ {a['comision']:,.2f}")
+    for u in v["por_unidad"]:
+        print(f"      {u['unidad'][:40]:40s} {u['ventas']:3d} ventas, comisionan {u['comisionan']:3d} (desde la {u['incluido_desde']}a)   "
+              f"base $ {u['base']:,.2f}   promedio $ {u['promedio']:,.2f}   comision $ {u['comision']:,.2f}")
 
 salida = f"diagnostico_comisiones_{desde}_{hasta}.json"
 with open(salida, "w", encoding="utf-8") as fh:

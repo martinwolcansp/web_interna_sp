@@ -35,8 +35,10 @@
   <!-- ══════════════════════════════════════════════════════════
        COMISIONES — pantalla del Panel de administración (14/10/2026).
        - Abonos: tabla comision_abono (migracion_28_comisiones.sql): por
-         abono, "Incluido" e "Incluido desde". Editable con permiso
-         "editar" en la sección comisiones; exportar / importar Excel.
+         abono, su Unidad de comisión (sin unidad = no incluido). Editable con
+         permiso "editar" en la sección comisiones; exportar / importar Excel.
+       - Unidades de comisión: tabla comision_unidad (migracion_29, 19/10/2026):
+         agrupan abonos, con "Incluido desde" = N igual para todos los vendedores.
        - Liquidaciones: una por mes. "Generar" llama a informe-mkt-api
          (POST /comisiones/liquidar), que consulta NetSuite, calcula con la
          configuración vigente y guarda la foto (con la configuración
@@ -55,6 +57,9 @@
       <button type="button" class="com-tab is-active" data-tab="abonos" role="tab" aria-selected="true">
         <i class="ti ti-list-check" aria-hidden="true"></i> Abonos
       </button>
+      <button type="button" class="com-tab" data-tab="unidades" role="tab" aria-selected="false">
+        <i class="ti ti-stack-2" aria-hidden="true"></i> Unidades de comisión
+      </button>
       <button type="button" class="com-tab" data-tab="liquidaciones" role="tab" aria-selected="false">
         <i class="ti ti-receipt" aria-hidden="true"></i> Liquidaciones
       </button>
@@ -66,8 +71,8 @@
         <div>
           <h2 id="com-abonos-title" class="admin-section__title">Abonos para comisiones</h2>
           <p class="admin-section__subtitle">
-            <b>Incluido</b>: el abono suma a la base comisionable. <b>Incluido desde</b> = N: por vendedor y por mes,
-            las OV de ese abono comisionan desde la N-ésima (las primeras N−1 no). La comisión es el importe del abono (sin IVA).
+            Un abono está <b>incluido</b> si tiene <b>unidad de comisión</b>: suma a la base comisionable de esa unidad
+            (importe sin IVA). La regla de cuándo comisiona se define en la pestaña <b>Unidades de comisión</b>.
           </p>
         </div>
         <div class="com-actions">
@@ -86,7 +91,7 @@
         <p class="com-imp__resumen" id="com-imp-resumen"></p>
         <div class="admin-table-wrap com-imp__tabla">
           <table class="admin-table">
-            <thead><tr><th>Cambio</th><th>Código</th><th>Nombre</th><th>Incluido</th><th>Incluido desde</th></tr></thead>
+            <thead><tr><th>Cambio</th><th>Código</th><th>Nombre</th><th>Unidad de comisión</th></tr></thead>
             <tbody id="com-imp-tbody"></tbody>
           </table>
         </div>
@@ -100,7 +105,7 @@
         <input type="search" id="com-ab-buscar" class="admin-input com-buscar" placeholder="Buscar código o nombre…">
         <select id="com-ab-filtro" class="admin-select">
           <option value="">Todos</option>
-          <option value="si">Incluidos</option>
+          <option value="si">Incluidos (con unidad)</option>
           <option value="no">No incluidos</option>
         </select>
         <span class="com-cuenta" id="com-ab-cuenta"></span>
@@ -119,11 +124,48 @@
           <thead>
             <tr>
               <th>Código</th><th>Nombre</th><th>Nombre para mostrar</th>
-              <th class="com-c">Incluido</th><th class="com-c">Incluido desde</th><th>Última modificación</th>
+              <th>Unidad de comisión</th><th>Última modificación</th>
               <th class="com-solo-editor"></th>
             </tr>
           </thead>
           <tbody id="com-ab-tbody"><tr><td colspan="7" class="admin-loading">Cargando abonos…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ───────────── UNIDADES DE COMISIÓN (migracion_29) ───────────── -->
+    <section class="admin-section com-panel" id="com-panel-unidades" hidden aria-labelledby="com-un-title">
+      <div class="admin-section__header com-toprow">
+        <div>
+          <h2 id="com-un-title" class="admin-section__title">Unidades de comisión</h2>
+          <p class="admin-section__subtitle">
+            Agrupan abonos. Por vendedor y por mes, las <b>ventas</b> de la unidad son las OV con al menos uno de sus abonos.
+            Con <b>Incluido desde</b> = N comisionan las ventas desde la N-ésima (ventas − N + 1), y la comisión es
+            <b>base comisionable de la unidad × ventas que comisionan / ventas</b> (el promedio por venta). Por debajo de N, la comisión es cero.
+            El valor es el mismo para todos los vendedores.
+          </p>
+        </div>
+        <div class="com-actions com-solo-editor">
+          <button type="button" id="com-un-agregar" class="btn btn--secondary"><i class="ti ti-plus" aria-hidden="true"></i> Agregar unidad</button>
+          <button type="button" id="com-un-guardar" class="btn btn--primary" disabled><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar cambios</button>
+        </div>
+      </div>
+      <p id="com-un-status" class="com-status" role="status" aria-live="polite"></p>
+
+      <div id="com-un-confirm" class="com-confirm" role="alertdialog" hidden>
+        <p id="com-un-confirm-texto"></p>
+        <div class="com-actions">
+          <button type="button" id="com-un-confirm-si" class="btn btn--primary"><i class="ti ti-trash" aria-hidden="true"></i> Confirmar eliminación</button>
+          <button type="button" id="com-un-confirm-no" class="btn btn--secondary">Cancelar</button>
+        </div>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table com-tabla">
+          <thead>
+            <tr><th>Unidad</th><th class="com-c">Incluido desde</th><th>Abonos</th><th>Última modificación</th><th class="com-solo-editor"></th></tr>
+          </thead>
+          <tbody id="com-un-tbody"><tr><td colspan="5" class="admin-loading">Cargando unidades…</td></tr></tbody>
         </table>
       </div>
     </section>

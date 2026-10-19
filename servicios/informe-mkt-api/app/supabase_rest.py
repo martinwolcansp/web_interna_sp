@@ -264,11 +264,26 @@ def actualizar(token, tabla, params, cambios, que):
 
 # ---------- comisiones (migracion 28) ----------
 
+def leer_unidades_comision(token):
+    """Unidades de comision (comision_unidad, migracion 29). None si la tabla
+    todavia no existe: el calculo usa cada abono incluido como unidad propia."""
+    resp = requests.get(_rest("comision_unidad"), headers=_h(token),
+                        params={"select": "id,nombre,incluido_desde", "order": "nombre"}, timeout=30)
+    if resp.status_code == 404 or (resp.status_code >= 400 and "comision_unidad" in resp.text):
+        return None
+    return _check(resp, "leer unidades de comision (migracion 29)").json()
+
+
 def leer_abonos_comision(token):
-    """Configuracion de abonos para comisiones (comision_abono)."""
-    return leer_todo(token, "comision_abono",
-                     {"select": "codigo,nombre,nombre_mostrar,incluido,incluido_desde", "order": "codigo"},
-                     "leer configuracion de abonos (migracion 28)")
+    """Configuracion de abonos con unidad (si existe la migracion 29)."""
+    resp = requests.get(_rest("comision_abono"), headers=_h(token),
+                        params={"select": "codigo,nombre,nombre_mostrar,incluido,incluido_desde,unidad_id", "order": "codigo"},
+                        timeout=30)
+    if resp.status_code >= 400 and "unidad_id" in resp.text:
+        return leer_todo(token, "comision_abono",
+                         {"select": "codigo,nombre,nombre_mostrar,incluido,incluido_desde", "order": "codigo"},
+                         "leer configuracion de abonos (migracion 28)")
+    return _check(resp, "leer configuracion de abonos").json()
 
 
 def guardar_liquidacion_comision(token, payload):

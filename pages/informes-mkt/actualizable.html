@@ -1962,8 +1962,10 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   function fmtDia(s) { if (!s) return ""; var p = String(s).slice(0, 10).split("-"); return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : s; }
   function pesos(v) {
     if (v === null || v === undefined || v === "") return "—";
-    return "$ " + Number(v).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    var n = Number(v);
+    return "$ " + n.toLocaleString("es-AR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
   }
+  function pct(f) { return f === null || f === undefined || f === "" ? "" : (Number(f) * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " %"; }
   function modalidad(o) { return o.comodato ? "Comodato" : "Venta"; }
   function sd(v) { return v === null || v === undefined || v === "" ? "Sin dato" : v; }
   function claseClasif(o) {
@@ -2170,6 +2172,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       });
     });
     (D.sin_ov || []).forEach(function (o) { var f = fila(o.vendedor); f.ops[o.oportunidad_id] = 1; f.sinLista.push(o); });
+    // Unidades de comisión (lo calcula el servicio por vendedor y unidad)
+    (D.por_unidad || []).forEach(function (u) { var f = fila(u.vendedor); (f.unidades = f.unidades || []).push(u); });
     return Object.keys(porV).map(function (k) {
       var f = porV[k];
       f.ganadas = Object.keys(f.ops).length; f.conOv = Object.keys(f.opsConOv).length; f.sinov = f.sinLista.length;
@@ -2185,7 +2189,16 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       dato("OV con abonos incluidos", f.com) + dato("OV sin abonos incluidos", f.nocom) + dato("Abonos no incluidos (no suman)", pesos(f.otros)) +
       "</div>";
     var cods = Object.keys(f.abonos).sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); });
-    if (cods.length) {
+    if ((f.unidades || []).length) {
+      h += '<table class="com-lineas" style="margin-bottom:4px"><thead><tr><th>Unidad de comisión</th><th class="num">Ventas (OV)</th><th class="num">Incluido desde</th>' +
+        '<th class="num">Comisionan</th><th class="num">% que comisiona</th><th class="num">Base</th><th class="num">Promedio por venta</th><th class="num">Comisión</th></tr></thead><tbody>' +
+        f.unidades.slice().sort(function (a, b) { return String(a.unidad).localeCompare(String(b.unidad), "es"); }).map(function (u) {
+          return "<tr><td><b>" + esc(u.unidad) + '</b></td><td class="num">' + u.ventas + '</td><td class="num">' + esc(u.incluido_desde) +
+            '</td><td class="num">' + u.comisionan + '</td><td class="num">' + pct(u.factor) + '</td><td class="num">' + pesos(u.base) +
+            '</td><td class="num">' + pesos(u.promedio) + '</td><td class="num"><b>' + pesos(u.comision) + "</b></td></tr>";
+        }).join("") + "</tbody></table>" +
+        '<div class="com-sub" style="margin:0 0 8px">Comisión = base de la unidad × comisionan / ventas · comisionan = ventas − incluido desde + 1 (mínimo 0).</div>';
+    } else if (cods.length) {
       h += '<table class="com-lineas" style="margin-bottom:8px"><thead><tr><th>Abono</th><th class="num">OV</th><th class="num">Incluido desde</th>' +
         '<th class="num">OV que comisionan</th><th class="num">Base</th><th class="num">Comisión</th></tr></thead><tbody>' +
         cods.map(function (c) {
@@ -2271,7 +2284,9 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       "(por la oportunidad de la OV o por su presupuesto de origen), con sus líneas de abono (artículos <em>ABO</em>). " +
       "Se cuenta <strong>una OV por oportunidad</strong>: la del alta del contrato (la primera que no esté Cerrada); las OV mensuales posteriores del mismo contrato no suman. " +
       "Los abonos que cuentan se configuran en <em>Panel de administración → Comisiones</em>: la <strong>base comisionable</strong> es el importe de los abonos <em>incluidos</em>; " +
-      "la <strong>comisión</strong>, por vendedor y por abono, es el importe de las OV desde la N-ésima del mes (<em>Incluido desde</em>, por fecha de OV). " +
+      "Cada abono incluido pertenece a una <strong>unidad de comisión</strong>; por vendedor y por unidad, las <em>ventas</em> son las OV con abonos de la unidad " +
+      "y, con <em>Incluido desde</em> = N, comisionan ventas − N + 1 (mínimo 0): la <strong>comisión</strong> es la base de la unidad × comisionan / ventas " +
+      "(el promedio por venta por las ventas que comisionan; por debajo de N es cero). " +
       "<em>Otros ABO</em> suma los abonos no incluidos, que no entran. Importes sin IVA. " +
       (nExcl ? "No se listan " + nExcl + " OV de otros tipos (" + Object.keys(excl).map(function (k) { return esc(k) + ": " + excl[k]; }).join(", ") + "). " : "") +
       "Vendedor = representante de la oportunidad. Consultado en NetSuite el " + esc(new Date(D.generado_en).toLocaleString("es-AR", { timeZone: TZ, hour12: false })) + ".</div>";
@@ -2403,12 +2418,13 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     }
     if (!(o.abonos || []).length) return h + '<div class="com-sub">La OV no tiene líneas de abono (ABO).</div>';
     h += '<table class="com-lineas"><thead><tr><th>Código</th><th>Artículo</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th>' +
-      '<th>Incluido</th><th class="num">N.º de OV del abono</th><th class="num">Comisión</th></tr></thead><tbody>';
+      '<th>Unidad de comisión</th><th class="num">N.º de venta</th><th class="num">% que comisiona</th><th class="num">Comisión</th></tr></thead><tbody>';
     o.abonos.forEach(function (a) {
       h += "<tr><td>" + esc(a.codigo) + "</td><td>" + esc(a.articulo) + '</td><td class="num">' + esc(a.cantidad === null ? "—" : a.cantidad) +
         '</td><td class="num">' + pesos(a.precio) + '</td><td class="num">' + pesos(a.importe) + "</td><td>" +
-        (a.cuenta ? '<span class="com-abo com-abo--cuenta">Sí</span>' : '<span class="com-sub">No</span>') + '</td><td class="num">' +
+        (a.cuenta ? '<span class="com-abo com-abo--cuenta">' + esc(a.unidad || "Incluido") + "</span>" : '<span class="com-sub">No incluido</span>') + '</td><td class="num">' +
         (a.orden ? a.orden + (a.incluido_desde > 1 ? ' <span class="com-sub">(desde ' + a.incluido_desde + ")</span>" : "") : "") + '</td><td class="num">' +
+        (a.cuenta && a.factor !== undefined && a.factor !== null ? pct(a.factor) : "") + '</td><td class="num">' +
         (a.comisiona ? "<b>" + pesos(a.comision) + "</b>" : (a.incluido ? '<span class="com-sub">no comisiona</span>' : "")) + "</td></tr>";
     });
     return h + "</tbody></table>";
@@ -2460,7 +2476,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
         (o.abonos || []).forEach(function (a) {
           lineas.push({ "Vendedor": o.vendedor, "OV": o.ov_numero, "Fecha OV": fmtDia(o.fecha_ov), "Modalidad": modalidad(o), "Cliente": o.cliente,
             "Oportunidad": o.oportunidad, "Código": a.codigo, "Artículo": a.articulo, "Cantidad": a.cantidad, "Precio": a.precio, "Importe": a.importe,
-            "Incluido": a.cuenta ? "Sí" : "No", "N.º de OV del abono": a.orden || null, "Incluido desde": a.incluido_desde || null,
+            "Incluido": a.cuenta ? "Sí" : "No", "Unidad de comisión": a.unidad || "", "N.º de venta de la unidad": a.orden || null,
+            "Incluido desde": a.incluido_desde || null, "% que comisiona": a.cuenta && a.factor != null ? Math.round(a.factor * 10000) / 100 : null,
             "Comisiona": a.comisiona ? "Sí" : "No", "Comisión": a.comision || 0, "Clasificación OV": o.clasificacion });
         });
       });
@@ -2475,6 +2492,11 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       });
       var libro = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(libro, hoja(XLSX, porV, "Sin datos"), "Por vendedor");
+      var porU = (D.por_unidad || []).map(function (u) {
+        return { "Vendedor": u.vendedor, "Unidad de comisión": u.unidad, "Ventas (OV)": u.ventas, "Incluido desde": u.incluido_desde,
+          "Comisionan": u.comisionan, "% que comisiona": Math.round((u.factor || 0) * 10000) / 100, "Base": u.base, "Promedio por venta": u.promedio, "Comisión": u.comision };
+      });
+      if (porU.length) XLSX.utils.book_append_sheet(libro, hoja(XLSX, porU, "Sin datos"), "Por unidad");
       XLSX.utils.book_append_sheet(libro, hoja(XLSX, ov, "Sin OV con estos filtros"), "OV");
       XLSX.utils.book_append_sheet(libro, hoja(XLSX, lineas, "Sin abonos"), "Abonos");
       XLSX.utils.book_append_sheet(libro, hoja(XLSX, sin, "Todas las ganadas tienen OV de abonos"), "Ganadas sin OV abonos");

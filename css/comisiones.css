@@ -96,3 +96,8 @@ tfoot td { font-weight: var(--font-weight-bold); color: var(--color-navy); borde
   .admin-section { padding: var(--space-6); }
   .com-buscar { width: 100%; }
 }
+
+/* Unidades de comisión (migración 29) */
+.com-chip { display: inline-block; padding: 1px 7px; margin: 1px 0; border-radius: 10px; background: #e8eef8; color: #1f3864; font-size: 12px; font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }
+.com-select-unidad { min-width: 200px; max-width: 280px; }
+#com-un-tbody input[data-campo="nombre"] { min-width: 220px; }

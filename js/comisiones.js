@@ -11,6 +11,10 @@
  *     codigo_abono() en servicios/informe-mkt-api/app/comisiones.py). Un
  *     artículo sin código ABO se identifica por su nombre.
  *
+ * Pestaña Unidades de comisión (comision_unidad, migracion_29, 19/10/2026):
+ *   agrupan abonos; "Incluido desde" = N por unidad, igual para todos los
+ *   vendedores. Un abono está incluido si tiene unidad (desplegable en Abonos).
+ *
  * Pestaña Liquidaciones (comision_liquidacion + _vendedor + _linea):
  *   - Generar: POST /comisiones/liquidar {mes} a informe-mkt-api, que
  *     consulta NetSuite, calcula y guarda (permiso editar).
@@ -28,6 +32,10 @@ const EST = {
   nuevos: new Set(),     // codigos agregados a mano, sin guardar
   borrarPendiente: null, // codigo con confirmación de borrado
   importPendiente: null, // { nuevos: [], modificados: [] }
+  unidades: [],          // comision_unidad
+  unCambios: new Map(),  // id -> unidad editada (incluye nuevas)
+  unNuevas: new Set(),   // ids temporales de unidades sin guardar
+  unBorrarPendiente: null,
   liquidaciones: [],
   liqSeleccionada: null, // id
   liqDetalle: null,      // { liq, vendedores, lineas }
@@ -51,6 +59,7 @@ function fmtFechaHora(iso) {
   return d.toLocaleDateString('es-AR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
     d.toLocaleTimeString('es-AR', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false });
 }
+function pct(f) { return f == null || f === '' ? '' : (Number(f) * 100).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' %'; }
 function fmtDia(s) { if (!s) return ''; const p = String(s).slice(0, 10).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; }
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 function fmtMes(s) { const p = String(s).split('-'); return `${MESES[Number(p[1]) - 1]} ${p[0]}`; }
@@ -82,7 +91,9 @@ document.addEventListener('sp:auth-ready', async (e) => {
   document.body.classList.toggle('com-es-editor', EST.puedeEditar);
   iniciarTabs();
   iniciarAbonos();
+  iniciarUnidades();
   iniciarLiquidaciones();
+  await cargarUnidades();
   await cargarAbonos();
   await cargarLiquidaciones();
 });
@@ -95,8 +106,7 @@ function iniciarTabs() {
         x.classList.toggle('is-active', activo);
         x.setAttribute('aria-selected', activo ? 'true' : 'false');
       });
-      $('com-panel-abonos').hidden = b.dataset.tab !== 'abonos';
-      $('com-panel-liquidaciones').hidden = b.dataset.tab !== 'liquidaciones';
+      ['abonos', 'unidades', 'liquidaciones'].forEach((t) => { $('com-panel-' + t).hidden = b.dataset.tab !== t; });
     });
   });
 }
@@ -123,12 +133,12 @@ function iniciarAbonos() {
     if (!tr) return;
     const campo = ev.target.dataset.campo;
     if (!campo) return;
-    let valor = ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value;
-    if (campo === 'incluido_desde') valor = Math.max(1, parseInt(valor, 10) || 1);
+    let valor = ev.target.value;
+    if (campo === 'unidad_id') valor = valor || null;
     if (campo === 'codigo') return; // se valida al salir del campo
     editar(tr.dataset.codigo, campo, valor);
     tr.classList.toggle('is-dirty', EST.cambios.has(tr.dataset.codigo) && !EST.nuevos.has(tr.dataset.codigo));
-    tr.classList.toggle('is-incluido', !!filaActual(tr.dataset.codigo).incluido);
+    tr.classList.toggle('is-incluido', !!filaActual(tr.dataset.codigo).unidad_id);
     actualizarBotonGuardar();
   });
   tbody.addEventListener('change', (ev) => {
@@ -149,10 +159,10 @@ async function cargarAbonos() {
   status('com-ab-status', 'Cargando abonos…');
   const { data, error } = await window.supabaseClient
     .from('comision_abono')
-    .select('codigo, nombre, nombre_mostrar, incluido, incluido_desde, actualizado_en, actualizado_por')
+    .select('codigo, nombre, nombre_mostrar, incluido, incluido_desde, unidad_id, actualizado_en, actualizado_por')
     .order('codigo');
   if (error) {
-    status('com-ab-status', 'No se pudieron leer los abonos (¿falta correr la migración 28?): ' + error.message, 'error');
+    status('com-ab-status', 'No se pudieron leer los abonos (¿falta correr las migraciones 28 y 29?): ' + error.message, 'error');
     $('com-ab-tbody').innerHTML = '';
     return;
   }
@@ -163,6 +173,7 @@ async function cargarAbonos() {
   status('com-ab-status', '');
   $('com-ab-exportar').disabled = false;
   renderAbonos();
+  renderUnidades();
 }
 
 function filaBase(codigo) { return EST.abonos.find((a) => a.codigo === codigo) || null; }
@@ -173,7 +184,7 @@ function editar(codigo, campo, valor) {
   const actual = { ...(EST.cambios.get(codigo) || base) };
   actual[campo] = valor;
   if (base && !EST.nuevos.has(codigo)) {
-    const igual = ['nombre', 'nombre_mostrar', 'incluido', 'incluido_desde']
+    const igual = ['nombre', 'nombre_mostrar', 'unidad_id']
       .every((k) => normEspacios(actual[k]) === normEspacios(base[k]));
     if (igual) { EST.cambios.delete(codigo); return; }
   }
@@ -193,11 +204,30 @@ function listaVisible() {
   const nuevos = [...EST.nuevos].map((c) => EST.cambios.get(c)).filter(Boolean);
   const todas = nuevos.concat(EST.abonos.map((a) => EST.cambios.get(a.codigo) || a));
   return todas.filter((a) => {
-    if (filtro === 'si' && !a.incluido) return false;
-    if (filtro === 'no' && a.incluido) return false;
+    if (filtro === 'si' && !a.unidad_id) return false;
+    if (filtro === 'no' && a.unidad_id) return false;
+    if (filtro.startsWith('u:') && a.unidad_id !== filtro.slice(2)) return false;
     if (q && !`${a.codigo} ${a.nombre || ''} ${a.nombre_mostrar || ''}`.toLowerCase().includes(q)) return false;
     return true;
   });
+}
+
+function nombreUnidad(id) {
+  const u = EST.unidades.find((x) => x.id === id);
+  return u ? u.nombre : '';
+}
+function opcionesUnidad(sel) {
+  return '<option value="">— No incluido —</option>' + EST.unidades
+    .slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
+    .map((u) => `<option value="${esc(u.id)}"${u.id === sel ? ' selected' : ''}>${esc(u.nombre)} (desde ${esc(u.incluido_desde)})</option>`).join('');
+}
+function actualizarFiltroUnidades() {
+  const sel = $('com-ab-filtro');
+  const actual = sel.value;
+  sel.innerHTML = '<option value="">Todos</option><option value="si">Incluidos (con unidad)</option><option value="no">No incluidos</option>' +
+    EST.unidades.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
+      .map((u) => `<option value="u:${esc(u.id)}">Unidad: ${esc(u.nombre)}</option>`).join('');
+  sel.value = [...sel.options].some((o) => o.value === actual) ? actual : '';
 }
 
 function renderAbonos() {
@@ -206,7 +236,7 @@ function renderAbonos() {
   const dis = ed ? '' : ' disabled';
   $('com-ab-tbody').innerHTML = filas.length ? filas.map((a) => {
     const nuevo = EST.nuevos.has(a.codigo);
-    const clases = [a.incluido ? 'is-incluido' : '', nuevo ? 'is-nuevo' : (EST.cambios.has(a.codigo) ? 'is-dirty' : '')].join(' ');
+    const clases = [a.unidad_id ? 'is-incluido' : '', nuevo ? 'is-nuevo' : (EST.cambios.has(a.codigo) ? 'is-dirty' : '')].join(' ');
     const borrar = EST.borrarPendiente === a.codigo
       ? `<button type="button" class="com-icon-btn com-icon-btn--confirm" data-accion="confirmar-borrar">Eliminar</button>`
       : `<button type="button" class="com-icon-btn" data-accion="borrar" title="Eliminar abono"><i class="ti ti-trash" aria-hidden="true"></i></button>`;
@@ -214,15 +244,14 @@ function renderAbonos() {
       <td>${nuevo && ed ? `<input class="admin-input com-codigo" data-campo="codigo" value="${esc(a.codigo)}" placeholder="ABO-xx">` : `<span class="com-codigo">${esc(a.codigo)}</span>`}</td>
       <td><input class="admin-input" data-campo="nombre" value="${esc(a.nombre)}"${dis}></td>
       <td><input class="admin-input" data-campo="nombre_mostrar" value="${esc(a.nombre_mostrar)}"${dis}></td>
-      <td class="com-c"><input type="checkbox" class="admin-checkbox" data-campo="incluido"${a.incluido ? ' checked' : ''}${dis} aria-label="Incluido"></td>
-      <td class="com-c"><input type="number" min="1" step="1" class="admin-input com-input-num" data-campo="incluido_desde" value="${esc(a.incluido_desde || 1)}"${dis} aria-label="Incluido desde"></td>
+      <td><select class="admin-select com-select-unidad" data-campo="unidad_id"${dis} aria-label="Unidad de comisión">${opcionesUnidad(a.unidad_id)}</select></td>
       <td><span class="com-meta">${nuevo ? 'Nuevo, sin guardar' : esc(fmtFechaHora(a.actualizado_en))}${a.actualizado_por && !nuevo ? '<br>' + esc(a.actualizado_por) : ''}</span></td>
       <td class="com-solo-editor">${borrar}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="7" class="admin-empty">No hay abonos con este filtro.</td></tr>';
   const total = EST.abonos.length + EST.nuevos.size;
   const incluidos = EST.abonos.map((a) => filaActual(a.codigo)).concat([...EST.nuevos].map((c) => EST.cambios.get(c)))
-    .filter((a) => a && a.incluido).length;
+    .filter((a) => a && a.unidad_id).length;
   $('com-ab-cuenta').textContent = `${filas.length} de ${total} abonos · ${incluidos} incluidos`;
   actualizarBotonGuardar();
 }
@@ -231,7 +260,7 @@ function agregarAbono() {
   let n = 1, codigo;
   do { codigo = `NUEVO-${n++}`; } while (filaActual(codigo));
   EST.nuevos.add(codigo);
-  EST.cambios.set(codigo, { codigo, nombre: '', nombre_mostrar: '', incluido: false, incluido_desde: 1 });
+  EST.cambios.set(codigo, { codigo, nombre: '', nombre_mostrar: '', unidad_id: null, incluido_desde: 1 });
   $('com-ab-buscar').value = '';
   $('com-ab-filtro').value = '';
   renderAbonos();
@@ -281,7 +310,8 @@ function filaParaGuardar(a) {
     codigo: a.codigo,
     nombre: normEspacios(a.nombre) || a.codigo,
     nombre_mostrar: normEspacios(a.nombre_mostrar) || null,
-    incluido: !!a.incluido,
+    unidad_id: a.unidad_id || null,
+    incluido: !!a.unidad_id, // la base lo vuelve a calcular por trigger (migración 29)
     incluido_desde: Math.max(1, parseInt(a.incluido_desde, 10) || 1),
     actualizado_en: new Date().toISOString(),
     actualizado_por: EST.session.user.email || null
@@ -308,32 +338,49 @@ async function exportarAbonos() {
     { header: 'Código', key: 'codigo', width: 16 },
     { header: 'Nombre', key: 'nombre', width: 60 },
     { header: 'Nombre para mostrar', key: 'nombre_mostrar', width: 50 },
+    { header: 'Unidad de comisión', key: 'unidad', width: 36 },
     { header: 'Incluido', key: 'incluido', width: 10 },
-    { header: 'Incluido desde', key: 'incluido_desde', width: 15 },
     { header: 'Última modificación', key: 'actualizado_en', width: 20 },
     { header: 'Modificado por', key: 'actualizado_por', width: 30 }
   ];
   EST.abonos.forEach((a) => ws.addRow({
     codigo: a.codigo, nombre: a.nombre, nombre_mostrar: a.nombre_mostrar || '',
-    incluido: a.incluido ? 'Sí' : 'No', incluido_desde: a.incluido_desde,
+    unidad: nombreUnidad(a.unidad_id), incluido: a.unidad_id ? 'Sí' : 'No',
     actualizado_en: fmtFechaHora(a.actualizado_en), actualizado_por: a.actualizado_por || ''
   }));
   estilarEncabezado(ws);
   ws.autoFilter = { from: 'A1', to: 'G1' };
   ws.views = [{ state: 'frozen', ySplit: 1 }];
-  ws.dataValidations.add(`D2:D${Math.max(2, EST.abonos.length + 200)}`, { type: 'list', allowBlank: true, formulae: ['"Sí,No"'] });
+
+  const wu = wb.addWorksheet('Unidades');
+  wu.columns = [
+    { header: 'Unidad de comisión', key: 'nombre', width: 40 },
+    { header: 'Incluido desde', key: 'incluido_desde', width: 15 },
+    { header: 'Abonos', key: 'abonos', width: 60 }
+  ];
+  const unidades = EST.unidades.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
+  unidades.forEach((u) => wu.addRow({ nombre: u.nombre, incluido_desde: u.incluido_desde,
+    abonos: EST.abonos.filter((a) => a.unidad_id === u.id).map((a) => a.codigo).sort(compararCodigos).join(', ') }));
+  estilarEncabezado(wu);
+  if (unidades.length) {
+    ws.dataValidations.add(`D2:D${Math.max(2, EST.abonos.length + 200)}`,
+      { type: 'list', allowBlank: true, formulae: [`Unidades!$A$2:$A$${unidades.length + 1}`] });
+  }
+
   const ayuda = wb.addWorksheet('Instrucciones');
   ayuda.getColumn(1).width = 110;
   [
     'Abonos para comisiones — cómo actualizar desde este archivo',
     '',
-    '1. Editá las columnas Incluido (Sí / No) e Incluido desde (número entero, 1 o más) en la hoja Abonos.',
+    '1. En la hoja Abonos, elegí la Unidad de comisión de cada abono (la lista sale de la hoja Unidades). Vacía = no incluido.',
     '2. Para agregar un abono nuevo, sumá una fila con el Nombre tal como figura en NetSuite (ej. "ABO-72 SP Comercio Seguro - Kit 4").',
     '   El Código se puede dejar vacío: se toma del nombre (ABO-72).',
-    '3. Subí el archivo en Panel de administración → Comisiones → Importar Excel. Antes de aplicar se muestra qué cambia.',
+    '3. Subí el archivo en Panel de administración → Comisiones → Abonos → Importar Excel. Antes de aplicar se muestra qué cambia.',
     '',
-    'Los abonos que no estén en el archivo no se borran. Las columnas Última modificación y Modificado por se ignoran al importar.',
-    'Incluido desde = N: por vendedor y por mes, las OV de ese abono comisionan desde la N-ésima (las primeras N−1 no).'
+    'Las unidades se crean y modifican en la pestaña Unidades de comisión del Panel (la hoja Unidades de este archivo es solo de consulta).',
+    'Los abonos que no estén en el archivo no se borran. La columna Incluido es informativa: manda la Unidad de comisión.',
+    'Incluido desde = N (de la unidad): por vendedor y por mes, comisionan las ventas de la unidad desde la N-ésima;',
+    'la comisión es la base comisionable de la unidad × ventas que comisionan / ventas.'
   ].forEach((t, i) => { const c = ayuda.getCell(`A${i + 1}`); c.value = t; if (i === 0) c.font = { bold: true, size: 13, color: { argb: 'FF1F3864' } }; });
   await descargarLibro(wb, `Abonos_comisiones_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
@@ -371,7 +418,7 @@ const ENCABEZADOS = {
   nombre: ['nombre'],
   nombre_mostrar: ['nombre para mostrar'],
   incluido: ['incluido', 'incluido para comision', 'inlcuido para comision'],
-  incluido_desde: ['incluido desde']
+  unidad: ['unidad de comision', 'unidad']
 };
 function claveEncabezado(t) {
   const n = normEspacios(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -431,53 +478,68 @@ async function leerCsv(file) {
 }
 
 function prepararImportacion(filas) {
+  const porNombre = new Map(EST.unidades.map((u) => [normEspacios(u.nombre).toLowerCase(), u]));
   const vistos = new Map();
+  const errores = [];
   filas.forEach((o) => {
     const codigo = normEspacios(o.codigo) ? codigoAbono(o.codigo) : codigoAbono(o.nombre);
     if (!codigo || vistos.has(codigo)) return; // repetidos: vale el primero
-    const desde = parseInt(o.incluido_desde, 10);
+    const base = filaBase(codigo);
+    // Unidad: la columna "Unidad de comisión" manda; si el archivo no la
+    // trae, "Incluido = No" quita la unidad e "Incluido = Sí" la mantiene.
+    let unidad;
+    if (o.unidad !== undefined) {
+      const t = normEspacios(o.unidad);
+      if (!t || /^(—\s*)?no incluido/i.test(t)) unidad = null;
+      else if (porNombre.has(t.toLowerCase())) unidad = porNombre.get(t.toLowerCase()).id;
+      else { errores.push(`${codigo}: la unidad «${t}» no existe`); return; }
+    } else if (o.incluido !== undefined) {
+      if (!aBool(o.incluido)) unidad = null;
+      else if (base && base.unidad_id) unidad = base.unidad_id;
+      else { errores.push(`${codigo}: incluido sin unidad de comisión (asignala en el Panel o agregá la columna Unidad de comisión)`); return; }
+    }
     vistos.set(codigo, {
       codigo,
       nombre: normEspacios(o.nombre) || codigo,
       nombre_mostrar: o.nombre_mostrar !== undefined ? (normEspacios(o.nombre_mostrar) || null) : undefined,
-      incluido: o.incluido !== undefined ? aBool(o.incluido) : undefined,
-      incluido_desde: Number.isFinite(desde) && desde >= 1 ? desde : undefined
+      unidad_id: unidad
     });
   });
   const nuevos = [], modificados = [];
   vistos.forEach((imp) => {
     const base = filaBase(imp.codigo);
     if (!base) {
-      nuevos.push({ ...imp, nombre_mostrar: imp.nombre_mostrar ?? null, incluido: !!imp.incluido, incluido_desde: imp.incluido_desde || 1 });
+      nuevos.push({ ...imp, nombre_mostrar: imp.nombre_mostrar ?? null, unidad_id: imp.unidad_id ?? null, incluido_desde: 1 });
       return;
     }
     const final = {
       ...base,
       nombre: imp.nombre || base.nombre,
       nombre_mostrar: imp.nombre_mostrar === undefined ? base.nombre_mostrar : imp.nombre_mostrar,
-      incluido: imp.incluido === undefined ? base.incluido : imp.incluido,
-      incluido_desde: imp.incluido_desde === undefined ? base.incluido_desde : imp.incluido_desde
+      unidad_id: imp.unidad_id === undefined ? base.unidad_id : imp.unidad_id
     };
-    const campos = ['nombre', 'nombre_mostrar', 'incluido', 'incluido_desde'].filter((k) => normEspacios(final[k]) !== normEspacios(base[k]));
+    const campos = ['nombre', 'nombre_mostrar', 'unidad_id'].filter((k) => normEspacios(final[k]) !== normEspacios(base[k]));
     if (campos.length) modificados.push({ antes: base, despues: final, campos });
   });
   const sinCambios = vistos.size - nuevos.length - modificados.length;
   const ausentes = EST.abonos.filter((a) => !vistos.has(a.codigo)).length;
+  const txtErrores = errores.length ? ` ${errores.length} fila(s) con error no se aplican: ${errores.join('; ')}.` : '';
   if (!nuevos.length && !modificados.length) {
-    status('com-ab-status', `El archivo no trae cambios (${sinCambios} abonos iguales${ausentes ? `, ${ausentes} de la base no están en el archivo y se dejan como están` : ''}).`, 'ok');
+    status('com-ab-status', `El archivo no trae cambios (${sinCambios} abonos iguales${ausentes ? `, ${ausentes} de la base no están en el archivo y se dejan como están` : ''}).${txtErrores}`,
+      errores.length ? 'error' : 'ok');
     return;
   }
   EST.importPendiente = { nuevos, modificados };
   $('com-imp-resumen').textContent = `${nuevos.length} abono(s) nuevo(s), ${modificados.length} modificado(s), ${sinCambios} sin cambios.` +
-    (ausentes ? ` ${ausentes} abono(s) de la base no están en el archivo: no se borran.` : '') + ' Revisá y confirmá.';
-  const si = (v) => (v ? 'Sí' : 'No');
+    (ausentes ? ` ${ausentes} abono(s) de la base no están en el archivo: no se borran.` : '') + txtErrores + ' Revisá y confirmá.';
+  const un = (id) => nombreUnidad(id) || '— No incluido —';
   const celda = (m, k, fmt) => (m.campos.includes(k) ? `<span class="com-antes">${esc(fmt(m.antes[k]))}</span>${esc(fmt(m.despues[k]))}` : esc(fmt(m.despues[k])));
   $('com-imp-tbody').innerHTML =
     nuevos.map((n) => `<tr><td><span class="com-cambio com-cambio--nuevo">Nuevo</span></td><td class="com-codigo">${esc(n.codigo)}</td>
-      <td>${esc(n.nombre)}</td><td>${si(n.incluido)}</td><td>${esc(n.incluido_desde)}</td></tr>`).join('') +
+      <td>${esc(n.nombre)}</td><td>${esc(un(n.unidad_id))}</td></tr>`).join('') +
     modificados.map((m) => `<tr><td><span class="com-cambio com-cambio--mod">Modificado</span></td><td class="com-codigo">${esc(m.despues.codigo)}</td>
       <td>${celda(m, 'nombre', (x) => x || '')}${m.campos.includes('nombre_mostrar') ? `<br><small>Mostrar: ${celda(m, 'nombre_mostrar', (x) => x || '—')}</small>` : ''}</td>
-      <td>${celda(m, 'incluido', si)}</td><td>${celda(m, 'incluido_desde', (x) => x)}</td></tr>`).join('');
+      <td>${celda(m, 'unidad_id', un)}</td></tr>`).join('');
   $('com-imp').hidden = false;
   status('com-ab-status', '');
   $('com-imp').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -495,6 +557,166 @@ async function aplicarImportacion() {
   $('com-imp').hidden = true;
   await cargarAbonos();
   status('com-ab-status', `Importación aplicada: ${p.nuevos.length} nuevo(s), ${p.modificados.length} modificado(s).`, 'ok');
+}
+
+// ═══════════════════════════ UNIDADES DE COMISIÓN ═══════════════════════════
+function iniciarUnidades() {
+  $('com-un-agregar').addEventListener('click', agregarUnidad);
+  $('com-un-guardar').addEventListener('click', guardarUnidades);
+  $('com-un-confirm-no').addEventListener('click', () => pedirBorradoUnidad(null));
+  $('com-un-confirm-si').addEventListener('click', () => { if (EST.unBorrarPendiente) borrarUnidad(EST.unBorrarPendiente); });
+  const tbody = $('com-un-tbody');
+  tbody.addEventListener('input', (ev) => {
+    const tr = ev.target.closest('tr[data-id]');
+    const campo = ev.target.dataset.campo;
+    if (!tr || !campo) return;
+    let valor = ev.target.value;
+    if (campo === 'incluido_desde') valor = Math.max(1, parseInt(valor, 10) || 1);
+    editarUnidad(tr.dataset.id, campo, valor);
+    tr.classList.toggle('is-dirty', EST.unCambios.has(tr.dataset.id) && !EST.unNuevas.has(tr.dataset.id));
+    actualizarBotonGuardarUnidades();
+  });
+  tbody.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-accion="borrar"]');
+    if (b) pedirBorradoUnidad(b.closest('tr[data-id]').dataset.id);
+  });
+}
+
+async function cargarUnidades() {
+  const { data, error } = await window.supabaseClient
+    .from('comision_unidad')
+    .select('id, nombre, incluido_desde, descripcion, actualizado_en, actualizado_por')
+    .order('nombre');
+  if (error) {
+    EST.unidades = [];
+    status('com-un-status', 'No se pudieron leer las unidades (¿falta correr la migración 29?): ' + error.message, 'error');
+    $('com-un-tbody').innerHTML = '';
+    actualizarFiltroUnidades();
+    return;
+  }
+  EST.unidades = data || [];
+  EST.unCambios.clear();
+  EST.unNuevas.clear();
+  actualizarFiltroUnidades();
+  renderUnidades();
+}
+
+function unidadBase(id) { return EST.unidades.find((u) => u.id === id) || null; }
+function unidadActual(id) { return EST.unCambios.get(id) || unidadBase(id); }
+
+function editarUnidad(id, campo, valor) {
+  const base = unidadBase(id);
+  const actual = { ...(EST.unCambios.get(id) || base) };
+  actual[campo] = valor;
+  if (base && !EST.unNuevas.has(id) &&
+      normEspacios(actual.nombre) === normEspacios(base.nombre) && Number(actual.incluido_desde) === Number(base.incluido_desde)) {
+    EST.unCambios.delete(id);
+    return;
+  }
+  EST.unCambios.set(id, actual);
+}
+
+function actualizarBotonGuardarUnidades() {
+  const n = EST.unCambios.size;
+  $('com-un-guardar').disabled = n === 0;
+  $('com-un-guardar').innerHTML = '<i class="ti ti-device-floppy" aria-hidden="true"></i> ' + (n ? `Guardar cambios (${n})` : 'Guardar cambios');
+}
+
+function renderUnidades() {
+  const tbody = $('com-un-tbody');
+  if (!tbody) return;
+  const dis = EST.puedeEditar ? '' : ' disabled';
+  const lista = [...EST.unNuevas].map((id) => EST.unCambios.get(id)).filter(Boolean)
+    .concat(EST.unidades.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true })).map((u) => EST.unCambios.get(u.id) || u));
+  tbody.innerHTML = lista.length ? lista.map((u) => {
+    const nueva = EST.unNuevas.has(u.id);
+    const abonos = EST.abonos.filter((a) => a.unidad_id === u.id).map((a) => a.codigo).sort(compararCodigos);
+    const clase = nueva ? 'is-nuevo' : (EST.unCambios.has(u.id) ? 'is-dirty' : (EST.unBorrarPendiente === u.id ? 'com-liq-borrar' : ''));
+    return `<tr data-id="${esc(u.id)}" class="${clase}">
+      <td><input class="admin-input" data-campo="nombre" value="${esc(u.nombre)}" placeholder="Ej. Comercio Seguro"${dis}></td>
+      <td class="com-c"><input type="number" min="1" step="1" class="admin-input com-input-num" data-campo="incluido_desde" value="${esc(u.incluido_desde || 1)}"${dis} aria-label="Incluido desde"></td>
+      <td>${abonos.length ? abonos.map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ') : '<span class="com-meta">Sin abonos: asignalos en la pestaña Abonos</span>'}</td>
+      <td><span class="com-meta">${nueva ? 'Nueva, sin guardar' : esc(fmtFechaHora(u.actualizado_en))}${u.actualizado_por && !nueva ? '<br>' + esc(u.actualizado_por) : ''}</span></td>
+      <td class="com-solo-editor"><button type="button" class="com-icon-btn" data-accion="borrar" title="Eliminar unidad"><i class="ti ti-trash" aria-hidden="true"></i></button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5" class="admin-empty">Todavía no hay unidades. Agregá una y asignale abonos en la pestaña Abonos.</td></tr>';
+  actualizarBotonGuardarUnidades();
+}
+
+function agregarUnidad() {
+  let n = 1, id;
+  do { id = `nueva-${n++}`; } while (unidadActual(id));
+  EST.unNuevas.add(id);
+  EST.unCambios.set(id, { id, nombre: '', incluido_desde: 1 });
+  renderUnidades();
+  const input = document.querySelector(`#com-un-tbody tr[data-id="${CSS.escape(id)}"] input[data-campo="nombre"]`);
+  if (input) input.focus();
+  status('com-un-status', 'Poné el nombre y el Incluido desde, guardá, y después asignale abonos en la pestaña Abonos.');
+}
+
+async function guardarUnidades() {
+  const filas = [...EST.unCambios.values()];
+  const nombres = new Map();
+  EST.unidades.forEach((u) => { if (!EST.unCambios.has(u.id)) nombres.set(normEspacios(u.nombre).toLowerCase(), u.id); });
+  for (const u of filas) {
+    const n = normEspacios(u.nombre);
+    if (!n) { status('com-un-status', 'Todas las unidades necesitan un nombre.', 'error'); return; }
+    if (nombres.has(n.toLowerCase())) { status('com-un-status', `Ya existe una unidad llamada «${n}».`, 'error'); return; }
+    nombres.set(n.toLowerCase(), u.id);
+  }
+  $('com-un-guardar').disabled = true;
+  status('com-un-status', 'Guardando…');
+  const sb = window.supabaseClient;
+  const meta = { actualizado_en: new Date().toISOString(), actualizado_por: EST.session.user.email || null };
+  const limpio = (u) => ({ nombre: normEspacios(u.nombre), incluido_desde: Math.max(1, parseInt(u.incluido_desde, 10) || 1), ...meta });
+  const nuevas = filas.filter((u) => EST.unNuevas.has(u.id)).map(limpio);
+  const existentes = filas.filter((u) => !EST.unNuevas.has(u.id)).map((u) => ({ id: u.id, ...limpio(u) }));
+  const r1 = nuevas.length ? await sb.from('comision_unidad').insert(nuevas) : { error: null };
+  const r2 = !r1.error && existentes.length ? await sb.from('comision_unidad').upsert(existentes, { onConflict: 'id' }) : { error: null };
+  const error = r1.error || r2.error;
+  if (error) { status('com-un-status', 'No se pudo guardar: ' + error.message, 'error'); actualizarBotonGuardarUnidades(); return; }
+  await cargarUnidades();
+  renderAbonos();
+  status('com-un-status', `Se guardaron ${filas.length} unidad(es).`, 'ok');
+}
+
+function pedirBorradoUnidad(id) {
+  if (id && EST.unNuevas.has(id)) { // nunca se guardó: se descarta
+    EST.unNuevas.delete(id); EST.unCambios.delete(id);
+    renderUnidades();
+    return;
+  }
+  EST.unBorrarPendiente = id;
+  const u = id && unidadBase(id);
+  $('com-un-confirm').hidden = !u;
+  if (u) {
+    const n = EST.abonos.filter((a) => a.unidad_id === id).length;
+    $('com-un-confirm-texto').innerHTML = `¿Eliminar la unidad <b>${esc(u.nombre)}</b>? ` +
+      (n ? `Sus ${n} abono(s) quedan <b>no incluidos</b> hasta que les asignes otra unidad. ` : '') +
+      'Las liquidaciones ya generadas no cambian.';
+    $('com-un-confirm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  renderUnidades();
+}
+
+async function borrarUnidad(id) {
+  const u = unidadBase(id);
+  const sb = window.supabaseClient;
+  $('com-un-confirm-si').disabled = true;
+  const { error } = await sb.from('comision_unidad').delete().eq('id', id);
+  $('com-un-confirm-si').disabled = false;
+  EST.unBorrarPendiente = null;
+  $('com-un-confirm').hidden = true;
+  if (error) { status('com-un-status', 'No se pudo eliminar: ' + error.message, 'error'); renderUnidades(); return; }
+  const quedo = await sb.from('comision_unidad').select('id').eq('id', id);
+  if (!quedo.error && quedo.data && quedo.data.length) {
+    status('com-un-status', 'La base no eliminó la unidad: tu usuario necesita permiso "editar" en la sección Comisiones.', 'error');
+    renderUnidades();
+    return;
+  }
+  await cargarUnidades();
+  await cargarAbonos();
+  status('com-un-status', `Se eliminó la unidad ${u ? u.nombre : ''}.`, 'ok');
 }
 
 // ═══════════════════════════ LIQUIDACIONES ═══════════════════════════
@@ -673,14 +895,14 @@ function renderDetalle() {
     <div class="com-kpis">
       <div class="com-kpi"><b>${esc(t.ganadas ?? 0)}</b><span>Oportunidades ganadas</span></div>
       <div class="com-kpi"><b>${esc(t.ovs ?? 0)}</b><span>OV de abonos · ${esc(t.ganadas_sin_ov ?? 0)} ganadas sin OV</span></div>
-      <div class="com-kpi"><b>${esc(t.ovs_comisionables ?? 0)}</b><span>OV con abonos incluidos</span></div>
+      <div class="com-kpi"><b>${esc(t.ovs_comisionables ?? 0)}</b><span>OV con abonos de alguna unidad</span></div>
       <div class="com-kpi"><b>${pesos(t.base_comisionable)}</b><span>Base comisionable</span></div>
       <div class="com-kpi com-kpi--total"><b>${pesos(t.comision)}</b><span>Comisión total</span></div>
     </div>`;
   if ((liq.avisos || []).length) {
     h += `<div class="com-avisos"><b>Avisos al generar</b><ul>${liq.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></div>`;
   }
-  h += `<h4>Por vendedor</h4><p class="com-detalle__meta" style="margin:-6px 0 8px">Click en un vendedor para ver el detalle por abono y filtrar las líneas.</p>
+  h += `<h4>Por vendedor</h4><p class="com-detalle__meta" style="margin:-6px 0 8px">Click en un vendedor para ver el detalle por unidad de comisión y filtrar las líneas.</p>
     <div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr>
       <th>Vendedor</th><th class="com-n">Ganadas</th><th class="com-n">OV de abonos</th><th class="com-n">OV con abonos incluidos</th>
       <th class="com-n">Base comisionable</th><th class="com-n">Comisión</th></tr></thead><tbody>`;
@@ -690,7 +912,14 @@ function renderDetalle() {
       <td>${abierto ? '▾' : '▸'} ${esc(v.vendedor)}</td><td class="com-n">${v.ganadas}</td><td class="com-n">${v.ovs}</td>
       <td class="com-n">${v.ovs_comisionables}</td><td class="com-n">${pesos(v.base_comisionable)}</td><td class="com-n"><b>${pesos(v.comision)}</b></td></tr>`;
     if (abierto) {
-      h += `<tr class="com-sub"><td colspan="6">${(v.por_abono || []).length ? `<table class="com-subtabla"><thead><tr>
+      h += (v.por_unidad || []).length ? `<tr class="com-sub"><td colspan="6"><table class="com-subtabla"><thead><tr>
+        <th>Unidad de comisión</th><th class="com-n">Ventas (OV)</th><th class="com-n">Incluido desde</th><th class="com-n">Comisionan</th>
+        <th class="com-n">% que comisiona</th><th class="com-n">Base</th><th class="com-n">Promedio por venta</th><th class="com-n">Comisión</th></tr></thead><tbody>` +
+        v.por_unidad.map((u) => `<tr><td>${esc(u.unidad)}</td><td class="com-n">${u.ventas}</td><td class="com-n">${esc(u.incluido_desde ?? '')}</td>
+          <td class="com-n">${u.comisionan}</td><td class="com-n">${pct(u.factor)}</td><td class="com-n">${pesos(u.base)}</td>
+          <td class="com-n">${pesos(u.promedio)}</td><td class="com-n"><b>${pesos(u.comision)}</b></td></tr>`).join('') +
+        '</tbody></table><p class="com-meta" style="margin:6px 0 0">Comisión = base de la unidad × comisionan / ventas (comisionan = ventas − incluido desde + 1, mínimo 0).</p></td></tr>'
+      : `<tr class="com-sub"><td colspan="6">${(v.por_abono || []).length ? `<table class="com-subtabla"><thead><tr>
         <th>Abono</th><th class="com-n">OV</th><th class="com-n">Incluido desde</th><th class="com-n">OV que comisionan</th>
         <th class="com-n">Base</th><th class="com-n">Comisión</th></tr></thead><tbody>` +
         v.por_abono.map((a) => `<tr><td class="com-codigo">${esc(a.codigo)}</td><td class="com-n">${a.ovs}</td><td class="com-n">${esc(a.incluido_desde ?? '')}</td>
@@ -706,13 +935,13 @@ function renderDetalle() {
   h += `<h4>Líneas de abono${EST.lineaFiltroVend ? ' · ' + esc(EST.lineaFiltroVend) : ''} (${ls.length})</h4>
     <div class="com-lineas-wrap"><table class="admin-table com-tabla"><thead><tr>
       <th>Vendedor</th><th>OV</th><th>Fecha OV</th><th>Cliente</th><th>Oportunidad</th><th>Abono</th>
-      <th class="com-c">Incluido</th><th class="com-n">N.º</th><th class="com-c">Comisiona</th><th class="com-n">Importe</th><th class="com-n">Comisión</th>
+      <th>Unidad de comisión</th><th class="com-n">N.º</th><th class="com-n">% que comisiona</th><th class="com-n">Importe</th><th class="com-n">Comisión</th>
     </tr></thead><tbody>` +
     (ls.length ? ls.map((l) => `<tr><td>${esc(l.vendedor)}</td><td>${esc(l.ov_numero)}</td><td>${esc(fmtDia(l.fecha_ov))}</td>
       <td>${esc(l.cliente)}</td><td>${esc(l.oportunidad)}</td><td title="${esc(l.articulo)}"><span class="com-codigo">${esc(l.codigo)}</span></td>
-      <td class="com-c">${l.incluido ? '<span class="com-si">Sí</span>' : '<span class="com-no">No</span>'}</td>
+      <td>${l.incluido ? esc(l.unidad || 'Incluido') : '<span class="com-no">No incluido</span>'}</td>
       <td class="com-n">${l.orden ? `${l.orden}${l.incluido_desde > 1 ? ' / desde ' + l.incluido_desde : ''}` : ''}</td>
-      <td class="com-c">${l.comisiona ? '<span class="com-si">Sí</span>' : '<span class="com-no">No</span>'}</td>
+      <td class="com-n">${!l.incluido ? '' : (l.factor != null ? pct(l.factor) : (l.comisiona ? '100 %' : '0 %'))}</td>
       <td class="com-n">${pesos(l.importe)}</td><td class="com-n">${l.comisiona ? '<b>' + pesos(l.comision) + '</b>' : ''}</td></tr>`).join('')
       : '<tr><td colspan="11" class="admin-empty">Sin líneas.</td></tr>') + '</tbody></table></div>';
 
@@ -725,10 +954,14 @@ function renderDetalle() {
     : '<p class="com-meta">Ninguna.</p>');
 
   const cfg = (liq.config || []).slice().sort((a, b) => (b.incluido - a.incluido) || compararCodigos(a.codigo, b.codigo));
-  h += `<details class="com-config"><summary>Configuración de abonos usada (${cfg.filter((c) => c.incluido).length} incluidos de ${cfg.length})</summary>
-    <div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Código</th><th>Nombre</th><th class="com-c">Incluido</th><th class="com-n">Incluido desde</th></tr></thead><tbody>` +
+  const uns = liq.unidades || [];
+  h += `<details class="com-config"><summary>Configuración usada (${uns.length ? uns.length + ' unidades de comisión · ' : ''}${cfg.filter((c) => c.incluido).length} abonos incluidos de ${cfg.length})</summary>` +
+    (uns.length ? `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Unidad de comisión</th><th class="com-n">Incluido desde</th><th>Abonos</th></tr></thead><tbody>` +
+      uns.map((u) => `<tr><td>${esc(u.nombre)}</td><td class="com-n">${esc(u.incluido_desde)}</td><td>${(u.abonos || []).map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ')}</td></tr>`).join('') +
+      '</tbody></table></div>' : '') +
+    `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Código</th><th>Nombre</th><th>Unidad de comisión</th>${uns.length ? '' : '<th class="com-n">Incluido desde</th>'}</tr></thead><tbody>` +
     cfg.map((c) => `<tr><td class="com-codigo">${esc(c.codigo)}</td><td>${esc(c.nombre_mostrar || c.nombre)}</td>
-      <td class="com-c">${c.incluido ? '<span class="com-si">Sí</span>' : '<span class="com-no">No</span>'}</td><td class="com-n">${esc(c.incluido_desde)}</td></tr>`).join('') +
+      <td>${c.incluido ? esc(c.unidad || 'Incluido') : '<span class="com-no">No incluido</span>'}</td>${uns.length ? '' : `<td class="com-n">${esc(c.incluido_desde)}</td>`}</tr>`).join('') +
     '</tbody></table></div></details>';
 
   const cont = $('com-liq-detalle');
@@ -760,6 +993,16 @@ async function exportarLiquidacion(id, btn) {
       oc: vendedores.reduce((s, v) => s + v.ovs_comisionables, 0), b: Number(liq.totales.base_comisionable), c: Number(liq.totales.comision) });
     tot.font = { bold: true };
 
+    const wsU = wb.addWorksheet('Por unidad');
+    wsU.columns = [
+      { header: 'Vendedor', key: 'v', width: 28 }, { header: 'Unidad de comisión', key: 'u', width: 30 }, { header: 'Ventas (OV)', key: 'o', width: 10 },
+      { header: 'Incluido desde', key: 'd', width: 12 }, { header: 'Comisionan', key: 'oc', width: 12 }, { header: '% que comisiona', key: 'f', width: 12, style: { numFmt: '0.00%' } },
+      { header: 'Base', key: 'b', width: 16, style: { numFmt: money } }, { header: 'Promedio por venta', key: 'p', width: 16, style: { numFmt: money } },
+      { header: 'Comisión', key: 'c', width: 16, style: { numFmt: money } }
+    ];
+    vendedores.forEach((v) => (v.por_unidad || []).forEach((u) => wsU.addRow({ v: v.vendedor, u: u.unidad, o: u.ventas, d: u.incluido_desde,
+      oc: u.comisionan, f: Number(u.factor), b: Number(u.base), p: Number(u.promedio), c: Number(u.comision) })));
+
     const ws2 = wb.addWorksheet('Por abono');
     ws2.columns = [
       { header: 'Vendedor', key: 'v', width: 28 }, { header: 'Abono', key: 'a', width: 14 }, { header: 'OV', key: 'o', width: 8 },
@@ -775,13 +1018,16 @@ async function exportarLiquidacion(id, btn) {
       { header: 'Fecha oportunidad', key: 'fecha_oportunidad', width: 11 }, { header: 'Cliente', key: 'cliente', width: 30 },
       { header: 'Nro. cliente', key: 'nro_cliente', width: 12 }, { header: 'Código', key: 'codigo', width: 12 }, { header: 'Artículo', key: 'articulo', width: 50 },
       { header: 'Cantidad', key: 'cantidad', width: 9 }, { header: 'Importe', key: 'importe', width: 14, style: { numFmt: money } },
-      { header: 'Incluido', key: 'incluido', width: 9 }, { header: 'N.º de OV del abono', key: 'orden', width: 10 },
+      { header: 'Incluido', key: 'incluido', width: 9 }, { header: 'Unidad de comisión', key: 'unidad', width: 26 },
+      { header: 'N.º de venta de la unidad', key: 'orden', width: 10 },
       { header: 'Incluido desde', key: 'incluido_desde', width: 10 }, { header: 'Comisiona', key: 'comisiona', width: 10 },
+      { header: '% que comisiona', key: 'factor', width: 12, style: { numFmt: '0.00%' } },
       { header: 'Comisión', key: 'comision', width: 14, style: { numFmt: money } }
     ];
     lineas.forEach((l) => ws3.addRow({ ...l, fecha_ov: fmtDia(l.fecha_ov), fecha_oportunidad: fmtDia(l.fecha_oportunidad),
       importe: l.importe == null ? null : Number(l.importe), cantidad: l.cantidad == null ? null : Number(l.cantidad),
-      incluido: l.incluido ? 'Sí' : 'No', comisiona: l.comisiona ? 'Sí' : 'No', comision: Number(l.comision) }));
+      incluido: l.incluido ? 'Sí' : 'No', comisiona: l.comisiona ? 'Sí' : 'No', comision: Number(l.comision),
+      factor: l.factor == null ? null : Number(l.factor) }));
 
     const ws4 = wb.addWorksheet('Ganadas sin OV abonos');
     ws4.columns = [
@@ -794,11 +1040,16 @@ async function exportarLiquidacion(id, btn) {
     const ws5 = wb.addWorksheet('Configuración');
     ws5.columns = [
       { header: 'Código', key: 'codigo', width: 14 }, { header: 'Nombre', key: 'nombre', width: 60 },
-      { header: 'Incluido', key: 'incluido', width: 10 }, { header: 'Incluido desde', key: 'incluido_desde', width: 14 }
+      { header: 'Incluido', key: 'incluido', width: 10 }, { header: 'Unidad de comisión', key: 'unidad', width: 30 },
+      { header: 'Incluido desde', key: 'incluido_desde', width: 14 }
     ];
-    (liq.config || []).forEach((c) => ws5.addRow({ codigo: c.codigo, nombre: c.nombre, incluido: c.incluido ? 'Sí' : 'No', incluido_desde: c.incluido_desde }));
+    const desdeUnidad = new Map((liq.unidades || []).map((u) => [u.nombre, u.incluido_desde]));
+    (liq.config || []).forEach((c) => ws5.addRow({ codigo: c.codigo, nombre: c.nombre, incluido: c.incluido ? 'Sí' : 'No', unidad: c.unidad || '',
+      incluido_desde: c.incluido ? (desdeUnidad.get(c.unidad) ?? c.incluido_desde) : null }));
 
-    [ws1, ws2, ws3, ws4, ws5].forEach((ws) => {
+    if (!vendedores.some((v) => (v.por_unidad || []).length)) wb.removeWorksheet(wsU.id);
+    if (!vendedores.some((v) => (v.por_abono || []).length) || vendedores.some((v) => (v.por_unidad || []).length)) wb.removeWorksheet(ws2.id);
+    wb.worksheets.forEach((ws) => {
       estilarEncabezado(ws);
       ws.views = [{ state: 'frozen', ySplit: 1 }];
       if (ws.rowCount > 1) ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } };
