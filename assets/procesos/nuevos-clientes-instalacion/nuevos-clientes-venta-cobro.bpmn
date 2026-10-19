@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_NuevosClientesVentaCobro" targetNamespace="http://sp-seguridad.com/procesos" exporter="bpmn-js" exporterVersion="18.30.1">
   <bpmn:collaboration id="Collaboration_VentaCobro">
-    <bpmn:documentation>Proceso: Nuevos clientes con instalación de alarmas y/o cámaras. Subproceso: Confirmación de la venta y cobro (Ventas → Atención al Cliente). Borrador v0.1 — 30/09/2026 — surge de la reunión R2. Hitos 1 y 2 de la matriz de responsabilidades.</bpmn:documentation>
+    <bpmn:documentation>Proceso: Nuevos clientes con instalación de alarmas y/o cámaras. Subproceso: Confirmación de la venta y cobro (Ventas → Atención al Cliente). Borrador v0.1 — 30/09/2026 — surge de la reunión R2. Hitos 1 y 2 de la matriz de responsabilidades. Actualizado 19/10/2026: la bienvenida forma parte de la etapa 7 (definido 17/10); continúa en "Instalación y control de calidad" (etapas 8 a 10).</bpmn:documentation>
     <bpmn:participant id="Participant_Cliente" name="Cliente" />
     <bpmn:participant id="Participant_SP" name="SP Seguridad Privada" processRef="Process_VentaCobro" />
     <bpmn:messageFlow id="MF1" name="Próximos pasos y contacto de Atención al Cliente" sourceRef="Task_InformarPasos" targetRef="Participant_Cliente" />
     <bpmn:messageFlow id="MF2" name="Contacto del vendedor" sourceRef="Task_VendedorRetoma" targetRef="Participant_Cliente" />
+    <bpmn:messageFlow id="MF3" name="Bienvenida, próximos pasos y canales de contacto" sourceRef="Task_Bienvenida" targetRef="Participant_Cliente" />
   </bpmn:collaboration>
   <bpmn:process id="Process_VentaCobro" name="Nuevos clientes – Confirmación de la venta y cobro" isExecutable="false">
     <bpmn:laneSet id="LaneSet_1">
       <bpmn:lane id="Lane_Ventas" name="Ventas"><bpmn:flowNodeRef>Start_Oportunidad</bpmn:flowNodeRef><bpmn:flowNodeRef>Sub_VentaConsultiva</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Confirma</bpmn:flowNodeRef><bpmn:flowNodeRef>End_OportunidadPerdida</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Formalizar</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_InformarPasos</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Derivar</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ActualizarPresupuesto</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_VendedorRetoma</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_ClienteConfirmaPago</bpmn:flowNodeRef><bpmn:flowNodeRef>End_VentaPerdida</bpmn:flowNodeRef></bpmn:lane>
-      <bpmn:lane id="Lane_AtencionCliente" name="Atención al Cliente"><bpmn:flowNodeRef>Task_RecibirTraspaso</bpmn:flowNodeRef><bpmn:flowNodeRef>Sub_GestionCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_ResultadoCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_GenerarCaso</bpmn:flowNodeRef><bpmn:flowNodeRef>End_CasoGenerado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AvisoVencimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>End_AvisoEnviado</bpmn:flowNodeRef><bpmn:flowNodeRef>Bnd_AvisoVencimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Bnd_PresupuestoVencido</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_AtencionCliente" name="Atención al Cliente"><bpmn:flowNodeRef>Task_RecibirTraspaso</bpmn:flowNodeRef><bpmn:flowNodeRef>Sub_GestionCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_ResultadoCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarCobro</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_GenerarCaso</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Bienvenida</bpmn:flowNodeRef><bpmn:flowNodeRef>End_CasoGenerado</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AvisoVencimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>End_AvisoEnviado</bpmn:flowNodeRef><bpmn:flowNodeRef>Bnd_AvisoVencimiento</bpmn:flowNodeRef><bpmn:flowNodeRef>Bnd_PresupuestoVencido</bpmn:flowNodeRef></bpmn:lane>
     </bpmn:laneSet>
       <bpmn:startEvent id="Start_Oportunidad" name="Primer contacto del prospecto"><bpmn:outgoing>F1</bpmn:outgoing></bpmn:startEvent>
       <bpmn:callActivity id="Sub_VentaConsultiva" name="Venta consultiva (etapas 1 a 5)" calledElement="Process_VentaConsultiva"><bpmn:documentation>Llama al proceso "Venta consultiva" (archivo nuevos-clientes-venta-consultiva.bpmn).</bpmn:documentation><bpmn:incoming>F1</bpmn:incoming><bpmn:outgoing>F2</bpmn:outgoing></bpmn:callActivity>
@@ -53,7 +54,8 @@
       <bpmn:exclusiveGateway id="Gw_ResultadoCobro" name="¿Se concretó el cobro?"><bpmn:incoming>F9</bpmn:incoming><bpmn:outgoing>F10</bpmn:outgoing><bpmn:outgoing>F13</bpmn:outgoing></bpmn:exclusiveGateway>
       <bpmn:task id="Task_RegistrarCobro" name="Registrar el cobro del 100% en NetSuite"><bpmn:incoming>F10</bpmn:incoming><bpmn:outgoing>F11</bpmn:outgoing></bpmn:task>
       <bpmn:serviceTask id="Task_GenerarCaso" name="Generar el caso de instalación (automático NetSuite)"><bpmn:incoming>F11</bpmn:incoming><bpmn:outgoing>F12</bpmn:outgoing></bpmn:serviceTask>
-      <bpmn:endEvent id="End_CasoGenerado" name="Caso de instalación generado (hito 2)"><bpmn:incoming>F12</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sendTask id="Task_Bienvenida" name="Enviar la bienvenida y los próximos pasos"><bpmn:incoming>F12</bpmn:incoming><bpmn:outgoing>F21</bpmn:outgoing></bpmn:sendTask>
+      <bpmn:endEvent id="End_CasoGenerado" name="Caso de instalación generado (hito 2)"><bpmn:incoming>F21</bpmn:incoming></bpmn:endEvent>
       <bpmn:sendTask id="Task_AvisoVencimiento" name="Enviar aviso de vencimiento del presupuesto"><bpmn:incoming>F17</bpmn:incoming><bpmn:outgoing>F18</bpmn:outgoing></bpmn:sendTask>
       <bpmn:endEvent id="End_AvisoEnviado" name="Aviso enviado"><bpmn:incoming>F18</bpmn:incoming></bpmn:endEvent>
       <bpmn:boundaryEvent id="Bnd_AvisoVencimiento" name="X días antes del vencimiento del presupuesto" attachedToRef="Sub_GestionCobro" cancelActivity="false"><bpmn:outgoing>F17</bpmn:outgoing><bpmn:timerEventDefinition id="Bnd_AvisoVencimiento_Def" /></bpmn:boundaryEvent>
@@ -69,7 +71,8 @@
       <bpmn:sequenceFlow id="F9" sourceRef="Sub_GestionCobro" targetRef="Gw_ResultadoCobro" />
       <bpmn:sequenceFlow id="F10" name="Cobro concretado" sourceRef="Gw_ResultadoCobro" targetRef="Task_RegistrarCobro" />
       <bpmn:sequenceFlow id="F11" sourceRef="Task_RegistrarCobro" targetRef="Task_GenerarCaso" />
-      <bpmn:sequenceFlow id="F12" sourceRef="Task_GenerarCaso" targetRef="End_CasoGenerado" />
+      <bpmn:sequenceFlow id="F12" sourceRef="Task_GenerarCaso" targetRef="Task_Bienvenida" />
+      <bpmn:sequenceFlow id="F21" sourceRef="Task_Bienvenida" targetRef="End_CasoGenerado" />
       <bpmn:sequenceFlow id="F13" name="Sin respuesta del cliente" sourceRef="Gw_ResultadoCobro" targetRef="Task_VendedorRetoma" />
       <bpmn:sequenceFlow id="F14" sourceRef="Task_VendedorRetoma" targetRef="Gw_ClienteConfirmaPago" />
       <bpmn:sequenceFlow id="F15" name="No" sourceRef="Gw_ClienteConfirmaPago" targetRef="End_VentaPerdida" />
@@ -88,6 +91,8 @@
       <bpmn:association id="Ann_VentaPerdida_Assoc" sourceRef="Ann_VentaPerdida" targetRef="End_VentaPerdida" />
       <bpmn:textAnnotation id="Ann_DetalleVentaConsultiva"><bpmn:text>Actividad de llamada: el detalle está en el diagrama "Venta consultiva" (etapas 1 a 5)</bpmn:text></bpmn:textAnnotation>
       <bpmn:association id="Ann_DetalleVentaConsultiva_Assoc" sourceRef="Ann_DetalleVentaConsultiva" targetRef="Sub_VentaConsultiva" />
+      <bpmn:textAnnotation id="Ann_ContinuaInstalacion"><bpmn:text>Definido 17/10: la bienvenida forma parte de la etapa 7. Continúa en el diagrama "Instalación y control de calidad" (etapas 8 a 10)</bpmn:text></bpmn:textAnnotation>
+      <bpmn:association id="Ann_ContinuaInstalacion_Assoc" sourceRef="Ann_ContinuaInstalacion" targetRef="End_CasoGenerado" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_Main">
     <bpmndi:BPMNPlane id="BPMNPlane_Main" bpmnElement="Collaboration_VentaCobro">
@@ -111,7 +116,7 @@
       <bpmndi:BPMNShape id="Gw_ResultadoCobro_di" bpmnElement="Gw_ResultadoCobro" isMarkerVisible="true"><dc:Bounds x="1665" y="545" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1635" y="599" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_RegistrarCobro_di" bpmnElement="Task_RegistrarCobro"><dc:Bounds x="1815" y="530" width="100" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_GenerarCaso_di" bpmnElement="Task_GenerarCaso"><dc:Bounds x="1990" y="530" width="100" height="80" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="End_CasoGenerado_di" bpmnElement="End_CasoGenerado"><dc:Bounds x="2197" y="552" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_CasoGenerado_di" bpmnElement="End_CasoGenerado"><dc:Bounds x="2297" y="552" width="36" height="36" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_AvisoVencimiento_di" bpmnElement="Task_AvisoVencimiento"><dc:Bounds x="1465" y="660" width="100" height="80" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="End_AvisoEnviado_di" bpmnElement="End_AvisoEnviado"><dc:Bounds x="1672" y="682" width="36" height="36" /></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Bnd_AvisoVencimiento_di" bpmnElement="Bnd_AvisoVencimiento"><dc:Bounds x="1512" y="592" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1552" y="618" width="120" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
@@ -127,7 +132,7 @@
       <bpmndi:BPMNEdge id="F9_di" bpmnElement="F9"><di:waypoint x="1565" y="570" /><di:waypoint x="1665" y="570" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="F10_di" bpmnElement="F10"><di:waypoint x="1715" y="570" /><di:waypoint x="1815" y="570" /><bpmndi:BPMNLabel><dc:Bounds x="1720" y="548" width="110" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="F11_di" bpmnElement="F11"><di:waypoint x="1915" y="570" /><di:waypoint x="1990" y="570" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="F12_di" bpmnElement="F12"><di:waypoint x="2090" y="570" /><di:waypoint x="2197" y="570" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F12_di" bpmnElement="F12"><di:waypoint x="2090" y="570" /><di:waypoint x="2150" y="570" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="F13_di" bpmnElement="F13"><di:waypoint x="1690" y="545" /><di:waypoint x="1690" y="420" /><bpmndi:BPMNLabel><dc:Bounds x="1696" y="492" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="F14_di" bpmnElement="F14"><di:waypoint x="1740" y="380" /><di:waypoint x="1840" y="380" /></bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="F15_di" bpmnElement="F15"><di:waypoint x="1890" y="380" /><di:waypoint x="2022" y="380" /><bpmndi:BPMNLabel><dc:Bounds x="1900" y="360" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
@@ -148,6 +153,11 @@
       <bpmndi:BPMNEdge id="MF2_di" bpmnElement="MF2"><di:waypoint x="1690" y="340" /><di:waypoint x="1690" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="1698" y="150" width="110" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_DetalleVentaConsultiva_di" bpmnElement="Ann_DetalleVentaConsultiva"><dc:Bounds x="340" y="335" width="200" height="45" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_DetalleVentaConsultiva_Assoc_di" bpmnElement="Ann_DetalleVentaConsultiva_Assoc"><di:waypoint x="465" y="335" /><di:waypoint x="465" y="290" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Task_Bienvenida_di" bpmnElement="Task_Bienvenida"><dc:Bounds x="2150" y="530" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F21_di" bpmnElement="F21"><di:waypoint x="2250" y="570" /><di:waypoint x="2297" y="570" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF3_di" bpmnElement="MF3"><di:waypoint x="2250" y="540" /><di:waypoint x="2365" y="540" /><di:waypoint x="2365" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="2235" y="135" width="125" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_ContinuaInstalacion_di" bpmnElement="Ann_ContinuaInstalacion"><dc:Bounds x="2130" y="660" width="235" height="75" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_ContinuaInstalacion_Assoc_di" bpmnElement="Ann_ContinuaInstalacion_Assoc"><di:waypoint x="2315" y="660" /><di:waypoint x="2315" y="588" /></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
   <bpmndi:BPMNDiagram id="BPMNDiagram_GestionCobro">

@@ -7,8 +7,9 @@
     <bpmn:categoryValue id="CV_Grp_E4" value="Etapa 4 · Presupuesto" />
     <bpmn:categoryValue id="CV_Grp_E5" value="Etapa 5 · Seguimiento" />
   </bpmn:category>
+  <bpmn:dataStore id="DataStore_StockNetSuite" name="Stock disponible (NetSuite)" />
   <bpmn:collaboration id="Collaboration_VentaConsultiva">
-    <bpmn:documentation>Proceso: Nuevos clientes con instalación de alarmas y/o cámaras. Subproceso: Venta consultiva (etapas 1 a 5, Ventas), desde el primer contacto hasta la confirmación del cliente. Es el proceso llamado por la actividad "Venta consultiva (etapas 1 a 5)" del diagrama "Confirmación de la venta y cobro". Borrador v0.1 — 14/10/2026 — basado en el documento "Proceso de venta y atención por áreas". Continúa en "Confirmación de la venta y cobro" (etapa 6).</bpmn:documentation>
+    <bpmn:documentation>Proceso: Nuevos clientes con instalación de alarmas y/o cámaras. Subproceso: Venta consultiva (etapas 1 a 5, Ventas), desde el primer contacto hasta la confirmación del cliente. Es el proceso llamado por la actividad "Venta consultiva (etapas 1 a 5)" del diagrama "Confirmación de la venta y cobro". Borrador v0.1 — 14/10/2026 — basado en el documento "Proceso de venta y atención por áreas". Continúa en "Confirmación de la venta y cobro" (etapa 6). Actualizado 19/10/2026: consulta de stock al elaborar el presupuesto (definido 17/10).</bpmn:documentation>
     <bpmn:participant id="Participant_Cliente" name="Prospecto / cliente" />
     <bpmn:participant id="Participant_SP" name="SP Seguridad Privada" processRef="Process_VentaConsultiva" />
     <bpmn:messageFlow id="MF1" name="Consulta" sourceRef="Participant_Cliente" targetRef="Start_Consulta" />
@@ -39,7 +40,7 @@
     <bpmn:sendTask id="Task_ConfirmarCita" name="Confirmar la cita y enviar recordatorio"><bpmn:incoming>F10</bpmn:incoming><bpmn:outgoing>F11</bpmn:outgoing></bpmn:sendTask>
     <bpmn:task id="Task_Visita" name="Realizar la visita: relevamiento y propuesta de valor (etapa 3)"><bpmn:incoming>F11</bpmn:incoming><bpmn:outgoing>F12</bpmn:outgoing></bpmn:task>
     <bpmn:task id="Task_RegistrarRelevamiento" name="Registrar el relevamiento en el sistema"><bpmn:incoming>F12</bpmn:incoming><bpmn:outgoing>F13</bpmn:outgoing></bpmn:task>
-    <bpmn:sendTask id="Task_Presupuesto" name="Elaborar y enviar el presupuesto (etapa 4)"><bpmn:incoming>F13</bpmn:incoming><bpmn:incoming>F20</bpmn:incoming><bpmn:outgoing>F14</bpmn:outgoing></bpmn:sendTask>
+    <bpmn:sendTask id="Task_Presupuesto" name="Elaborar y enviar el presupuesto (etapa 4)"><bpmn:incoming>F13</bpmn:incoming><bpmn:incoming>F20</bpmn:incoming><bpmn:outgoing>F14</bpmn:outgoing><bpmn:property id="Property_StockPresupuesto" name="__targetRef_placeholder" /><bpmn:dataInputAssociation id="DIA_StockPresupuesto"><bpmn:sourceRef>DataStoreRef_Stock</bpmn:sourceRef><bpmn:targetRef>Property_StockPresupuesto</bpmn:targetRef></bpmn:dataInputAssociation></bpmn:sendTask>
     <bpmn:task id="Task_Seguimiento" name="Seguimiento del presupuesto (etapa 5)"><bpmn:incoming>F14</bpmn:incoming><bpmn:outgoing>F15</bpmn:outgoing></bpmn:task>
     <bpmn:exclusiveGateway id="Gw_Acepta" name="¿El cliente acepta el presupuesto?"><bpmn:incoming>F15</bpmn:incoming><bpmn:outgoing>F16</bpmn:outgoing><bpmn:outgoing>F17</bpmn:outgoing></bpmn:exclusiveGateway>
     <bpmn:endEvent id="End_ClienteConfirma" name="El cliente confirma la venta"><bpmn:incoming>F16</bpmn:incoming><bpmn:messageEventDefinition id="End_ClienteConfirma_Def" /></bpmn:endEvent>
@@ -81,6 +82,9 @@
     <bpmn:sequenceFlow id="F21" sourceRef="Start_ContactoDirecto" targetRef="Task_Calificar" />
     <bpmn:textAnnotation id="Ann_RegistroLead"><bpmn:text>Contacto fuera del bot: el vendedor carga el lead en GHL para que quede registrado y entre en el seguimiento</bpmn:text></bpmn:textAnnotation>
     <bpmn:association id="Ann_RegistroLead_Assoc" sourceRef="Ann_RegistroLead" targetRef="Start_ContactoDirecto" />
+    <bpmn:dataStoreReference id="DataStoreRef_Stock" name="Stock en NetSuite" dataStoreRef="DataStore_StockNetSuite" />
+    <bpmn:textAnnotation id="Ann_StockPresupuesto"><bpmn:text>Definido 17/10: al armar el presupuesto, NetSuite avisa al vendedor si hay stock. Disponible = Depósito Central menos un stock de seguridad. A definir: qué hace el vendedor si no hay stock y en qué momento se reserva</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_StockPresupuesto_Assoc" sourceRef="Ann_StockPresupuesto" targetRef="Task_Presupuesto" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_VentaConsultiva">
     <bpmndi:BPMNPlane id="BPMNPlane_VentaConsultiva" bpmnElement="Collaboration_VentaConsultiva">
@@ -149,6 +153,10 @@
       <bpmndi:BPMNEdge id="MF5_di" bpmnElement="MF5"><di:waypoint x="570" y="120" /><di:waypoint x="570" y="542" /><bpmndi:BPMNLabel><dc:Bounds x="576" y="135" width="90" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="Ann_RegistroLead_di" bpmnElement="Ann_RegistroLead"><dc:Bounds x="640" y="472" width="240" height="60" /></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Ann_RegistroLead_Assoc_di" bpmnElement="Ann_RegistroLead_Assoc"><di:waypoint x="640" y="502" /><di:waypoint x="583" y="547" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="DataStoreRef_Stock_di" bpmnElement="DataStoreRef_Stock"><dc:Bounds x="2020" y="490" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="2010" y="545" width="70" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="DIA_StockPresupuesto_di" bpmnElement="DIA_StockPresupuesto"><di:waypoint x="2045" y="490" /><di:waypoint x="2045" y="470" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_StockPresupuesto_di" bpmnElement="Ann_StockPresupuesto"><dc:Bounds x="1700" y="250" width="300" height="85" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_StockPresupuesto_Assoc_di" bpmnElement="Ann_StockPresupuesto_Assoc"><di:waypoint x="1990" y="335" /><di:waypoint x="2045" y="390" /></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

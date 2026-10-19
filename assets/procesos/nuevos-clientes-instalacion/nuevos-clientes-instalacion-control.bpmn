@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_NuevosClientesInstalacionControl" targetNamespace="http://sp-seguridad.com/procesos" exporter="bpmn-js" exporterVersion="18.30.1">
+  <bpmn:category id="Category_Etapas">
+    <bpmn:categoryValue id="CV_Grp_E8" value="Etapa 8 · Coordinación de la instalación" />
+    <bpmn:categoryValue id="CV_Grp_E9" value="Etapa 9 · Ejecución de la instalación" />
+    <bpmn:categoryValue id="CV_Grp_E10" value="Etapa 10 · Control de calidad (Posventa)" />
+  </bpmn:category>
+  <bpmn:collaboration id="Collaboration_InstalacionControl">
+    <bpmn:documentation>Proceso: Nuevos clientes con alarmas y/o cámaras. Subproceso: Instalación y control de calidad (etapas 8 a 10: Instalaciones, Depósito y Posventa), desde el caso de instalación generado hasta el control de calidad cerrado. Viene de "Confirmación de la venta y cobro" (hito 2). Salidas: hito 11 a Mantenimiento correctivo y reclamos técnicos; hito 12 a Atención al cliente activo. Se modela el circuito objetivo; los desvíos actuales van como anotaciones. Borrador v0.1 — 19/10/2026 — basado en el documento "Proceso de venta y atención por áreas", la matriz de responsabilidades y las definiciones del 17/10.</bpmn:documentation>
+    <bpmn:participant id="Participant_Cliente" name="Cliente" />
+    <bpmn:participant id="Participant_SP" name="SP Seguridad Privada" processRef="Process_InstalacionControl" />
+    <bpmn:messageFlow id="MF1" name="Fecha, horario y duración estimada" sourceRef="Task_CoordinarFecha" targetRef="Participant_Cliente" />
+    <bpmn:messageFlow id="MF2" name="Consulta sin fecha confirmada" sourceRef="Participant_Cliente" targetRef="Bnd_ConsultaSinFecha" />
+    <bpmn:messageFlow id="MF3" name="Sistema activo" sourceRef="Task_Activar" targetRef="Participant_Cliente" />
+    <bpmn:messageFlow id="MF4" name="Acta de conformidad" sourceRef="Task_Acta" targetRef="Participant_Cliente" />
+    <bpmn:messageFlow id="MF5" name="Encuesta de satisfacción" sourceRef="Task_ControlCalidad" targetRef="Participant_Cliente" />
+    
+  </bpmn:collaboration>
+  <bpmn:process id="Process_InstalacionControl" name="Nuevos clientes – Instalación y control de calidad (etapas 8 a 10)" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_SP">
+      <bpmn:lane id="Lane_Instalaciones" name="Instalaciones"><bpmn:flowNodeRef>Start_CasoInstalacion</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RecibirCaso</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_CoordinarFecha</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_InformarEstado</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ConsultaRespondida</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_SolicitarMateriales</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RetirarMateriales</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Instalar</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Activar</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Acta</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Pendientes</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegistrarPendientes</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_UnePendientes</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Paralelo</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_AjustarMateriales</bpmn:flowNodeRef><bpmn:flowNodeRef>Bnd_ConsultaSinFecha</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_Deposito" name="Depósito"><bpmn:flowNodeRef>Call_PrepararMateriales</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RecibirSobrantes</bpmn:flowNodeRef><bpmn:flowNodeRef>End_MaterialesConciliados</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_Posventa" name="Posventa"><bpmn:flowNodeRef>Task_ControlCalidad</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_Conforme</bpmn:flowNodeRef><bpmn:flowNodeRef>End_ClienteActivo</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Clasificar</bpmn:flowNodeRef><bpmn:flowNodeRef>Gw_TipoReclamo</bpmn:flowNodeRef><bpmn:flowNodeRef>End_CasoTecnico</bpmn:flowNodeRef><bpmn:flowNodeRef>End_SituacionAdm</bpmn:flowNodeRef></bpmn:lane>
+      
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_CasoInstalacion" name="Caso de instalación generado (hito 2)"><bpmn:outgoing>F1</bpmn:outgoing><bpmn:messageEventDefinition id="Start_CasoInstalacion_Def" /></bpmn:startEvent>
+    <bpmn:task id="Task_RecibirCaso" name="Recibir el caso y validar el relevamiento"><bpmn:incoming>F1</bpmn:incoming><bpmn:outgoing>F2</bpmn:outgoing></bpmn:task>
+    <bpmn:sendTask id="Task_CoordinarFecha" name="Coordinar fecha y horario con el cliente (hito 3)"><bpmn:incoming>F2</bpmn:incoming><bpmn:outgoing>F3</bpmn:outgoing></bpmn:sendTask>
+    <bpmn:task id="Task_InformarEstado" name="Informar el estado de la coordinación (hito 4)"><bpmn:incoming>F4</bpmn:incoming><bpmn:outgoing>F5</bpmn:outgoing></bpmn:task>
+    <bpmn:endEvent id="End_ConsultaRespondida" name="Consulta respondida"><bpmn:incoming>F5</bpmn:incoming></bpmn:endEvent>
+    <bpmn:task id="Task_SolicitarMateriales" name="Asignar técnico y solicitar los materiales a Depósito"><bpmn:incoming>F3</bpmn:incoming><bpmn:outgoing>F6</bpmn:outgoing></bpmn:task>
+    <bpmn:callActivity id="Call_PrepararMateriales" name="Preparar y entregar los materiales" calledElement="Process_InventarioAbastecimiento"><bpmn:documentation>Llama al proceso de apoyo "Inventario y abastecimiento" (a modelar). Documentos NetSuite: orden de traslado con el técnico que recibe, despacho (remito) y recepción en el depósito del técnico.</bpmn:documentation><bpmn:incoming>F6</bpmn:incoming><bpmn:outgoing>F7</bpmn:outgoing></bpmn:callActivity>
+    <bpmn:task id="Task_RetirarMateriales" name="Retirar los materiales en Depósito Central"><bpmn:incoming>F7</bpmn:incoming><bpmn:outgoing>F8</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="Task_Instalar" name="Instalar, probar y capacitar al cliente"><bpmn:incoming>F8</bpmn:incoming><bpmn:outgoing>F9</bpmn:outgoing></bpmn:task>
+    <bpmn:sendTask id="Task_Activar" name="Dar de alta en la central y comunicar la activación (hito 7)"><bpmn:incoming>F9</bpmn:incoming><bpmn:outgoing>F10</bpmn:outgoing></bpmn:sendTask>
+    <bpmn:task id="Task_Acta" name="Cerrar la instalación y firmar el acta de conformidad (hito 5)"><bpmn:incoming>F10</bpmn:incoming><bpmn:outgoing>F11</bpmn:outgoing></bpmn:task>
+    <bpmn:exclusiveGateway id="Gw_Pendientes" name="¿Quedan pendientes?"><bpmn:incoming>F11</bpmn:incoming><bpmn:outgoing>F12</bpmn:outgoing><bpmn:outgoing>F13</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:task id="Task_RegistrarPendientes" name="Registrar los pendientes con responsable y plazo (hito 6)"><bpmn:incoming>F12</bpmn:incoming><bpmn:outgoing>F14</bpmn:outgoing></bpmn:task>
+    <bpmn:exclusiveGateway id="Gw_UnePendientes"><bpmn:incoming>F13</bpmn:incoming><bpmn:incoming>F14</bpmn:incoming><bpmn:outgoing>F15</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:parallelGateway id="Gw_Paralelo"><bpmn:incoming>F15</bpmn:incoming><bpmn:outgoing>F16</bpmn:outgoing><bpmn:outgoing>F19</bpmn:outgoing></bpmn:parallelGateway>
+    <bpmn:task id="Task_AjustarMateriales" name="Ajustar faltantes y sobrantes y devolver los sobrantes"><bpmn:incoming>F16</bpmn:incoming><bpmn:outgoing>F17</bpmn:outgoing></bpmn:task>
+    <bpmn:task id="Task_RecibirSobrantes" name="Recibir los sobrantes y registrar el reingreso"><bpmn:incoming>F17</bpmn:incoming><bpmn:outgoing>F18</bpmn:outgoing></bpmn:task>
+    <bpmn:endEvent id="End_MaterialesConciliados" name="Materiales conciliados"><bpmn:incoming>F18</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sendTask id="Task_ControlCalidad" name="Control de calidad y encuesta al cliente (hito 8)"><bpmn:incoming>F19</bpmn:incoming><bpmn:outgoing>F20</bpmn:outgoing></bpmn:sendTask>
+    <bpmn:exclusiveGateway id="Gw_Conforme" name="¿El cliente está conforme?"><bpmn:incoming>F20</bpmn:incoming><bpmn:outgoing>F21</bpmn:outgoing><bpmn:outgoing>F22</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_ClienteActivo" name="Cliente activo y conforme"><bpmn:incoming>F21</bpmn:incoming></bpmn:endEvent>
+    <bpmn:task id="Task_Clasificar" name="Clasificar y canalizar el reclamo (hito 9)"><bpmn:incoming>F22</bpmn:incoming><bpmn:outgoing>F23</bpmn:outgoing></bpmn:task>
+    <bpmn:exclusiveGateway id="Gw_TipoReclamo" name="¿Tipo de reclamo?"><bpmn:incoming>F23</bpmn:incoming><bpmn:outgoing>F24</bpmn:outgoing><bpmn:outgoing>F25</bpmn:outgoing></bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_CasoTecnico" name="Caso técnico derivado a Mantenimiento correctivo (hito 11)"><bpmn:incoming>F24</bpmn:incoming><bpmn:messageEventDefinition id="End_CasoTecnico_Def" /></bpmn:endEvent>
+    <bpmn:endEvent id="End_SituacionAdm" name="Situación administrativa derivada a Atención al cliente activo (hito 12)"><bpmn:incoming>F25</bpmn:incoming><bpmn:messageEventDefinition id="End_SituacionAdm_Def" /></bpmn:endEvent>
+    <bpmn:boundaryEvent id="Bnd_ConsultaSinFecha" name="Consulta del cliente sin fecha confirmada" cancelActivity="false" attachedToRef="Task_CoordinarFecha"><bpmn:outgoing>F4</bpmn:outgoing><bpmn:messageEventDefinition id="Bnd_ConsultaSinFecha_Def" /></bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="F1" sourceRef="Start_CasoInstalacion" targetRef="Task_RecibirCaso" />
+    <bpmn:sequenceFlow id="F2" sourceRef="Task_RecibirCaso" targetRef="Task_CoordinarFecha" />
+    <bpmn:sequenceFlow id="F3" sourceRef="Task_CoordinarFecha" targetRef="Task_SolicitarMateriales" />
+    <bpmn:sequenceFlow id="F4" sourceRef="Bnd_ConsultaSinFecha" targetRef="Task_InformarEstado" />
+    <bpmn:sequenceFlow id="F5" sourceRef="Task_InformarEstado" targetRef="End_ConsultaRespondida" />
+    <bpmn:sequenceFlow id="F6" sourceRef="Task_SolicitarMateriales" targetRef="Call_PrepararMateriales" />
+    <bpmn:sequenceFlow id="F7" sourceRef="Call_PrepararMateriales" targetRef="Task_RetirarMateriales" />
+    <bpmn:sequenceFlow id="F8" sourceRef="Task_RetirarMateriales" targetRef="Task_Instalar" />
+    <bpmn:sequenceFlow id="F9" sourceRef="Task_Instalar" targetRef="Task_Activar" />
+    <bpmn:sequenceFlow id="F10" sourceRef="Task_Activar" targetRef="Task_Acta" />
+    <bpmn:sequenceFlow id="F11" sourceRef="Task_Acta" targetRef="Gw_Pendientes" />
+    <bpmn:sequenceFlow id="F12" name="Sí" sourceRef="Gw_Pendientes" targetRef="Task_RegistrarPendientes" />
+    <bpmn:sequenceFlow id="F13" name="No" sourceRef="Gw_Pendientes" targetRef="Gw_UnePendientes" />
+    <bpmn:sequenceFlow id="F14" sourceRef="Task_RegistrarPendientes" targetRef="Gw_UnePendientes" />
+    <bpmn:sequenceFlow id="F15" sourceRef="Gw_UnePendientes" targetRef="Gw_Paralelo" />
+    <bpmn:sequenceFlow id="F16" sourceRef="Gw_Paralelo" targetRef="Task_AjustarMateriales" />
+    <bpmn:sequenceFlow id="F17" sourceRef="Task_AjustarMateriales" targetRef="Task_RecibirSobrantes" />
+    <bpmn:sequenceFlow id="F18" sourceRef="Task_RecibirSobrantes" targetRef="End_MaterialesConciliados" />
+    <bpmn:sequenceFlow id="F19" sourceRef="Gw_Paralelo" targetRef="Task_ControlCalidad" />
+    <bpmn:sequenceFlow id="F20" sourceRef="Task_ControlCalidad" targetRef="Gw_Conforme" />
+    <bpmn:sequenceFlow id="F21" name="Sí" sourceRef="Gw_Conforme" targetRef="End_ClienteActivo" />
+    <bpmn:sequenceFlow id="F22" name="No: reclamo o falla" sourceRef="Gw_Conforme" targetRef="Task_Clasificar" />
+    <bpmn:sequenceFlow id="F23" sourceRef="Task_Clasificar" targetRef="Gw_TipoReclamo" />
+    <bpmn:sequenceFlow id="F24" name="Técnico" sourceRef="Gw_TipoReclamo" targetRef="End_CasoTecnico" />
+    <bpmn:sequenceFlow id="F25" name="Administrativo" sourceRef="Gw_TipoReclamo" targetRef="End_SituacionAdm" />
+    <bpmn:textAnnotation id="Ann_ConsultasVentas"><bpmn:text>Problema (R1): hoy estas consultas llegan a Ventas</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_ConsultasVentas_Assoc" sourceRef="Ann_ConsultasVentas" targetRef="Bnd_ConsultaSinFecha" />
+    <bpmn:textAnnotation id="Ann_Desvios"><bpmn:text>Desvíos actuales (relevamiento NetSuite 05/10): conviven órdenes de traslado y transferencias directas sin recepción del técnico; se consume desde la orden de venta aunque el técnico no tenga stock; el comodato se registra con ajustes de inventario y sale sin número de serie</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Desvios_Assoc" sourceRef="Ann_Desvios" targetRef="Call_PrepararMateriales" />
+    <bpmn:textAnnotation id="Ann_Planificacion"><bpmn:text>Definido 17/10: Depósito consulta en forma recurrente los presupuestos comprometidos (confirmados sin pagar y confirmados pagos) y los materiales que requieren. Es parte del proceso de apoyo "Inventario y abastecimiento"</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Planificacion_Assoc" sourceRef="Ann_Planificacion" targetRef="Call_PrepararMateriales" />
+    <bpmn:textAnnotation id="Ann_Sobrantes"><bpmn:text>A definir: tratamiento de sobrantes y de equipos instalados distinto a lo presupuestado, junto con el rediseño de documentos internos y aprobaciones en NetSuite</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Sobrantes_Assoc" sourceRef="Ann_Sobrantes" targetRef="Task_RecibirSobrantes" />
+    <bpmn:textAnnotation id="Ann_Escalacion"><bpmn:text>Propuesta 07/10 (a validar): si un pendiente vence sin resolverse, Posventa lo escala al jefe del área dueña y comunica el nuevo plazo al cliente (hito 10)</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Escalacion_Assoc" sourceRef="Ann_Escalacion" targetRef="Task_RegistrarPendientes" />
+    <bpmn:textAnnotation id="Ann_Periodo"><bpmn:text>Posventa contacta al cliente solo durante el período de control de calidad. A definir: duración del período de garantía</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Periodo_Assoc" sourceRef="Ann_Periodo" targetRef="Task_ControlCalidad" />
+    <bpmn:textAnnotation id="Ann_Reclamos"><bpmn:text>A definir: tratamiento de reclamos comerciales y de baja durante el período de control</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Ann_Reclamos_Assoc" sourceRef="Ann_Reclamos" targetRef="Gw_TipoReclamo" />
+    <bpmn:group id="Grp_E8" categoryValueRef="CV_Grp_E8" />
+    <bpmn:group id="Grp_E9" categoryValueRef="CV_Grp_E9" />
+    <bpmn:group id="Grp_E10" categoryValueRef="CV_Grp_E10" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Main">
+    <bpmndi:BPMNPlane id="BPMNPlane_Main" bpmnElement="Collaboration_InstalacionControl">
+      <bpmndi:BPMNShape id="Participant_Cliente_di" bpmnElement="Participant_Cliente" isHorizontal="true"><dc:Bounds x="160" y="40" width="2300" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_SP_di" bpmnElement="Participant_SP" isHorizontal="true"><dc:Bounds x="160" y="160" width="2300" height="830" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Instalaciones_di" bpmnElement="Lane_Instalaciones" isHorizontal="true"><dc:Bounds x="190" y="160" width="2270" height="300" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Deposito_di" bpmnElement="Lane_Deposito" isHorizontal="true"><dc:Bounds x="190" y="460" width="2270" height="160" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Posventa_di" bpmnElement="Lane_Posventa" isHorizontal="true"><dc:Bounds x="190" y="620" width="2270" height="370" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_CasoInstalacion_di" bpmnElement="Start_CasoInstalacion"><dc:Bounds x="222" y="242" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="195" y="285" width="90" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RecibirCaso_di" bpmnElement="Task_RecibirCaso"><dc:Bounds x="300" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CoordinarFecha_di" bpmnElement="Task_CoordinarFecha"><dc:Bounds x="450" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_InformarEstado_di" bpmnElement="Task_InformarEstado"><dc:Bounds x="540" y="350" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ConsultaRespondida_di" bpmnElement="End_ConsultaRespondida"><dc:Bounds x="682" y="372" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="660" y="412" width="80" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SolicitarMateriales_di" bpmnElement="Task_SolicitarMateriales"><dc:Bounds x="720" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Call_PrepararMateriales_di" bpmnElement="Call_PrepararMateriales"><dc:Bounds x="720" y="500" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RetirarMateriales_di" bpmnElement="Task_RetirarMateriales"><dc:Bounds x="880" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Instalar_di" bpmnElement="Task_Instalar"><dc:Bounds x="1030" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Activar_di" bpmnElement="Task_Activar"><dc:Bounds x="1180" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Acta_di" bpmnElement="Task_Acta"><dc:Bounds x="1330" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Pendientes_di" bpmnElement="Gw_Pendientes" isMarkerVisible="true"><dc:Bounds x="1480" y="235" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1455" y="200" width="100" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RegistrarPendientes_di" bpmnElement="Task_RegistrarPendientes"><dc:Bounds x="1560" y="350" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_UnePendientes_di" bpmnElement="Gw_UnePendientes" isMarkerVisible="true"><dc:Bounds x="1710" y="235" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Paralelo_di" bpmnElement="Gw_Paralelo"><dc:Bounds x="1790" y="235" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AjustarMateriales_di" bpmnElement="Task_AjustarMateriales"><dc:Bounds x="1880" y="220" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RecibirSobrantes_di" bpmnElement="Task_RecibirSobrantes"><dc:Bounds x="1880" y="500" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_MaterialesConciliados_di" bpmnElement="End_MaterialesConciliados"><dc:Bounds x="2032" y="522" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="2015" y="560" width="70" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ControlCalidad_di" bpmnElement="Task_ControlCalidad"><dc:Bounds x="1880" y="660" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Conforme_di" bpmnElement="Gw_Conforme" isMarkerVisible="true"><dc:Bounds x="2030" y="675" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1990" y="640" width="90" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ClienteActivo_di" bpmnElement="End_ClienteActivo"><dc:Bounds x="2132" y="682" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="2110" y="722" width="80" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Clasificar_di" bpmnElement="Task_Clasificar"><dc:Bounds x="2100" y="790" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_TipoReclamo_di" bpmnElement="Gw_TipoReclamo" isMarkerVisible="true"><dc:Bounds x="2250" y="805" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="2205" y="773" width="70" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_CasoTecnico_di" bpmnElement="End_CasoTecnico"><dc:Bounds x="2352" y="762" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="2330" y="800" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_SituacionAdm_di" bpmnElement="End_SituacionAdm"><dc:Bounds x="2352" y="862" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="2330" y="900" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Bnd_ConsultaSinFecha_di" bpmnElement="Bnd_ConsultaSinFecha"><dc:Bounds x="482" y="282" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="380" y="318" width="100" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F1_di" bpmnElement="F1"><di:waypoint x="258" y="260" /><di:waypoint x="300" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F2_di" bpmnElement="F2"><di:waypoint x="400" y="260" /><di:waypoint x="450" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F3_di" bpmnElement="F3"><di:waypoint x="550" y="260" /><di:waypoint x="720" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F4_di" bpmnElement="F4"><di:waypoint x="500" y="318" /><di:waypoint x="500" y="390" /><di:waypoint x="540" y="390" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F5_di" bpmnElement="F5"><di:waypoint x="640" y="390" /><di:waypoint x="682" y="390" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F6_di" bpmnElement="F6"><di:waypoint x="770" y="300" /><di:waypoint x="770" y="500" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F7_di" bpmnElement="F7"><di:waypoint x="820" y="540" /><di:waypoint x="930" y="540" /><di:waypoint x="930" y="300" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F8_di" bpmnElement="F8"><di:waypoint x="980" y="260" /><di:waypoint x="1030" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F9_di" bpmnElement="F9"><di:waypoint x="1130" y="260" /><di:waypoint x="1180" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F10_di" bpmnElement="F10"><di:waypoint x="1280" y="260" /><di:waypoint x="1330" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F11_di" bpmnElement="F11"><di:waypoint x="1430" y="260" /><di:waypoint x="1480" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F12_di" bpmnElement="F12"><di:waypoint x="1505" y="285" /><di:waypoint x="1505" y="390" /><di:waypoint x="1560" y="390" /><bpmndi:BPMNLabel><dc:Bounds x="1512" y="320" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F13_di" bpmnElement="F13"><di:waypoint x="1530" y="260" /><di:waypoint x="1710" y="260" /><bpmndi:BPMNLabel><dc:Bounds x="1610" y="242" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F14_di" bpmnElement="F14"><di:waypoint x="1660" y="390" /><di:waypoint x="1735" y="390" /><di:waypoint x="1735" y="285" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F15_di" bpmnElement="F15"><di:waypoint x="1760" y="260" /><di:waypoint x="1790" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F16_di" bpmnElement="F16"><di:waypoint x="1840" y="260" /><di:waypoint x="1880" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F17_di" bpmnElement="F17"><di:waypoint x="1930" y="300" /><di:waypoint x="1930" y="500" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F18_di" bpmnElement="F18"><di:waypoint x="1980" y="540" /><di:waypoint x="2032" y="540" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F19_di" bpmnElement="F19"><di:waypoint x="1815" y="285" /><di:waypoint x="1815" y="700" /><di:waypoint x="1880" y="700" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F20_di" bpmnElement="F20"><di:waypoint x="1980" y="700" /><di:waypoint x="2030" y="700" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F21_di" bpmnElement="F21"><di:waypoint x="2080" y="700" /><di:waypoint x="2132" y="700" /><bpmndi:BPMNLabel><dc:Bounds x="2095" y="682" width="20" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F22_di" bpmnElement="F22"><di:waypoint x="2055" y="725" /><di:waypoint x="2055" y="830" /><di:waypoint x="2100" y="830" /><bpmndi:BPMNLabel><dc:Bounds x="1995" y="772" width="55" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F23_di" bpmnElement="F23"><di:waypoint x="2200" y="830" /><di:waypoint x="2250" y="830" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F24_di" bpmnElement="F24"><di:waypoint x="2275" y="805" /><di:waypoint x="2275" y="780" /><di:waypoint x="2352" y="780" /><bpmndi:BPMNLabel><dc:Bounds x="2290" y="762" width="45" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F25_di" bpmnElement="F25"><di:waypoint x="2275" y="855" /><di:waypoint x="2275" y="880" /><di:waypoint x="2352" y="880" /><bpmndi:BPMNLabel><dc:Bounds x="2268" y="884" width="75" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF1_di" bpmnElement="MF1"><di:waypoint x="520" y="220" /><di:waypoint x="520" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="526" y="150" width="110" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF2_di" bpmnElement="MF2"><di:waypoint x="430" y="120" /><di:waypoint x="430" y="300" /><di:waypoint x="482" y="300" /><bpmndi:BPMNLabel><dc:Bounds x="330" y="150" width="95" height="27" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF3_di" bpmnElement="MF3"><di:waypoint x="1230" y="220" /><di:waypoint x="1230" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="1236" y="150" width="80" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF4_di" bpmnElement="MF4"><di:waypoint x="1380" y="220" /><di:waypoint x="1380" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="1386" y="150" width="110" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF5_di" bpmnElement="MF5"><di:waypoint x="1980" y="680" /><di:waypoint x="2010" y="680" /><di:waypoint x="2010" y="120" /><bpmndi:BPMNLabel><dc:Bounds x="2016" y="150" width="130" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_ConsultasVentas_di" bpmnElement="Ann_ConsultasVentas"><dc:Bounds x="235" y="365" width="200" height="45" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_ConsultasVentas_Assoc_di" bpmnElement="Ann_ConsultasVentas_Assoc"><di:waypoint x="435" y="375" /><di:waypoint x="486" y="312" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Desvios_di" bpmnElement="Ann_Desvios"><dc:Bounds x="240" y="475" width="420" height="130" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Desvios_Assoc_di" bpmnElement="Ann_Desvios_Assoc"><di:waypoint x="660" y="540" /><di:waypoint x="720" y="540" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Planificacion_di" bpmnElement="Ann_Planificacion"><dc:Bounds x="1000" y="478" width="360" height="100" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Planificacion_Assoc_di" bpmnElement="Ann_Planificacion_Assoc"><di:waypoint x="1000" y="515" /><di:waypoint x="820" y="515" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Sobrantes_di" bpmnElement="Ann_Sobrantes"><dc:Bounds x="1400" y="480" width="320" height="90" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Sobrantes_Assoc_di" bpmnElement="Ann_Sobrantes_Assoc"><di:waypoint x="1720" y="525" /><di:waypoint x="1880" y="525" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Escalacion_di" bpmnElement="Ann_Escalacion"><dc:Bounds x="1265" y="345" width="220" height="100" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Escalacion_Assoc_di" bpmnElement="Ann_Escalacion_Assoc"><di:waypoint x="1485" y="420" /><di:waypoint x="1560" y="420" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Periodo_di" bpmnElement="Ann_Periodo"><dc:Bounds x="1620" y="790" width="290" height="60" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Periodo_Assoc_di" bpmnElement="Ann_Periodo_Assoc"><di:waypoint x="1900" y="790" /><di:waypoint x="1920" y="740" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Ann_Reclamos_di" bpmnElement="Ann_Reclamos"><dc:Bounds x="2200" y="650" width="240" height="55" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ann_Reclamos_Assoc_di" bpmnElement="Ann_Reclamos_Assoc"><di:waypoint x="2300" y="705" /><di:waypoint x="2282" y="812" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Grp_E8_di" bpmnElement="Grp_E8"><dc:Bounds x="285" y="190" width="560" height="420" /><bpmndi:BPMNLabel><dc:Bounds x="295" y="192" width="250" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Grp_E9_di" bpmnElement="Grp_E9"><dc:Bounds x="860" y="190" width="1220" height="420" /><bpmndi:BPMNLabel><dc:Bounds x="870" y="192" width="250" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Grp_E10_di" bpmnElement="Grp_E10"><dc:Bounds x="1860" y="640" width="590" height="330" /><bpmndi:BPMNLabel><dc:Bounds x="1870" y="950" width="250" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

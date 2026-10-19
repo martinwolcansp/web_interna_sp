@@ -2,19 +2,20 @@
   "id": "nuevos-clientes-instalacion",
   "categoria": "Proceso operativo",
   "nombre": "Nuevos clientes con alarmas y/o cámaras: del primer contacto a la posventa",
-  "descripcion": "Recorrido de un cliente nuevo desde el primer contacto del prospecto, la venta consultiva y la confirmación de la venta hasta la instalación, la activación del sistema y el seguimiento de posventa.",
+  "descripcion": "Recorrido de un cliente nuevo desde el primer contacto del prospecto, la venta consultiva y la confirmación de la venta hasta la instalación, la activación del sistema y el control de calidad de Posventa.",
   "estado": "En relevamiento",
-  "version": "v0.1",
-  "actualizado": "14/10/2026",
+  "version": "v0.2",
+  "actualizado": "19/10/2026",
   "responsable": "Procesos y Mejora Continua",
   "resumen": {
     "objetivo": "Definir hitos formales que marquen cuándo termina la responsabilidad de un área y empieza la de otra, para que el cliente sepa con quién hablar en cada etapa y ningún caso quede sin dueño.",
-    "alcance": "Desde el primer contacto del prospecto (redes o WhatsApp, atendido por el Bot IA comercial) hasta la resolución de los pendientes posteriores a la instalación. La implementación se apoya en GHL, continuando lo hecho en Ventas y Posventa.",
+    "alcance": "Desde el primer contacto del prospecto (redes o WhatsApp, atendido por el Bot IA comercial, o contacto directo al vendedor) hasta el control de calidad de Posventa posterior a la instalación: cliente activo y conforme. Los casos técnicos y las situaciones administrativas que surgen en el control de calidad salen a los procesos Mantenimiento correctivo y reclamos técnicos y Atención al cliente activo (hitos 11 y 12). La implementación se apoya en GHL, continuando lo hecho en Ventas y Posventa.",
     "diagnostico": "La causa de los roces entre áreas no es la falta de comunicación en sí, sino la ausencia de hitos formales de traspaso. Ventas termina siendo el único canal vivo con el cliente y recibe reclamos que no le corresponden; los pendientes del acta de instalación quedan sin responsable ni plazo.",
     "areas": [
       "Ventas",
       "Atención al Cliente",
       "Instalaciones",
+      "Depósito",
       "Servicio Técnico",
       "Posventa"
     ],
@@ -43,7 +44,7 @@
     },
     {
       "id": 4,
-      "nombre": "Envío de presupuesto",
+      "nombre": "Envío de presupuesto (incluye consulta de stock)",
       "area": "Ventas"
     },
     {
@@ -58,53 +59,23 @@
     },
     {
       "id": 7,
-      "nombre": "Recepción de presupuesto aprobado y cobro",
+      "nombre": "Recepción de presupuesto aprobado, cobro y bienvenida",
       "area": "Atención al Cliente"
     },
     {
       "id": 8,
-      "nombre": "Bienvenida al cliente",
-      "area": "Atención al Cliente"
+      "nombre": "Coordinación de la instalación (incluye pedido de materiales a Depósito)",
+      "area": "Instalaciones"
     },
     {
       "id": 9,
-      "nombre": "Coordinación de la instalación",
+      "nombre": "Ejecución de la instalación (incluye retiro de materiales y ajuste de faltantes y sobrantes)",
       "area": "Instalaciones"
     },
     {
       "id": 10,
-      "nombre": "Ejecución de la instalación",
-      "area": "Instalaciones"
-    },
-    {
-      "id": 11,
       "nombre": "Control de calidad posterior a la instalación",
       "area": "Posventa"
-    },
-    {
-      "id": 12,
-      "nombre": "Mantenimiento preventivo",
-      "area": "Servicio Técnico"
-    },
-    {
-      "id": 13,
-      "nombre": "Mantenimiento correctivo y reclamos",
-      "area": "Servicio Técnico"
-    },
-    {
-      "id": 14,
-      "nombre": "Gestión de nuevas necesidades (propuesta)",
-      "area": "Ampliaciones"
-    },
-    {
-      "id": 15,
-      "nombre": "Cobranza recurrente y gestión de mora (propuesta)",
-      "area": "Atención al Cliente"
-    },
-    {
-      "id": 16,
-      "nombre": "Gestión de bajas y cancelaciones (propuesta)",
-      "area": "Atención al Cliente"
     }
   ],
   "hitos": [
@@ -137,7 +108,7 @@
       "responsable": "Instalaciones",
       "estado": "Pendiente",
       "etapas": [
-        9
+        8
       ]
     },
     {
@@ -146,7 +117,7 @@
       "responsable": "Instalaciones",
       "estado": "Pendiente",
       "etapas": [
-        9
+        8
       ]
     },
     {
@@ -155,7 +126,7 @@
       "responsable": "Instalaciones",
       "estado": "Pendiente",
       "etapas": [
-        10
+        9
       ]
     },
     {
@@ -164,7 +135,7 @@
       "responsable": "Instalaciones",
       "estado": "Pendiente",
       "etapas": [
-        10
+        9
       ]
     },
     {
@@ -173,7 +144,7 @@
       "responsable": "Instalaciones",
       "estado": "Pendiente",
       "etapas": [
-        10
+        9
       ]
     },
     {
@@ -182,7 +153,7 @@
       "responsable": "Posventa",
       "estado": "Pendiente",
       "etapas": [
-        11
+        10
       ]
     },
     {
@@ -191,9 +162,9 @@
       "responsable": "Posventa",
       "estado": "Pendiente",
       "etapas": [
-        11,
-        13
-      ]
+        10
+      ],
+      "nota": "Hito de salida: durante el período de control de calidad, Posventa clasifica el reclamo y lo deriva al proceso que corresponde. Después de ese período clasifica Atención al Cliente (proceso Atención al cliente activo)."
     },
     {
       "n": 10,
@@ -201,7 +172,7 @@
       "responsable": "Posventa",
       "estado": "Pendiente",
       "etapas": [
-        11
+        10
       ],
       "nota": "Propuesta a validar. Si un pendiente del acta vence sin resolverse, Posventa lo escala al jefe del área dueña (Instalaciones o Servicio Técnico), que lo resuelve con un nuevo plazo; si vuelve a vencer, pasa a la Gerencia de Operaciones. Posventa informa al cliente y confirma el cierre."
     },
@@ -211,8 +182,9 @@
       "responsable": "Servicio Técnico",
       "estado": "Pendiente",
       "etapas": [
-        13
-      ]
+        10
+      ],
+      "nota": "Hito de salida: el caso continúa en el proceso Mantenimiento correctivo y reclamos técnicos, donde se fija y mide el SLA."
     },
     {
       "n": 12,
@@ -220,8 +192,9 @@
       "responsable": "Atención al Cliente",
       "estado": "Pendiente",
       "etapas": [
-        15
-      ]
+        10
+      ],
+      "nota": "Hito de salida: continúa en el proceso Atención al cliente activo."
     }
   ],
   "diagramas": [
@@ -229,9 +202,9 @@
       "nombre": "Venta consultiva (etapas 1 a 5)",
       "archivo": "nuevos-clientes-venta-consultiva.bpmn",
       "version": "v0.1",
-      "fecha": "14/10/2026",
+      "fecha": "19/10/2026",
       "estado": "Borrador",
-      "descripcion": "Desde el primer contacto del prospecto hasta que el cliente confirma la venta. Hay dos entradas: la consulta por redes o WhatsApp que atiende el Bot IA comercial (GHL) y el contacto directo al vendedor por teléfono, WhatsApp o correo, en cuyo caso el vendedor carga el lead en GHL. Cada etapa del relevamiento está marcada en el diagrama. Al confirmar, continúa en \"Confirmación de la venta y cobro\" (etapa 6).",
+      "descripcion": "Desde el primer contacto del prospecto hasta que el cliente confirma la venta. Hay dos entradas: la consulta por redes o WhatsApp que atiende el Bot IA comercial (GHL) y el contacto directo al vendedor por teléfono, WhatsApp o correo, en cuyo caso el vendedor carga el lead en GHL. Cada etapa del relevamiento está marcada en el diagrama. Al confirmar, continúa en \"Confirmación de la venta y cobro\" (etapa 6). Actualizado 19/10: al elaborar el presupuesto, el vendedor consulta el stock en NetSuite (Depósito Central menos un stock de seguridad).",
       "vinculos": [
         {
           "elemento": "End_ClienteConfirma",
@@ -245,24 +218,55 @@
       "nombre": "Confirmación de la venta y cobro",
       "archivo": "nuevos-clientes-venta-cobro.bpmn",
       "version": "v0.1",
-      "fecha": "14/10/2026",
+      "fecha": "19/10/2026",
       "estado": "Borrador",
-      "descripcion": "Subproceso Ventas → Atención al Cliente (hitos 1 y 2). Surge de la reunión R2. Los puntos abiertos están marcados en el diagrama como \"A definir (R2)\". El subproceso \"Gestión del cobro\" muestra el ciclo de intentos de contacto con el cliente. Actualizado 06/10: la forma de pago forma parte de los datos mínimos del traspaso. Actualizado 14/10: \"Venta consultiva (etapas 1 a 5)\" pasa a ser una actividad de llamada vinculada a su propio diagrama.",
+      "descripcion": "Subproceso Ventas → Atención al Cliente (hitos 1 y 2). Surge de la reunión R2. Los puntos abiertos están marcados en el diagrama como \"A definir (R2)\". El subproceso \"Gestión del cobro\" muestra el ciclo de intentos de contacto con el cliente. Actualizado 06/10: la forma de pago forma parte de los datos mínimos del traspaso. Actualizado 14/10: \"Venta consultiva (etapas 1 a 5)\" pasa a ser una actividad de llamada vinculada a su propio diagrama. Actualizado 19/10: la bienvenida forma parte de la etapa 7 y se envía al generar el caso de instalación; continúa en \"Instalación y control de calidad\".",
       "vinculos": [
         {
           "elemento": "Sub_VentaConsultiva",
           "diagrama": "nuevos-clientes-venta-consultiva.bpmn",
           "etiqueta": "Ver Venta consultiva",
           "posicion": "abajo"
+        },
+        {
+          "elemento": "End_CasoGenerado",
+          "diagrama": "nuevos-clientes-instalacion-control.bpmn",
+          "etiqueta": "Ir a Instalación y control de calidad",
+          "posicion": "abajo"
+        }
+      ]
+    },
+    {
+      "nombre": "Instalación y control de calidad (etapas 8 a 10)",
+      "archivo": "nuevos-clientes-instalacion-control.bpmn",
+      "version": "v0.1",
+      "fecha": "19/10/2026",
+      "estado": "Borrador",
+      "descripcion": "Desde el caso de instalación generado (hito 2) hasta el control de calidad de Posventa (hitos 3 a 12). Depósito participa como área de apoyo: prepara y entrega los materiales que retira el técnico y recibe los sobrantes; su funcionamiento interno queda en el proceso de apoyo Inventario y abastecimiento. Termina con el cliente activo y conforme, o con salidas a Mantenimiento correctivo (hito 11) y Atención al cliente activo (hito 12). Se modela el circuito objetivo; los desvíos actuales de NetSuite y los temas abiertos están como anotaciones.",
+      "vinculos": [
+        {
+          "elemento": "Start_CasoInstalacion",
+          "diagrama": "nuevos-clientes-venta-cobro.bpmn",
+          "etiqueta": "Volver a Confirmación de la venta y cobro",
+          "posicion": "arriba"
         }
       ]
     }
   ],
   "documentos": [
     {
+      "nombre": "Ficha del proceso",
+      "tipo": "Ficha",
+      "descripcion": "Objetivo, alcance, etapas, áreas, hitos, participación de Depósito y mapa de procesos relacionados.",
+      "version": "v0.3",
+      "fecha": "19/10/2026",
+      "pdf": "ficha-proceso-nuevos-clientes.pdf",
+      "original": "ficha-proceso-nuevos-clientes.docx"
+    },
+    {
       "nombre": "Proceso de venta y atención por áreas",
       "tipo": "Descriptivo",
-      "descripcion": "Etapas del proceso, responsabilidades de cada área, entregables y traspasos. Actualizado 06/10: la bienvenida pasa a la etapa 8 (Atención al Cliente, antes de la instalación) y el control de calidad posterior a la instalación es la etapa 11 (Posventa).",
+      "descripcion": "Etapas del proceso, responsabilidades de cada área, entregables y traspasos. Actualizado 06/10: la bienvenida pasa a la etapa 8 (Atención al Cliente, antes de la instalación) y el control de calidad posterior a la instalación es la etapa 11 (Posventa). Este documento usa la numeración anterior (16 etapas); la vigente (10 etapas, 19/10) está en la ficha del proceso.",
       "version": "Borrador",
       "fecha": "06/10/2026",
       "pdf": "proceso-venta-atencion-por-areas.pdf",
@@ -271,9 +275,9 @@
     {
       "nombre": "Matrices de responsabilidades y comunicación",
       "tipo": "Matriz",
-      "descripcion": "Responsable de cada hito por área, quién se comunica con el cliente en cada etapa y estado de validación.",
-      "version": "v0.2",
-      "fecha": "14/10/2026",
+      "descripcion": "Responsable de cada hito por área, quién se comunica con el cliente en cada etapa y estado de validación. Actualizado 19/10: columna Depósito, numeración nueva de etapas e hitos 11 y 12 como salida.",
+      "version": "v0.3",
+      "fecha": "19/10/2026",
       "pdf": "matrices-responsabilidades.pdf",
       "original": "matrices-responsabilidades.xlsx"
     },
