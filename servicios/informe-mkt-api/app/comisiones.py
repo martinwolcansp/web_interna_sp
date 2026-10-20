@@ -689,8 +689,25 @@ def payload_liquidacion(r, mes, generada_por):
             })
     sin_ov = [{k: o.get(k) for k in ("vendedor_id", "vendedor", "oportunidad_id", "oportunidad", "fecha_oportunidad", "estado_oportunidad",
                                      "cliente", "nro_cliente")} for o in r["sin_ov"]]
+    # Todas las ganadas con su situacion (migracion 33): fondo / conov / sinov.
+    oportunidades = []
+    for f in r["ovs"]:
+        oportunidades.append({
+            "situacion": "fondo" if f["comisionable"] else "conov",
+            **{k: f.get(k) for k in ("oportunidad_id", "oportunidad", "fecha_oportunidad", "estado_oportunidad", "vendedor_id",
+                                     "vendedor", "cliente", "nro_cliente", "ov_id", "ov_numero", "fecha_ov", "tipo_ov",
+                                     "clasificacion", "base_comisionable", "aporte", "importe_otros_abo")},
+            "abonos": ", ".join(a["codigo"] for a in f["abonos"]),
+        })
+    for o in r["sin_ov"]:
+        oportunidades.append({"situacion": "sinov", **{k: o.get(k) for k in (
+            "oportunidad_id", "oportunidad", "fecha_oportunidad", "estado_oportunidad", "vendedor_id", "vendedor",
+            "cliente", "nro_cliente")}})
+    orden = {"fondo": 0, "conov": 1, "sinov": 2}
+    oportunidades.sort(key=lambda o: (orden[o["situacion"]], str(o.get("vendedor") or ""), str(o.get("oportunidad") or "")))
     return {
         "mes": mes.isoformat(), "desde": r["desde"], "hasta": r["hasta"], "generada_por": generada_por,
+        "oportunidades": oportunidades,
         "config": r.get("config") or [], "unidades": r.get("unidades") or [], "fondos": r.get("fondos") or [],
         "porcentajes": r.get("porcentajes") or [], "totales": r.get("totales") or totales(r), "sin_ov": sin_ov,
         "avisos": list(r.get("avisos") or []), "vendedores": r.get("vendedores") or resumen_vendedores(r),

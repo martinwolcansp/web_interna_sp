@@ -32,6 +32,10 @@ Botón **Comisiones por vendedor** en el *Informe por vendedor*: pop up con las 
 
 Migración 32: limpieza (borra `comision_abono.incluido` / `incluido_desde` y su trigger, `por_abono` y las columnas de línea del cálculo por vendedor). Se detiene si queda alguna liquidación del modelo anterior.
 
+Migración 33: `comision_liquidacion.oportunidades`, todas las ganadas del mes con su situación (suman al fondo / con OV que no suma / sin OV de abonos), que la liquidación muestra con totales y listado (y en el Excel).
+
+Por qué una oportunidad entra o no: `python diagnostico_oportunidad.py OPT_SP19146` (revisa fecha, estado, representante, presupuestos, OV y su tipo, y líneas ABO).
+
 Prueba desde la PC, sin la web (lee la configuración con el usuario técnico): `python diagnostico_comisiones.py 2026-09-01 2026-09-30`.
 
 ## Puesta en marcha

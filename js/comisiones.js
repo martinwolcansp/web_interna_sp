@@ -1142,6 +1142,31 @@ async function verLiquidacion(id) {
   }
 }
 
+// Situación de cada oportunidad ganada (migración 33). Las liquidaciones
+// anteriores no la guardan: se arma con las líneas (OV) y las ganadas sin OV;
+// ahí no aparecen las OV sin ninguna línea ABO.
+const SITUACIONES = [
+  { key: 'fondo', label: 'Suman al fondo', ayuda: 'con OV de abonos y abonos incluidos' },
+  { key: 'conov', label: 'Con OV que no suma', ayuda: 'OV de abonos sin abonos incluidos' },
+  { key: 'sinov', label: 'Sin OV de abonos', ayuda: 'no tienen OV de abonos' }
+];
+function oportunidadesLiq(liq, lineas) {
+  if ((liq.oportunidades || []).length) return { lista: liq.oportunidades, completa: true };
+  const porOv = new Map();
+  lineas.forEach((l) => {
+    const o = porOv.get(l.ov_id) || { situacion: 'conov', oportunidad: l.oportunidad, fecha_oportunidad: l.fecha_oportunidad,
+      vendedor_id: l.vendedor_id, vendedor: l.vendedor, cliente: l.cliente, nro_cliente: l.nro_cliente, ov_id: l.ov_id,
+      ov_numero: l.ov_numero, fecha_ov: l.fecha_ov, base_comisionable: 0, aporte: 0, abonos: [] };
+    if (l.incluido) { o.situacion = 'fondo'; o.base_comisionable += Number(l.importe || 0); }
+    o.aporte += Number(l.aporte || 0);
+    o.abonos.push(l.codigo);
+    porOv.set(l.ov_id, o);
+  });
+  const lista = [...porOv.values()].map((o) => ({ ...o, abonos: o.abonos.join(', ') }))
+    .concat((liq.sin_ov || []).map((o) => ({ ...o, situacion: 'sinov' })));
+  return { lista, completa: false };
+}
+
 function renderDetalle() {
   const { liq, vendedores, lineas } = EST.liqDetalle;
   const cont = $('com-liq-detalle');
@@ -1179,6 +1204,22 @@ function renderDetalle() {
   if ((liq.avisos || []).length) {
     h += `<div class="com-avisos"><b>Avisos al generar</b><ul>${liq.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></div>`;
   }
+  const ops = oportunidadesLiq(liq, lineas);
+  const porSit = (k) => ops.lista.filter((o) => o.situacion === k);
+  h += `<h4>Oportunidades ganadas por situación</h4>
+    <div class="admin-table-wrap"><table class="admin-table com-tabla com-sit-tabla"><thead><tr>
+      <th>Situación</th><th class="com-n">Oportunidades</th><th class="com-n">Base comisionable</th><th class="com-n">Aporte al fondo</th><th class="com-n">Otros ABO</th></tr></thead><tbody>` +
+    SITUACIONES.map((g) => {
+      const l = porSit(g.key);
+      const suma = (k) => l.reduce((s, o) => s + Number(o[k] || 0), 0);
+      return `<tr><td><span class="com-sit com-sit--${g.key}">${esc(g.label)}</span> <span class="com-meta">${esc(g.ayuda)}</span></td>
+        <td class="com-n"><b>${l.length}</b></td><td class="com-n">${g.key === 'sinov' ? '—' : pesos(suma('base_comisionable'))}</td>
+        <td class="com-n">${g.key === 'sinov' ? '—' : pesos(suma('aporte'))}</td><td class="com-n">${g.key === 'sinov' || !ops.completa ? '—' : pesos(suma('importe_otros_abo'))}</td></tr>`;
+    }).join('') +
+    `</tbody><tfoot><tr><td>Oportunidades ganadas</td><td class="com-n">${ops.lista.length}</td>
+      <td class="com-n">${pesos(ops.lista.reduce((s, o) => s + Number(o.base_comisionable || 0), 0))}</td>
+      <td class="com-n">${pesos(ops.lista.reduce((s, o) => s + Number(o.aporte || 0), 0))}</td><td></td></tr></tfoot></table></div>` +
+    (ops.completa ? '' : '<p class="com-meta" style="margin:-4px 0 12px">Liquidación generada antes del detalle por oportunidad: los grupos se arman con las líneas guardadas (no figuran las OV sin líneas ABO). Regenerala para verla completa.</p>');
 
   h += `<h4>Fondo comisionable por unidad de comisión</h4>
     <p class="com-detalle__meta" style="margin:-6px 0 8px">Ventas de todos los vendedores. Comisionan = ventas − incluido desde + 1 (mínimo 0);
@@ -1244,13 +1285,21 @@ function renderDetalle() {
       <td class="com-n">${pesos(l.importe)}</td><td class="com-n">${l.incluido ? pesos(l.aporte) : ''}</td></tr>`).join('')
       : '<tr><td colspan="10" class="admin-empty">Sin líneas.</td></tr>') + '</tbody></table></div>';
 
-  const sinOv = (liq.sin_ov || []).filter((o) => !EST.lineaFiltroVend || o.vendedor === EST.lineaFiltroVend);
-  h += `<h4>Ganadas sin OV de abonos (${sinOv.length})</h4>` + (sinOv.length
-    ? `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Vendedor</th><th>Oportunidad</th><th>Fecha</th><th>Cliente</th><th>Estado</th></tr></thead><tbody>` +
-      sinOv.map((o) => `<tr><td>${esc(o.vendedor)}</td><td>${linkNs('opprtnty', o.oportunidad_id, o.oportunidad)}</td><td>${esc(fmtDia(o.fecha_oportunidad))}</td>
-        <td>${esc(o.cliente)} <span class="com-meta">${esc(o.nro_cliente || '')}</span></td><td>${esc(o.estado_oportunidad || '')}</td></tr>`).join('') +
-      '</tbody></table></div>'
-    : '<p class="com-meta">Ninguna.</p>');
+  // Listado por situación (filtrado por el vendedor elegido, como las líneas).
+  SITUACIONES.forEach((g) => {
+    const l = porSit(g.key).filter((o) => !EST.lineaFiltroVend || o.vendedor === EST.lineaFiltroVend);
+    h += `<h4><span class="com-sit com-sit--${g.key}">${esc(g.label)}</span> (${l.length})${EST.lineaFiltroVend ? ' · ' + esc(EST.lineaFiltroVend) : ''}</h4>` + (l.length
+      ? `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Vendedor</th><th>Oportunidad</th><th>Fecha</th><th>Cliente</th>` +
+        (g.key === 'sinov' ? '<th>Estado</th>' : '<th>OV</th><th>Fecha OV</th><th>Abonos</th><th class="com-n">Base</th><th class="com-n">Aporte al fondo</th>') +
+        '</tr></thead><tbody>' +
+        l.map((o) => `<tr><td>${esc(o.vendedor)}</td><td>${linkNs('opprtnty', o.oportunidad_id, o.oportunidad)}</td><td>${esc(fmtDia(o.fecha_oportunidad))}</td>
+          <td>${esc(o.cliente)} <span class="com-meta">${esc(o.nro_cliente || '')}</span></td>` +
+          (g.key === 'sinov' ? `<td>${esc(o.estado_oportunidad || '')}</td>`
+            : `<td>${linkNs('salesord', o.ov_id, o.ov_numero)}</td><td>${esc(fmtDia(o.fecha_ov))}</td><td><span class="com-meta">${esc(o.abonos || o.clasificacion || '')}</span></td>
+               <td class="com-n">${pesos(o.base_comisionable)}</td><td class="com-n">${pesos(o.aporte)}</td>`) + '</tr>').join('') +
+        '</tbody></table></div>'
+      : '<p class="com-meta">Ninguna.</p>');
+  });
 
   const cfg = (liq.config || []).slice().sort((a, b) => (b.incluido - a.incluido) || compararCodigos(a.codigo, b.codigo));
   const uns = liq.unidades || [];
@@ -1287,6 +1336,16 @@ async function exportarLiquidacion(id, btn) {
     const t = liq.totales || {};
     const wb = new ExcelJS.Workbook();
     const money = '#,##0.00';
+
+    const opsR = oportunidadesLiq(liq, lineas);
+    const ws4r = wb.addWorksheet('Resumen');
+    ws4r.columns = [{ header: 'Concepto', key: 'c', width: 40 }, { header: 'Valor', key: 'v', width: 18 }];
+    [['Oportunidades ganadas', opsR.lista.length],
+      ...SITUACIONES.map((g) => ['  ' + g.label, opsR.lista.filter((o) => o.situacion === g.key).length]),
+      ['Base comisionable', Number(t.base_comisionable || 0)], ['Fondo comisionable', Number(t.fondo || 0)],
+      ['Comisión repartida', Number(t.comision || 0)], ['Sin repartir', Number(t.sin_repartir || 0)],
+      ['Ventas sin asignar', Number(t.ventas_sin_asignar || 0)]
+    ].forEach(([c, v], i) => { const r = ws4r.addRow({ c, v }); if (i >= 4 && i <= 7) r.getCell('v').numFmt = money; });
 
     const ws0 = wb.addWorksheet('Fondo comisionable por unidad');
     ws0.columns = [
@@ -1342,13 +1401,24 @@ async function exportarLiquidacion(id, btn) {
       importe: l.importe == null ? null : Number(l.importe), cantidad: l.cantidad == null ? null : Number(l.cantidad),
       incluido: l.incluido ? 'Sí' : 'No', factor: l.factor == null ? null : Number(l.factor), aporte: Number(l.aporte || 0) }));
 
-    const ws4 = wb.addWorksheet('Ganadas sin OV abonos');
+    const ws4 = wb.addWorksheet('Oportunidades ganadas');
     ws4.columns = [
-      { header: 'Vendedor', key: 'vendedor', width: 26 }, { header: 'Oportunidad', key: 'oportunidad', width: 14 },
-      { header: 'Fecha', key: 'fecha_oportunidad', width: 11 }, { header: 'Estado', key: 'estado_oportunidad', width: 26 },
-      { header: 'Cliente', key: 'cliente', width: 30 }, { header: 'Nro. cliente', key: 'nro_cliente', width: 12 }
+      { header: 'Situación', key: 'situacion', width: 20 }, { header: 'Vendedor', key: 'vendedor', width: 26 }, { header: 'ID NetSuite', key: 'vendedor_id', width: 12 },
+      { header: 'Oportunidad', key: 'oportunidad', width: 14 }, { header: 'Fecha oportunidad', key: 'fecha_oportunidad', width: 11 },
+      { header: 'Estado oportunidad', key: 'estado_oportunidad', width: 24 }, { header: 'Cliente', key: 'cliente', width: 30 },
+      { header: 'Nro. cliente', key: 'nro_cliente', width: 12 }, { header: 'OV', key: 'ov_numero', width: 14 }, { header: 'Fecha OV', key: 'fecha_ov', width: 11 },
+      { header: 'Abonos', key: 'abonos', width: 24 }, { header: 'Clasificación', key: 'clasificacion', width: 26 },
+      { header: 'Base comisionable', key: 'base_comisionable', width: 16, style: { numFmt: money } },
+      { header: 'Aporte al fondo', key: 'aporte', width: 16, style: { numFmt: money } },
+      { header: 'Otros ABO', key: 'importe_otros_abo', width: 14, style: { numFmt: money } }
     ];
-    (liq.sin_ov || []).forEach((o) => ws4.addRow({ ...o, fecha_oportunidad: fmtDia(o.fecha_oportunidad) }));
+    const opsX = oportunidadesLiq(liq, lineas);
+    const etiqueta = Object.fromEntries(SITUACIONES.map((g) => [g.key, g.label]));
+    opsX.lista.forEach((o) => ws4.addRow({ ...o, situacion: etiqueta[o.situacion] || o.situacion,
+      fecha_oportunidad: fmtDia(o.fecha_oportunidad), fecha_ov: fmtDia(o.fecha_ov),
+      base_comisionable: o.situacion === 'sinov' ? null : Number(o.base_comisionable || 0),
+      aporte: o.situacion === 'sinov' ? null : Number(o.aporte || 0),
+      importe_otros_abo: o.importe_otros_abo == null ? null : Number(o.importe_otros_abo) }));
 
     const ws5 = wb.addWorksheet('Configuración');
     ws5.columns = [

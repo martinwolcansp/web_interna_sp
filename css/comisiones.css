@@ -131,3 +131,10 @@ tfoot td { font-weight: var(--font-weight-bold); color: var(--color-navy); borde
 .com-alerta { margin: 0 0 10px; padding: 10px 14px; border-left: 3px solid #d98e04; background: #fdf6e9; border-radius: 6px; font-size: 14px; color: #5c3d00; }
 a.com-ns { color: #1f4e9c; text-decoration: none; border-bottom: 1px dotted #1f4e9c; }
 a.com-ns:hover { border-bottom-style: solid; }
+
+/* Oportunidades ganadas por situación en la liquidación (20/10/2026) */
+.com-sit { display: inline-block; border-radius: 10px; padding: 1px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.com-sit--fondo { background: #e3f4ea; color: #1a7f4b; }
+.com-sit--conov { background: #fdf1dc; color: #9a5b00; }
+.com-sit--sinov { background: #eceff3; color: #5b6676; }
+.com-sit-tabla { max-width: 900px; }
