@@ -73,6 +73,24 @@ def consulta_relevamientos(desde):
     """
 
 
+def consulta_clientes_ghl(ids_ghl):
+    """Clientes de NetSuite cuyo custentity_ghl_contact_id es uno de los contactos
+    de las encuestas. Primero los clientes padre y los activos."""
+    lista = ", ".join(f"'{i}'" for i in ids_ghl)
+    return f"""
+        SELECT
+            c.custentity_ghl_contact_id                             AS id_ghl,
+            c.id                                                    AS cliente_id,
+            c.entityid                                              AS numero,
+            c.altname                                               AS nombre
+        FROM customer c
+        WHERE c.custentity_ghl_contact_id IN ({lista})
+        ORDER BY CASE WHEN c.parent IS NULL THEN 0 ELSE 1 END,
+                 CASE WHEN c.isinactive = 'F' THEN 0 ELSE 1 END,
+                 c.id
+    """
+
+
 # ---------------------------------------------------------------------------
 # Transformaciones (mismas reglas que el Power Query del informe)
 # ---------------------------------------------------------------------------
@@ -215,6 +233,33 @@ def traer_relevamientos(log, corrida_id=None):
     return filas
 
 
+# Los ID de contacto de GHL son alfanumericos; se validan antes de armar el IN.
+_ID_GHL_VALIDO = re.compile(r"^[A-Za-z0-9]+$")
+_LOTE_CLIENTES = 200
+
+
+def asignar_clientes_ns(filas, log):
+    """Agrega a cada encuesta el cliente de NetSuite que tiene su ID de GHL.
+    Si el ID esta en mas de un cliente, se toma el padre (o el primero) y se
+    informa cuantos hay en cliente_ns_cant."""
+    ids = sorted({f["contact_id"] for f in filas if _ID_GHL_VALIDO.match(f["contact_id"] or "")})
+    por_ghl = {}
+    for i in range(0, len(ids), _LOTE_CLIENTES):
+        for c in netsuite.suiteql(consulta_clientes_ghl(ids[i:i + _LOTE_CLIENTES])):
+            por_ghl.setdefault(c["id_ghl"], []).append(c)
+    for f in filas:
+        clientes = por_ghl.get(f["contact_id"], [])
+        primero = clientes[0] if clientes else {}
+        f["cliente_ns_id"] = int(primero["cliente_id"]) if primero.get("cliente_id") else None
+        f["cliente_ns"] = _texto(primero.get("numero"))
+        f["cliente_ns_nombre"] = _texto(primero.get("nombre"))
+        f["cliente_ns_cant"] = len(clientes)
+    vinculadas = sum(1 for f in filas if f["cliente_ns_id"])
+    repetidos = sum(1 for v in por_ghl.values() if len(v) > 1)
+    log(f"NetSuite: {vinculadas} de {len(filas)} encuestas con cliente vinculado"
+        + (f"; {repetidos} ID de GHL estan en mas de un cliente." if repetidos else "."))
+
+
 def traer_encuestas(log, corrida_id=None):
     contactos = {tag: ghl.contactos_con_tag(tag, log) for tag in TAGS_ENCUESTA}
     clave = ghl.clave_objeto("encuesta", log)
@@ -222,6 +267,11 @@ def traer_encuestas(log, corrida_id=None):
     filas = filas_encuestas(contactos, registros, corrida_id)
     log(f"GHL: {len(filas)} contactos con encuesta ({', '.join(f'{t}: {len(v)}' for t, v in contactos.items())}); "
         f"{len(registros)} respuestas en el objeto {clave}.")
+    try:
+        asignar_clientes_ns(filas, log)
+    except Exception as e:
+        # Sin el cliente igual se guardan las encuestas (conservan el cliente anterior).
+        log(f"AVISO: no se pudo buscar el cliente de NetSuite de las encuestas: {e}")
     return filas
 
 
