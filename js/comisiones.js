@@ -74,6 +74,11 @@ function fmtFechaHora(iso) {
   return d.toLocaleDateString('es-AR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
     d.toLocaleTimeString('es-AR', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false });
 }
+const NETSUITE_TX = 'https://7138551.app.netsuite.com/app/accounting/transactions/';
+function linkNs(tipo, id, texto) {
+  if (!id) return esc(texto);
+  return `<a class="com-ns" href="${NETSUITE_TX}${tipo}.nl?id=${encodeURIComponent(id)}" target="_blank" rel="noopener" title="Abrir en NetSuite">${esc(texto)}</a>`;
+}
 function pct(f) { return f == null || f === '' ? '' : (Number(f) * 100).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' %'; }
 function fmtDia(s) { if (!s) return ''; const p = String(s).slice(0, 10).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; }
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -1154,13 +1159,23 @@ function renderDetalle() {
       generada el ${esc(fmtFechaHora(liq.generada_en))}${liq.generada_por ? ' por ' + esc(liq.generada_por) : ''} ·
       importes sin IVA</p>
     <div class="com-kpis">
-      <div class="com-kpi"><b>${esc(t.ganadas ?? 0)}</b><span>Oportunidades ganadas · ${esc(t.ganadas_sin_ov ?? 0)} sin OV de abonos</span></div>
-      <div class="com-kpi"><b>${esc(t.ovs_comisionables ?? 0)}</b><span>Ventas con abonos que comisionan (de ${esc(t.ovs ?? 0)} OV de abonos)</span></div>
-      <div class="com-kpi"><b>${pesos(t.fondo)}</b><span>Fondo comisionable total (base ${pesos(t.base_comisionable)})</span></div>
-      <div class="com-kpi com-kpi--total"><b>${pesos(t.comision)}</b><span>Comisión repartida</span></div>
-      <div class="com-kpi"><b>${pesos(t.sin_repartir)}</b><span>Sin repartir</span></div>
-      <div class="com-kpi"><b>${esc(t.ventas_sin_asignar ?? 0)}</b><span>Ventas sin asignar (${pesos(t.base_sin_asignar)} de base): suman al fondo, no reciben</span></div>
+      <div class="com-kpi"><b>${esc(t.ganadas ?? 0)}</b><span>Oportunidades ganadas</span>
+        <small>${esc(t.ovs_comisionables ?? 0)} suman al fondo · ${esc((t.ovs ?? 0) - (t.ovs_comisionables ?? 0))} con OV que no suma · ${esc(t.ganadas_sin_ov ?? 0)} sin OV de abonos</small></div>
+      <div class="com-kpi"><b>${esc(t.ovs_comisionables ?? 0)}</b><span>Ventas que suman al fondo</span><small>OV de abonos con abonos incluidos</small></div>
+      <div class="com-kpi"><b>${pesos(t.base_comisionable)}</b><span>Base comisionable</span><small>abonos incluidos de esas ventas</small></div>
+      <div class="com-kpi"><b>${pesos(t.fondo)}</b><span>Fondo comisionable</span>
+        <small>${Number(t.base_comisionable) ? pct(Number(t.fondo) / Number(t.base_comisionable)) + ' de la base · ventas desde el piso de cada unidad' : ''}</small></div>
+      <div class="com-kpi com-kpi--total"><b>${pesos(t.comision)}</b><span>Comisión repartida</span><small>según el porcentaje de cada vendedor</small></div>
     </div>`;
+  if (Math.abs(Number(t.sin_repartir || 0)) >= 0.005) {
+    h += `<div class="com-alerta"><i class="ti ti-alert-triangle" aria-hidden="true"></i> <b>${Number(t.sin_repartir) > 0
+      ? `Quedan ${pesos(t.sin_repartir)} del fondo comisionable sin repartir`
+      : `Se repartieron ${pesos(-Number(t.sin_repartir))} más que el fondo comisionable`}</b>: los porcentajes de alguna unidad no suman 100 % (ver «Fondo comisionable por unidad»).</div>`;
+  }
+  if (Number(t.ventas_sin_asignar || 0) > 0) {
+    h += `<div class="com-alerta"><i class="ti ti-alert-triangle" aria-hidden="true"></i> <b>${esc(t.ventas_sin_asignar)} venta(s) sin representante de ventas</b>
+      (${pesos(t.base_sin_asignar)} de base): suman al fondo pero no reciben porcentaje.</div>`;
+  }
   if ((liq.avisos || []).length) {
     h += `<div class="com-avisos"><b>Avisos al generar</b><ul>${liq.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></div>`;
   }
@@ -1222,7 +1237,7 @@ function renderDetalle() {
       <th>Vendedor</th><th>OV</th><th>Fecha OV</th><th>Cliente</th><th>Oportunidad</th><th>Abono</th>
       <th>Unidad de comisión</th><th class="com-n">% que comisiona</th><th class="com-n">Importe</th><th class="com-n">Aporte al fondo</th>
     </tr></thead><tbody>` +
-    (ls.length ? ls.map((l) => `<tr><td>${esc(l.vendedor)}</td><td>${esc(l.ov_numero)}</td><td>${esc(fmtDia(l.fecha_ov))}</td>
+    (ls.length ? ls.map((l) => `<tr><td>${esc(l.vendedor)}</td><td>${linkNs('salesord', l.ov_id, l.ov_numero)}</td><td>${esc(fmtDia(l.fecha_ov))}</td>
       <td>${esc(l.cliente)}</td><td>${esc(l.oportunidad)}</td><td title="${esc(l.articulo)}"><span class="com-codigo">${esc(l.codigo)}</span></td>
       <td>${l.incluido ? esc(l.unidad || 'Incluido') : (l.unidad ? esc(l.unidad) + ' <span class="com-no">(no comisiona)</span>' : '<span class="com-no">No incluido</span>')}</td>
       <td class="com-n">${l.incluido && l.factor != null ? pct(l.factor) : ''}</td>
@@ -1232,7 +1247,7 @@ function renderDetalle() {
   const sinOv = (liq.sin_ov || []).filter((o) => !EST.lineaFiltroVend || o.vendedor === EST.lineaFiltroVend);
   h += `<h4>Ganadas sin OV de abonos (${sinOv.length})</h4>` + (sinOv.length
     ? `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Vendedor</th><th>Oportunidad</th><th>Fecha</th><th>Cliente</th><th>Estado</th></tr></thead><tbody>` +
-      sinOv.map((o) => `<tr><td>${esc(o.vendedor)}</td><td>${esc(o.oportunidad)}</td><td>${esc(fmtDia(o.fecha_oportunidad))}</td>
+      sinOv.map((o) => `<tr><td>${esc(o.vendedor)}</td><td>${linkNs('opprtnty', o.oportunidad_id, o.oportunidad)}</td><td>${esc(fmtDia(o.fecha_oportunidad))}</td>
         <td>${esc(o.cliente)} <span class="com-meta">${esc(o.nro_cliente || '')}</span></td><td>${esc(o.estado_oportunidad || '')}</td></tr>`).join('') +
       '</tbody></table></div>'
     : '<p class="com-meta">Ninguna.</p>');

@@ -687,7 +687,7 @@ def payload_liquidacion(r, mes, generada_por):
                 "importe": a.get("importe"), "incluido": a["incluido"], "unidad": a.get("unidad"),
                 "factor": a.get("factor"), "aporte": a.get("aporte", 0),
             })
-    sin_ov = [{k: o.get(k) for k in ("vendedor_id", "vendedor", "oportunidad", "fecha_oportunidad", "estado_oportunidad",
+    sin_ov = [{k: o.get(k) for k in ("vendedor_id", "vendedor", "oportunidad_id", "oportunidad", "fecha_oportunidad", "estado_oportunidad",
                                      "cliente", "nro_cliente")} for o in r["sin_ov"]]
     return {
         "mes": mes.isoformat(), "desde": r["desde"], "hasta": r["hasta"], "generada_por": generada_por,

@@ -125,3 +125,9 @@ tfoot td { font-weight: var(--font-weight-bold); color: var(--color-navy); borde
 .com-ven { margin-bottom: 16px; }
 .com-ven p.com-meta { white-space: normal; max-width: 100%; }
 .com-ven input[data-campo="nombre"] { width: 100%; min-width: 180px; }
+
+/* Información general de la liquidación (20/10/2026) */
+.com-kpi small { display: block; margin-top: 4px; font-size: 12px; color: var(--color-text-muted, #6b7a90); line-height: 1.3; text-transform: none; letter-spacing: 0; }
+.com-alerta { margin: 0 0 10px; padding: 10px 14px; border-left: 3px solid #d98e04; background: #fdf6e9; border-radius: 6px; font-size: 14px; color: #5c3d00; }
+a.com-ns { color: #1f4e9c; text-decoration: none; border-bottom: 1px dotted #1f4e9c; }
+a.com-ns:hover { border-bottom-style: solid; }
