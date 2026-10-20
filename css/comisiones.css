@@ -105,3 +105,18 @@ tfoot td { font-weight: var(--font-weight-bold); color: var(--color-navy); borde
 /* Unidad con "Comisiona" destildado (migración 30) */
 #com-un-tbody tr.com-un-off td { color: var(--color-text-muted, #8a94a6); }
 #com-un-tbody tr.com-un-off input[data-campo="nombre"] { color: var(--color-text-muted, #8a94a6); font-style: italic; }
+
+/* Distribución del fondo comisionable por vendedor (migración 31) */
+.com-dis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .com-dis-grid { grid-template-columns: 1fr; } }
+.com-dis-card { border: 1px solid var(--color-border, #dde3ec); border-left: 3px solid #1f3864; border-radius: 8px; padding: 12px 14px; background: #fff; }
+.com-dis-card.is-off { border-left-color: #b8c0cc; opacity: .75; }
+.com-dis-card.is-dirty { border-left-color: #d98e04; }
+.com-dis-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.com-dis-head b { display: block; color: #1f3864; margin-bottom: 2px; }
+.com-dis-tabla input[data-campo="vendedor"] { width: 100%; min-width: 180px; }
+.com-dis-pie { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-top: 8px; }
+.com-dis-total { font-weight: 600; }
+.com-dis-total.is-ok { color: #1a7f4b; }
+.com-dis-total.is-warn, .com-warn { color: #b45309; }
+.btn--sm { padding: 4px 10px; font-size: 12px; }

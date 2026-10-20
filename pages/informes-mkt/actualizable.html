@@ -2142,8 +2142,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       html: function (o) { return '<span class="com-clasif com-clasif--' + claseClasif(o) + '">' + esc(o.clasificacion) + "</span>"; } },
     { key: "base_comisionable", label: "Base comisionable", num: true, sort: function (o) { return o.base_comisionable; },
       html: function (o) { return o.comisionable ? "<b>" + pesos(o.base_comisionable) + "</b>" : '<span class="com-sub">—</span>'; } },
-    { key: "comision", label: "Comisión", num: true, sort: function (o) { return o.comision; },
-      html: function (o) { return o.comision ? "<b>" + pesos(o.comision) + "</b>" : '<span class="com-sub">—</span>'; } },
+    { key: "aporte", label: "Aporte al fondo", num: true, sort: function (o) { return o.aporte; },
+      html: function (o) { return o.aporte ? "<b>" + pesos(o.aporte) + "</b>" : '<span class="com-sub">—</span>'; } },
     { key: "importe_otros_abo", label: "Otros ABO", num: true, sort: function (o) { return o.importe_otros_abo; },
       html: function (o) { return o.importe_otros_abo ? pesos(o.importe_otros_abo) : '<span class="com-sub">—</span>'; } },
     { key: "total_ov", label: "Total OV", num: true, sort: function (o) { return o.total_ov; }, html: function (o) { return pesos(o.total_ov); } },
@@ -2156,57 +2156,46 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     var porV = {};
     function fila(v) {
       return porV[v] = porV[v] || { vendedor: v, ops: {}, opsConOv: {}, ganadas: 0, conOv: 0, sinov: 0, ovs: 0, com: 0, base: 0,
-        comision: 0, nocom: 0, otros: 0, abonos: {}, sinLista: [] };
+        aporte: 0, comision: 0, nocom: 0, otros: 0, unidades: [], sinLista: [] };
     }
     (D.ovs || []).forEach(function (o) {
       var f = fila(o.vendedor);
       f.ops[o.oportunidad_id] = 1; f.opsConOv[o.oportunidad_id] = 1;
-      f.ovs++; f.base += o.base_comisionable || 0; f.otros += o.importe_otros_abo || 0; f.comision += o.comision || 0;
+      f.ovs++; f.base += o.base_comisionable || 0; f.otros += o.importe_otros_abo || 0; f.aporte += o.aporte || 0;
       if (o.comisionable) f.com++; else f.nocom++;
-      var vistos = {};
-      (o.abonos || []).forEach(function (a) {
-        if (!a.incluido) return;
-        var x = f.abonos[a.codigo] = f.abonos[a.codigo] || { codigo: a.codigo, ovs: 0, comisionan: 0, desde: a.incluido_desde, base: 0, comision: 0 };
-        if (!vistos[a.codigo]) { x.ovs++; if (a.comisiona) x.comisionan++; vistos[a.codigo] = 1; }
-        x.base += a.importe || 0; x.comision += a.comision || 0;
-      });
     });
     (D.sin_ov || []).forEach(function (o) { var f = fila(o.vendedor); f.ops[o.oportunidad_id] = 1; f.sinLista.push(o); });
-    // Unidades de comisión (lo calcula el servicio por vendedor y unidad)
-    (D.por_unidad || []).forEach(function (u) { var f = fila(u.vendedor); (f.unidades = f.unidades || []).push(u); });
+    // Ventas por unidad y reparto del fondo comisionable (lo calcula el servicio). Suma a
+    // los vendedores que tienen porcentaje aunque no hayan vendido.
+    (D.vendedores || []).forEach(function (v) { var f = fila(v.vendedor); f.comision = v.comision || 0; f.unidades = v.por_unidad || []; });
     return Object.keys(porV).map(function (k) {
       var f = porV[k];
       f.ganadas = Object.keys(f.ops).length; f.conOv = Object.keys(f.opsConOv).length; f.sinov = f.sinLista.length;
       return f;
     }).sort(function (a, b) {
       if (a.vendedor === "Sin asignar") return 1; if (b.vendedor === "Sin asignar") return -1;
-      return b.ganadas - a.ganadas || b.base - a.base || a.vendedor.localeCompare(b.vendedor, "es");
+      return b.ganadas - a.ganadas || b.comision - a.comision || a.vendedor.localeCompare(b.vendedor, "es");
     });
   }
+  function fmtPct(n) { return n === null || n === undefined ? "" : Number(n).toLocaleString("es-AR", { maximumFractionDigits: 3 }) + " %"; }
   function detalleVendedor(f) {
     function dato(t, v) { return "<span>" + esc(t) + ": <b>" + v + "</b></span>"; }
     var h = '<div class="com-det-info">' +
-      dato("OV con abonos incluidos", f.com) + dato("OV sin abonos incluidos", f.nocom) + dato("Abonos no incluidos (no suman)", pesos(f.otros)) +
-      "</div>";
-    var cods = Object.keys(f.abonos).sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); });
-    if ((f.unidades || []).length) {
-      h += '<table class="com-lineas" style="margin-bottom:4px"><thead><tr><th>Unidad de comisión</th><th class="num">Ventas (OV)</th><th class="num">Incluido desde</th>' +
-        '<th class="num">Comisionan</th><th class="num">% que comisiona</th><th class="num">Base</th><th class="num">Promedio por venta</th><th class="num">Comisión</th></tr></thead><tbody>' +
-        f.unidades.slice().sort(function (a, b) { return String(a.unidad).localeCompare(String(b.unidad), "es"); }).map(function (u) {
-          return "<tr><td><b>" + esc(u.unidad) + '</b></td><td class="num">' + u.ventas + '</td><td class="num">' + esc(u.incluido_desde) +
-            '</td><td class="num">' + u.comisionan + '</td><td class="num">' + pct(u.factor) + '</td><td class="num">' + pesos(u.base) +
-            '</td><td class="num">' + pesos(u.promedio) + '</td><td class="num"><b>' + pesos(u.comision) + "</b></td></tr>";
+      dato("Ventas que suman al fondo", f.com) + dato("OV sin abonos incluidos", f.nocom) + dato("Aporte al fondo", pesos(f.aporte)) +
+      dato("Abonos no incluidos (no suman)", pesos(f.otros)) + "</div>";
+    if (f.unidades.length) {
+      h += '<table class="com-lineas" style="margin-bottom:4px"><thead><tr><th>Unidad de comisión</th><th class="num">Ventas (OV)</th><th class="num">Base</th>' +
+        '<th class="num">Aporte al fondo</th><th class="num">% del fondo</th><th class="num">Comisión</th></tr></thead><tbody>' +
+        f.unidades.map(function (u) {
+          var off = u.comisiona === false;
+          return "<tr><td><b>" + esc(u.unidad) + "</b>" + (off ? ' <span class="com-sub">(no comisiona)</span>' : "") + '</td><td class="num">' + u.ventas +
+            '</td><td class="num">' + (off ? "—" : pesos(u.base)) + '</td><td class="num">' + (off ? "—" : pesos(u.aporte)) +
+            '</td><td class="num">' + (u.porcentaje === null || u.porcentaje === undefined ? '<span class="com-sub">sin %</span>' : fmtPct(u.porcentaje)) +
+            '</td><td class="num"><b>' + pesos(u.comision) + "</b></td></tr>";
         }).join("") + "</tbody></table>" +
-        '<div class="com-sub" style="margin:0 0 8px">Comisión = base de la unidad × comisionan / ventas · comisionan = ventas − incluido desde + 1 (mínimo 0).</div>';
-    } else if (cods.length) {
-      h += '<table class="com-lineas" style="margin-bottom:8px"><thead><tr><th>Abono</th><th class="num">OV</th><th class="num">Incluido desde</th>' +
-        '<th class="num">OV que comisionan</th><th class="num">Base</th><th class="num">Comisión</th></tr></thead><tbody>' +
-        cods.map(function (c) {
-          var x = f.abonos[c];
-          return "<tr><td><b>" + esc(c) + '</b></td><td class="num">' + x.ovs + '</td><td class="num">' + esc(x.desde || 1) +
-            '</td><td class="num">' + x.comisionan + '</td><td class="num">' + pesos(x.base) + '</td><td class="num"><b>' + pesos(x.comision) + "</b></td></tr>";
-        }).join("") + "</tbody></table>";
+        '<div class="com-sub" style="margin:0 0 8px">La comisión es el % del vendedor sobre el fondo comisionable de cada unidad, sin importar quién vendió. Las ventas, la base y el aporte son informativos.</div>';
     }
+    if (f.vendedor === "Sin asignar") h += '<div class="com-sub" style="margin:0 0 8px">Las ventas sin asignar suman al fondo pero no reciben porcentaje.</div>';
     if (f.sinLista.length) {
       h += '<div class="com-sub" style="margin:2px 0 4px">Ganadas sin OV de abonos:</div><table class="com-lineas"><thead><tr><th>Oportunidad</th><th>Fecha</th><th>Cliente</th><th>Estado</th></tr></thead><tbody>' +
         f.sinLista.map(function (o) {
@@ -2214,6 +2203,30 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
             (o.nro_cliente ? ' <span class="com-sub">' + esc(o.nro_cliente) + "</span>" : "") + "</td><td>" + esc(sd(o.estado_oportunidad)) + "</td></tr>";
         }).join("") + "</tbody></table>";
     }
+    return h;
+  }
+  function tablaFondos() {
+    var fondos = D.fondos || [], t = D.totales || {};
+    var h = "<h3>Fondo comisionable por unidad de comisión</h3>" +
+      '<div class="com-ayuda">Ventas de todos los vendedores del período. Comisionan = ventas − incluido desde + 1 (mínimo 0); fondo comisionable = base × comisionan / ventas. ' +
+      "El fondo comisionable se reparte según el porcentaje de cada vendedor (Panel de administración → Comisiones → Distribución).</div>" +
+      '<div class="com-scroll-res"><table class="com-tabla"><thead><tr><th>Unidad</th><th class="num">Ventas</th><th class="num">Incluido desde</th>' +
+      '<th class="num">Comisionan</th><th class="num">% que comisiona</th><th class="num">Base</th><th class="num">Promedio por venta</th><th class="num">Fondo comisionable</th>' +
+      '<th class="num">% asignado</th><th class="num">Repartido</th><th class="num">Sin repartir</th><th class="num">Ventas sin asignar</th></tr></thead><tbody>';
+    if (!fondos.length) h += '<tr><td colspan="12" class="com-vacio">Ninguna unidad de comisión tuvo ventas en el período.</td></tr>';
+    fondos.forEach(function (p) {
+      var ok = Math.abs(Number(p.porcentaje_total) - 100) < 0.0005;
+      h += "<tr><td><b>" + esc(p.unidad) + "</b>" + ((p.vendedores_sin_porcentaje || []).length ? '<div class="com-sub">Con ventas y sin %: ' + esc(p.vendedores_sin_porcentaje.join(", ")) + "</div>" : "") +
+        '</td><td class="num">' + p.ventas + '</td><td class="num">' + esc(p.incluido_desde) + '</td><td class="num">' + p.comisionan +
+        '</td><td class="num">' + pct(p.factor) + '</td><td class="num">' + pesos(p.base) + '</td><td class="num">' + pesos(p.promedio) +
+        '</td><td class="num"><b>' + pesos(p.fondo) + '</b></td><td class="num"' + (ok ? "" : ' style="color:#b45309" title="No suma 100 %"') + ">" + fmtPct(p.porcentaje_total || 0) +
+        '</td><td class="num">' + pesos(p.repartido) + '</td><td class="num">' + (Number(p.sin_repartir) ? pesos(p.sin_repartir) : "—") +
+        '</td><td class="num">' + (p.ventas_sin_asignar ? p.ventas_sin_asignar + ' <span class="com-sub">(' + pesos(p.base_sin_asignar) + ")</span>" : "—") + "</td></tr>";
+    });
+    h += '</tbody><tfoot><tr><td>Total</td><td class="num">' + fondos.reduce(function (s, p) { return s + p.ventas; }, 0) + '</td><td></td><td class="num">' +
+      fondos.reduce(function (s, p) { return s + p.comisionan; }, 0) + '</td><td></td><td class="num">' + pesos(fondos.reduce(function (s, p) { return s + p.base; }, 0)) +
+      '</td><td></td><td class="num">' + pesos(t.fondo) + '</td><td></td><td class="num">' + pesos(t.comision) + '</td><td class="num">' + pesos(t.sin_repartir) +
+      '</td><td class="num">' + (t.ventas_sin_asignar || 0) + "</td></tr></tfoot></table></div>";
     return h;
   }
 
@@ -2274,7 +2287,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     if (!D) return;
     var p = periodo();
     var lista = resumen();
-    var tot = { ganadas: 0, conOv: 0, sinov: 0, ovs: 0, com: 0, base: 0, comision: 0 };
+    var tot = { ganadas: 0, conOv: 0, sinov: 0, ovs: 0, com: 0, aporte: 0, comision: 0 };
     lista.forEach(function (f) { Object.keys(tot).forEach(function (k) { tot[k] += f[k]; }); });
     var todas = D.ovs || [];
     var opsConOv = {}; todas.forEach(function (o) { opsConOv[o.oportunidad_id] = 1; });
@@ -2283,11 +2296,10 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     var h = '<div class="kpi-caveat"><strong>Criterio</strong>: órdenes de venta de tipo <em>ABONOS (Contrato)</em> relacionadas a las oportunidades ganadas del período ' +
       "(por la oportunidad de la OV o por su presupuesto de origen), con sus líneas de abono (artículos <em>ABO</em>). " +
       "Se cuenta <strong>una OV por oportunidad</strong>: la del alta del contrato (la primera que no esté Cerrada); las OV mensuales posteriores del mismo contrato no suman. " +
-      "Los abonos que cuentan se configuran en <em>Panel de administración → Comisiones</em>: la <strong>base comisionable</strong> es el importe de los abonos <em>incluidos</em>; " +
-      "Cada abono incluido pertenece a una <strong>unidad de comisión</strong>; por vendedor y por unidad, las <em>ventas</em> son las OV con abonos de la unidad " +
-      "y, con <em>Incluido desde</em> = N, comisionan ventas − N + 1 (mínimo 0): la <strong>comisión</strong> es la base de la unidad × comisionan / ventas " +
-      "(el promedio por venta por las ventas que comisionan; por debajo de N es cero). " +
-      "<em>Otros ABO</em> suma los abonos no incluidos, que no entran. Importes sin IVA. " +
+      "La configuración está en <em>Panel de administración → Comisiones</em>: cada abono incluido pertenece a una <strong>unidad de comisión</strong> y su importe forma la <strong>base comisionable</strong>. " +
+      "Por unidad se cuentan las <em>ventas</em> de <strong>todos los vendedores</strong> (OV con abonos de la unidad); con <em>Incluido desde</em> = N comisionan ventas − N + 1 (mínimo 0) " +
+      "y el <strong>fondo comisionable</strong> es la base × comisionan / ventas. El fondo comisionable se reparte según el <strong>porcentaje</strong> de cada vendedor, sin importar quién vendió; " +
+      "las ventas <em>Sin asignar</em> suman al fondo y no reciben. <em>Aporte al fondo</em> es lo que suma cada OV (informativo); <em>Otros ABO</em> son abonos no incluidos. Importes sin IVA. " +
       (nExcl ? "No se listan " + nExcl + " OV de otros tipos (" + Object.keys(excl).map(function (k) { return esc(k) + ": " + excl[k]; }).join(", ") + "). " : "") +
       "Vendedor = representante de la oportunidad. Consultado en NetSuite el " + esc(new Date(D.generado_en).toLocaleString("es-AR", { timeZone: TZ, hour12: false })) + ".</div>";
     (D.avisos || []).forEach(function (a) { h += '<div class="note-box note-box--warn"><p>' + esc(a) + "</p></div>"; });
@@ -2297,28 +2309,29 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       '<div class="kpi-card"><div class="kpi-num">' + D.ganadas + '</div><div class="kpi-label">Oportunidades ganadas</div></div>' +
       '<div class="kpi-card"><div class="kpi-num">' + Object.keys(opsConOv).length + '</div><div class="kpi-label">Ganadas con OV de abonos · ' + (D.sin_ov || []).length + " sin</div></div>" +
       '<div class="kpi-card"><div class="kpi-num">' + todas.length + '</div><div class="kpi-label">OV de abonos relacionadas</div></div>' +
-      '<div class="kpi-card"><div class="kpi-num">' + todas.filter(function (o) { return o.comisionable; }).length + '</div><div class="kpi-label">OV con abonos incluidos</div></div>' +
-      '<div class="kpi-card"><div class="kpi-num">' + pesos(todas.reduce(function (s, o) { return s + (o.base_comisionable || 0); }, 0)) + '</div><div class="kpi-label">Base comisionable total (mensual)</div></div>' +
-      '<div class="kpi-card"><div class="kpi-num">' + pesos(todas.reduce(function (s, o) { return s + (o.comision || 0); }, 0)) + '</div><div class="kpi-label">Comisión total</div></div>' +
-      "</div>";
+      '<div class="kpi-card"><div class="kpi-num">' + todas.filter(function (o) { return o.comisionable; }).length + '</div><div class="kpi-label">Ventas que suman al fondo</div></div>' +
+      '<div class="kpi-card"><div class="kpi-num">' + pesos((D.totales || {}).fondo) + '</div><div class="kpi-label">Fondo comisionable total (base ' + pesos(todas.reduce(function (s, o) { return s + (o.base_comisionable || 0); }, 0)) + ')</div></div>' +
+      '<div class="kpi-card"><div class="kpi-num">' + pesos((D.totales || {}).comision) + '</div><div class="kpi-label">Comisión repartida · ' + pesos((D.totales || {}).sin_repartir) + ' sin repartir</div></div>' +
+      '<div class="kpi-card"><div class="kpi-num">' + ((D.totales || {}).ventas_sin_asignar || 0) + '</div><div class="kpi-label">Ventas sin asignar (suman al fondo, no reciben)</div></div>' +
+      "</div>" + tablaFondos();
 
     h += "<h3>Resumen por vendedor</h3>" +
       '<div class="com-ayuda">Período completo (no cambia con los filtros). Las ganadas son las mismas del Informe por vendedor (Ventas). ' +
-      "Click en un vendedor para ver el detalle y filtrar la tabla de abajo.</div>" +
+      "La comisión es su porcentaje del fondo comisionable de cada unidad. Click en un vendedor para ver sus ventas por unidad y filtrar la tabla de abajo.</div>" +
       '<div class="com-scroll-res"><table class="com-tabla com-resumen"><thead><tr>' +
       '<th>Vendedor</th><th class="num">Oportunidades ganadas</th><th class="num">Con OV de abonos</th><th class="num">Sin OV de abonos</th>' +
-      '<th class="num">OV de abonos</th><th class="num">OV con abonos incluidos</th><th class="num">Base comisionable</th><th class="num">Comisión</th></tr></thead><tbody>';
+      '<th class="num">OV de abonos</th><th class="num">Ventas que suman al fondo</th><th class="num">Aporte al fondo</th><th class="num">Comisión</th></tr></thead><tbody>';
     if (!lista.length) h += '<tr><td colspan="8" class="com-vacio">Sin oportunidades ganadas en el período.</td></tr>';
     lista.forEach(function (f) {
       var activo = F.vendedor === f.vendedor;
       h += '<tr class="' + (activo ? "activo" : "") + '" data-vend="' + esc(f.vendedor) + '">' +
         "<td>" + (activo ? "▾ " : "▸ ") + esc(f.vendedor) + '</td><td class="num"><b>' + f.ganadas + '</b></td><td class="num">' + f.conOv +
         '</td><td class="num">' + f.sinov + '</td><td class="num">' + f.ovs + '</td><td class="num">' + f.com +
-        '</td><td class="num">' + pesos(f.base) + '</td><td class="num"><b>' + pesos(f.comision) + "</b></td></tr>";
+        '</td><td class="num">' + pesos(f.aporte) + '</td><td class="num"><b>' + pesos(f.comision) + "</b></td></tr>";
       if (activo) h += '<tr class="com-det"><td colspan="8">' + detalleVendedor(f) + "</td></tr>";
     });
     h += '</tbody><tfoot><tr><td>Total</td><td class="num">' + tot.ganadas + '</td><td class="num">' + tot.conOv + '</td><td class="num">' + tot.sinov +
-      '</td><td class="num">' + tot.ovs + '</td><td class="num">' + tot.com + '</td><td class="num">' + pesos(tot.base) +
+      '</td><td class="num">' + tot.ovs + '</td><td class="num">' + tot.com + '</td><td class="num">' + pesos(tot.aporte) +
       '</td><td class="num">' + pesos(tot.comision) + "</td></tr></tfoot></table></div>";
 
     // Filtros
@@ -2382,7 +2395,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     });
     var base = rows.reduce(function (s, o) { return s + (o.base_comisionable || 0); }, 0);
     var otros = rows.reduce(function (s, o) { return s + (o.importe_otros_abo || 0); }, 0);
-    var comis = rows.reduce(function (s, o) { return s + (o.comision || 0); }, 0);
+    var comis = rows.reduce(function (s, o) { return s + (o.aporte || 0); }, 0);
     var total = rows.reduce(function (s, o) { return s + (o.total_ov || 0); }, 0);
     h += "</tbody>";
     if (rows.length) {
@@ -2418,15 +2431,14 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     }
     if (!(o.abonos || []).length) return h + '<div class="com-sub">La OV no tiene líneas de abono (ABO).</div>';
     h += '<table class="com-lineas"><thead><tr><th>Código</th><th>Artículo</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th>' +
-      '<th>Unidad de comisión</th><th class="num">N.º de venta</th><th class="num">% que comisiona</th><th class="num">Comisión</th></tr></thead><tbody>';
+      '<th>Unidad de comisión</th><th class="num">% que comisiona</th><th class="num">Aporte al fondo</th></tr></thead><tbody>';
     o.abonos.forEach(function (a) {
       h += "<tr><td>" + esc(a.codigo) + "</td><td>" + esc(a.articulo) + '</td><td class="num">' + esc(a.cantidad === null ? "—" : a.cantidad) +
         '</td><td class="num">' + pesos(a.precio) + '</td><td class="num">' + pesos(a.importe) + "</td><td>" +
         (a.cuenta ? '<span class="com-abo com-abo--cuenta">' + esc(a.unidad || "Incluido") + "</span>"
           : (a.unidad ? esc(a.unidad) + ' <span class="com-sub">(no comisiona)</span>' : '<span class="com-sub">No incluido</span>')) + '</td><td class="num">' +
-        (a.orden ? a.orden + (a.incluido_desde > 1 ? ' <span class="com-sub">(desde ' + a.incluido_desde + ")</span>" : "") : "") + '</td><td class="num">' +
         (a.cuenta && a.factor !== undefined && a.factor !== null ? pct(a.factor) : "") + '</td><td class="num">' +
-        (a.comisiona ? "<b>" + pesos(a.comision) + "</b>" : (a.incluido ? '<span class="com-sub">no comisiona</span>' : "")) + "</td></tr>";
+        (a.cuenta ? (a.aporte ? "<b>" + pesos(a.aporte) + "</b>" : '<span class="com-sub">$ 0 (no llegó al piso)</span>') : "") + "</td></tr>";
     });
     return h + "</tbody></table>";
   }
@@ -2469,7 +2481,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
           "Unidad de negocio": o.unidad_negocio, "Tipo de establecimiento": o.tipo_establecimiento, "Categoría": o.categoria,
           "Abonos": (o.abonos || []).map(function (a) { return a.codigo + (a.cantidad && a.cantidad !== 1 ? " x" + a.cantidad : ""); }).join(", "),
           "Clasificación": o.clasificacion, "Comisionable": o.comisionable ? "Sí" : "No",
-          "Base comisionable": o.base_comisionable || 0, "Comisión": o.comision || 0, "Otros ABO": o.importe_otros_abo || 0, "Total OV": o.total_ov,
+          "Base comisionable": o.base_comisionable || 0, "Aporte al fondo": o.aporte || 0, "Otros ABO": o.importe_otros_abo || 0, "Total OV": o.total_ov,
         };
       });
       var lineas = [];
@@ -2477,15 +2489,16 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
         (o.abonos || []).forEach(function (a) {
           lineas.push({ "Vendedor": o.vendedor, "OV": o.ov_numero, "Fecha OV": fmtDia(o.fecha_ov), "Modalidad": modalidad(o), "Cliente": o.cliente,
             "Oportunidad": o.oportunidad, "Código": a.codigo, "Artículo": a.articulo, "Cantidad": a.cantidad, "Precio": a.precio, "Importe": a.importe,
-            "Incluido": a.cuenta ? "Sí" : "No", "Unidad de comisión": a.unidad || "", "N.º de venta de la unidad": a.orden || null,
-            "Incluido desde": a.incluido_desde || null, "% que comisiona": a.cuenta && a.factor != null ? Math.round(a.factor * 10000) / 100 : null,
-            "Comisiona": a.comisiona ? "Sí" : "No", "Comisión": a.comision || 0, "Clasificación OV": o.clasificacion });
+            "Incluido": a.cuenta ? "Sí" : "No", "Unidad de comisión": a.unidad || "",
+            "% que comisiona": a.cuenta && a.factor != null ? Math.round(a.factor * 10000) / 100 : null,
+            "Aporte al fondo": a.aporte || 0, "Clasificación OV": o.clasificacion });
         });
       });
       var porV = resumen().map(function (f) {
         return { "Vendedor": f.vendedor, "Oportunidades ganadas": f.ganadas, "Con OV de abonos": f.conOv, "Sin OV de abonos": f.sinov,
-          "OV de abonos": f.ovs, "OV con abonos incluidos": f.com, "Base comisionable": Math.round(f.base * 100) / 100,
-          "Comisión": Math.round(f.comision * 100) / 100, "OV sin abonos incluidos": f.nocom, "Otros ABO": Math.round(f.otros * 100) / 100 };
+          "OV de abonos": f.ovs, "Ventas que suman al fondo": f.com, "Base comisionable": Math.round(f.base * 100) / 100,
+          "Aporte al fondo": Math.round(f.aporte * 100) / 100, "Comisión": Math.round(f.comision * 100) / 100,
+          "OV sin abonos incluidos": f.nocom, "Otros ABO": Math.round(f.otros * 100) / 100 };
       });
       var sin = sinOvFiltradas().map(function (o) {
         return { "Vendedor": o.vendedor, "Oportunidad": o.oportunidad, "Fecha": fmtDia(o.fecha_oportunidad), "Estado": o.estado_oportunidad,
@@ -2493,11 +2506,21 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       });
       var libro = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(libro, hoja(XLSX, porV, "Sin datos"), "Por vendedor");
-      var porU = (D.por_unidad || []).map(function (u) {
-        return { "Vendedor": u.vendedor, "Unidad de comisión": u.unidad, "Ventas (OV)": u.ventas, "Incluido desde": u.incluido_desde,
-          "Comisionan": u.comisionan, "% que comisiona": Math.round((u.factor || 0) * 10000) / 100, "Base": u.base, "Promedio por venta": u.promedio, "Comisión": u.comision };
+      var fondos = (D.fondos || []).map(function (p) {
+        return { "Unidad de comisión": p.unidad, "Ventas": p.ventas, "Incluido desde": p.incluido_desde, "Comisionan": p.comisionan,
+          "% que comisiona": Math.round((p.factor || 0) * 10000) / 100, "Base": p.base, "Promedio por venta": p.promedio, "Fondo comisionable": p.fondo,
+          "% asignado": p.porcentaje_total, "Repartido": p.repartido, "Sin repartir": p.sin_repartir, "Ventas sin asignar": p.ventas_sin_asignar,
+          "Base sin asignar": p.base_sin_asignar, "Vendedores con ventas y sin %": (p.vendedores_sin_porcentaje || []).join(", ") };
       });
-      if (porU.length) XLSX.utils.book_append_sheet(libro, hoja(XLSX, porU, "Sin datos"), "Por unidad");
+      XLSX.utils.book_append_sheet(libro, hoja(XLSX, fondos, "Sin ventas de unidades de comisión"), "Fondo comisionable por unidad");
+      var reparto = [];
+      (D.vendedores || []).forEach(function (v) {
+        (v.por_unidad || []).forEach(function (u) {
+          reparto.push({ "Vendedor": v.vendedor, "Unidad de comisión": u.unidad, "Comisiona": u.comisiona === false ? "No" : "Sí", "Ventas": u.ventas,
+            "Base": u.base, "Aporte al fondo": u.aporte, "% del fondo": u.porcentaje, "Comisión": u.comision });
+        });
+      });
+      XLSX.utils.book_append_sheet(libro, hoja(XLSX, reparto, "Sin datos"), "Reparto por unidad");
       XLSX.utils.book_append_sheet(libro, hoja(XLSX, ov, "Sin OV con estos filtros"), "OV");
       XLSX.utils.book_append_sheet(libro, hoja(XLSX, lineas, "Sin abonos"), "Abonos");
       XLSX.utils.book_append_sheet(libro, hoja(XLSX, sin, "Todas las ganadas tienen OV de abonos"), "Ganadas sin OV abonos");

@@ -122,7 +122,7 @@ function renderCards(accesos) {
       href: '/pages/comisiones.html',
       icon: 'ti-coin',
       title: 'Comisiones',
-      desc: 'Abonos que comisionan (Incluido / Incluido desde) y liquidaciones mensuales por vendedor.'
+      desc: 'Abonos y unidades que comisionan, reparto del fondo comisionable por vendedor y liquidaciones mensuales.'
     }
   ].filter(t => t.permitido);
 

@@ -38,7 +38,11 @@
          abono, su Unidad de comisión (sin unidad = no incluido). Editable con
          permiso "editar" en la sección comisiones; exportar / importar Excel.
        - Unidades de comisión: tabla comision_unidad (migracion_29, 19/10/2026):
-         agrupan abonos, con "Incluido desde" = N igual para todos los vendedores.
+         agrupan abonos, con "Incluido desde" = N y la casilla "Comisiona".
+       - Distribución: tabla comision_porcentaje (migracion_31, 19/10/2026):
+         porcentaje del fondo comisionable de cada unidad que recibe cada vendedor. Modelo
+         de fondo comisionable: ventas de todos los vendedores, comisionan ventas − N + 1,
+         fondo comisionable = base × comisionan / ventas, repartido por porcentaje.
        - Liquidaciones: una por mes. "Generar" llama a informe-mkt-api
          (POST /comisiones/liquidar), que consulta NetSuite, calcula con la
          configuración vigente y guarda la foto (con la configuración
@@ -50,7 +54,7 @@
     <div class="admin-page-header">
       <p class="section-label">Administración</p>
       <h1 class="admin-page-title">Comisiones</h1>
-      <p class="admin-page-subtitle">Abonos que comisionan y liquidaciones mensuales por vendedor.</p>
+      <p class="admin-page-subtitle">Abonos y unidades que comisionan, reparto del fondo comisionable por vendedor y liquidaciones mensuales.</p>
     </div>
 
     <nav class="com-tabs" role="tablist">
@@ -59,6 +63,9 @@
       </button>
       <button type="button" class="com-tab" data-tab="unidades" role="tab" aria-selected="false">
         <i class="ti ti-stack-2" aria-hidden="true"></i> Unidades de comisión
+      </button>
+      <button type="button" class="com-tab" data-tab="distribucion" role="tab" aria-selected="false">
+        <i class="ti ti-chart-pie" aria-hidden="true"></i> Distribución
       </button>
       <button type="button" class="com-tab" data-tab="liquidaciones" role="tab" aria-selected="false">
         <i class="ti ti-receipt" aria-hidden="true"></i> Liquidaciones
@@ -139,11 +146,11 @@
         <div>
           <h2 id="com-un-title" class="admin-section__title">Unidades de comisión</h2>
           <p class="admin-section__subtitle">
-            Agrupan abonos. Por vendedor y por mes, las <b>ventas</b> de la unidad son las OV con al menos uno de sus abonos.
-            Con <b>Incluido desde</b> = N comisionan las ventas desde la N-ésima (ventas − N + 1), y la comisión es
-            <b>base comisionable de la unidad × ventas que comisionan / ventas</b> (el promedio por venta). Por debajo de N, la comisión es cero.
-            El valor es el mismo para todos los vendedores. Con <b>Comisiona</b> destildado la unidad queda cargada,
-            pero sus abonos no suman a la base comisionable ni comisionan.
+            Agrupan abonos. Por mes, las <b>ventas</b> de la unidad son las OV de <b>todos los vendedores</b> con al menos uno de sus abonos.
+            Con <b>Incluido desde</b> = N comisionan ventas − N + 1, y el <b>fondo comisionable</b> de la unidad es
+            <b>base comisionable × ventas que comisionan / ventas</b> (el promedio por venta). Por debajo de N, el fondo comisionable es cero.
+            El fondo comisionable se reparte entre los vendedores según la pestaña <b>Distribución</b>. Con <b>Comisiona</b> destildado la unidad queda cargada,
+            pero sus abonos no suman a la base comisionable ni al fondo.
           </p>
         </div>
         <div class="com-actions com-solo-editor">
@@ -171,14 +178,34 @@
       </div>
     </section>
 
+    <!-- ───────────── DISTRIBUCIÓN ───────────── -->
+    <section class="admin-section com-panel" id="com-panel-distribucion" hidden aria-labelledby="com-dis-title">
+      <div class="admin-section__header com-toprow">
+        <div>
+          <h2 id="com-dis-title" class="admin-section__title">Distribución del fondo comisionable por vendedor</h2>
+          <p class="admin-section__subtitle">
+            Porcentaje del fondo comisionable de cada unidad que recibe cada vendedor, sin importar quién vendió. El nombre tiene que ser el del
+            <b>representante de ventas</b> en NetSuite. Si los porcentajes de una unidad no suman 100 %, lo que falta queda sin repartir.
+            Las ventas <b>Sin asignar</b> suman al fondo pero no reciben porcentaje.
+          </p>
+        </div>
+        <div class="com-actions com-solo-editor">
+          <button type="button" id="com-dis-guardar" class="btn btn--primary" disabled><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar cambios</button>
+        </div>
+      </div>
+      <p id="com-dis-status" class="com-status" role="status" aria-live="polite"></p>
+      <datalist id="com-dis-vendedores"></datalist>
+      <div id="com-dis-unidades" class="com-dis-grid"><p class="admin-loading">Cargando porcentajes…</p></div>
+    </section>
+
     <!-- ───────────── LIQUIDACIONES ───────────── -->
     <section class="admin-section com-panel" id="com-panel-liquidaciones" hidden aria-labelledby="com-liq-title">
       <div class="admin-section__header com-toprow">
         <div>
           <h2 id="com-liq-title" class="admin-section__title">Liquidaciones mensuales</h2>
           <p class="admin-section__subtitle">
-            Una por mes: oportunidades ganadas del mes, su OV de abonos y la comisión según la configuración vigente al generarla
-            (queda guardada con la liquidación). Para regenerar un mes, eliminá su liquidación y generala de nuevo.
+            Una por mes: oportunidades ganadas del mes, su OV de abonos, el fondo comisionable de cada unidad y su reparto por vendedor, según la
+            configuración vigente al generarla (unidades, abonos y porcentajes quedan guardados con la liquidación). Para regenerar un mes, eliminá su liquidación y generala de nuevo.
           </p>
         </div>
         <div class="com-actions com-solo-editor">
@@ -203,8 +230,8 @@
         <table class="admin-table com-tabla">
           <thead>
             <tr>
-              <th>Mes</th><th class="com-n">Ganadas</th><th class="com-n">OV de abonos</th><th class="com-n">Base comisionable</th>
-              <th class="com-n">Comisión</th><th>Generada</th><th></th>
+              <th>Mes</th><th class="com-n">Ganadas</th><th class="com-n">OV de abonos</th><th class="com-n">Fondo comisionable</th>
+              <th class="com-n">Comisión repartida</th><th>Generada</th><th></th>
             </tr>
           </thead>
           <tbody id="com-liq-tbody"><tr><td colspan="7" class="admin-loading">Cargando liquidaciones…</td></tr></tbody>

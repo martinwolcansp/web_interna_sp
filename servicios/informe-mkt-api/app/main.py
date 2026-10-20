@@ -20,7 +20,8 @@
 #   OV de las oportunidades ganadas del rango con sus abonos (ABO), para el
 #   boton "Comisiones por vendedor" (app/comisiones.py). Consulta NetSuite en
 #   vivo, no guarda nada. Permiso: ver en Informes de MKT o en Comisiones.
-#   Usa la configuracion de abonos y unidades de comision (migraciones 28 y 29).
+#   Usa la configuracion de abonos, unidades y porcentajes (migraciones 28 a 31):
+#   fondo comisionable por unidad con las ventas de todos y reparto por porcentaje.
 #
 # POST /comisiones/liquidar {mes: "AAAA-MM"}
 #   Calcula el mes completo como el pop up y guarda la liquidacion
@@ -119,7 +120,8 @@ def consultar_comisiones(pedido: PedidoActualizacion, authorization: str = Heade
             raise HTTPException(422, "La fecha 'desde' no puede ser posterior a 'hasta'.")
         if (pedido.hasta - pedido.desde).days + 1 > config.MAX_DIAS_CONSULTA:
             raise HTTPException(422, f"El rango no puede superar {config.MAX_DIAS_CONSULTA} dias.")
-        return comisiones.generar(pedido.desde, pedido.hasta, logger.info, sb.leer_abonos_comision(token), sb.leer_unidades_comision(token))
+        return comisiones.generar(pedido.desde, pedido.hasta, logger.info, sb.leer_abonos_comision(token), sb.leer_unidades_comision(token),
+                                  sb.leer_porcentajes_comision(token))
     except HTTPException:
         raise
     except Exception as e:
@@ -144,7 +146,8 @@ def liquidar_comisiones(pedido: PedidoLiquidacion, authorization: str = Header(N
         if desde > hoy:
             raise HTTPException(422, "No se puede liquidar un mes que todavía no empezó.")
         usuario = sb.verificar_usuario(token) or {}
-        r = comisiones.generar(desde, hasta, logger.info, sb.leer_abonos_comision(token), sb.leer_unidades_comision(token))
+        r = comisiones.generar(desde, hasta, logger.info, sb.leer_abonos_comision(token), sb.leer_unidades_comision(token),
+                                  sb.leer_porcentajes_comision(token))
         payload = comisiones.payload_liquidacion(r, desde, usuario.get("email"))
         if hasta >= hoy:
             payload["avisos"].append(f"Liquidación generada el {hoy.strftime('%d/%m/%Y')}, con el mes todavía en curso.")

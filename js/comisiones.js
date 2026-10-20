@@ -3,7 +3,7 @@
  *
  * Pestaña Abonos (tabla comision_abono, migracion_28_comisiones.sql):
  *   - Todos los que tienen "ver" en la sección comisiones ven la tabla y la
- *     exportan. Con "editar" se modifican Incluido / Incluido desde / nombres,
+ *     exportan. Con "editar" se modifican la unidad de comisión y los nombres,
  *     se agregan o eliminan abonos y se importa un Excel (con vista previa
  *     de los cambios antes de aplicar; nunca borra abonos que no vengan en
  *     el archivo).
@@ -14,6 +14,15 @@
  * Pestaña Unidades de comisión (comision_unidad, migracion_29, 19/10/2026):
  *   agrupan abonos; "Incluido desde" = N por unidad, igual para todos los
  *   vendedores. Un abono está incluido si tiene unidad (desplegable en Abonos).
+ *
+ *   Con "Comisiona" destildado (migración 30) sus abonos no suman.
+ *
+ * Pestaña Distribución (comision_porcentaje, migracion_31, 19/10/2026):
+ *   porcentaje del fondo comisionable de cada unidad que recibe cada vendedor (nombre del
+ *   representante de ventas de NetSuite). Si no suman 100 % se advierte.
+ *   Modelo de fondo comisionable: por unidad y por mes se cuentan las ventas de todos los
+ *   vendedores; comisionan ventas − N + 1; fondo comisionable = base × comisionan / ventas;
+ *   el fondo comisionable se reparte por porcentaje, sin importar quién vendió.
  *
  * Pestaña Liquidaciones (comision_liquidacion + _vendedor + _linea):
  *   - Generar: POST /comisiones/liquidar {mes} a informe-mkt-api, que
@@ -40,6 +49,11 @@ const EST = {
   liqSeleccionada: null, // id
   liqDetalle: null,      // { liq, vendedores, lineas }
   liqBorrarPendiente: null,
+  porcentajes: [],       // comision_porcentaje (filas de la base)
+  disTrabajo: {},        // unidad_id -> [{key, id, vendedor, porcentaje}] en edición
+  disSucias: new Set(),  // unidades con cambios sin guardar
+  disVendedores: [],     // nombres sugeridos (representantes de ventas)
+  disSinTabla: false,    // falta la migración 31
   vendAbierto: null,
   lineaFiltroVend: ''
 };
@@ -92,10 +106,12 @@ document.addEventListener('sp:auth-ready', async (e) => {
   iniciarTabs();
   iniciarAbonos();
   iniciarUnidades();
+  iniciarDistribucion();
   iniciarLiquidaciones();
   await cargarUnidades();
   await cargarAbonos();
   await cargarLiquidaciones();
+  await cargarPorcentajes();
 });
 
 function iniciarTabs() {
@@ -106,7 +122,7 @@ function iniciarTabs() {
         x.classList.toggle('is-active', activo);
         x.setAttribute('aria-selected', activo ? 'true' : 'false');
       });
-      ['abonos', 'unidades', 'liquidaciones'].forEach((t) => { $('com-panel-' + t).hidden = b.dataset.tab !== t; });
+      ['abonos', 'unidades', 'distribucion', 'liquidaciones'].forEach((t) => { $('com-panel-' + t).hidden = b.dataset.tab !== t; });
     });
   });
 }
@@ -159,10 +175,10 @@ async function cargarAbonos() {
   status('com-ab-status', 'Cargando abonos…');
   const { data, error } = await window.supabaseClient
     .from('comision_abono')
-    .select('codigo, nombre, nombre_mostrar, incluido, incluido_desde, unidad_id, actualizado_en, actualizado_por')
+    .select('codigo, nombre, nombre_mostrar, unidad_id, actualizado_en, actualizado_por')
     .order('codigo');
   if (error) {
-    status('com-ab-status', 'No se pudieron leer los abonos (¿falta correr las migraciones 28 y 29?): ' + error.message, 'error');
+    status('com-ab-status', 'No se pudieron leer los abonos: ' + error.message, 'error');
     $('com-ab-tbody').innerHTML = '';
     return;
   }
@@ -260,7 +276,7 @@ function agregarAbono() {
   let n = 1, codigo;
   do { codigo = `NUEVO-${n++}`; } while (filaActual(codigo));
   EST.nuevos.add(codigo);
-  EST.cambios.set(codigo, { codigo, nombre: '', nombre_mostrar: '', unidad_id: null, incluido_desde: 1 });
+  EST.cambios.set(codigo, { codigo, nombre: '', nombre_mostrar: '', unidad_id: null });
   $('com-ab-buscar').value = '';
   $('com-ab-filtro').value = '';
   renderAbonos();
@@ -311,8 +327,6 @@ function filaParaGuardar(a) {
     nombre: normEspacios(a.nombre) || a.codigo,
     nombre_mostrar: normEspacios(a.nombre_mostrar) || null,
     unidad_id: a.unidad_id || null,
-    incluido: !!a.unidad_id, // la base lo vuelve a calcular por trigger (migración 29)
-    incluido_desde: Math.max(1, parseInt(a.incluido_desde, 10) || 1),
     actualizado_en: new Date().toISOString(),
     actualizado_por: EST.session.user.email || null
   };
@@ -510,7 +524,7 @@ function prepararImportacion(filas) {
   vistos.forEach((imp) => {
     const base = filaBase(imp.codigo);
     if (!base) {
-      nuevos.push({ ...imp, nombre_mostrar: imp.nombre_mostrar ?? null, unidad_id: imp.unidad_id ?? null, incluido_desde: 1 });
+      nuevos.push({ ...imp, nombre_mostrar: imp.nombre_mostrar ?? null, unidad_id: imp.unidad_id ?? null });
       return;
     }
     const final = {
@@ -585,22 +599,13 @@ function iniciarUnidades() {
 }
 
 async function cargarUnidades() {
-  let { data, error } = await window.supabaseClient
+  const { data, error } = await window.supabaseClient
     .from('comision_unidad')
     .select('id, nombre, incluido_desde, comisiona, descripcion, actualizado_en, actualizado_por')
     .order('nombre');
-  EST.unSinComisiona = false;
-  if (error && /comisiona/.test(error.message || '')) { // falta la migración 30
-    ({ data, error } = await window.supabaseClient
-      .from('comision_unidad')
-      .select('id, nombre, incluido_desde, descripcion, actualizado_en, actualizado_por')
-      .order('nombre'));
-    EST.unSinComisiona = !error;
-    (data || []).forEach((u) => { u.comisiona = true; });
-  }
   if (error) {
     EST.unidades = [];
-    status('com-un-status', 'No se pudieron leer las unidades (¿falta correr la migración 29?): ' + error.message, 'error');
+    status('com-un-status', 'No se pudieron leer las unidades: ' + error.message, 'error');
     $('com-un-tbody').innerHTML = '';
     actualizarFiltroUnidades();
     return;
@@ -610,6 +615,7 @@ async function cargarUnidades() {
   EST.unNuevas.clear();
   actualizarFiltroUnidades();
   renderUnidades();
+  if (EST.porcentajes.length || Object.keys(EST.disTrabajo).length) renderDistribucion();
 }
 
 function unidadBase(id) { return EST.unidades.find((u) => u.id === id) || null; }
@@ -645,10 +651,9 @@ function renderUnidades() {
     const abonos = EST.abonos.filter((a) => a.unidad_id === u.id).map((a) => a.codigo).sort(compararCodigos);
     const clase = (nueva ? 'is-nuevo' : (EST.unCambios.has(u.id) ? 'is-dirty' : (EST.unBorrarPendiente === u.id ? 'com-liq-borrar' : ''))) +
       (u.comisiona === false ? ' com-un-off' : '');
-    const disCom = EST.unSinComisiona ? ' disabled title="Falta correr la migración 30"' : dis;
     return `<tr data-id="${esc(u.id)}" class="${clase}">
       <td><input class="admin-input" data-campo="nombre" value="${esc(u.nombre)}" placeholder="Ej. Comercio Seguro"${dis}></td>
-      <td class="com-c"><input type="checkbox" class="admin-checkbox" data-campo="comisiona"${u.comisiona !== false ? ' checked' : ''}${disCom} aria-label="Comisiona"></td>
+      <td class="com-c"><input type="checkbox" class="admin-checkbox" data-campo="comisiona"${u.comisiona !== false ? ' checked' : ''}${dis} aria-label="Comisiona"></td>
       <td class="com-c"><input type="number" min="1" step="1" class="admin-input com-input-num" data-campo="incluido_desde" value="${esc(u.incluido_desde || 1)}"${dis} aria-label="Incluido desde"></td>
       <td>${abonos.length ? abonos.map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ') : '<span class="com-meta">Sin abonos: asignalos en la pestaña Abonos</span>'}</td>
       <td><span class="com-meta">${nueva ? 'Nueva, sin guardar' : esc(fmtFechaHora(u.actualizado_en))}${u.actualizado_por && !nueva ? '<br>' + esc(u.actualizado_por) : ''}</span></td>
@@ -684,7 +689,7 @@ async function guardarUnidades() {
   const sb = window.supabaseClient;
   const meta = { actualizado_en: new Date().toISOString(), actualizado_por: EST.session.user.email || null };
   const limpio = (u) => ({ nombre: normEspacios(u.nombre), incluido_desde: Math.max(1, parseInt(u.incluido_desde, 10) || 1),
-    ...(EST.unSinComisiona ? {} : { comisiona: u.comisiona !== false }), ...meta });
+    comisiona: u.comisiona !== false, ...meta });
   const nuevas = filas.filter((u) => EST.unNuevas.has(u.id)).map(limpio);
   const existentes = filas.filter((u) => !EST.unNuevas.has(u.id)).map((u) => ({ id: u.id, ...limpio(u) }));
   const r1 = nuevas.length ? await sb.from('comision_unidad').insert(nuevas) : { error: null };
@@ -735,6 +740,192 @@ async function borrarUnidad(id) {
   status('com-un-status', `Se eliminó la unidad ${u ? u.nombre : ''}.`, 'ok');
 }
 
+// ═══════════════════════════ DISTRIBUCIÓN DEL FONDO COMISIONABLE ═══════════════════════════
+// Porcentaje del fondo comisionable de cada unidad que recibe cada vendedor
+// (comision_porcentaje, migración 31). Se edita por unidad y se guarda todo
+// junto. Si los porcentajes de una unidad no suman 100 % se advierte (no se
+// bloquea): lo que falta queda sin repartir en la liquidación.
+function iniciarDistribucion() {
+  $('com-dis-guardar').addEventListener('click', guardarPorcentajes);
+  const cont = $('com-dis-unidades');
+  cont.addEventListener('input', (ev) => {
+    const tr = ev.target.closest('tr[data-key]');
+    const card = ev.target.closest('[data-unidad]');
+    if (!tr || !card) return;
+    const fila = (EST.disTrabajo[card.dataset.unidad] || []).find((f) => f.key === tr.dataset.key);
+    if (!fila) return;
+    fila[ev.target.dataset.campo] = ev.target.value;
+    EST.disSucias.add(card.dataset.unidad);
+    actualizarTotalUnidad(card.dataset.unidad);
+    actualizarBotonGuardarPorcentajes();
+  });
+  cont.addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-accion]');
+    const card = ev.target.closest('[data-unidad]');
+    if (!b || !card) return;
+    const uid = card.dataset.unidad;
+    if (b.dataset.accion === 'agregar') {
+      const filas = EST.disTrabajo[uid] || (EST.disTrabajo[uid] = []);
+      const key = 'n' + Date.now() + Math.random().toString(36).slice(2, 6);
+      filas.push({ key, id: null, vendedor: '', porcentaje: '' });
+      EST.disSucias.add(uid);
+      renderDistribucion();
+      const input = document.querySelector(`[data-unidad="${CSS.escape(uid)}"] tr[data-key="${key}"] input[data-campo="vendedor"]`);
+      if (input) input.focus();
+    } else if (b.dataset.accion === 'quitar') {
+      const key = b.closest('tr[data-key]').dataset.key;
+      EST.disTrabajo[uid] = (EST.disTrabajo[uid] || []).filter((f) => f.key !== key);
+      EST.disSucias.add(uid);
+      renderDistribucion();
+    } else if (b.dataset.accion === 'repartir') {
+      // Reparte el 100 % en partes iguales entre los vendedores cargados.
+      const filas = (EST.disTrabajo[uid] || []).filter((f) => normEspacios(f.vendedor));
+      if (!filas.length) return;
+      const parte = Math.floor((100 / filas.length) * 1000) / 1000;
+      filas.forEach((f, i) => { f.porcentaje = String(i === filas.length - 1 ? +(100 - parte * (filas.length - 1)).toFixed(3) : parte); });
+      EST.disSucias.add(uid);
+      renderDistribucion();
+    }
+  });
+}
+
+async function cargarPorcentajes() {
+  const sb = window.supabaseClient;
+  const { data, error } = await sb.from('comision_porcentaje')
+    .select('id, unidad_id, vendedor, porcentaje, actualizado_en, actualizado_por').order('vendedor');
+  EST.disSinTabla = !!error;
+  if (error) {
+    status('com-dis-status', 'No se pudieron leer los porcentajes (¿falta correr la migración 31?): ' + error.message, 'error');
+    $('com-dis-unidades').innerHTML = '';
+    return;
+  }
+  EST.porcentajes = data || [];
+  EST.disTrabajo = {};
+  EST.porcentajes.forEach((p) => {
+    (EST.disTrabajo[p.unidad_id] = EST.disTrabajo[p.unidad_id] || [])
+      .push({ key: p.id, id: p.id, vendedor: p.vendedor, porcentaje: String(Number(p.porcentaje)) });
+  });
+  EST.disSucias.clear();
+  // Vendedores sugeridos: los que ya figuran en liquidaciones y porcentajes.
+  const nombres = new Set(EST.porcentajes.map((p) => normEspacios(p.vendedor)));
+  const r = await sb.from('comision_liquidacion_vendedor').select('vendedor').limit(2000);
+  (r.data || []).forEach((x) => nombres.add(normEspacios(x.vendedor)));
+  nombres.delete('Sin asignar'); nombres.delete('');
+  EST.disVendedores = [...nombres].sort((a, b) => a.localeCompare(b, 'es'));
+  $('com-dis-vendedores').innerHTML = EST.disVendedores.map((v) => `<option value="${esc(v)}"></option>`).join('');
+  renderDistribucion();
+}
+
+function sumaPorcentajes(filas) {
+  return Math.round((filas || []).reduce((s, f) => s + (parseFloat(String(f.porcentaje).replace(',', '.')) || 0), 0) * 1000) / 1000;
+}
+function fmtPct(n) { return Number(n).toLocaleString('es-AR', { maximumFractionDigits: 3 }) + ' %'; }
+
+function htmlTotalUnidad(uid) {
+  const filas = EST.disTrabajo[uid] || [];
+  const u = unidadBase(uid);
+  if (u && u.comisiona === false) return '<span class="com-meta">La unidad no comisiona: no genera fondo comisionable (los porcentajes quedan guardados para cuando se active).</span>';
+  const suma = sumaPorcentajes(filas);
+  const ok = Math.abs(suma - 100) < 0.0005;
+  const msg = !filas.length ? 'Sin vendedores: el fondo comisionable de esta unidad queda sin repartir.'
+    : ok ? 'Suma 100 %.'
+      : suma < 100 ? `Faltan ${fmtPct(100 - suma)}: esa parte del fondo comisionable queda sin repartir.`
+        : `Sobran ${fmtPct(suma - 100)}: se repartiría más que el fondo comisionable.`;
+  return `<span class="com-dis-total${ok ? ' is-ok' : ' is-warn'}">${ok ? '' : '<i class="ti ti-alert-triangle" aria-hidden="true"></i> '}Total ${fmtPct(suma)}</span>
+    <span class="com-meta">${esc(msg)}</span>`;
+}
+function actualizarTotalUnidad(uid) {
+  const el = document.querySelector(`[data-unidad="${CSS.escape(uid)}"] .com-dis-pie`);
+  if (el) el.innerHTML = htmlTotalUnidad(uid);
+  const card = document.querySelector(`[data-unidad="${CSS.escape(uid)}"]`);
+  if (card) card.classList.toggle('is-dirty', EST.disSucias.has(uid));
+}
+function actualizarBotonGuardarPorcentajes() {
+  const n = EST.disSucias.size;
+  $('com-dis-guardar').disabled = n === 0;
+  $('com-dis-guardar').innerHTML = '<i class="ti ti-device-floppy" aria-hidden="true"></i> ' + (n ? `Guardar cambios (${n} unidad${n > 1 ? 'es' : ''})` : 'Guardar cambios');
+}
+
+function renderDistribucion() {
+  const cont = $('com-dis-unidades');
+  if (!cont || EST.disSinTabla) return;
+  const dis = EST.puedeEditar ? '' : ' disabled';
+  const unidades = EST.unidades.slice().sort((a, b) =>
+    ((a.comisiona === false) - (b.comisiona === false)) || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
+  if (!unidades.length) {
+    cont.innerHTML = '<p class="admin-empty">Todavía no hay unidades de comisión. Creálas en la pestaña Unidades de comisión.</p>';
+    actualizarBotonGuardarPorcentajes();
+    return;
+  }
+  cont.innerHTML = unidades.map((u) => {
+    const filas = EST.disTrabajo[u.id] || [];
+    const abonos = EST.abonos.filter((a) => a.unidad_id === u.id).map((a) => a.codigo).sort(compararCodigos);
+    return `<div class="com-dis-card${u.comisiona === false ? ' is-off' : ''}${EST.disSucias.has(u.id) ? ' is-dirty' : ''}" data-unidad="${esc(u.id)}">
+      <div class="com-dis-head">
+        <div><b>${esc(u.nombre)}</b>
+          <span class="com-meta">${u.comisiona === false ? 'No comisiona: no tiene fondo comisionable' : 'Incluido desde ' + esc(u.incluido_desde)} ·
+          ${abonos.length ? abonos.map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ') : 'sin abonos'}</span></div>
+        <div class="com-actions com-solo-editor">
+          <button type="button" class="btn btn--secondary btn--sm" data-accion="repartir" title="Reparte el 100 % en partes iguales">Partes iguales</button>
+          <button type="button" class="btn btn--secondary btn--sm" data-accion="agregar"><i class="ti ti-plus" aria-hidden="true"></i> Agregar vendedor</button>
+        </div>
+      </div>
+      <table class="admin-table com-tabla com-dis-tabla"><thead><tr><th>Vendedor</th><th class="com-n">% del fondo</th><th class="com-solo-editor"></th></tr></thead><tbody>` +
+      (filas.length ? filas.map((f) => `<tr data-key="${esc(f.key)}">
+          <td><input class="admin-input" data-campo="vendedor" list="com-dis-vendedores" value="${esc(f.vendedor)}" placeholder="Nombre del representante de ventas"${dis}></td>
+          <td class="com-n"><input type="number" min="0.001" max="100" step="0.001" class="admin-input com-input-num" data-campo="porcentaje" value="${esc(f.porcentaje)}"${dis} aria-label="Porcentaje"></td>
+          <td class="com-solo-editor"><button type="button" class="com-icon-btn" data-accion="quitar" title="Quitar"><i class="ti ti-x" aria-hidden="true"></i></button></td>
+        </tr>`).join('')
+        : '<tr><td colspan="3" class="admin-empty">Sin vendedores.</td></tr>') +
+      `</tbody></table>
+      <div class="com-dis-pie">${htmlTotalUnidad(u.id)}</div>
+    </div>`;
+  }).join('');
+  actualizarBotonGuardarPorcentajes();
+}
+
+async function guardarPorcentajes() {
+  const sb = window.supabaseClient;
+  const meta = { actualizado_en: new Date().toISOString(), actualizado_por: EST.session.user.email || null };
+  const borrar = [], upserts = [], inserts = [];
+  for (const uid of EST.disSucias) {
+    const u = unidadBase(uid);
+    const nombreU = u ? u.nombre : 'la unidad';
+    const vistos = new Set();
+    for (const f of EST.disTrabajo[uid] || []) {
+      const vendedor = normEspacios(f.vendedor);
+      const p = parseFloat(String(f.porcentaje).replace(',', '.'));
+      if (!vendedor) { status('com-dis-status', `${nombreU}: falta el nombre de un vendedor.`, 'error'); return; }
+      if (vendedor.toLowerCase() === 'sin asignar') { status('com-dis-status', `${nombreU}: «Sin asignar» no recibe porcentaje.`, 'error'); return; }
+      if (vistos.has(vendedor.toLowerCase())) { status('com-dis-status', `${nombreU}: ${vendedor} está dos veces.`, 'error'); return; }
+      if (!(p > 0 && p <= 100)) { status('com-dis-status', `${nombreU}: el porcentaje de ${vendedor} tiene que ser mayor que 0 y hasta 100.`, 'error'); return; }
+      vistos.add(vendedor.toLowerCase());
+      const fila = { unidad_id: uid, vendedor, porcentaje: Math.round(p * 1000) / 1000, ...meta };
+      if (f.id) upserts.push({ id: f.id, ...fila }); else inserts.push(fila);
+    }
+    const quedan = new Set((EST.disTrabajo[uid] || []).map((f) => f.id).filter(Boolean));
+    EST.porcentajes.filter((p) => p.unidad_id === uid && !quedan.has(p.id)).forEach((p) => borrar.push(p.id));
+  }
+  $('com-dis-guardar').disabled = true;
+  status('com-dis-status', 'Guardando…');
+  // Primero se borra (libera nombres), después se actualiza y se agrega.
+  const r1 = borrar.length ? await sb.from('comision_porcentaje').delete().in('id', borrar) : { error: null };
+  const r2 = !r1.error && upserts.length ? await sb.from('comision_porcentaje').upsert(upserts, { onConflict: 'id' }) : { error: null };
+  const r3 = !r1.error && !r2.error && inserts.length ? await sb.from('comision_porcentaje').insert(inserts) : { error: null };
+  const error = r1.error || r2.error || r3.error;
+  if (error) {
+    status('com-dis-status', 'No se pudo guardar: ' + (/duplicate|uidx/.test(error.message) ? 'un vendedor está repetido en la unidad.' : error.message), 'error');
+    actualizarBotonGuardarPorcentajes();
+    return;
+  }
+  const n = EST.disSucias.size;
+  await cargarPorcentajes();
+  const avisos = EST.unidades.filter((u) => u.comisiona !== false && (EST.disTrabajo[u.id] || []).length &&
+    Math.abs(sumaPorcentajes(EST.disTrabajo[u.id]) - 100) >= 0.0005).map((u) => u.nombre);
+  status('com-dis-status', `Se guardaron los porcentajes de ${n} unidad(es).` +
+    (avisos.length ? ` Atención: no suman 100 % en ${avisos.join(', ')}.` : ''), avisos.length ? 'error' : 'ok');
+}
+
 // ═══════════════════════════ LIQUIDACIONES ═══════════════════════════
 function iniciarLiquidaciones() {
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
@@ -758,7 +949,7 @@ function iniciarLiquidaciones() {
 async function cargarLiquidaciones() {
   const { data, error } = await window.supabaseClient
     .from('comision_liquidacion')
-    .select('id, mes, desde, hasta, generada_en, generada_por, totales, avisos')
+    .select('id, mes, desde, hasta, generada_en, generada_por, modelo, totales, avisos')
     .order('mes', { ascending: false });
   if (error) {
     $('com-liq-tbody').innerHTML = `<tr><td colspan="7" class="admin-empty">No se pudieron leer las liquidaciones: ${esc(error.message)}</td></tr>`;
@@ -793,7 +984,7 @@ function renderLiquidaciones() {
       <td><b>${esc(fmtMes(l.mes))}</b>${(l.avisos || []).length ? ' <i class="ti ti-alert-triangle" title="Tiene avisos" style="color:var(--color-alert-icon)"></i>' : ''}</td>
       <td class="com-n">${esc(t.ganadas ?? '')}</td>
       <td class="com-n">${esc(t.ovs ?? '')}</td>
-      <td class="com-n">${pesos(t.base_comisionable)}</td>
+      <td class="com-n">${l.modelo === 'fondo' ? pesos(t.fondo) : '<span class="com-meta" title="Modelo anterior: eliminala y generala de nuevo">modelo anterior</span>'}</td>
       <td class="com-n"><b>${pesos(t.comision)}</b></td>
       <td><span class="com-meta">${esc(fmtFechaHora(l.generada_en))}<br>${esc(l.generada_por || '')}</span></td>
       <td><div class="com-row-actions">
@@ -875,7 +1066,7 @@ async function leerDetalle(id) {
   const lineas = [];
   for (let desde = 0; ; desde += 1000) {
     const r = await sb.from('comision_liquidacion_linea').select('*').eq('liquidacion_id', id)
-      .order('vendedor').order('codigo').order('orden').range(desde, desde + 999);
+      .order('vendedor').order('ov_numero').order('codigo').range(desde, desde + 999);
     if (r.error) throw r.error;
     lineas.push(...r.data);
     if (r.data.length < 1000) break;
@@ -903,63 +1094,95 @@ async function verLiquidacion(id) {
 
 function renderDetalle() {
   const { liq, vendedores, lineas } = EST.liqDetalle;
+  const cont = $('com-liq-detalle');
+  if (liq.modelo !== 'fondo') {
+    cont.innerHTML = `<h3>Liquidación de ${esc(fmtMes(liq.mes))}</h3>
+      <div class="com-avisos"><b>Generada con el modelo anterior (comisión por vendedor).</b>
+      <p>Desde el 19/10/2026 la comisión se calcula con el fondo comisionable por unidad y el reparto por porcentaje. Eliminá esta liquidación y
+      generala de nuevo para verla con el modelo actual (la limpieza de la migración 32 no se puede correr mientras quede alguna).</p></div>`;
+    return;
+  }
   const t = liq.totales || {};
+  const fondos = liq.fondos || [];
   let h = `<h3>Liquidación de ${esc(fmtMes(liq.mes))}</h3>
     <p class="com-detalle__meta">Oportunidades ganadas del ${esc(fmtDia(liq.desde))} al ${esc(fmtDia(liq.hasta))} ·
       generada el ${esc(fmtFechaHora(liq.generada_en))}${liq.generada_por ? ' por ' + esc(liq.generada_por) : ''} ·
       importes sin IVA</p>
     <div class="com-kpis">
-      <div class="com-kpi"><b>${esc(t.ganadas ?? 0)}</b><span>Oportunidades ganadas</span></div>
-      <div class="com-kpi"><b>${esc(t.ovs ?? 0)}</b><span>OV de abonos · ${esc(t.ganadas_sin_ov ?? 0)} ganadas sin OV</span></div>
-      <div class="com-kpi"><b>${esc(t.ovs_comisionables ?? 0)}</b><span>OV con abonos de alguna unidad</span></div>
-      <div class="com-kpi"><b>${pesos(t.base_comisionable)}</b><span>Base comisionable</span></div>
-      <div class="com-kpi com-kpi--total"><b>${pesos(t.comision)}</b><span>Comisión total</span></div>
+      <div class="com-kpi"><b>${esc(t.ganadas ?? 0)}</b><span>Oportunidades ganadas · ${esc(t.ganadas_sin_ov ?? 0)} sin OV de abonos</span></div>
+      <div class="com-kpi"><b>${esc(t.ovs_comisionables ?? 0)}</b><span>Ventas con abonos que comisionan (de ${esc(t.ovs ?? 0)} OV de abonos)</span></div>
+      <div class="com-kpi"><b>${pesos(t.fondo)}</b><span>Fondo comisionable total (base ${pesos(t.base_comisionable)})</span></div>
+      <div class="com-kpi com-kpi--total"><b>${pesos(t.comision)}</b><span>Comisión repartida</span></div>
+      <div class="com-kpi"><b>${pesos(t.sin_repartir)}</b><span>Sin repartir</span></div>
+      <div class="com-kpi"><b>${esc(t.ventas_sin_asignar ?? 0)}</b><span>Ventas sin asignar (${pesos(t.base_sin_asignar)} de base): suman al fondo, no reciben</span></div>
     </div>`;
   if ((liq.avisos || []).length) {
     h += `<div class="com-avisos"><b>Avisos al generar</b><ul>${liq.avisos.map((a) => `<li>${esc(a)}</li>`).join('')}</ul></div>`;
   }
-  h += `<h4>Por vendedor</h4><p class="com-detalle__meta" style="margin:-6px 0 8px">Click en un vendedor para ver el detalle por unidad de comisión y filtrar las líneas.</p>
+
+  h += `<h4>Fondo comisionable por unidad de comisión</h4>
+    <p class="com-detalle__meta" style="margin:-6px 0 8px">Ventas de todos los vendedores. Comisionan = ventas − incluido desde + 1 (mínimo 0);
+      fondo comisionable = base × comisionan / ventas. El fondo comisionable se reparte según el porcentaje de cada vendedor.</p>
     <div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr>
-      <th>Vendedor</th><th class="com-n">Ganadas</th><th class="com-n">OV de abonos</th><th class="com-n">OV con abonos incluidos</th>
-      <th class="com-n">Base comisionable</th><th class="com-n">Comisión</th></tr></thead><tbody>`;
+      <th>Unidad</th><th class="com-n">Ventas</th><th class="com-n">Incluido desde</th><th class="com-n">Comisionan</th><th class="com-n">% que comisiona</th>
+      <th class="com-n">Base</th><th class="com-n">Promedio por venta</th><th class="com-n">Fondo comisionable</th><th class="com-n">% asignado</th>
+      <th class="com-n">Repartido</th><th class="com-n">Sin repartir</th><th class="com-n">Ventas sin asignar</th></tr></thead><tbody>` +
+    (fondos.length ? fondos.map((p) => {
+      const okPct = Math.abs(Number(p.porcentaje_total) - 100) < 0.0005;
+      return `<tr><td><b>${esc(p.unidad)}</b>${(p.vendedores_sin_porcentaje || []).length
+        ? `<br><span class="com-meta">Con ventas y sin porcentaje: ${esc(p.vendedores_sin_porcentaje.join(', '))}</span>` : ''}</td>
+        <td class="com-n">${p.ventas}</td><td class="com-n">${esc(p.incluido_desde)}</td><td class="com-n">${p.comisionan}</td>
+        <td class="com-n">${pct(p.factor)}</td><td class="com-n">${pesos(p.base)}</td><td class="com-n">${pesos(p.promedio)}</td>
+        <td class="com-n"><b>${pesos(p.fondo)}</b></td>
+        <td class="com-n">${okPct ? '' : '<i class="ti ti-alert-triangle com-warn" title="No suma 100 %" aria-hidden="true"></i> '}${fmtPct(p.porcentaje_total || 0)}</td>
+        <td class="com-n">${pesos(p.repartido)}</td><td class="com-n">${Number(p.sin_repartir) ? pesos(p.sin_repartir) : '—'}</td>
+        <td class="com-n">${p.ventas_sin_asignar ? `${p.ventas_sin_asignar} <span class="com-meta">(${pesos(p.base_sin_asignar)})</span>` : '—'}</td></tr>`;
+    }).join('') : '<tr><td colspan="12" class="admin-empty">Ninguna unidad tuvo ventas.</td></tr>') +
+    `</tbody><tfoot><tr><td>Total</td><td class="com-n">${fondos.reduce((s, p) => s + p.ventas, 0)}</td><td></td>
+      <td class="com-n">${fondos.reduce((s, p) => s + p.comisionan, 0)}</td><td></td><td class="com-n">${pesos(fondos.reduce((s, p) => s + Number(p.base), 0))}</td><td></td>
+      <td class="com-n">${pesos(t.fondo)}</td><td></td><td class="com-n">${pesos(t.comision)}</td><td class="com-n">${pesos(t.sin_repartir)}</td>
+      <td class="com-n">${esc(t.ventas_sin_asignar ?? 0)}</td></tr></tfoot></table></div>`;
+
+  h += `<h4>Reparto por vendedor</h4><p class="com-detalle__meta" style="margin:-6px 0 8px">La comisión es su porcentaje del fondo comisionable de cada unidad, sin importar quién vendió.
+      Las ventas y el aporte al fondo son informativos. Click en un vendedor para ver el detalle por unidad y filtrar las líneas.</p>
+    <div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr>
+      <th>Vendedor</th><th class="com-n">Ganadas</th><th class="com-n">OV de abonos</th><th class="com-n">Ventas que suman al fondo</th>
+      <th class="com-n">Aporte al fondo</th><th class="com-n">Comisión</th></tr></thead><tbody>`;
   vendedores.forEach((v) => {
     const abierto = EST.vendAbierto === v.vendedor;
     h += `<tr class="com-vend-row${abierto ? ' is-open' : ''}" data-vend="${esc(v.vendedor)}">
-      <td>${abierto ? '▾' : '▸'} ${esc(v.vendedor)}</td><td class="com-n">${v.ganadas}</td><td class="com-n">${v.ovs}</td>
-      <td class="com-n">${v.ovs_comisionables}</td><td class="com-n">${pesos(v.base_comisionable)}</td><td class="com-n"><b>${pesos(v.comision)}</b></td></tr>`;
+      <td>${abierto ? '▾' : '▸'} ${esc(v.vendedor)}${v.vendedor === 'Sin asignar' ? ' <span class="com-meta">(no recibe porcentaje)</span>' : ''}</td>
+      <td class="com-n">${v.ganadas}</td><td class="com-n">${v.ovs}</td><td class="com-n">${v.ovs_comisionables}</td>
+      <td class="com-n">${pesos(v.aporte)}</td><td class="com-n"><b>${pesos(v.comision)}</b></td></tr>`;
     if (abierto) {
-      h += (v.por_unidad || []).length ? `<tr class="com-sub"><td colspan="6"><table class="com-subtabla"><thead><tr>
-        <th>Unidad de comisión</th><th class="com-n">Ventas (OV)</th><th class="com-n">Incluido desde</th><th class="com-n">Comisionan</th>
-        <th class="com-n">% que comisiona</th><th class="com-n">Base</th><th class="com-n">Promedio por venta</th><th class="com-n">Comisión</th></tr></thead><tbody>` +
-        v.por_unidad.map((u) => `<tr><td>${esc(u.unidad)}</td><td class="com-n">${u.ventas}</td><td class="com-n">${esc(u.incluido_desde ?? '')}</td>
-          <td class="com-n">${u.comisionan}</td><td class="com-n">${pct(u.factor)}</td><td class="com-n">${pesos(u.base)}</td>
-          <td class="com-n">${pesos(u.promedio)}</td><td class="com-n"><b>${pesos(u.comision)}</b></td></tr>`).join('') +
-        '</tbody></table><p class="com-meta" style="margin:6px 0 0">Comisión = base de la unidad × comisionan / ventas (comisionan = ventas − incluido desde + 1, mínimo 0).</p></td></tr>'
-      : `<tr class="com-sub"><td colspan="6">${(v.por_abono || []).length ? `<table class="com-subtabla"><thead><tr>
-        <th>Abono</th><th class="com-n">OV</th><th class="com-n">Incluido desde</th><th class="com-n">OV que comisionan</th>
-        <th class="com-n">Base</th><th class="com-n">Comisión</th></tr></thead><tbody>` +
-        v.por_abono.map((a) => `<tr><td class="com-codigo">${esc(a.codigo)}</td><td class="com-n">${a.ovs}</td><td class="com-n">${esc(a.incluido_desde ?? '')}</td>
-          <td class="com-n">${a.comisionan}</td><td class="com-n">${pesos(a.base)}</td><td class="com-n"><b>${pesos(a.comision)}</b></td></tr>`).join('') +
-        '</tbody></table>' : '<span class="com-meta">Sin abonos incluidos.</span>'}</td></tr>`;
+      const us = v.por_unidad || [];
+      h += `<tr class="com-sub"><td colspan="6">${us.length ? `<table class="com-subtabla"><thead><tr>
+        <th>Unidad de comisión</th><th class="com-n">Ventas</th><th class="com-n">Base</th><th class="com-n">Aporte al fondo</th>
+        <th class="com-n">% del fondo</th><th class="com-n">Comisión</th></tr></thead><tbody>` +
+        us.map((u) => `<tr><td>${esc(u.unidad)}${u.comisiona === false ? ' <span class="com-no">(no comisiona)</span>' : ''}</td>
+          <td class="com-n">${u.ventas}</td><td class="com-n">${u.comisiona === false ? '—' : pesos(u.base)}</td>
+          <td class="com-n">${u.comisiona === false ? '—' : pesos(u.aporte)}</td>
+          <td class="com-n">${u.porcentaje == null ? '<span class="com-meta">sin %</span>' : fmtPct(u.porcentaje)}</td>
+          <td class="com-n"><b>${pesos(u.comision)}</b></td></tr>`).join('') +
+        '</tbody></table>' : '<span class="com-meta">Sin ventas ni porcentajes.</span>'}</td></tr>`;
     }
   });
   h += `</tbody><tfoot><tr><td>Total</td><td class="com-n">${vendedores.reduce((s, v) => s + v.ganadas, 0)}</td>
     <td class="com-n">${vendedores.reduce((s, v) => s + v.ovs, 0)}</td><td class="com-n">${vendedores.reduce((s, v) => s + v.ovs_comisionables, 0)}</td>
-    <td class="com-n">${pesos(t.base_comisionable)}</td><td class="com-n">${pesos(t.comision)}</td></tr></tfoot></table></div>`;
+    <td class="com-n">${pesos(vendedores.reduce((s, v) => s + Number(v.aporte || 0), 0))}</td><td class="com-n">${pesos(t.comision)}</td></tr></tfoot></table></div>`;
 
   const ls = EST.lineaFiltroVend ? lineas.filter((l) => l.vendedor === EST.lineaFiltroVend) : lineas;
   h += `<h4>Líneas de abono${EST.lineaFiltroVend ? ' · ' + esc(EST.lineaFiltroVend) : ''} (${ls.length})</h4>
     <div class="com-lineas-wrap"><table class="admin-table com-tabla"><thead><tr>
       <th>Vendedor</th><th>OV</th><th>Fecha OV</th><th>Cliente</th><th>Oportunidad</th><th>Abono</th>
-      <th>Unidad de comisión</th><th class="com-n">N.º</th><th class="com-n">% que comisiona</th><th class="com-n">Importe</th><th class="com-n">Comisión</th>
+      <th>Unidad de comisión</th><th class="com-n">% que comisiona</th><th class="com-n">Importe</th><th class="com-n">Aporte al fondo</th>
     </tr></thead><tbody>` +
     (ls.length ? ls.map((l) => `<tr><td>${esc(l.vendedor)}</td><td>${esc(l.ov_numero)}</td><td>${esc(fmtDia(l.fecha_ov))}</td>
       <td>${esc(l.cliente)}</td><td>${esc(l.oportunidad)}</td><td title="${esc(l.articulo)}"><span class="com-codigo">${esc(l.codigo)}</span></td>
       <td>${l.incluido ? esc(l.unidad || 'Incluido') : (l.unidad ? esc(l.unidad) + ' <span class="com-no">(no comisiona)</span>' : '<span class="com-no">No incluido</span>')}</td>
-      <td class="com-n">${l.orden ? `${l.orden}${l.incluido_desde > 1 ? ' / desde ' + l.incluido_desde : ''}` : ''}</td>
-      <td class="com-n">${!l.incluido ? '' : (l.factor != null ? pct(l.factor) : (l.comisiona ? '100 %' : '0 %'))}</td>
-      <td class="com-n">${pesos(l.importe)}</td><td class="com-n">${l.comisiona ? '<b>' + pesos(l.comision) + '</b>' : ''}</td></tr>`).join('')
-      : '<tr><td colspan="11" class="admin-empty">Sin líneas.</td></tr>') + '</tbody></table></div>';
+      <td class="com-n">${l.incluido && l.factor != null ? pct(l.factor) : ''}</td>
+      <td class="com-n">${pesos(l.importe)}</td><td class="com-n">${l.incluido ? pesos(l.aporte) : ''}</td></tr>`).join('')
+      : '<tr><td colspan="10" class="admin-empty">Sin líneas.</td></tr>') + '</tbody></table></div>';
 
   const sinOv = (liq.sin_ov || []).filter((o) => !EST.lineaFiltroVend || o.vendedor === EST.lineaFiltroVend);
   h += `<h4>Ganadas sin OV de abonos (${sinOv.length})</h4>` + (sinOv.length
@@ -971,16 +1194,18 @@ function renderDetalle() {
 
   const cfg = (liq.config || []).slice().sort((a, b) => (b.incluido - a.incluido) || compararCodigos(a.codigo, b.codigo));
   const uns = liq.unidades || [];
-  h += `<details class="com-config"><summary>Configuración usada (${uns.length ? uns.length + ' unidades de comisión · ' : ''}${cfg.filter((c) => c.incluido).length} abonos incluidos de ${cfg.length})</summary>` +
-    (uns.length ? `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Unidad de comisión</th><th class="com-n">Incluido desde</th><th>Abonos</th></tr></thead><tbody>` +
-      uns.map((u) => `<tr><td>${esc(u.nombre)}${u.comisiona === false ? ' <span class="com-no">(no comisiona)</span>' : ''}</td><td class="com-n">${u.comisiona === false ? '—' : esc(u.incluido_desde)}</td><td>${(u.abonos || []).map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ')}</td></tr>`).join('') +
-      '</tbody></table></div>' : '') +
-    `<div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Código</th><th>Nombre</th><th>Unidad de comisión</th>${uns.length ? '' : '<th class="com-n">Incluido desde</th>'}</tr></thead><tbody>` +
+  const porc = liq.porcentajes || [];
+  h += `<details class="com-config"><summary>Configuración usada (${uns.length} unidades · ${porc.length} porcentajes · ${cfg.filter((c) => c.incluido).length} abonos incluidos de ${cfg.length})</summary>
+    <div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Unidad de comisión</th><th class="com-c">Comisiona</th><th class="com-n">Incluido desde</th><th>Abonos</th><th>Porcentajes</th></tr></thead><tbody>` +
+    uns.map((u) => `<tr><td>${esc(u.nombre)}</td><td class="com-c">${u.comisiona === false ? '<span class="com-no">No</span>' : '<span class="com-si">Sí</span>'}</td>
+      <td class="com-n">${esc(u.incluido_desde)}</td><td>${(u.abonos || []).map((c) => `<span class="com-chip">${esc(c)}</span>`).join(' ')}</td>
+      <td>${porc.filter((p) => p.unidad === u.nombre).map((p) => `${esc(p.vendedor)} ${fmtPct(p.porcentaje)}`).join(' · ') || '<span class="com-meta">—</span>'}</td></tr>`).join('') +
+    `</tbody></table></div>
+    <div class="admin-table-wrap"><table class="admin-table com-tabla"><thead><tr><th>Código</th><th>Nombre</th><th>Unidad de comisión</th></tr></thead><tbody>` +
     cfg.map((c) => `<tr><td class="com-codigo">${esc(c.codigo)}</td><td>${esc(c.nombre_mostrar || c.nombre)}</td>
-      <td>${c.incluido ? esc(c.unidad || 'Incluido') : '<span class="com-no">No incluido</span>'}</td>${uns.length ? '' : `<td class="com-n">${esc(c.incluido_desde)}</td>`}</tr>`).join('') +
+      <td>${c.incluido ? esc(c.unidad || 'Incluido') : '<span class="com-no">No incluido</span>'}</td></tr>`).join('') +
     '</tbody></table></div></details>';
 
-  const cont = $('com-liq-detalle');
   cont.innerHTML = h;
   cont.querySelectorAll('.com-vend-row').forEach((tr) => tr.addEventListener('click', () => {
     const v = tr.dataset.vend;
@@ -995,37 +1220,52 @@ async function exportarLiquidacion(id, btn) {
   try {
     const d = (EST.liqDetalle && EST.liqDetalle.liq.id === id) ? EST.liqDetalle : await leerDetalle(id);
     const { liq, vendedores, lineas } = d;
+    if (liq.modelo !== 'fondo') {
+      status('com-liq-status', 'Esta liquidación es del modelo anterior: eliminala y generala de nuevo para exportarla.', 'error');
+      return;
+    }
+    const t = liq.totales || {};
     const wb = new ExcelJS.Workbook();
     const money = '#,##0.00';
+
+    const ws0 = wb.addWorksheet('Fondo comisionable por unidad');
+    ws0.columns = [
+      { header: 'Unidad de comisión', key: 'unidad', width: 30 }, { header: 'Ventas', key: 'ventas', width: 9 },
+      { header: 'Incluido desde', key: 'incluido_desde', width: 10 }, { header: 'Comisionan', key: 'comisionan', width: 11 },
+      { header: '% que comisiona', key: 'factor', width: 12, style: { numFmt: '0.00%' } },
+      { header: 'Base', key: 'base', width: 16, style: { numFmt: money } }, { header: 'Promedio por venta', key: 'promedio', width: 16, style: { numFmt: money } },
+      { header: 'Fondo comisionable', key: 'fondo', width: 16, style: { numFmt: money } }, { header: '% asignado', key: 'porcentaje_total', width: 11 },
+      { header: 'Repartido', key: 'repartido', width: 16, style: { numFmt: money } }, { header: 'Sin repartir', key: 'sin_repartir', width: 16, style: { numFmt: money } },
+      { header: 'Ventas sin asignar', key: 'ventas_sin_asignar', width: 11 }, { header: 'Base sin asignar', key: 'base_sin_asignar', width: 16, style: { numFmt: money } },
+      { header: 'Vendedores con ventas y sin porcentaje', key: 'sin_pct', width: 40 }
+    ];
+    (liq.fondos || []).forEach((p) => ws0.addRow({ ...p, factor: Number(p.factor), base: Number(p.base), promedio: Number(p.promedio), fondo: Number(p.fondo),
+      porcentaje_total: Number(p.porcentaje_total), repartido: Number(p.repartido), sin_repartir: Number(p.sin_repartir),
+      base_sin_asignar: Number(p.base_sin_asignar), sin_pct: (p.vendedores_sin_porcentaje || []).join(', ') }));
+    const tot0 = ws0.addRow({ unidad: 'Total', fondo: Number(t.fondo), repartido: Number(t.comision), sin_repartir: Number(t.sin_repartir),
+      ventas_sin_asignar: t.ventas_sin_asignar, base_sin_asignar: Number(t.base_sin_asignar || 0) });
+    tot0.font = { bold: true };
 
     const ws1 = wb.addWorksheet('Por vendedor');
     ws1.columns = [
       { header: 'Vendedor', key: 'v', width: 28 }, { header: 'Oportunidades ganadas', key: 'g', width: 12 },
-      { header: 'OV de abonos', key: 'o', width: 12 }, { header: 'OV con abonos incluidos', key: 'oc', width: 14 },
-      { header: 'Base comisionable', key: 'b', width: 18, style: { numFmt: money } }, { header: 'Comisión', key: 'c', width: 18, style: { numFmt: money } }
+      { header: 'OV de abonos', key: 'o', width: 12 }, { header: 'Ventas que suman al fondo', key: 'oc', width: 14 },
+      { header: 'Aporte al fondo', key: 'a', width: 18, style: { numFmt: money } }, { header: 'Comisión', key: 'c', width: 18, style: { numFmt: money } }
     ];
-    vendedores.forEach((v) => ws1.addRow({ v: v.vendedor, g: v.ganadas, o: v.ovs, oc: v.ovs_comisionables, b: Number(v.base_comisionable), c: Number(v.comision) }));
+    vendedores.forEach((v) => ws1.addRow({ v: v.vendedor, g: v.ganadas, o: v.ovs, oc: v.ovs_comisionables, a: Number(v.aporte || 0), c: Number(v.comision) }));
     const tot = ws1.addRow({ v: 'Total', g: vendedores.reduce((s, v) => s + v.ganadas, 0), o: vendedores.reduce((s, v) => s + v.ovs, 0),
-      oc: vendedores.reduce((s, v) => s + v.ovs_comisionables, 0), b: Number(liq.totales.base_comisionable), c: Number(liq.totales.comision) });
+      oc: vendedores.reduce((s, v) => s + v.ovs_comisionables, 0), a: vendedores.reduce((s, v) => s + Number(v.aporte || 0), 0), c: Number(t.comision) });
     tot.font = { bold: true };
 
-    const wsU = wb.addWorksheet('Por unidad');
-    wsU.columns = [
-      { header: 'Vendedor', key: 'v', width: 28 }, { header: 'Unidad de comisión', key: 'u', width: 30 }, { header: 'Ventas (OV)', key: 'o', width: 10 },
-      { header: 'Incluido desde', key: 'd', width: 12 }, { header: 'Comisionan', key: 'oc', width: 12 }, { header: '% que comisiona', key: 'f', width: 12, style: { numFmt: '0.00%' } },
-      { header: 'Base', key: 'b', width: 16, style: { numFmt: money } }, { header: 'Promedio por venta', key: 'p', width: 16, style: { numFmt: money } },
+    const ws2 = wb.addWorksheet('Reparto por unidad');
+    ws2.columns = [
+      { header: 'Vendedor', key: 'v', width: 28 }, { header: 'Unidad de comisión', key: 'u', width: 30 }, { header: 'Comisiona', key: 'k', width: 10 },
+      { header: 'Ventas', key: 'n', width: 9 }, { header: 'Base', key: 'b', width: 16, style: { numFmt: money } },
+      { header: 'Aporte al fondo', key: 'a', width: 16, style: { numFmt: money } }, { header: '% del fondo', key: 'p', width: 11 },
       { header: 'Comisión', key: 'c', width: 16, style: { numFmt: money } }
     ];
-    vendedores.forEach((v) => (v.por_unidad || []).forEach((u) => wsU.addRow({ v: v.vendedor, u: u.unidad, o: u.ventas, d: u.incluido_desde,
-      oc: u.comisionan, f: Number(u.factor), b: Number(u.base), p: Number(u.promedio), c: Number(u.comision) })));
-
-    const ws2 = wb.addWorksheet('Por abono');
-    ws2.columns = [
-      { header: 'Vendedor', key: 'v', width: 28 }, { header: 'Abono', key: 'a', width: 14 }, { header: 'OV', key: 'o', width: 8 },
-      { header: 'Incluido desde', key: 'd', width: 14 }, { header: 'OV que comisionan', key: 'oc', width: 16 },
-      { header: 'Base', key: 'b', width: 16, style: { numFmt: money } }, { header: 'Comisión', key: 'c', width: 16, style: { numFmt: money } }
-    ];
-    vendedores.forEach((v) => (v.por_abono || []).forEach((a) => ws2.addRow({ v: v.vendedor, a: a.codigo, o: a.ovs, d: a.incluido_desde, oc: a.comisionan, b: Number(a.base), c: Number(a.comision) })));
+    vendedores.forEach((v) => (v.por_unidad || []).forEach((u) => ws2.addRow({ v: v.vendedor, u: u.unidad, k: u.comisiona === false ? 'No' : 'Sí',
+      n: u.ventas, b: Number(u.base), a: Number(u.aporte), p: u.porcentaje == null ? null : Number(u.porcentaje), c: Number(u.comision) })));
 
     const ws3 = wb.addWorksheet('Líneas');
     ws3.columns = [
@@ -1035,15 +1275,12 @@ async function exportarLiquidacion(id, btn) {
       { header: 'Nro. cliente', key: 'nro_cliente', width: 12 }, { header: 'Código', key: 'codigo', width: 12 }, { header: 'Artículo', key: 'articulo', width: 50 },
       { header: 'Cantidad', key: 'cantidad', width: 9 }, { header: 'Importe', key: 'importe', width: 14, style: { numFmt: money } },
       { header: 'Incluido', key: 'incluido', width: 9 }, { header: 'Unidad de comisión', key: 'unidad', width: 26 },
-      { header: 'N.º de venta de la unidad', key: 'orden', width: 10 },
-      { header: 'Incluido desde', key: 'incluido_desde', width: 10 }, { header: 'Comisiona', key: 'comisiona', width: 10 },
       { header: '% que comisiona', key: 'factor', width: 12, style: { numFmt: '0.00%' } },
-      { header: 'Comisión', key: 'comision', width: 14, style: { numFmt: money } }
+      { header: 'Aporte al fondo', key: 'aporte', width: 14, style: { numFmt: money } }
     ];
     lineas.forEach((l) => ws3.addRow({ ...l, fecha_ov: fmtDia(l.fecha_ov), fecha_oportunidad: fmtDia(l.fecha_oportunidad),
       importe: l.importe == null ? null : Number(l.importe), cantidad: l.cantidad == null ? null : Number(l.cantidad),
-      incluido: l.incluido ? 'Sí' : 'No', comisiona: l.comisiona ? 'Sí' : 'No', comision: Number(l.comision),
-      factor: l.factor == null ? null : Number(l.factor) }));
+      incluido: l.incluido ? 'Sí' : 'No', factor: l.factor == null ? null : Number(l.factor), aporte: Number(l.aporte || 0) }));
 
     const ws4 = wb.addWorksheet('Ganadas sin OV abonos');
     ws4.columns = [
@@ -1056,15 +1293,23 @@ async function exportarLiquidacion(id, btn) {
     const ws5 = wb.addWorksheet('Configuración');
     ws5.columns = [
       { header: 'Código', key: 'codigo', width: 14 }, { header: 'Nombre', key: 'nombre', width: 60 },
-      { header: 'Incluido', key: 'incluido', width: 10 }, { header: 'Unidad de comisión', key: 'unidad', width: 30 },
+      { header: 'Unidad de comisión', key: 'unidad', width: 30 }, { header: 'Comisiona', key: 'comisiona', width: 10 },
       { header: 'Incluido desde', key: 'incluido_desde', width: 14 }
     ];
-    const desdeUnidad = new Map((liq.unidades || []).map((u) => [u.nombre, u.incluido_desde]));
-    (liq.config || []).forEach((c) => ws5.addRow({ codigo: c.codigo, nombre: c.nombre, incluido: c.incluido ? 'Sí' : 'No', unidad: c.unidad || '',
-      incluido_desde: c.incluido ? (desdeUnidad.get(c.unidad) ?? c.incluido_desde) : null }));
+    const porNombre = new Map((liq.unidades || []).map((u) => [u.nombre, u]));
+    (liq.config || []).forEach((c) => {
+      const u = porNombre.get(c.unidad);
+      ws5.addRow({ codigo: c.codigo, nombre: c.nombre, unidad: c.unidad || '', comisiona: u ? (u.comisiona === false ? 'No' : 'Sí') : '',
+        incluido_desde: u ? u.incluido_desde : null });
+    });
 
-    if (!vendedores.some((v) => (v.por_unidad || []).length)) wb.removeWorksheet(wsU.id);
-    if (!vendedores.some((v) => (v.por_abono || []).length) || vendedores.some((v) => (v.por_unidad || []).length)) wb.removeWorksheet(ws2.id);
+    const ws6 = wb.addWorksheet('Porcentajes');
+    ws6.columns = [
+      { header: 'Unidad de comisión', key: 'unidad', width: 30 }, { header: 'Vendedor', key: 'vendedor', width: 30 },
+      { header: '% del fondo', key: 'porcentaje', width: 12 }
+    ];
+    (liq.porcentajes || []).forEach((p) => ws6.addRow({ ...p, porcentaje: Number(p.porcentaje) }));
+
     wb.worksheets.forEach((ws) => {
       estilarEncabezado(ws);
       ws.views = [{ state: 'frozen', ySplit: 1 }];
