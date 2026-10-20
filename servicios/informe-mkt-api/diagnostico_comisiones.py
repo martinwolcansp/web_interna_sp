@@ -24,12 +24,13 @@ try:
     abonos = sb.leer_abonos_comision(token)
     unidades = sb.leer_unidades_comision(token)
     porcentajes = sb.leer_porcentajes_comision(token)
+    vendedores = sb.leer_vendedores_comision(token)
     print(f"Configuracion: {len(abonos)} abonos ({sum(1 for a in abonos if a.get('unidad_id'))} con unidad), "
           f"{len(unidades)} unidades, "
           f"{'sin tabla de porcentajes (falta la migracion 31)' if porcentajes is None else str(len(porcentajes)) + ' porcentajes'}.")
 except Exception as e:
     sys.exit(f"No se pudo leer la configuracion de comisiones (faltan migraciones o el usuario tecnico?): {e}")
-r = comisiones.generar(desde, hasta, print, abonos, unidades, porcentajes)
+r = comisiones.generar(desde, hasta, print, abonos, unidades, porcentajes, vendedores)
 
 print(f"\nGanadas: {r['ganadas']} · OV de abonos relacionadas: {len(r['ovs'])} · Ganadas sin OV de abonos: {len(r['sin_ov'])}")
 print("OV excluidas por tipo:", r.get("ov_excluidas_por_tipo") or "ninguna")
@@ -50,7 +51,7 @@ for p in r["fondos"]:
           f"repartido $ {p['repartido']:,.2f}   sin repartir $ {p['sin_repartir']:,.2f}   sin asignar: {p['ventas_sin_asignar']} ventas")
 print("\nPor vendedor (ganadas / OV / OV con abonos incluidos / aporte al fondo / comision):")
 for v in r["vendedores"]:
-    print(f"  {v['vendedor']:30s} {v['ganadas']:3d} / {v['ovs']:3d} / {v['ovs_comisionables']:3d}   "
+    print(f"  {str(v['vendedor_id'] or '-'):>8s} {v['vendedor']:30s} {v['ganadas']:3d} / {v['ovs']:3d} / {v['ovs_comisionables']:3d}   "
           f"aporte $ {v['aporte']:,.2f}   comision $ {v['comision']:,.2f}")
     for u in v["por_unidad"]:
         pct = "sin %" if u["porcentaje"] is None else f"{u['porcentaje']:g} %"

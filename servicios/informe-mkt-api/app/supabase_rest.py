@@ -277,13 +277,29 @@ def leer_abonos_comision(token):
 
 
 def leer_porcentajes_comision(token):
-    """Porcentaje de cada vendedor en cada unidad (comision_porcentaje,
-    migracion 31). None si la tabla todavia no existe."""
+    """Porcentaje de cada vendedor (vendedor_id) en cada unidad
+    (comision_porcentaje, migracion 31). None si la tabla todavia no existe."""
     resp = requests.get(_rest("comision_porcentaje"), headers=_h(token),
-                        params={"select": "unidad_id,vendedor,porcentaje", "order": "vendedor"}, timeout=30)
+                        params={"select": "unidad_id,vendedor_id,porcentaje", "order": "vendedor_id"}, timeout=30)
     if resp.status_code == 404 or (resp.status_code >= 400 and "comision_porcentaje" in resp.text):
         return None
     return _check(resp, "leer porcentajes de comision").json()
+
+
+def leer_vendedores_comision(token):
+    """Vendedores (comision_vendedor, migracion 31; id = empleado de NetSuite).
+    None si la tabla todavia no existe."""
+    resp = requests.get(_rest("comision_vendedor"), headers=_h(token),
+                        params={"select": "id,nombre,nombre_netsuite,activo", "order": "nombre"}, timeout=30)
+    if resp.status_code == 404 or (resp.status_code >= 400 and "comision_vendedor" in resp.text):
+        return None
+    return _check(resp, "leer vendedores de comision").json()
+
+
+def insertar_vendedores_comision(token, filas):
+    """Agrega vendedores nuevos; los que ya existen no se tocan (on conflict do nothing)."""
+    if filas:
+        _post_lotes(token, "comision_vendedor", filas, "id", "ignore-duplicates")
 
 
 def guardar_liquidacion_comision(token, payload):

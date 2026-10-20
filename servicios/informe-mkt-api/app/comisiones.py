@@ -139,6 +139,49 @@ def _ovs_por_presupuesto(pres_ids):
     return salida
 
 
+def _representantes(opp_ids):
+    """{oportunidad_id: vendedor_id} (ID interno del empleado representante de
+    ventas en NetSuite)."""
+    salida = {}
+    for lote in _lotes(opp_ids):
+        for f in netsuite.suiteql(f"SELECT t.id AS id, t.employee AS vendedor_id FROM transaction t WHERE t.id IN ({lote})"):
+            if f.get("vendedor_id") not in (None, ""):
+                salida[int(f["id"])] = int(f["vendedor_id"])
+    return salida
+
+
+def representantes_netsuite(meses=12):
+    """Representantes de ventas de las oportunidades de la subsidiaria en los
+    ultimos `meses`: [{id, nombre, nombre_netsuite, oportunidades, en_informe}].
+    en_informe = esta en la lista de vendedores del Informe de MKT
+    (netsuite.VENDEDORES)."""
+    base = f"""
+        FROM transaction t
+        INNER JOIN transactionline tl ON tl.transaction = t.id AND tl.mainline = 'T'
+        WHERE t.type = 'Opprtnty' AND t.employee IS NOT NULL
+          AND t.trandate >= ADD_MONTHS(SYSDATE, -{int(meses)})"""
+    try:
+        filas = netsuite.suiteql(f"""
+            SELECT t.employee AS id, BUILTIN.DF(t.employee) AS nombre, BUILTIN.DF(tl.subsidiary) AS subsidiaria, COUNT(*) AS n
+            {base}
+            GROUP BY t.employee, BUILTIN.DF(t.employee), BUILTIN.DF(tl.subsidiary)""")
+    except RuntimeError:  # por si SuiteQL no acepta el GROUP BY con BUILTIN.DF
+        filas = [dict(f, n=1) for f in netsuite.suiteql(f"""
+            SELECT t.employee AS id, BUILTIN.DF(t.employee) AS nombre, BUILTIN.DF(tl.subsidiary) AS subsidiaria
+            {base}""")]
+    por_id = {}
+    for f in filas:
+        if not str(f.get("subsidiaria") or "").strip().endswith(netsuite.SUBSIDIARIA) or f.get("id") in (None, ""):
+            continue
+        vid = int(f["id"])
+        crudo = " ".join(str(f.get("nombre") or "").split())
+        x = por_id.setdefault(vid, {"id": vid, "nombre_netsuite": crudo,
+                                    "nombre": normalizar_vendedor_netsuite(crudo) or f"Vendedor {vid}",
+                                    "oportunidades": 0, "en_informe": crudo in netsuite.VENDEDORES})
+        x["oportunidades"] += int(f.get("n") or 1)
+    return sorted(por_id.values(), key=lambda x: x["nombre"].lower())
+
+
 def _sql_ov(filtro):
     return f"""
         SELECT
@@ -264,29 +307,33 @@ def _pesos(v):
     return "$ " + f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def aplicar_fondos(filas, unidades, porcentajes):
-    """Fondo comisionable por unidad (ventas de todos los vendedores) y reparto por
-    porcentaje. Completa en cada linea incluida: factor y aporte; en cada OV:
-    aporte. Devuelve (fondos, reparto, avisos):
-      fondos   = [{unidad, ventas, incluido_desde, comisionan, factor, base,
+def aplicar_fondos(filas, unidades, porcentajes, nombres_vendedor=None):
+    """Fondo comisionable por unidad (ventas de todos los vendedores) y reparto
+    por porcentaje. Los vendedores se identifican por vendedor_id (ID del
+    empleado en NetSuite; None = Sin asignar). Completa en cada linea
+    incluida: factor y aporte; en cada OV: aporte. Devuelve (fondos, reparto,
+    avisos):
+      fondos  = [{unidad, ventas, incluido_desde, comisionan, factor, base,
                   promedio, fondo, porcentaje_total, repartido, sin_repartir,
                   ventas_sin_asignar, base_sin_asignar, vendedores_sin_porcentaje}]
-      reparto = [{vendedor, unidad, porcentaje, comision}]"""
+      reparto = [{vendedor_id, vendedor, unidad, porcentaje, comision}]"""
     por_nombre = {u["nombre"]: u for u in unidades.values()}
-    # El nombre del vendedor se compara sin distinguir mayusculas ni espacios.
-    nombres_vend = {" ".join(f["vendedor"].split()).lower(): f["vendedor"] for f in filas}
+    nombres = dict(nombres_vendedor or {})
+    for f in filas:
+        if f.get("vendedor_id") is not None:
+            nombres.setdefault(f["vendedor_id"], f["vendedor"])
     pct = {}
     for p in porcentajes or []:
         u = unidades.get(p.get("unidad_id"))
-        v = " ".join(str(p.get("vendedor") or "").split())
-        v = nombres_vend.get(v.lower(), v)
-        if u and v:
-            pct.setdefault(u["nombre"], {})[v] = float(p.get("porcentaje") or 0)
+        vid = p.get("vendedor_id")
+        if u and vid is not None:
+            pct.setdefault(u["nombre"], {})[int(vid)] = float(p.get("porcentaje") or 0)
     grupos = {}
     for f in filas:
         for nombre in {a["unidad"] for a in f["abonos"] if a["incluido"]}:
             grupos.setdefault(nombre, []).append(f)
     fondos, reparto, avisos = [], [], []
+    nom = lambda vid: nombres.get(vid) or f"Vendedor {vid}"
     for nombre in sorted(set(grupos) | set(pct), key=str.lower):
         uni = por_nombre.get(nombre) or {}
         if uni.get("comisiona", True) is False:
@@ -305,16 +352,21 @@ def aplicar_fondos(filas, unidades, porcentajes):
                     a["aporte"] = round((a.get("importe") or 0) * factor, 2)
                     b += a.get("importe") or 0
             base += b
-            x = por_vend.setdefault(f["vendedor"], {"ventas": 0, "base": 0.0})
+            x = por_vend.setdefault(f.get("vendedor_id"), {"ventas": 0, "base": 0.0})
             x["ventas"] += 1
             x["base"] += b
         fondo = round(base * factor, 2)
         porc = pct.get(nombre, {})
         suma = round(sum(porc.values()), 3)
         montos = {v: round(fondo * p / 100, 2) for v, p in porc.items()}
+        if porc and abs(suma - 100) <= 0.0005:
+            # Si suman 100 %, los centavos del redondeo van al de mayor porcentaje
+            # para que se reparta exactamente el fondo.
+            mayor = max(porc, key=lambda v: (porc[v], -v))
+            montos[mayor] = round(montos[mayor] + fondo - sum(montos.values()), 2)
         repartido = round(sum(montos.values()), 2)
-        sin_pct = sorted(v for v in por_vend if v not in porc and v != SIN_ASIGNAR)
-        sa = por_vend.get(SIN_ASIGNAR, {"ventas": 0, "base": 0.0})
+        sin_pct = sorted((nom(v) for v in por_vend if v is not None and v not in porc), key=str.lower)
+        sa = por_vend.get(None, {"ventas": 0, "base": 0.0})
         fondos.append({
             "unidad": nombre, "ventas": ventas, "incluido_desde": n, "comisionan": comisionan,
             "factor": round(factor, 6), "base": round(base, 2), "promedio": round(base / ventas, 2) if ventas else 0,
@@ -322,8 +374,8 @@ def aplicar_fondos(filas, unidades, porcentajes):
             "ventas_sin_asignar": sa["ventas"], "base_sin_asignar": round(sa["base"], 2),
             "vendedores_sin_porcentaje": sin_pct,
         })
-        for v in sorted(porc, key=str.lower):
-            reparto.append({"vendedor": v, "unidad": nombre, "porcentaje": porc[v], "comision": montos[v]})
+        for v in sorted(porc, key=lambda v: nom(v).lower()):
+            reparto.append({"vendedor_id": v, "vendedor": nom(v), "unidad": nombre, "porcentaje": porc[v], "comision": montos[v]})
         if not porc:
             avisos.append(f"{nombre}: no tiene porcentajes por vendedor; el fondo comisionable de {_pesos(fondo)} queda sin repartir.")
         elif abs(suma - 100) > 0.0005:
@@ -347,12 +399,16 @@ def config_desde_filas(filas):
 
 # ------------------------------------------------------------------- armado
 
-def generar(desde, hasta, log, abonos_config=None, unidades_config=None, porcentajes_config=None):
+def generar(desde, hasta, log, abonos_config=None, unidades_config=None, porcentajes_config=None,
+            vendedores_config=None):
     """abonos_config: filas de comision_abono (codigo, nombre, unidad_id).
     unidades_config: filas de comision_unidad (id, nombre, incluido_desde,
     comisiona). porcentajes_config: filas de comision_porcentaje (unidad_id,
-    vendedor, porcentaje); None si todavia no existe la tabla (migracion 31)."""
+    vendedor_id, porcentaje). vendedores_config: filas de comision_vendedor
+    (id = empleado de NetSuite, nombre). Las dos ultimas son None si todavia
+    no existe la migracion 31."""
     cfg = config_desde_filas(abonos_config)
+    nombres_vendedor = {int(v["id"]): v["nombre"] for v in vendedores_config or [] if v.get("id") is not None}
     unidades = {u["id"]: u for u in unidades_config or [] if u.get("id")}
     avisos = []
 
@@ -370,7 +426,8 @@ def generar(desde, hasta, log, abonos_config=None, unidades_config=None, porcent
             "oportunidad": _texto(r.get("Oportunidad")),
             "fecha_oportunidad": _fecha(r.get("Fecha Oportunidad")),
             "estado_oportunidad": _texto(r.get("Estado Oportunidad")),
-            "vendedor": normalizar_vendedor_netsuite(_texto(r.get("Representante de Ventas"))) or "Sin asignar",
+            "vendedor": normalizar_vendedor_netsuite(_texto(r.get("Representante de Ventas"))) or SIN_ASIGNAR,
+            "representante_netsuite": " ".join(str(_texto(r.get("Representante de Ventas")) or "").split()) or None,
             "cliente": _texto(r.get("Cliente")),
             "nro_cliente": _texto(r.get("ID")),
             "unidad_negocio": _texto(r.get("Unidad de Negocio")),
@@ -378,6 +435,32 @@ def generar(desde, hasta, log, abonos_config=None, unidades_config=None, porcent
             "categoria": _texto(r.get("Categoría")),
             "comodato_oportunidad": None if comodato in (None, "") or comodato != comodato else _si(comodato),
         }
+
+    # Vendedor = ID del empleado representante de ventas (NetSuite). El nombre
+    # que se muestra es el de comision_vendedor (si esta) o el normalizado.
+    vendedores_nuevos = {}
+    if opps:
+        try:
+            ids = _representantes(opps)
+        except RuntimeError as e:
+            ids = {}
+            aviso(f"No se pudo leer el ID de los representantes de ventas en NetSuite: {str(e)[:300]}")
+        por_nombre_vend = {" ".join(n.split()).lower(): i for i, n in nombres_vendedor.items()}
+        for opp_id, o in opps.items():
+            vid = ids.get(opp_id)
+            if vid is None and o["vendedor"] != SIN_ASIGNAR:
+                vid = por_nombre_vend.get(o["vendedor"].lower())  # respaldo por nombre
+            o["vendedor_id"] = vid
+            if vid is None:
+                o["vendedor"] = SIN_ASIGNAR
+            elif vid in nombres_vendedor:
+                o["vendedor"] = nombres_vendedor[vid]
+            else:
+                vendedores_nuevos[vid] = {"id": vid, "nombre": o["vendedor"], "nombre_netsuite": o.get("representante_netsuite")}
+    if vendedores_nuevos and vendedores_config is not None:
+        aviso("Representantes de ventas que no están en la tabla de vendedores (no pueden tener porcentaje): " +
+              ", ".join(f"{v['nombre']} (ID {k})" for k, v in sorted(vendedores_nuevos.items())) +
+              ". Actualizalos en Panel de administración → Comisiones → Distribución.")
 
     ovs = _ovs_por_oportunidad(opps) if opps else {}
     pres = {}
@@ -456,7 +539,7 @@ def generar(desde, hasta, log, abonos_config=None, unidades_config=None, porcent
             base_comisionable=base,
             importe_otros_abo=round(sum((a.get("importe") or 0) for a in abonos if not a["incluido"]), 2),
         ))
-    fondos, reparto, avisos_fondo = aplicar_fondos(filas, unidades, porcentajes_config)
+    fondos, reparto, avisos_fondo = aplicar_fondos(filas, unidades, porcentajes_config, nombres_vendedor)
     if porcentajes_config is None:
         aviso("Falta la tabla de porcentajes por vendedor (migración 31): los fondos comisionables no se reparten.")
     if not cfg:
@@ -496,10 +579,12 @@ def generar(desde, hasta, log, abonos_config=None, unidades_config=None, porcent
                      for u in sorted(unidades.values(), key=lambda u: u["nombre"].lower())],
         "fondos": fondos,
         "reparto": reparto,
-        "porcentajes": sorted(({"unidad": por_id[p["unidad_id"]], "vendedor": " ".join(str(p["vendedor"]).split()),
+        "porcentajes": sorted(({"unidad": por_id[p["unidad_id"]], "vendedor_id": int(p["vendedor_id"]),
+                                "vendedor": nombres_vendedor.get(int(p["vendedor_id"])) or f"Vendedor {p['vendedor_id']}",
                                 "porcentaje": float(p["porcentaje"])}
                                for p in porcentajes_config or [] if p.get("unidad_id") in por_id),
                               key=lambda p: (p["unidad"].lower(), p["vendedor"].lower())),
+        "vendedores_nuevos": sorted(vendedores_nuevos.values(), key=lambda v: v["nombre"].lower()),
         "abonos_sin_configurar": sorted(sin_configurar.values(), key=lambda v: v["codigo"]),
         "avisos": avisos,
     }
@@ -518,16 +603,20 @@ def resumen_vendedores(r):
     comisiona = {u["nombre"]: u.get("comisiona", True) is not False for u in r.get("unidades") or []}
     por = {}
 
-    def fila(v):
-        return por.setdefault(v, {"vendedor": v, "ops": set(), "ovs": 0, "ovs_comisionables": 0,
-                                  "base_comisionable": 0.0, "aporte": 0.0, "comision": 0.0, "unidades": {}})
+    # Clave = vendedor_id (ID de NetSuite); None = Sin asignar.
+    def fila(o):
+        vid = o.get("vendedor_id")
+        x = por.setdefault(vid, {"vendedor_id": vid, "vendedor": o.get("vendedor") or SIN_ASIGNAR, "ops": set(), "ovs": 0,
+                                 "ovs_comisionables": 0, "base_comisionable": 0.0, "aporte": 0.0, "comision": 0.0,
+                                 "unidades": {}})
+        return x
 
     def uni(x, nombre):
         return x["unidades"].setdefault(nombre, {"unidad": nombre, "comisiona": comisiona.get(nombre, True),
                                                  "ventas": 0, "base": 0.0, "aporte": 0.0,
                                                  "porcentaje": None, "comision": 0.0})
     for f in r["ovs"]:
-        x = fila(f["vendedor"])
+        x = fila(f)
         x["ops"].add(f["oportunidad_id"])
         x["ovs"] += 1
         x["ovs_comisionables"] += 1 if f["comisionable"] else 0
@@ -541,17 +630,18 @@ def resumen_vendedores(r):
                     u["base"] += (a.get("importe") or 0) if a["incluido"] else 0
                     u["aporte"] += a.get("aporte") or 0
     for o in r["sin_ov"]:
-        fila(o["vendedor"])["ops"].add(o["oportunidad_id"])
+        fila(o)["ops"].add(o["oportunidad_id"])
     for d in r.get("reparto") or []:
-        x = fila(d["vendedor"])
+        x = fila(d)
         u = uni(x, d["unidad"])
         u["porcentaje"] = d["porcentaje"]
         u["comision"] += d["comision"]
         x["comision"] += d["comision"]
     salida = []
-    for v, x in por.items():
+    for x in por.values():
         salida.append({
-            "vendedor": v,
+            "vendedor_id": x["vendedor_id"],
+            "vendedor": x["vendedor"],
             "ganadas": len(x["ops"]),
             "ovs": x["ovs"],
             "ovs_comisionables": x["ovs_comisionables"],
@@ -561,7 +651,7 @@ def resumen_vendedores(r):
             "por_unidad": [dict(u, base=round(u["base"], 2), aporte=round(u["aporte"], 2), comision=round(u["comision"], 2))
                            for u in sorted(x["unidades"].values(), key=lambda u: u["unidad"].lower())],
         })
-    return sorted(salida, key=lambda x: (x["vendedor"] == SIN_ASIGNAR, -x["comision"], x["vendedor"]))
+    return sorted(salida, key=lambda x: (x["vendedor_id"] is None, -x["comision"], x["vendedor"]))
 
 
 def totales(r):
@@ -576,8 +666,8 @@ def totales(r):
         "fondo": round(sum(p["fondo"] for p in fondos), 2),
         "comision": round(sum(p["repartido"] for p in fondos), 2),
         "sin_repartir": round(sum(p["sin_repartir"] for p in fondos), 2),
-        "ventas_sin_asignar": sum(1 for f in ovs if f["vendedor"] == SIN_ASIGNAR and f["comisionable"]),
-        "base_sin_asignar": round(sum(f["base_comisionable"] for f in ovs if f["vendedor"] == SIN_ASIGNAR), 2),
+        "ventas_sin_asignar": sum(1 for f in ovs if f.get("vendedor_id") is None and f["comisionable"]),
+        "base_sin_asignar": round(sum(f["base_comisionable"] for f in ovs if f.get("vendedor_id") is None), 2),
         "ov_mensuales_no_contadas": r.get("ov_mensuales_no_contadas", 0),
         "ov_excluidas_por_tipo": r.get("ov_excluidas_por_tipo", {}),
     }
@@ -589,7 +679,7 @@ def payload_liquidacion(r, mes, generada_por):
     for f in r["ovs"]:
         for a in f["abonos"]:
             lineas.append({
-                "vendedor": f["vendedor"], "ov_id": f["ov_id"], "ov_numero": f["ov_numero"],
+                "vendedor_id": f.get("vendedor_id"), "vendedor": f["vendedor"], "ov_id": f["ov_id"], "ov_numero": f["ov_numero"],
                 "fecha_ov": f["fecha_ov"], "modalidad": "Comodato" if f["comodato"] else "Venta",
                 "oportunidad": f["oportunidad"], "fecha_oportunidad": f["fecha_oportunidad"],
                 "cliente": f["cliente"], "nro_cliente": f["nro_cliente"],
@@ -597,7 +687,7 @@ def payload_liquidacion(r, mes, generada_por):
                 "importe": a.get("importe"), "incluido": a["incluido"], "unidad": a.get("unidad"),
                 "factor": a.get("factor"), "aporte": a.get("aporte", 0),
             })
-    sin_ov = [{k: o.get(k) for k in ("vendedor", "oportunidad", "fecha_oportunidad", "estado_oportunidad",
+    sin_ov = [{k: o.get(k) for k in ("vendedor_id", "vendedor", "oportunidad", "fecha_oportunidad", "estado_oportunidad",
                                      "cliente", "nro_cliente")} for o in r["sin_ov"]]
     return {
         "mes": mes.isoformat(), "desde": r["desde"], "hasta": r["hasta"], "generada_por": generada_por,

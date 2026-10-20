@@ -184,17 +184,27 @@
         <div>
           <h2 id="com-dis-title" class="admin-section__title">Distribución del fondo comisionable por vendedor</h2>
           <p class="admin-section__subtitle">
-            Porcentaje del fondo comisionable de cada unidad que recibe cada vendedor, sin importar quién vendió. El nombre tiene que ser el del
-            <b>representante de ventas</b> en NetSuite. Si los porcentajes de una unidad no suman 100 %, lo que falta queda sin repartir.
+            Porcentaje del fondo comisionable de cada unidad que recibe cada vendedor, sin importar quién vendió. Los vendedores son los
+            <b>representantes de ventas</b> de las oportunidades de NetSuite, identificados por su ID de empleado. Si los porcentajes de una
+            unidad no suman 100 %, lo que falta queda sin repartir.
             Las ventas <b>Sin asignar</b> suman al fondo pero no reciben porcentaje.
           </p>
         </div>
         <div class="com-actions com-solo-editor">
+          <button type="button" id="com-dis-sync" class="btn btn--secondary" title="Trae los representantes de ventas de las oportunidades de los últimos 12 meses"><i class="ti ti-refresh" aria-hidden="true"></i> Actualizar desde NetSuite</button>
           <button type="button" id="com-dis-guardar" class="btn btn--primary" disabled><i class="ti ti-device-floppy" aria-hidden="true"></i> Guardar cambios</button>
         </div>
       </div>
       <p id="com-dis-status" class="com-status" role="status" aria-live="polite"></p>
-      <datalist id="com-dis-vendedores"></datalist>
+      <details class="com-config com-ven" id="com-ven">
+        <summary>Vendedores <span class="com-meta" id="com-ven-cuenta"></span></summary>
+        <p class="com-meta" style="margin:6px 0 8px">Se cargan con «Actualizar desde NetSuite» (y al liquidar). El ID es el del empleado en NetSuite y es el que
+          identifica al vendedor en los porcentajes y las liquidaciones. Podés cambiar el nombre que se muestra; los inactivos no aparecen en la distribución.</p>
+        <div class="admin-table-wrap"><table class="admin-table com-tabla">
+          <thead><tr><th>Nombre</th><th>ID NetSuite</th><th>Nombre en NetSuite</th><th class="com-c">Activo</th></tr></thead>
+          <tbody id="com-ven-tbody"></tbody>
+        </table></div>
+      </details>
       <div id="com-dis-unidades" class="com-dis-grid"><p class="admin-loading">Cargando porcentajes…</p></div>
     </section>
 

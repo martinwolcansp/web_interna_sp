@@ -120,3 +120,8 @@ tfoot td { font-weight: var(--font-weight-bold); color: var(--color-navy); borde
 .com-dis-total.is-ok { color: #1a7f4b; }
 .com-dis-total.is-warn, .com-warn { color: #b45309; }
 .btn--sm { padding: 4px 10px; font-size: 12px; }
+
+/* Vendedores (ID de NetSuite, migración 31) */
+.com-ven { margin-bottom: 16px; }
+.com-ven p.com-meta { white-space: normal; max-width: 100%; }
+.com-ven input[data-campo="nombre"] { width: 100%; min-width: 180px; }

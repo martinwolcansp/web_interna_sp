@@ -20,7 +20,7 @@
 #   OV de las oportunidades ganadas del rango con sus abonos (ABO), para el
 #   boton "Comisiones por vendedor" (app/comisiones.py). Consulta NetSuite en
 #   vivo, no guarda nada. Permiso: ver en Informes de MKT o en Comisiones.
-#   Usa la configuracion de abonos, unidades y porcentajes (migraciones 28 a 31):
+#   Usa la configuracion de abonos, unidades, vendedores y porcentajes (migraciones 28 a 31):
 #   fondo comisionable por unidad con las ventas de todos y reparto por porcentaje.
 #
 # POST /comisiones/liquidar {mes: "AAAA-MM"}
@@ -121,7 +121,7 @@ def consultar_comisiones(pedido: PedidoActualizacion, authorization: str = Heade
         if (pedido.hasta - pedido.desde).days + 1 > config.MAX_DIAS_CONSULTA:
             raise HTTPException(422, f"El rango no puede superar {config.MAX_DIAS_CONSULTA} dias.")
         return comisiones.generar(pedido.desde, pedido.hasta, logger.info, sb.leer_abonos_comision(token), sb.leer_unidades_comision(token),
-                                  sb.leer_porcentajes_comision(token))
+                                  sb.leer_porcentajes_comision(token), sb.leer_vendedores_comision(token))
     except HTTPException:
         raise
     except Exception as e:
@@ -147,7 +147,14 @@ def liquidar_comisiones(pedido: PedidoLiquidacion, authorization: str = Header(N
             raise HTTPException(422, "No se puede liquidar un mes que todavía no empezó.")
         usuario = sb.verificar_usuario(token) or {}
         r = comisiones.generar(desde, hasta, logger.info, sb.leer_abonos_comision(token), sb.leer_unidades_comision(token),
-                                  sb.leer_porcentajes_comision(token))
+                                  sb.leer_porcentajes_comision(token), sb.leer_vendedores_comision(token))
+        # Los representantes que todavia no estan en comision_vendedor se agregan
+        # (con su ID de NetSuite), asi la liquidacion queda asociada a vendedores.
+        try:
+            sb.insertar_vendedores_comision(token, [dict(v, activo=True, actualizado_por=usuario.get("email"))
+                                                    for v in r.get("vendedores_nuevos") or []])
+        except Exception as e:
+            logger.warning(f"No se pudieron agregar los vendedores nuevos: {e}")
         payload = comisiones.payload_liquidacion(r, desde, usuario.get("email"))
         if hasta >= hoy:
             payload["avisos"].append(f"Liquidación generada el {hoy.strftime('%d/%m/%Y')}, con el mes todavía en curso.")
@@ -164,6 +171,42 @@ def liquidar_comisiones(pedido: PedidoLiquidacion, authorization: str = Header(N
     except Exception as e:
         logger.exception("Error al generar la liquidacion de comisiones")
         raise HTTPException(500, f"Error al generar la liquidación: {e}")
+
+
+@app.post("/comisiones/vendedores/sincronizar")
+def sincronizar_vendedores(authorization: str = Header(None)):
+    """Trae de NetSuite los representantes de ventas de las oportunidades de
+    los ultimos 12 meses y agrega a comision_vendedor los que faltan (id =
+    empleado de NetSuite). Activos: los que estan en el Informe de MKT. A los
+    existentes solo se les actualiza el nombre de NetSuite (el nombre que se
+    muestra y "activo" los maneja el panel)."""
+    try:
+        token = _token_valido(authorization)
+        if not sb.tiene_permiso(token, "comisiones", "editar"):
+            raise HTTPException(403, "Tu usuario no tiene permiso para editar Comisiones.")
+        existentes = sb.leer_vendedores_comision(token)
+        if existentes is None:
+            raise HTTPException(409, "Falta correr la migración 31 (tabla comision_vendedor).")
+        usuario = sb.verificar_usuario(token) or {}
+        reps = comisiones.representantes_netsuite()
+        por_id = {int(v["id"]): v for v in existentes}
+        nuevos = [{"id": x["id"], "nombre": x["nombre"], "nombre_netsuite": x["nombre_netsuite"], "activo": x["en_informe"],
+                   "actualizado_por": usuario.get("email")} for x in reps if x["id"] not in por_id]
+        sb.insertar_vendedores_comision(token, nuevos)
+        cambiados = 0
+        for x in reps:
+            v = por_id.get(x["id"])
+            if v and (v.get("nombre_netsuite") or "") != x["nombre_netsuite"]:
+                sb.actualizar(token, "comision_vendedor", {"id": f"eq.{x['id']}"}, {"nombre_netsuite": x["nombre_netsuite"]},
+                              "actualizar nombre de NetSuite del vendedor")
+                cambiados += 1
+        return {"encontrados": len(reps), "nuevos": len(nuevos), "actualizados": cambiados,
+                "vendedores": reps}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error al sincronizar vendedores")
+        raise HTTPException(500, f"Error al traer los vendedores de NetSuite: {e}")
 
 
 @app.post("/auditoria/actualizar", status_code=202)

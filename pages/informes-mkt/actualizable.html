@@ -2167,7 +2167,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     (D.sin_ov || []).forEach(function (o) { var f = fila(o.vendedor); f.ops[o.oportunidad_id] = 1; f.sinLista.push(o); });
     // Ventas por unidad y reparto del fondo comisionable (lo calcula el servicio). Suma a
     // los vendedores que tienen porcentaje aunque no hayan vendido.
-    (D.vendedores || []).forEach(function (v) { var f = fila(v.vendedor); f.comision = v.comision || 0; f.unidades = v.por_unidad || []; });
+    (D.vendedores || []).forEach(function (v) { var f = fila(v.vendedor); f.vendedor_id = v.vendedor_id; f.comision = v.comision || 0; f.unidades = v.por_unidad || []; });
     return Object.keys(porV).map(function (k) {
       var f = porV[k];
       f.ganadas = Object.keys(f.ops).length; f.conOv = Object.keys(f.opsConOv).length; f.sinov = f.sinLista.length;
@@ -2495,7 +2495,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
         });
       });
       var porV = resumen().map(function (f) {
-        return { "Vendedor": f.vendedor, "Oportunidades ganadas": f.ganadas, "Con OV de abonos": f.conOv, "Sin OV de abonos": f.sinov,
+        return { "Vendedor": f.vendedor, "ID NetSuite": f.vendedor_id === undefined ? null : f.vendedor_id, "Oportunidades ganadas": f.ganadas, "Con OV de abonos": f.conOv, "Sin OV de abonos": f.sinov,
           "OV de abonos": f.ovs, "Ventas que suman al fondo": f.com, "Base comisionable": Math.round(f.base * 100) / 100,
           "Aporte al fondo": Math.round(f.aporte * 100) / 100, "Comisión": Math.round(f.comision * 100) / 100,
           "OV sin abonos incluidos": f.nocom, "Otros ABO": Math.round(f.otros * 100) / 100 };
@@ -2516,7 +2516,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       var reparto = [];
       (D.vendedores || []).forEach(function (v) {
         (v.por_unidad || []).forEach(function (u) {
-          reparto.push({ "Vendedor": v.vendedor, "Unidad de comisión": u.unidad, "Comisiona": u.comisiona === false ? "No" : "Sí", "Ventas": u.ventas,
+          reparto.push({ "Vendedor": v.vendedor, "ID NetSuite": v.vendedor_id, "Unidad de comisión": u.unidad, "Comisiona": u.comisiona === false ? "No" : "Sí", "Ventas": u.ventas,
             "Base": u.base, "Aporte al fondo": u.aporte, "% del fondo": u.porcentaje, "Comisión": u.comision });
         });
       });
