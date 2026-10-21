@@ -216,6 +216,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 .estado-pendiente { background: #fdeee3; color: #9a4a12; }
 .estado-finalizada { background: #e6f4ec; color: #1e7a44; }
 .estado-otra { background: #eeeeee; color: #52514e; }
+.pv-toggle { appearance: none; border: 0; background: transparent; color: var(--navy); font: inherit; font-size: 12px; width: 18px; padding: 0; cursor: pointer; }
+.pv-toggle:hover { color: var(--orange); }
+.pivot tr[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -270,6 +273,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       </div>
 
       <div class="bloque">
+        <p class="bloque-ayuda">Hacé click en un número de las tablas para ver esas instalaciones en el detalle de abajo. Otro click en el mismo número quita el filtro. La flecha ▸ despliega las categorías.</p>
         <h3>Instalaciones finalizadas por mes y clasificación comercial</h3>
         <div id="inst-tipo-mes"></div>
         <div class="bloque-nota" id="nota-clasif"></div>
@@ -284,6 +288,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       </div>
       <div class="bloque">
         <h3>Detalle de instalaciones</h3>
+        <div class="sel-chip" id="sel-inst" hidden></div>
         <div class="seg-bar" id="seg-estado" role="group" aria-label="Estado de las instalaciones"></div>
         <div class="explorer">
           <div class="explorer-bar">
@@ -781,18 +786,20 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       : function (a, b) { return (totFila[b] || 0) - (totFila[a] || 0) || a.localeCompare(b, "es"); });
     var fmt = o.fmt || function (n) { return fmtNum(n); };
     var etq = o.etiquetaCol || (o.cols === "mes" ? etiquetaMes : function (c) { return c; });
-    function td(v, cls) {
+    // o.sel: nombre de la tabla; sus numeros filtran el detalle de instalaciones (fila/col vacias = total).
+    function td(v, cls, f, col) {
       var c = cls ? [cls] : [];
       if (v === null || v === 0) c.push("pv-cero");
-      return '<td class="' + c.join(" ") + '">' + (v === null ? "–" : fmt(v)) + "</td>";
+      var at = atrSel(o.sel, v, c, f, "", col);
+      return '<td class="' + c.join(" ") + '"' + at + ">" + (v === null ? "–" : fmt(v)) + "</td>";
     }
     var cuerpo = filas.map(function (f) {
       return '<tr><td class="pv-fila">' + esc(f) + "</td>" + cols.map(function (c) {
-        return td(agregar(celdas[f + "\u0001" + c], o));
-      }).join("") + td(totFila[f], "pv-total") + "</tr>";
+        return td(agregar(celdas[f + "\u0001" + c], o), null, f, c);
+      }).join("") + td(totFila[f], "pv-total", f, "") + "</tr>";
     }).join("");
-    var pie = '<tfoot><tr><td class="pv-fila">Total</td>' + cols.map(function (c) { return td(agregar(porCol[c], o)); }).join("") +
-      td(agregar(o.items.filter(function (x) { var f = o.fila(x), c = o.col(x); return f !== null && f !== undefined && c !== null && c !== undefined; }), o)) + "</tr></tfoot>";
+    var pie = '<tfoot><tr><td class="pv-fila">Total</td>' + cols.map(function (c) { return td(agregar(porCol[c], o), null, "", c); }).join("") +
+      td(agregar(o.items.filter(function (x) { var f = o.fila(x), c = o.col(x); return f !== null && f !== undefined && c !== null && c !== undefined; }), o), null, "", "") + "</tr></tfoot>";
     return '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">' + esc(o.titulo) + "</th>" +
       cols.map(function (c) { return "<th>" + esc(etq(c)) + "</th>"; }).join("") +
       '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
@@ -800,16 +807,31 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   // Tabla con grupos y subgrupos (filas) x meses (columnas), suma de valor.
   // o = { titulo, items, grupo(x), sub(x), grupos: [orden], col(x), valor(x), fmt }
+  // o.id: si viene, las subcategorias arrancan contraidas y se despliegan con la flecha del grupo.
+  // o.sel: como en tablaCruzada (los numeros filtran el detalle).
+  var DESPLEGADOS = {};
   function tablaJerarquica(o) {
     var items = o.items.filter(function (x) { return o.col(x); });
     if (!items.length) return vacio();
     var cols = Array.from(new Set(items.map(o.col))).sort();
     var fmt = o.fmt || fmtNum, med = { medida: o.medida || "suma", valor: o.valor };
-    function fila(nombre, lista, clase) {
-      return '<tr class="' + clase + '"><td class="pv-fila">' + esc(nombre) + "</td>" + cols.map(function (c) {
+    var abiertos = o.id ? (DESPLEGADOS[o.id] = DESPLEGADOS[o.id] || {}) : null;
+    function fila(nombre, lista, clase, g, sub, conSubs) {
+      var abierto = !abiertos || abiertos[g];
+      var atr = "", etiqueta = esc(nombre);
+      if (clase === "pv-sub" && abiertos) atr = ' data-tk="' + esc(o.id) + '" data-g="' + esc(g) + '"' + (abierto ? "" : " hidden");
+      if (clase === "pv-grupo" && abiertos && conSubs) {
+        etiqueta = '<button type="button" class="pv-toggle" data-tk="' + esc(o.id) + '" data-g="' + esc(g) + '" aria-expanded="' + (abierto ? "true" : "false") +
+          '" title="Ver categorías">' + (abierto ? "▾" : "▸") + "</button> " + etiqueta;
+      }
+      return '<tr class="' + clase + '"' + atr + '><td class="pv-fila">' + etiqueta + "</td>" + cols.map(function (c) {
         var v = agregar(lista.filter(function (x) { return o.col(x) === c; }), med);
-        return '<td class="' + (v ? "" : "pv-cero") + '">' + (v === null ? "–" : fmt(v)) + "</td>";
-      }).join("") + '<td class="pv-total">' + fmt(agregar(lista, med) || 0) + "</td></tr>";
+        var cl = [v ? "" : "pv-cero"], at = atrSel(o.sel, v, cl, g, sub, c);
+        return '<td class="' + cl.join(" ") + '"' + at + ">" + (v === null ? "–" : fmt(v)) + "</td>";
+      }).join("") + (function () {
+        var v = agregar(lista, med) || 0, cl = ["pv-total"], at = atrSel(o.sel, v, cl, g, sub, "");
+        return '<td class="' + cl.join(" ") + '"' + at + ">" + fmt(v) + "</td>";
+      })() + "</tr>";
     }
     var grupos = Array.from(new Set(items.map(o.grupo)));
     var totG = {};
@@ -827,18 +849,45 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         if (ua !== ub) return ua ? 1 : -1;
         return (agregar(deG.filter(function (x) { return o.sub(x) === b; }), med) || 0) - (agregar(deG.filter(function (x) { return o.sub(x) === a; }), med) || 0);
       });
-      return fila(g, deG, "pv-grupo") + subs.map(function (sname) { return fila(sname, deG.filter(function (x) { return o.sub(x) === sname; }), "pv-sub"); }).join("");
+      return fila(g, deG, "pv-grupo", g, "", subs.length > 0) +
+        subs.map(function (sname) { return fila(sname, deG.filter(function (x) { return o.sub(x) === sname; }), "pv-sub", g, sname); }).join("");
     }).join("");
-    var pie = fila("Total", items, "").replace('<tr class="">', "<tfoot><tr>").replace(/<\/tr>$/, "</tr></tfoot>");
+    var pie = fila("Total", items, "", "", "").replace('<tr class="">', "<tfoot><tr>").replace(/<\/tr>$/, "</tr></tfoot>");
     return '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">' + esc(o.titulo) + "</th>" +
       cols.map(function (c) { return "<th>" + esc(etiquetaMes(c)) + "</th>"; }).join("") +
       '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
   }
+  // Flecha de grupo: muestra u oculta sus categorias sin redibujar la tabla.
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest(".pv-toggle");
+    if (!b) return;
+    var tk = b.getAttribute("data-tk"), g = b.getAttribute("data-g");
+    var abiertos = DESPLEGADOS[tk] = DESPLEGADOS[tk] || {};
+    abiertos[g] = !abiertos[g];
+    b.textContent = abiertos[g] ? "▾" : "▸";
+    b.setAttribute("aria-expanded", abiertos[g] ? "true" : "false");
+    b.closest("table").querySelectorAll("tr.pv-sub").forEach(function (tr) {
+      if (tr.getAttribute("data-tk") === tk && tr.getAttribute("data-g") === g) tr.hidden = !abiertos[g];
+    });
+  });
+
+  // =====================================================================
+  // Seleccion en tablas -> filtro del detalle de instalaciones
+  // =====================================================================
+  // SEL_INST = { t: tabla, f: fila/grupo, s: subcategoria, c: columna } ("" = todos).
+  var SEL_INST = null;
+  function atrSel(t, v, clases, f, sub, col) {
+    if (!t || !v) return "";
+    clases.push("pv-clic");
+    if (SEL_INST && SEL_INST.t === t && SEL_INST.f === (f || "") && SEL_INST.s === (sub || "") && SEL_INST.c === (col || "")) clases.push("pv-sel");
+    return ' data-t="' + esc(t) + '" data-f="' + esc(f || "") + '" data-s="' + esc(sub || "") + '" data-c="' + esc(col || "") + '" title="Ver estas instalaciones en el detalle"';
+  }
   function ventaComodato(ov) { return ov.es_comodato ? "Comodato" : "Venta"; }
   // Tabla Unidad comercial > Categoria x mes de fin (filas desplegadas).
-  function tablaClasif(titulo, items, caso, medida, valor, fmt) {
+  // id: clave para recordar que unidades estan desplegadas; sel: ver tablaCruzada.
+  function tablaClasif(titulo, items, caso, medida, valor, fmt, id, sel) {
     return tablaJerarquica({ titulo: titulo, items: items, grupo: function (x) { return caso(x)._uc; }, sub: function (x) { return caso(x)._cat; },
-      col: function (x) { return anioMes(caso(x).fecha_fin_inst); }, medida: medida, valor: valor, fmt: fmt });
+      col: function (x) { return anioMes(caso(x).fecha_fin_inst); }, medida: medida, valor: valor, fmt: fmt, id: id, sel: sel });
   }
   function yo(x) { return x; }
 
@@ -979,16 +1028,16 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function pintarInstalaciones() {
     var casos = casosInst(), fin = casos.filter(function (c) { return c._finalizada; });
     var porInst = function (c) { return c.id_inst; };
-    $("inst-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", fin, yo, "distintos", porInst);
+    $("inst-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", fin, yo, "distintos", porInst, null, "inst-tipo-mes", "clasif");
     var orig = {};
     fin.forEach(function (c) { var k = c.clasificacion_origen || "sin dato"; orig[k] = (orig[k] || 0) + 1; });
     $("nota-clasif").textContent = fin.length ? "Origen de la clasificación (casos): " + ["presupuesto", "oportunidad", "equivalencia", "sin dato"].filter(function (k) { return orig[k]; })
       .map(function (k) { return k + " " + pct(orig[k], fin.length); }).join(" · ") +
       ". Equivalencia: casos viejos (Alarma Hogar / Comercio / Obra) sin dato en presupuesto ni oportunidad; tienen unidad comercial pero no categoría." : "";
     $("inst-trabajo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de trabajo", items: fin, fila: function (c) { return c._trabajo; },
-      col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "distintos", valor: porInst });
+      col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "distintos", valor: porInst, sel: "trabajo" });
     $("inst-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
-      col: function (c) { return c._uc; }, medida: "distintos", valor: porInst });
+      col: function (c) { return c._uc; }, medida: "distintos", valor: porInst, sel: "tecuc" });
     pintarSeguimiento();
   }
 
@@ -1005,7 +1054,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function instalacionesDetalle() {
     var porInst = {};
     // Estado del caso: filtro por caso, antes de agrupar.
-    DATOS.casos.filter(function (c) { return fInst.pasa("estado", c.estado_caso) && fInst.pasa("trabajo", c._trabajo); })
+    DATOS.casos.filter(function (c) { return fInst.pasa("estado", c.estado_caso) && fInst.pasa("trabajo", c._trabajo) && pasaSeleccion(c); })
       .forEach(function (c) { (porInst[c.id_inst] = porInst[c.id_inst] || []).push(c); });
     var hoy = hoyAR(), salida = [];
     Object.keys(porInst).forEach(function (k) {
@@ -1038,7 +1087,48 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     return salida;
   }
 
+  // Caso dentro del numero elegido en una tabla (todas son de instalaciones finalizadas).
+  function pasaSeleccion(c) {
+    var x = SEL_INST;
+    if (!x) return true;
+    if (!c._finalizada) return false;
+    var mes = anioMes(c.fecha_fin_inst);
+    if (x.t === "clasif") return (!x.f || c._uc === x.f) && (!x.s || c._cat === x.s) && (!x.c || mes === x.c);
+    if (x.t === "trabajo") return (!x.f || c._trabajo === x.f) && (!x.c || mes === x.c);
+    if (x.t === "tecuc") return (!x.f || c._tecnico === x.f) && (!x.c || c._uc === x.c);
+    return true;
+  }
+  function textoSeleccion(x) {
+    var partes = [];
+    if (x.t === "clasif") { partes.push(x.f ? x.f + (x.s ? " › " + x.s : "") : "Todas las unidades comerciales"); if (x.c) partes.push(etiquetaMes(x.c)); }
+    if (x.t === "trabajo") { partes.push(x.f || "Todos los tipos de trabajo"); if (x.c) partes.push(etiquetaMes(x.c)); }
+    if (x.t === "tecuc") { partes.push(x.f || "Todos los técnicos"); if (x.c) partes.push(x.c); }
+    return "Finalizadas · " + partes.join(" · ");
+  }
+  function clicTablaInst(e) {
+    var td = e.target.closest("td.pv-clic");
+    if (!td) return;
+    var nueva = { t: td.getAttribute("data-t"), f: td.getAttribute("data-f"), s: td.getAttribute("data-s"), c: td.getAttribute("data-c") };
+    var misma = SEL_INST && ["t", "f", "s", "c"].every(function (k) { return SEL_INST[k] === nueva[k]; });
+    SEL_INST = misma ? null : nueva;
+    if (SEL_INST) SEG.filtro = "todas";
+    pintarInstalaciones();
+    if (SEL_INST) {
+      // La pagina vive en un iframe sin scroll propio: la posicion se mide en la ventana contenedora.
+      var det = $("sel-inst"), r = det.getBoundingClientRect(), arriba = r.top, alto = window.innerHeight;
+      try { if (window.frameElement) { arriba += window.frameElement.getBoundingClientRect().top; alto = window.parent.innerHeight; } } catch (err) { /* otro origen */ }
+      if (arriba > alto - 80 || arriba < 0) det.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   function pintarSeguimiento() {
+    var chip = $("sel-inst");
+    chip.hidden = !SEL_INST;
+    if (SEL_INST) {
+      chip.innerHTML = "<span>Filtrado por: <strong>" + esc(textoSeleccion(SEL_INST)) + "</strong></span>" +
+        '<button type="button" id="sel-inst-quitar">Quitar filtro &times;</button>';
+      $("sel-inst-quitar").addEventListener("click", function () { SEL_INST = null; pintarInstalaciones(); });
+    }
     var todas = instalacionesDetalle();
     var cuenta = { todas: todas.length, curso: 0, pendiente: 0, finalizada: 0, otra: 0 };
     todas.forEach(function (i) { cuenta[i.grupo]++; });
@@ -1121,7 +1211,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function pintarCasos() {
     var casos = casosCasos(), fin = casos.filter(function (c) { return c._finalizada; });
     var porInst = function (c) { return c.id_inst; };
-    $("casos-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", fin, yo, "distintos", porInst);
+    $("casos-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", fin, yo, "distintos", porInst, null, "casos-tipo-mes");
     $("casos-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
       col: function (c) { return c._uc; }, medida: "distintos", valor: porInst });
     var elemFin = elementosDe(fin);
@@ -1172,7 +1262,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       grupo: function (x) { return ventaComodato(x.ov); }, sub: function (x) { return x.ov.unidad_comercial || "Sin unidad comercial"; },
       grupos: ["Venta", "Comodato"], col: function (x) { return anioMes(x.caso.fecha_fin_inst); }, valor: monto, fmt: fmtPesos });
     $("fact-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", ovs.filter(function (x) { return x.caso.fecha_fin_inst; }),
-      function (x) { return x.caso; }, "suma", monto, fmtPesos);
+      function (x) { return x.caso; }, "suma", monto, fmtPesos, "fact-tipo-mes");
     var porEstado = {};
     ovs.forEach(function (x) { var k = x.ov.estado_ov || "(Sin estado)"; (porEstado[k] = porEstado[k] || []).push(x); });
     var estados = Object.keys(porEstado).sort(function (a, b) { return suma(porEstado[b], monto) - suma(porEstado[a], monto); });
@@ -1193,8 +1283,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var dem = casos.filter(demoraValida), vari = casos.filter(variacionValida);
     $("dem-linea").innerHTML = lineaMeses(serieMensual(dem, fecha, function (c) { return c._demora; }, "promedio"));
     $("var-linea").innerHTML = lineaMeses(serieMensual(vari, fecha, function (c) { return c._variacion; }, "promedio"));
-    $("dem-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", dem, yo, "promedio", function (c) { return c._demora; }, fmtDias);
-    $("var-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", vari, yo, "suma", function (c) { return c._variacion; }, fmtDias);
+    $("dem-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", dem, yo, "promedio", function (c) { return c._demora; }, fmtDias, "dem-tipo-mes");
+    $("var-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", vari, yo, "suma", function (c) { return c._variacion; }, fmtDias, "var-tipo-mes");
     tablaDem.mostrar(casos);
   }
 
@@ -1547,6 +1637,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // Inicio
   // =====================================================================
   function iniciarPestanas() {
+    $("panel-instalaciones").addEventListener("click", clicTablaInst);
     document.querySelectorAll(".tab-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var id = btn.getAttribute("data-tab");
