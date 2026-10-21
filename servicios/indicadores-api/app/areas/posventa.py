@@ -222,8 +222,8 @@ def filas_encuestas(contactos_por_tag, registros, corrida_id):
 # Extraccion (se usa en la corrida y en probar_posventa.py)
 # ---------------------------------------------------------------------------
 
-def traer_casos(log, corrida_id=None):
-    return fuente_casos.traer(log, corrida_id)
+def traer_casos(log, corrida_id=None, token=None):
+    return fuente_casos.traer(log, corrida_id, token)
 
 
 def traer_relevamientos(log, corrida_id=None):
@@ -285,7 +285,7 @@ def actualizar(token, corrida_id, log, paso):
     advertencias = []
 
     paso("Consultando casos de instalacion en NetSuite")
-    casos = traer_casos(log, corrida_id)
+    casos = traer_casos(log, corrida_id, token)
     paso("Consultando relevamientos posventa en NetSuite")
     relevamientos = traer_relevamientos(log, corrida_id)
     if not casos or not relevamientos:

@@ -314,6 +314,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   // URL del servicio indicadores-api en Coolify.
   var API_BASE_URL = "https://indicadores-api.200.5.196.50.sslip.io";
+  // Direccion de la web interna habilitada en ALLOWED_ORIGINS del servicio.
+  var ORIGEN_WEB = "https://portal.blogdns.com";
   var AREA = "posventa";
   var SECCION = "indicadores-posventa";
   var TZ = "America/Argentina/Buenos_Aires";
@@ -986,10 +988,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var token = s.data && s.data.session && s.data.session.access_token;
     if (!token) { bloquear(false); setEstado("Tu sesión venció: volvé a ingresar a la web interna.", "error"); return; }
     try {
-      var resp = await fetch(API_BASE_URL + "/indicadores/" + AREA + "/actualizar", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + token },
-      });
+      var resp = await llamarActualizar(token);
       var body = await resp.json().catch(function () { return {}; });
       if (resp.status === 409 && body.detail && body.detail.corrida_id) {
         setEstado("Ya había una actualización en curso; se muestra su avance.");
@@ -1005,8 +1004,44 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       seguirCorrida(body.corrida_id);
     } catch (e) {
       bloquear(false);
-      setEstado("No se pudo contactar al servicio de actualización (" + e.message + ").", "error");
+      setEstado(await diagnosticoConexion(e), "error");
     }
+  }
+
+  // POST de actualizacion. Si falla la conexion se reintenta una vez a los 3 s
+  // (por ejemplo, si el servicio se estaba reiniciando por un despliegue).
+  async function llamarActualizar(token) {
+    var pedir = function () {
+      return fetch(API_BASE_URL + "/indicadores/" + AREA + "/actualizar", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+    };
+    try {
+      return await pedir();
+    } catch (e) {
+      setEstado("Reintentando la conexión con el servicio…");
+      await new Promise(function (r) { setTimeout(r, 3000); });
+      return await pedir();
+    }
+  }
+
+  // "Failed to fetch" no dice la causa. Se prueba /health sin CORS para
+  // distinguir servicio caido / red bloqueada de una direccion no autorizada.
+  async function diagnosticoConexion(e) {
+    var alcanzable = true;
+    try { await fetch(API_BASE_URL + "/health", { mode: "no-cors", cache: "no-store" }); }
+    catch (x) { alcanzable = false; }
+    if (!alcanzable) {
+      return "No hay conexión con el servicio de actualización desde esta PC. Puede estar reiniciándose " +
+        "(probá de nuevo en un minuto) o la red de esta PC bloquea " + API_BASE_URL + ".";
+    }
+    if (location.origin !== ORIGEN_WEB) {
+      return "Abriste la web interna desde " + location.origin + " y el servicio de actualización sólo acepta " +
+        ORIGEN_WEB + ". Ingresá desde esa dirección y volvé a intentar.";
+    }
+    return "El servicio responde pero el navegador bloqueó la llamada (" + e.message + "). " +
+      "Puede ser una extensión del navegador o el antivirus; probá desde una ventana de incógnito.";
   }
 
   // =====================================================================

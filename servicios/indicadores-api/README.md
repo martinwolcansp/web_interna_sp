@@ -14,6 +14,15 @@ Los datos que usan varias áreas se traen con `app/fuentes/` y se guardan en tab
 
 Cada área actualiza con su propio botón y solo reescribe lo de su alcance. Posventa e Instalaciones traen los mismos casos, así que actualizar cualquiera de las dos refresca `ind_caso_instalacion` para ambas.
 
+## Clasificación de los casos (`app/fuentes/clasificacion.py`)
+
+Cada caso lleva dos dimensiones independientes:
+
+- **Tipo de trabajo**: el tipo de proyecto sin "Alarma " (Instalación, Reprogramación, Traslado…). En los tipos viejos Alarma Hogar / Alarma Comercio, que en realidad eran unidad comercial, se deduce del título del presupuesto (reprogramación, traslado, ampliación, cámaras; si no, Instalación).
+- **Clasificación comercial**: Unidad comercial › Categoría (`custbody_mw_sp_unidad_comercial`, `custbody_3k_categoria`). Se toma del presupuesto de origen de la OV de productos del caso; si no tiene, de la oportunidad; y si tampoco, de la equivalencia del tipo de proyecto viejo (Alarma Hogar → Hogar, Alarma Comercio → Comercio, Alarma Obra → Obra), sin categoría.
+
+Las equivalencias están en la tabla `ind_equivalencia_tipo_proyecto` (editable; si está vacía se usan las del código). Cada caso guarda el origen del dato (`tipo_trabajo_origen`, `clasificacion_origen`). Requiere la `migracion_35_clasificacion_casos_instalacion.sql`, que hay que correr **antes** de desplegar el servicio.
+
 ## Qué hace una corrida de Instalaciones
 
 1. Casos de instalación (la misma consulta que Posventa).

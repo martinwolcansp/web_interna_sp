@@ -22,7 +22,7 @@ def actualizar(token, corrida_id, log, paso):
     advertencias = []
 
     paso("Consultando casos de instalacion en NetSuite")
-    casos = fuente_casos.traer(log, corrida_id)
+    casos = fuente_casos.traer(log, corrida_id, token)
     paso("Consultando OV y articulos de los casos en NetSuite")
     ovs, lineas = fuente_ov.traer([c["caso_id"] for c in casos], log, corrida_id)
     if not ovs or not lineas:

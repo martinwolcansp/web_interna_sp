@@ -168,6 +168,17 @@ def borrar_corridas_viejas(token, area, conservar):
 
 # ---------- datos de cada area ----------
 
+def leer(token, tabla, select="*"):
+    """Todas las filas de una tabla chica (equivalencias, configuracion)."""
+    resp = _check(requests.get(
+        _rest(tabla),
+        headers=_h(token),
+        params={"select": select, "limit": 10000},
+        timeout=30,
+    ), f"leer {tabla}")
+    return resp.json()
+
+
 def upsert(token, tabla, filas, on_conflict):
     """Upsert por lotes. Si vienen filas repetidas por la clave (on_conflict),
     queda la ultima: PostgreSQL rechaza todo el lote si una fila se repite

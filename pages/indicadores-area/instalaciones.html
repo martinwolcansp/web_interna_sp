@@ -270,11 +270,16 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       </div>
 
       <div class="bloque">
-        <h3>Instalaciones finalizadas por mes y tipo de proyecto</h3>
+        <h3>Instalaciones finalizadas por mes y clasificación comercial</h3>
         <div id="inst-tipo-mes"></div>
+        <div class="bloque-nota" id="nota-clasif"></div>
       </div>
       <div class="bloque">
-        <h3>Instalaciones finalizadas por técnico y tipo de proyecto</h3>
+        <h3>Instalaciones finalizadas por mes y tipo de trabajo</h3>
+        <div id="inst-trabajo-mes"></div>
+      </div>
+      <div class="bloque">
+        <h3>Instalaciones finalizadas por técnico y unidad comercial</h3>
         <div id="inst-tec-tipo"></div>
       </div>
       <div class="bloque">
@@ -309,12 +314,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         </div>
       </div>
       <div class="bloque">
-        <h3>Promedio de demora por agenda por tipo de proyecto (días)</h3>
+        <h3>Promedio de demora por agenda por clasificación comercial (días)</h3>
         <div id="dem-tipo-mes"></div>
         <div class="bloque-nota">Días corridos entre la creación del caso y el inicio de la instalación. Sin los casos de 30 días o más.</div>
       </div>
       <div class="bloque">
-        <h3>Suma de variaciones de mano de obra por tipo de proyecto (días reales − presupuestados)</h3>
+        <h3>Suma de variaciones de mano de obra por clasificación comercial (días reales − presupuestados)</h3>
         <div id="var-tipo-mes"></div>
         <div class="bloque-nota">Positivo: se trabajaron más días de los presupuestados. Solo casos con mano de obra en la OV y días reales cargados; sin los de 30 días o más de diferencia.</div>
       </div>
@@ -344,7 +349,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         <div class="bloque-nota">Venta o comodato según el campo Comodato de la OV. Unidad comercial: la de la OV; si no la tiene, la del presupuesto de origen; si no, la de la oportunidad. El campo es reciente, por eso muchas OV anteriores figuran "Sin unidad comercial".</div>
       </div>
       <div class="bloque">
-        <h3>Monto de las OV de productos por tipo de proyecto y mes</h3>
+        <h3>Monto de las OV de productos por clasificación comercial y mes</h3>
         <div id="fact-tipo-mes"></div>
         <div class="bloque-nota">Total de las órdenes de venta de productos vinculadas a cada caso, por mes de fin de la instalación.</div>
       </div>
@@ -373,15 +378,15 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       </div>
 
       <div class="bloque">
-        <h3>Instalaciones finalizadas por mes y tipo de proyecto</h3>
+        <h3>Instalaciones finalizadas por mes y clasificación comercial</h3>
         <div id="casos-tipo-mes"></div>
       </div>
       <div class="bloque">
-        <h3>Instalaciones finalizadas por técnico y tipo de proyecto</h3>
+        <h3>Instalaciones finalizadas por técnico y unidad comercial</h3>
         <div id="casos-tec-tipo"></div>
       </div>
       <div class="bloque">
-        <h3>Elementos instalados por técnico y tipo de proyecto</h3>
+        <h3>Elementos instalados por técnico y unidad comercial</h3>
         <div id="elem-tec-tipo"></div>
       </div>
       <div class="bloque">
@@ -443,6 +448,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   // URL del servicio indicadores-api en Coolify (el mismo que Posventa).
   var API_BASE_URL = "https://indicadores-api.200.5.196.50.sslip.io";
+  // Direccion de la web interna habilitada en ALLOWED_ORIGINS del servicio.
+  var ORIGEN_WEB = "https://portal.blogdns.com";
   var AREA = "instalaciones";
   var SECCION = "indicadores-instalaciones";
   var TZ = "America/Argentina/Buenos_Aires";
@@ -797,7 +804,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var items = o.items.filter(function (x) { return o.col(x); });
     if (!items.length) return vacio();
     var cols = Array.from(new Set(items.map(o.col))).sort();
-    var fmt = o.fmt || fmtNum, med = { medida: "suma", valor: o.valor };
+    var fmt = o.fmt || fmtNum, med = { medida: o.medida || "suma", valor: o.valor };
     function fila(nombre, lista, clase) {
       return '<tr class="' + clase + '"><td class="pv-fila">' + esc(nombre) + "</td>" + cols.map(function (c) {
         var v = agregar(lista.filter(function (x) { return o.col(x) === c; }), med);
@@ -805,11 +812,21 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       }).join("") + '<td class="pv-total">' + fmt(agregar(lista, med) || 0) + "</td></tr>";
     }
     var grupos = Array.from(new Set(items.map(o.grupo)));
-    grupos.sort(function (a, b) { var ia = (o.grupos || []).indexOf(a), ib = (o.grupos || []).indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "es"); });
+    var totG = {};
+    grupos.forEach(function (g) { totG[g] = agregar(items.filter(function (x) { return o.grupo(x) === g; }), med) || 0; });
+    grupos.sort(function (a, b) {
+      if (o.grupos) { var ia = o.grupos.indexOf(a), ib = o.grupos.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "es"); }
+      var ua = /^Sin /.test(a), ub = /^Sin /.test(b);
+      return ua !== ub ? (ua ? 1 : -1) : totG[b] - totG[a] || a.localeCompare(b, "es");
+    });
     var cuerpo = grupos.map(function (g) {
       var deG = items.filter(function (x) { return o.grupo(x) === g; });
       var subs = Array.from(new Set(deG.map(o.sub)));
-      subs.sort(function (a, b) { return (agregar(deG.filter(function (x) { return o.sub(x) === b; }), med) || 0) - (agregar(deG.filter(function (x) { return o.sub(x) === a; }), med) || 0); });
+      subs.sort(function (a, b) {
+        var ua = /^Sin /.test(a), ub = /^Sin /.test(b);
+        if (ua !== ub) return ua ? 1 : -1;
+        return (agregar(deG.filter(function (x) { return o.sub(x) === b; }), med) || 0) - (agregar(deG.filter(function (x) { return o.sub(x) === a; }), med) || 0);
+      });
       return fila(g, deG, "pv-grupo") + subs.map(function (sname) { return fila(sname, deG.filter(function (x) { return o.sub(x) === sname; }), "pv-sub"); }).join("");
     }).join("");
     var pie = fila("Total", items, "").replace('<tr class="">', "<tfoot><tr>").replace(/<\/tr>$/, "</tr></tfoot>");
@@ -818,6 +835,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
   }
   function ventaComodato(ov) { return ov.es_comodato ? "Comodato" : "Venta"; }
+  // Tabla Unidad comercial > Categoria x mes de fin (filas desplegadas).
+  function tablaClasif(titulo, items, caso, medida, valor, fmt) {
+    return tablaJerarquica({ titulo: titulo, items: items, grupo: function (x) { return caso(x)._uc; }, sub: function (x) { return caso(x)._cat; },
+      col: function (x) { return anioMes(caso(x).fecha_fin_inst); }, medida: medida, valor: valor, fmt: fmt });
+  }
+  function yo(x) { return x; }
 
   // =====================================================================
   // Grafico de lineas por mes (SVG simple)
@@ -877,7 +900,10 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       // Dias habiles trabajados hasta hoy, solo para las instalaciones en curso.
       c._dias_hoy = c.estado_caso === "En curso" && c.fecha_inicio_inst ? diasHabiles(c.fecha_inicio_inst, hoy) : null;
       c._finalizada = !!c.fecha_fin_inst;
-      c._tipo = c.tipo_proyecto || "(Sin tipo)";
+      // Clasificacion: tipo de trabajo y unidad comercial > categoria (ver app/fuentes/clasificacion.py).
+      c._trabajo = c.tipo_trabajo || "Sin tipo de trabajo";
+      c._uc = c.unidad_comercial || "Sin clasificar";
+      c._cat = c.categoria || "Sin categoría";
       c._tecnico = c.tecnico || "(Sin técnico)";
     });
   }
@@ -946,17 +972,23 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   function casosInst() {
     return DATOS.casos.filter(function (c) {
-      return fInst.periodo(c.fecha_fin_inst) && fInst.pasa("estado", c.estado_caso);
+      return fInst.periodo(c.fecha_fin_inst) && fInst.pasa("estado", c.estado_caso) && fInst.pasa("trabajo", c._trabajo);
     });
   }
 
   function pintarInstalaciones() {
     var casos = casosInst(), fin = casos.filter(function (c) { return c._finalizada; });
     var porInst = function (c) { return c.id_inst; };
-    $("inst-tipo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de proyecto", items: fin, fila: function (c) { return c._tipo; },
+    $("inst-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", fin, yo, "distintos", porInst);
+    var orig = {};
+    fin.forEach(function (c) { var k = c.clasificacion_origen || "sin dato"; orig[k] = (orig[k] || 0) + 1; });
+    $("nota-clasif").textContent = fin.length ? "Origen de la clasificación (casos): " + ["presupuesto", "oportunidad", "equivalencia", "sin dato"].filter(function (k) { return orig[k]; })
+      .map(function (k) { return k + " " + pct(orig[k], fin.length); }).join(" · ") +
+      ". Equivalencia: casos viejos (Alarma Hogar / Comercio / Obra) sin dato en presupuesto ni oportunidad; tienen unidad comercial pero no categoría." : "";
+    $("inst-trabajo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de trabajo", items: fin, fila: function (c) { return c._trabajo; },
       col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "distintos", valor: porInst });
     $("inst-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
-      col: function (c) { return c._tipo; }, medida: "distintos", valor: porInst });
+      col: function (c) { return c._uc; }, medida: "distintos", valor: porInst });
     pintarSeguimiento();
   }
 
@@ -973,7 +1005,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function instalacionesDetalle() {
     var porInst = {};
     // Estado del caso: filtro por caso, antes de agrupar.
-    DATOS.casos.filter(function (c) { return fInst.pasa("estado", c.estado_caso); })
+    DATOS.casos.filter(function (c) { return fInst.pasa("estado", c.estado_caso) && fInst.pasa("trabajo", c._trabajo); })
       .forEach(function (c) { (porInst[c.id_inst] = porInst[c.id_inst] || []).push(c); });
     var hoy = hoyAR(), salida = [];
     Object.keys(porInst).forEach(function (k) {
@@ -998,7 +1030,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       salida.push({
         id: k, casos: casos, estado: estado, grupo: grupo,
         cliente: casos[0].cliente || "", nro_cuenta: casos[0].nro_cuenta || "",
-        tipos: unicos(function (c) { return c.tipo_proyecto; }), tecnicos: unicos(function (c) { return c.tecnico; }),
+        tipos: unicos(function (c) { return c.tipo_trabajo; }), tecnicos: unicos(function (c) { return c.tecnico; }),
+        clasif: unicos(function (c) { return [c.unidad_comercial, c.categoria].filter(Boolean).join(" › "); }),
         creacion: creacion, inicio: inicio, fin: fin, dias: dias,
       });
     });
@@ -1030,10 +1063,10 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var filas = todas.filter(function (i) {
       if (SEG.filtro !== "todas" && i.grupo !== SEG.filtro) return false;
       if (!q) return true;
-      return [i.cliente, i.nro_cuenta, i.tipos, i.tecnicos, i.estado].concat(i.casos.map(function (c) { return c.numero; })).join(" ").toLowerCase().indexOf(q) >= 0;
+      return [i.cliente, i.nro_cuenta, i.tipos, i.clasif, i.tecnicos, i.estado].concat(i.casos.map(function (c) { return c.numero; })).join(" ").toLowerCase().indexOf(q) >= 0;
     });
     var cols = [
-      ["casos", "Caso(s)"], ["cliente", "Cliente"], ["nro_cuenta", "Nro cuenta"], ["estado", "Estado"], ["tipos", "Tipo de proyecto"],
+      ["casos", "Caso(s)"], ["cliente", "Cliente"], ["nro_cuenta", "Nro cuenta"], ["estado", "Estado"], ["tipos", "Tipo de trabajo"], ["clasif", "Clasificación"],
       ["tecnicos", "Técnico"], ["creacion", "Creación"], ["inicio", "Inicio"], ["fin", "Fin"], ["dias", "Días hábiles"],
     ];
     filas.sort(function (a, b) {
@@ -1049,13 +1082,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       var casoTxt = multi ? '<span class="inst-toggle">' + (abierta ? "▾" : "▸") + " " + i.casos.length + " casos</span>" : linkCaso(i.casos[0]);
       var fila = '<tr class="inst-fila' + (multi ? " inst-multi" : "") + (abierta ? " inst-abierta" : "") + '" data-k="' + esc(i.id) + '">' +
         '<td class="nowrap">' + casoTxt + "</td><td>" + esc(i.cliente) + "</td><td>" + esc(i.nro_cuenta) + "</td>" +
-        '<td><span class="estado-tag estado-' + i.grupo + '">' + esc(i.estado) + "</span></td><td>" + esc(i.tipos) + "</td><td>" + esc(i.tecnicos) + "</td>" +
+        '<td><span class="estado-tag estado-' + i.grupo + '">' + esc(i.estado) + "</span></td><td>" + esc(i.tipos) + "</td><td>" + esc(i.clasif) + "</td><td>" + esc(i.tecnicos) + "</td>" +
         '<td class="nowrap">' + esc(fmtDia(i.creacion)) + '</td><td class="nowrap">' + esc(fmtDia(i.inicio)) + '</td><td class="nowrap">' + esc(fmtDia(i.fin)) + '</td><td class="num">' + (i.dias === null ? "" : fmtNum(i.dias)) + "</td></tr>";
       if (!abierta) return fila;
       return fila + '<tr class="inst-det"><td colspan="' + cols.length + '"><table class="sub-tabla"><thead><tr>' +
-        "<th>Caso</th><th>Tipo de proyecto</th><th>Estado del caso</th><th>Estado de la instalación</th><th>Técnico</th><th>Tipo de posventa</th><th>Creación</th><th>Inicio</th><th>Fin</th></tr></thead><tbody>" +
+        "<th>Caso</th><th>Tipo de trabajo</th><th>Clasificación</th><th>Estado del caso</th><th>Estado de la instalación</th><th>Técnico</th><th>Tipo de posventa</th><th>Creación</th><th>Inicio</th><th>Fin</th></tr></thead><tbody>" +
         i.casos.map(function (c) {
-          return '<tr><td class="nowrap">' + linkCaso(c) + "</td><td>" + esc(c.tipo_proyecto || "") + "</td><td>" + esc(c.estado_caso || "") + "</td><td>" +
+          return '<tr><td class="nowrap">' + linkCaso(c) + "</td><td>" + esc(c.tipo_trabajo || "") + "</td><td>" + esc([c.unidad_comercial, c.categoria].filter(Boolean).join(" › ")) + "</td><td>" + esc(c.estado_caso || "") + "</td><td>" +
             esc(c.estado_instalacion || "") + "</td><td>" + esc(c.tecnico || "") + "</td><td>" + esc(c.tipo_posventa || "") + '</td><td class="nowrap">' +
             esc(fmtDia(c.fecha_creacion)) + '</td><td class="nowrap">' + esc(fmtDia(c.fecha_inicio_inst)) + '</td><td class="nowrap">' + esc(fmtDia(c.fecha_fin_inst)) + "</td></tr>";
         }).join("") + "</tbody></table></td></tr>";
@@ -1071,7 +1104,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // =====================================================================
   function casosCasos() {
     return DATOS.casos.filter(function (c) {
-      return fCasos.periodo(c.fecha_fin_inst) && fCasos.pasa("estado", c.estado_caso) &&
+      return fCasos.periodo(c.fecha_fin_inst) && fCasos.pasa("estado", c.estado_caso) && fCasos.pasa("trabajo", c._trabajo) &&
         fCasos.pasa("estadoInst", c.estado_instalacion) && fCasos.pasa("tecnico", c._tecnico);
     });
   }
@@ -1088,14 +1121,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function pintarCasos() {
     var casos = casosCasos(), fin = casos.filter(function (c) { return c._finalizada; });
     var porInst = function (c) { return c.id_inst; };
-    $("casos-tipo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de proyecto", items: fin, fila: function (c) { return c._tipo; },
-      col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "distintos", valor: porInst });
+    $("casos-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", fin, yo, "distintos", porInst);
     $("casos-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
-      col: function (c) { return c._tipo; }, medida: "distintos", valor: porInst });
+      col: function (c) { return c._uc; }, medida: "distintos", valor: porInst });
     var elemFin = elementosDe(fin);
     var cant = function (e) { return +e.linea.cantidad; };
     $("elem-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: elemFin, fila: function (e) { return e.caso._tecnico; },
-      col: function (e) { return e.caso._tipo; }, medida: "suma", valor: cant });
+      col: function (e) { return e.caso._uc; }, medida: "suma", valor: cant });
     $("elem-tec-mes").innerHTML = tablaCruzada({ titulo: "Técnico", items: elemFin, fila: function (e) { return e.caso._tecnico; },
       col: function (e) { return anioMes(e.caso.fecha_fin_inst); }, cols: "mes", medida: "suma", valor: cant });
     $("casos-tec-posventa").innerHTML = tablaCruzada({ titulo: "Técnico",
@@ -1122,7 +1154,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function pintarFacturacion() {
     var ovs = DATOS.ovs.filter(function (o) {
       var c = CASO_POR_ID[o.caso_id];
-      return c && fFact.periodo(c.fecha_fin_inst) && fFact.pasa("estadoOv", o.estado_ov) &&
+      return c && fFact.periodo(c.fecha_fin_inst) && fFact.pasa("trabajo", c._trabajo) && fFact.pasa("estadoOv", o.estado_ov) &&
         fFact.pasa("vc", ventaComodato(o)) && fFact.pasa("uc", o.unidad_comercial);
     }).map(function (o) { return { ov: o, caso: CASO_POR_ID[o.caso_id] }; });
     var total = suma(ovs, function (x) { return +x.ov.monto; });
@@ -1139,9 +1171,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     $("fact-vc-uc").innerHTML = tablaJerarquica({ titulo: "Venta / Comodato", items: ovs.filter(function (x) { return x.caso.fecha_fin_inst; }),
       grupo: function (x) { return ventaComodato(x.ov); }, sub: function (x) { return x.ov.unidad_comercial || "Sin unidad comercial"; },
       grupos: ["Venta", "Comodato"], col: function (x) { return anioMes(x.caso.fecha_fin_inst); }, valor: monto, fmt: fmtPesos });
-    $("fact-tipo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de proyecto", items: ovs.filter(function (x) { return x.caso.fecha_fin_inst; }),
-      fila: function (x) { return x.caso._tipo; }, col: function (x) { return anioMes(x.caso.fecha_fin_inst); }, cols: "mes",
-      medida: "suma", valor: monto, fmt: fmtPesos });
+    $("fact-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", ovs.filter(function (x) { return x.caso.fecha_fin_inst; }),
+      function (x) { return x.caso; }, "suma", monto, fmtPesos);
     var porEstado = {};
     ovs.forEach(function (x) { var k = x.ov.estado_ov || "(Sin estado)"; (porEstado[k] = porEstado[k] || []).push(x); });
     var estados = Object.keys(porEstado).sort(function (a, b) { return suma(porEstado[b], monto) - suma(porEstado[a], monto); });
@@ -1157,15 +1188,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // Pestaña 4: Demoras y variaciones
   // =====================================================================
   function pintarDemoras() {
-    var casos = DATOS.casos.filter(function (c) { return c._finalizada && fDem.periodo(c.fecha_fin_inst) && fDem.pasa("estado", c.estado_caso); });
+    var casos = DATOS.casos.filter(function (c) { return c._finalizada && fDem.periodo(c.fecha_fin_inst) && fDem.pasa("estado", c.estado_caso) && fDem.pasa("trabajo", c._trabajo); });
     var fecha = function (c) { return c.fecha_fin_inst; };
     var dem = casos.filter(demoraValida), vari = casos.filter(variacionValida);
     $("dem-linea").innerHTML = lineaMeses(serieMensual(dem, fecha, function (c) { return c._demora; }, "promedio"));
     $("var-linea").innerHTML = lineaMeses(serieMensual(vari, fecha, function (c) { return c._variacion; }, "promedio"));
-    $("dem-tipo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de proyecto", items: dem, fila: function (c) { return c._tipo; },
-      col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "promedio", valor: function (c) { return c._demora; }, fmt: fmtDias });
-    $("var-tipo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de proyecto", items: vari, fila: function (c) { return c._tipo; },
-      col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "suma", valor: function (c) { return c._variacion; }, fmt: fmtDias });
+    $("dem-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", dem, yo, "promedio", function (c) { return c._demora; }, fmtDias);
+    $("var-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", vari, yo, "suma", function (c) { return c._variacion; }, fmtDias);
     tablaDem.mostrar(casos);
   }
 
@@ -1175,7 +1204,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function pintarElementos() {
     var elems = [];
     DATOS.casos.forEach(function (c) {
-      if (!fElem.periodo(c.fecha_fin_inst)) return;
+      if (!fElem.periodo(c.fecha_fin_inst) || !fElem.pasa("trabajo", c._trabajo)) return;
       (ELEM_POR_CASO[c.caso_id] || []).forEach(function (l) { elems.push({ caso: c, linea: l }); });
     });
     var cant = function (e) { return +e.linea.cantidad || 0; };
@@ -1233,7 +1262,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       { titulo: "Inicio", valor: function (c) { return fmtDia(c.fecha_inicio_inst); }, orden: function (c) { return c.fecha_inicio_inst; }, clase: "nowrap" },
       { titulo: "Fin", valor: function (c) { return fmtDia(c.fecha_fin_inst); }, orden: function (c) { return c.fecha_fin_inst; }, clase: "nowrap" },
       { titulo: "Técnico", valor: function (c) { return c.tecnico || ""; } },
-      { titulo: "Tipo de proyecto", valor: function (c) { return c.tipo_proyecto || ""; } },
+      { titulo: "Tipo de trabajo", valor: function (c) { return c.tipo_trabajo || ""; } },
+      { titulo: "Unidad comercial", valor: function (c) { return c.unidad_comercial || ""; } },
+      { titulo: "Categoría", valor: function (c) { return c.categoria || ""; } },
     ];
     tablaCasos = crearTabla("tabla-casos", "buscar-casos", "cuenta-casos", colsCaso.concat([
       { titulo: "Estado", valor: function (c) { return c.estado_caso || ""; } },
@@ -1242,7 +1273,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       numCol("Días hábiles en curso", function (c) { return c._dias_hoy; }),
       numCol("Elementos", function (c) { return c._elementos || null; }),
       numCol("Monto OV", function (c) { return c._monto; }, fmtPesos),
-    ]), function (c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c.tipo_proyecto, c.estado_caso, c.tipo_posventa].join(" "); });
+    ]), function (c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c.tipo_trabajo, c.unidad_comercial, c.categoria, c.estado_caso, c.tipo_posventa].join(" "); });
 
     tablaArts = crearTabla("tabla-arts", "buscar-arts", "cuenta-arts", [
       { titulo: "Artículo", valor: function (a) { return a.articulo; } },
@@ -1260,18 +1291,19 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       numCol("Monto", function (x) { return x.ov.monto === null ? null : +x.ov.monto; }, fmtPesos),
       { titulo: "Caso", html: function (x) { return linkCaso(x.caso); }, valor: function (x) { return x.caso.numero || ""; }, clase: "nowrap" },
       { titulo: "Cliente", valor: function (x) { return x.caso.cliente || ""; } },
-      { titulo: "Tipo de proyecto", valor: function (x) { return x.caso.tipo_proyecto || ""; } },
+      { titulo: "Tipo de trabajo", valor: function (x) { return x.caso.tipo_trabajo || ""; } },
+      { titulo: "Clasificación", valor: function (x) { return [x.caso.unidad_comercial, x.caso.categoria].filter(Boolean).join(" › "); } },
       { titulo: "Fin instalación", valor: function (x) { return fmtDia(x.caso.fecha_fin_inst); }, orden: function (x) { return x.caso.fecha_fin_inst; }, clase: "nowrap" },
       { titulo: "Presupuesto", valor: function (x) { return x.ov.presupuesto || ""; }, clase: "nowrap" },
       { titulo: "Oportunidad", valor: function (x) { return x.ov.oportunidad || ""; } },
-    ], function (x) { return [x.ov.ov_numero, x.ov.estado_ov, ventaComodato(x.ov), x.ov.unidad_comercial, x.ov.presupuesto, x.caso.numero, x.caso.cliente, x.caso.tipo_proyecto, x.ov.oportunidad].join(" "); });
+    ], function (x) { return [x.ov.ov_numero, x.ov.estado_ov, ventaComodato(x.ov), x.ov.unidad_comercial, x.ov.presupuesto, x.caso.numero, x.caso.cliente, x.caso.tipo_trabajo, x.caso.unidad_comercial, x.caso.categoria, x.ov.oportunidad].join(" "); });
 
     tablaDem = crearTabla("tabla-dem", "buscar-dem", "cuenta-dem", colsCaso.concat([
       numCol("Demora agenda (días)", function (c) { return c._demora; }),
       numCol("Días reales", function (c) { return c._mo_reales; }, fmtDias),
       numCol("Días presup.", function (c) { return c._mo_presup; }, fmtDias),
       numCol("Variación", function (c) { return c._variacion; }, fmtDias),
-    ]), function (c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c.tipo_proyecto].join(" "); });
+    ]), function (c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c.tipo_trabajo, c.unidad_comercial, c.categoria].join(" "); });
   }
 
   var iniciado = false;
@@ -1287,7 +1319,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   }
   async function cargarDatosInterno() {
     var res = await Promise.all([
-      leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_creacion,fecha_inicio_inst,fecha_fin_inst,cliente,nro_cuenta,tecnico,tipo_proyecto,estado_caso,estado_instalacion,tipo_posventa,dias_reales_trabajo", ["caso_id"]),
+      leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_creacion,fecha_inicio_inst,fecha_fin_inst,cliente,nro_cuenta,tecnico,tipo_proyecto,estado_caso,estado_instalacion,tipo_posventa,dias_reales_trabajo,tipo_trabajo,unidad_comercial,categoria,clasificacion_origen", ["caso_id"]),
       leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto,es_comodato,unidad_comercial,presupuesto", ["caso_id", "ov_id"]),
       leerTodo("ind_caso_ov_linea", "caso_id,cantidad", ["caso_id", "ov_id", "linea_id"], ["es_mo", true]),
     ]);
@@ -1301,14 +1333,17 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
     var estados = valoresDe(DATOS.casos, function (c) { return c.estado_caso; });
     fInst = crearFiltrosTab("filtros-inst", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
       { clave: "estado", nombre: "Estado del caso", valores: estados },
     ], pintarInstalaciones);
     fFact = crearFiltrosTab("filtros-fact", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
       { clave: "vc", nombre: "Venta / Comodato", valores: ["Venta", "Comodato"] },
       { clave: "uc", nombre: "Unidad comercial", valores: valoresDe(DATOS.ovs, function (o) { return o.unidad_comercial; }) },
       { clave: "estadoOv", nombre: "Estado de la OV", valores: valoresDe(DATOS.ovs, function (o) { return o.estado_ov; }) },
     ], pintarFacturacion);
     fDem = crearFiltrosTab("filtros-dem", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
       { clave: "estado", nombre: "Estado del caso", valores: estados },
     ], pintarDemoras);
 
@@ -1326,12 +1361,15 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     prepararElementos();
     var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
     fCasos = crearFiltrosTab("filtros-casos", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
       { clave: "estado", nombre: "Estado del caso", valores: valoresDe(DATOS.casos, function (c) { return c.estado_caso; }) },
       { clave: "estadoInst", nombre: "Estado de la instalación", valores: valoresDe(DATOS.casos, function (c) { return c.estado_instalacion; }) },
       { clave: "tecnico", nombre: "Técnico", valores: valoresDe(DATOS.casos, function (c) { return c._tecnico; }) },
       { clave: "sub", nombre: "Elementos", valores: valoresDe(DATOS.lineasElem, function (l) { return l.subcategoria; }) },
     ], pintarCasos);
-    fElem = crearFiltrosTab("filtros-elem", fechas, [], pintarElementos);
+    fElem = crearFiltrosTab("filtros-elem", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
+    ], pintarElementos);
   }
 
   var PESTANA_ACTIVA = "instalaciones", PINTADAS = {}, LEYENDO_ELEM = null;
@@ -1449,10 +1487,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var token = s.data && s.data.session && s.data.session.access_token;
     if (!token) { bloquear(false); setEstado("Tu sesión venció: volvé a ingresar a la web interna.", "error"); return; }
     try {
-      var resp = await fetch(API_BASE_URL + "/indicadores/" + AREA + "/actualizar", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + token },
-      });
+      var resp = await llamarActualizar(token);
       var body = await resp.json().catch(function () { return {}; });
       if (resp.status === 409 && body.detail && body.detail.corrida_id) {
         setEstado("Ya había una actualización en curso; se muestra su avance.");
@@ -1468,8 +1503,44 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       seguirCorrida(body.corrida_id);
     } catch (e) {
       bloquear(false);
-      setEstado("No se pudo contactar al servicio de actualización (" + e.message + ").", "error");
+      setEstado(await diagnosticoConexion(e), "error");
     }
+  }
+
+  // POST de actualizacion. Si falla la conexion se reintenta una vez a los 3 s
+  // (por ejemplo, si el servicio se estaba reiniciando por un despliegue).
+  async function llamarActualizar(token) {
+    var pedir = function () {
+      return fetch(API_BASE_URL + "/indicadores/" + AREA + "/actualizar", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+    };
+    try {
+      return await pedir();
+    } catch (e) {
+      setEstado("Reintentando la conexión con el servicio…");
+      await new Promise(function (r) { setTimeout(r, 3000); });
+      return await pedir();
+    }
+  }
+
+  // "Failed to fetch" no dice la causa. Se prueba /health sin CORS para
+  // distinguir servicio caido / red bloqueada de una direccion no autorizada.
+  async function diagnosticoConexion(e) {
+    var alcanzable = true;
+    try { await fetch(API_BASE_URL + "/health", { mode: "no-cors", cache: "no-store" }); }
+    catch (x) { alcanzable = false; }
+    if (!alcanzable) {
+      return "No hay conexión con el servicio de actualización desde esta PC. Puede estar reiniciándose " +
+        "(probá de nuevo en un minuto) o la red de esta PC bloquea " + API_BASE_URL + ".";
+    }
+    if (location.origin !== ORIGEN_WEB) {
+      return "Abriste la web interna desde " + location.origin + " y el servicio de actualización sólo acepta " +
+        ORIGEN_WEB + ". Ingresá desde esa dirección y volvé a intentar.";
+    }
+    return "El servicio responde pero el navegador bloqueó la llamada (" + e.message + "). " +
+      "Puede ser una extensión del navegador o el antivirus; probá desde una ventana de incógnito.";
   }
 
   // =====================================================================

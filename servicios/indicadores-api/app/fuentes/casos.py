@@ -7,6 +7,7 @@
 
 from app import config, netsuite
 from app import supabase_rest as sb
+from app.fuentes import clasificacion
 from app.fuentes.comun import entero, numero, primera_palabra, sin_prefijo_dai, texto
 
 TABLA = "ind_caso_instalacion"
@@ -44,7 +45,8 @@ def consulta():
             BUILTIN.DF(sc.custevent3k_estado_sp)                    AS estado_instalacion,
             BUILTIN.DF(sc.custevent_mw_sp_tipo_posventa)            AS tipo_posventa,
             BUILTIN.DF(sc.assigned)                                 AS asignado_a,
-            sc.custevent_ap_sp_dias_reales_trabajo                  AS dias_reales_trabajo
+            sc.custevent_ap_sp_dias_reales_trabajo                  AS dias_reales_trabajo,
+            sc.custevent_3k_ov_de_productos                         AS ov_productos_id
         FROM supportcase sc
         LEFT JOIN customer c ON c.id = sc.company
         WHERE {alcance_sql()}
@@ -87,14 +89,23 @@ def filas(crudas, corrida_id):
             "tipo_posventa": primera_palabra(texto(f.get("tipo_posventa"))),
             "asignado_a": texto(f.get("asignado_a")),
             "dias_reales_trabajo": numero(f.get("dias_reales_trabajo")),
+            "tipo_trabajo": texto(f.get("tipo_trabajo")),
+            "tipo_trabajo_origen": f.get("tipo_trabajo_origen"),
+            "unidad_comercial": texto(f.get("unidad_comercial")),
+            "categoria": texto(f.get("categoria")),
+            "clasificacion_origen": f.get("clasificacion_origen"),
             "corrida_id": corrida_id,
             "actualizado_en": sb.ahora_iso(),
         })
     return salida
 
 
-def traer(log, corrida_id=None):
-    resultado = filas(netsuite.suiteql(consulta()), corrida_id)
+def traer(log, corrida_id=None, token=None):
+    """token: para leer las equivalencias de tipo de proyecto de Supabase (sin
+    token se usan las del servicio, por ejemplo en probar_*.py)."""
+    crudas = netsuite.suiteql(consulta())
+    clasificacion.clasificar(crudas, clasificacion.cargar_equivalencias(token, log), log)
+    resultado = filas(crudas, corrida_id)
     log(f"NetSuite: {len(resultado)} casos de instalacion desde {config.CASOS_INSTALACION_DESDE} "
         f"(asignados a {config.CASOS_INSTALACION_ASIGNADO_A}).")
     return resultado
