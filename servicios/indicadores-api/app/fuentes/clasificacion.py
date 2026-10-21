@@ -128,39 +128,47 @@ def _origenes(crudas):
 
 
 # Unidad de negocio (class, jerarquica: "Alarmas : Ampliaciones") y tipo de
-# comunicacion (custbody_3k_tipo_comunicacion: Radio, Telefono...) de las
-# transacciones de origen. Las usa Ampliaciones (columnas "Unidad de Negocio" y
-# "Tipo Comunicacion" de la busqueda 2560, que salen del presupuesto).
-# Se consultan aparte y con tolerancia a error: si un campo no existe o falla,
-# se sigue sin ese dato y Posventa / Instalaciones no se ven afectadas.
-_CAMPOS_NEGOCIO = [
-    ("BUILTIN.DF(t.class) AS unidad_negocio, BUILTIN.DF(t.custbody_3k_tipo_comunicacion) AS tipo_comunicacion",
-     ("unidad_negocio", "tipo_comunicacion")),
-    ("BUILTIN.DF(t.class) AS unidad_negocio", ("unidad_negocio",)),
+# comunicacion (custbody_3k_tipo_comunicacion: Radio, Telefono...) del
+# presupuesto de origen (si no tiene, de la oportunidad o de la OV). Son las
+# columnas "Unidad de Negocio" y "Tipo Comunicacion" de la busqueda 2560 que
+# usa Ampliaciones.
+# En SuiteQL la tabla transaction no tiene class: la unidad de negocio del
+# encabezado esta en la linea principal (transactionline.mainline = 'T').
+# Cada dato se consulta aparte y con tolerancia a error: si uno falla, se
+# sigue sin ese dato y Posventa / Instalaciones no se ven afectadas.
+_CONSULTAS_NEGOCIO = [
+    ("unidad_negocio", """
+        SELECT tl.transaction AS id, BUILTIN.DF(tl.class) AS unidad_negocio
+        FROM transactionline tl
+        WHERE tl.transaction IN ({lote}) AND tl.mainline = 'T'
+        ORDER BY tl.transaction
+    """),
+    ("tipo_comunicacion", """
+        SELECT t.id AS id, BUILTIN.DF(t.custbody_3k_tipo_comunicacion) AS tipo_comunicacion
+        FROM transaction t
+        WHERE t.id IN ({lote})
+        ORDER BY t.id
+    """),
 ]
 
 
 def _negocio(tr_ids, log):
     """{transaccion_id: {unidad_negocio, tipo_comunicacion}}."""
     tr_ids = [i for i in tr_ids if i]
-    for campos, nombres in _CAMPOS_NEGOCIO:
+    salida = {}
+    for campo, sql in _CONSULTAS_NEGOCIO:
         try:
-            salida = {}
+            con_dato = 0
             for lote in _lotes(tr_ids):
-                for f in netsuite.suiteql(f"""
-                    SELECT t.id AS id, {campos}
-                    FROM transaction t
-                    WHERE t.id IN ({lote})
-                    ORDER BY t.id
-                """):
-                    salida[int(f["id"])] = f
-            if len(nombres) < len(_CAMPOS_NEGOCIO[0][1]):
-                log("AVISO: no se pudo leer el tipo de comunicacion (custbody_3k_tipo_comunicacion); se sigue sin ese dato.")
-            return salida
+                for f in netsuite.suiteql(sql.format(lote=lote)):
+                    valor = texto(f.get(campo))
+                    if valor:
+                        salida.setdefault(int(f["id"]), {})[campo] = valor
+                        con_dato += 1
+            log(f"{campo}: {con_dato} de {len(tr_ids)} transacciones de origen con dato.")
         except Exception as e:
-            log(f"AVISO: fallo la consulta de {', '.join(nombres)} ({str(e)[:200]}).")
-    log("AVISO: no se pudo leer la unidad de negocio de las transacciones; se sigue sin ese dato.")
-    return {}
+            log(f"AVISO: no se pudo leer {campo} ({str(e)[:300]}); se sigue sin ese dato.")
+    return salida
 
 
 def clasificar(crudas, equivalencias, log):
