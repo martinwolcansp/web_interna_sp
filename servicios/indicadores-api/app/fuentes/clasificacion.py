@@ -127,16 +127,59 @@ def _origenes(crudas):
     return ovs, pres, ops
 
 
+# Unidad de negocio (class, jerarquica: "Alarmas : Ampliaciones") y tipo de
+# comunicacion (custbody_3k_tipo_comunicacion: Radio, Telefono...) de las
+# transacciones de origen. Las usa Ampliaciones (columnas "Unidad de Negocio" y
+# "Tipo Comunicacion" de la busqueda 2560, que salen del presupuesto).
+# Se consultan aparte y con tolerancia a error: si un campo no existe o falla,
+# se sigue sin ese dato y Posventa / Instalaciones no se ven afectadas.
+_CAMPOS_NEGOCIO = [
+    ("BUILTIN.DF(t.class) AS unidad_negocio, BUILTIN.DF(t.custbody_3k_tipo_comunicacion) AS tipo_comunicacion",
+     ("unidad_negocio", "tipo_comunicacion")),
+    ("BUILTIN.DF(t.class) AS unidad_negocio", ("unidad_negocio",)),
+]
+
+
+def _negocio(tr_ids, log):
+    """{transaccion_id: {unidad_negocio, tipo_comunicacion}}."""
+    tr_ids = [i for i in tr_ids if i]
+    for campos, nombres in _CAMPOS_NEGOCIO:
+        try:
+            salida = {}
+            for lote in _lotes(tr_ids):
+                for f in netsuite.suiteql(f"""
+                    SELECT t.id AS id, {campos}
+                    FROM transaction t
+                    WHERE t.id IN ({lote})
+                    ORDER BY t.id
+                """):
+                    salida[int(f["id"])] = f
+            if len(nombres) < len(_CAMPOS_NEGOCIO[0][1]):
+                log("AVISO: no se pudo leer el tipo de comunicacion (custbody_3k_tipo_comunicacion); se sigue sin ese dato.")
+            return salida
+        except Exception as e:
+            log(f"AVISO: fallo la consulta de {', '.join(nombres)} ({str(e)[:200]}).")
+    log("AVISO: no se pudo leer la unidad de negocio de las transacciones; se sigue sin ese dato.")
+    return {}
+
+
 def clasificar(crudas, equivalencias, log):
     """Agrega a cada fila cruda (caso de SuiteQL) tipo_trabajo, unidad_comercial,
-    categoria y sus origenes."""
+    categoria, unidad_negocio, tipo_comunicacion y sus origenes."""
     ovs, pres, ops = _origenes(crudas)
+    neg = _negocio(list(ovs) + list(pres) + list(ops), log)
     cuenta = {}
     for f in crudas:
         ov = ovs.get(int(f["ov_productos_id"])) if f.get("ov_productos_id") else None
         p = pres.get(int(ov["presupuesto_id"])) if ov and ov.get("presupuesto_id") else None
         op_id = (p or {}).get("oportunidad_id") or (ov or {}).get("oportunidad_id")
         op = ops.get(int(op_id)) if op_id else None
+
+        # Unidad de negocio y tipo de comunicacion: presupuesto > oportunidad > OV.
+        origenes = [neg.get(int(x["id"])) for x in (p, op) if x] + ([neg.get(int(f["ov_productos_id"]))] if ov else [])
+        origenes = [o for o in origenes if o]
+        f["unidad_negocio"] = next((texto(o.get("unidad_negocio")) for o in origenes if texto(o.get("unidad_negocio"))), None)
+        f["tipo_comunicacion"] = next((texto(o.get("tipo_comunicacion")) for o in origenes if texto(o.get("tipo_comunicacion"))), None)
         tipo = texto(f.get("tipo_proyecto"))
         eq_trabajo, eq_uc = equivalencias.get(tipo, (False, None))
 

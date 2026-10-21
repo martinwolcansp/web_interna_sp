@@ -1,6 +1,7 @@
 # app/fuentes/ov.py — OV de productos de los casos de instalacion y sus articulos.
 #
-# Tablas comunes:
+# Tablas comunes (cada fila guarda el alcance de su caso: instalaciones,
+# ampliaciones...; el borrado de cada corrida se limita a su alcance):
 #   ind_caso_ov        una fila por caso + OV   (replica la busqueda 2439, facturacion)
 #   ind_caso_ov_linea  una fila por linea de OV (replica la busqueda 2833, articulos)
 #
@@ -410,8 +411,9 @@ def filas_lineas(crudas, corrida_id):
 # Extraccion y guardado
 # ---------------------------------------------------------------------------
 
-def traer(caso_ids, log, corrida_id=None):
-    """OV de productos y sus lineas para los casos pedidos (los del alcance)."""
+def traer(caso_ids, log, corrida_id=None, alcance="instalaciones"):
+    """OV de productos y sus lineas para los casos pedidos (los del alcance).
+    alcance: el de los casos (app/fuentes/casos.py); queda en cada fila."""
     pares = _vinculos(caso_ids)
     ovs = _ov_productos(tr for _, tr in pares)
     pares = sorted((c, o) for c, o in pares if o in ovs)
@@ -420,6 +422,8 @@ def traer(caso_ids, log, corrida_id=None):
 
     filas_o = filas_ov([dict(ovs[o], caso_id=c) for c, o in pares], corrida_id)
     filas_l = filas_lineas([dict(l, caso_id=c) for c, o in pares for l in lineas_ov.get(o, [])], corrida_id)
+    for f in filas_o + filas_l:
+        f["alcance"] = alcance
     log(f"NetSuite: {len(ovs)} OV de productos en {len(pares)} pares caso-OV "
         f"({len({c for c, _ in pares})} casos con OV); "
         f"{sum(1 for o in ovs.values() if str(o.get('comodato') or '').upper() == 'T')} en comodato, "
@@ -429,8 +433,9 @@ def traer(caso_ids, log, corrida_id=None):
     return filas_o, filas_l
 
 
-def guardar(token, ovs, lineas, corrida_id):
+def guardar(token, ovs, lineas, corrida_id, alcance="instalaciones"):
+    """Upsert y borrado de lo que ya no vino, solo dentro del alcance."""
     sb.upsert(token, TABLA_OV, ovs, "caso_id,ov_id")
-    sb.borrar_no_vistos(token, TABLA_OV, corrida_id)
+    sb.borrar_no_vistos(token, TABLA_OV, corrida_id, alcance)
     sb.upsert(token, TABLA_LINEA, lineas, "caso_id,ov_id,linea_id")
-    sb.borrar_no_vistos(token, TABLA_LINEA, corrida_id)
+    sb.borrar_no_vistos(token, TABLA_LINEA, corrida_id, alcance)

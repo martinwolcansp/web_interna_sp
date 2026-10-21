@@ -457,6 +457,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   var ORIGEN_WEB = "https://portal.blogdns.com";
   var AREA = "instalaciones";
   var SECCION = "indicadores-instalaciones";
+  // Alcance de los casos en las tablas comunes (asignado 133; Ampliaciones usa "ampliaciones").
+  var ALCANCE = "instalaciones";
   var TZ = "America/Argentina/Buenos_Aires";
   var POLL_MS = 4000;
   var HISTORIAL = 20;
@@ -1320,12 +1322,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // Carga de datos
   // =====================================================================
   // orden: columnas de la clave primaria (el paginado necesita un orden sin empates).
-  // filtro: [columna, valor] opcional (igualdad).
-  async function leerTodo(tabla, select, orden, filtro) {
+  // filtros: [[columna, valor], ...] opcional (igualdades).
+  async function leerTodo(tabla, select, orden, filtros) {
     var filas = [], desde = 0, PAG = 1000;
     for (;;) {
       var q = sb.from(tabla).select(select);
-      if (filtro) q = q.eq(filtro[0], filtro[1]);
+      (filtros || []).forEach(function (f) { q = q.eq(f[0], f[1]); });
       orden.forEach(function (col) { q = q.order(col, { ascending: true }); });
       var r = await q.range(desde, desde + PAG - 1);
       if (r.error) throw new Error(tabla + ": " + r.error.message);
@@ -1408,10 +1410,11 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     try { await cargarDatosInterno(); } finally { mostrarCargando(false); }
   }
   async function cargarDatosInterno() {
+    // Tablas comunes: solo el alcance de este informe (casos del asignado 133).
     var res = await Promise.all([
-      leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_creacion,fecha_inicio_inst,fecha_fin_inst,cliente,nro_cuenta,tecnico,tipo_proyecto,estado_caso,estado_instalacion,tipo_posventa,dias_reales_trabajo,tipo_trabajo,unidad_comercial,categoria,clasificacion_origen", ["caso_id"]),
-      leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto,es_comodato,unidad_comercial,presupuesto", ["caso_id", "ov_id"]),
-      leerTodo("ind_caso_ov_linea", "caso_id,cantidad", ["caso_id", "ov_id", "linea_id"], ["es_mo", true]),
+      leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_creacion,fecha_inicio_inst,fecha_fin_inst,cliente,nro_cuenta,tecnico,tipo_proyecto,estado_caso,estado_instalacion,tipo_posventa,dias_reales_trabajo,tipo_trabajo,unidad_comercial,categoria,clasificacion_origen", ["caso_id"], [["alcance", ALCANCE]]),
+      leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto,es_comodato,unidad_comercial,presupuesto", ["caso_id", "ov_id"], [["alcance", ALCANCE]]),
+      leerTodo("ind_caso_ov_linea", "caso_id,cantidad", ["caso_id", "ov_id", "linea_id"], [["alcance", ALCANCE], ["es_mo", true]]),
     ]);
     // Filtro general del informe (como el Power BI): sin tipo de proyecto o tipos ajenos.
     DATOS.casos = res[0].filter(function (c) { return c.tipo_proyecto && TIPOS_EXCLUIDOS.indexOf(c.tipo_proyecto) < 0; });
@@ -1447,7 +1450,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // datos del informe, por eso se leen solo al abrir Casos y elementos o Elementos.
   async function cargarElementos() {
     DATOS.lineasElem = await leerTodo("ind_caso_ov_linea", "caso_id,ov_id,linea_id,articulo,cantidad,subcategoria",
-      ["caso_id", "ov_id", "linea_id"], ["es_elemento", true]);
+      ["caso_id", "ov_id", "linea_id"], [["alcance", ALCANCE], ["es_elemento", true]]);
     prepararElementos();
     var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
     fCasos = crearFiltrosTab("filtros-casos", fechas, [

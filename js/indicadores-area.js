@@ -34,6 +34,14 @@ window.INDICADORES_AREAS = [
     icono: 'ti-tools',
     descripcion: 'Instalaciones finalizadas, demora estimada, elementos instalados, demoras y facturación.',
   },
+  {
+    id: 'ampliaciones',
+    label: 'Ampliaciones',
+    archivo: 'ampliaciones.html',
+    seccion: 'indicadores-ampliaciones',
+    icono: 'ti-circle-plus',
+    descripcion: 'Ampliaciones y comunicaciones finalizadas, demora estimada, elementos, demoras y facturación.',
+  },
 ];
 
 function indicadoresAreaActual() {

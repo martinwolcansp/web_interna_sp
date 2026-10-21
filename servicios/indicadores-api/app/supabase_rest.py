@@ -198,12 +198,17 @@ def upsert(token, tabla, filas, on_conflict):
         ), f"upsert {tabla}")
 
 
-def borrar_no_vistos(token, tabla, corrida_id):
+def borrar_no_vistos(token, tabla, corrida_id, alcance=None):
     """Borra las filas que no vinieron en esta corrida (ya no cumplen el
-    criterio en NetSuite/GHL: casos reasignados, registros eliminados, etc.)."""
+    criterio en NetSuite/GHL: casos reasignados, registros eliminados, etc.).
+    alcance: en las tablas comunes de casos borra solo las filas de ese
+    alcance (instalaciones, ampliaciones...), asi un area no pisa a otra."""
+    params = {"or": f"(corrida_id.is.null,corrida_id.neq.{corrida_id})"}
+    if alcance:
+        params["alcance"] = f"eq.{alcance}"
     _check(requests.delete(
         _rest(tabla),
         headers=_h(token, "return=minimal"),
-        params={"or": f"(corrida_id.is.null,corrida_id.neq.{corrida_id})"},
+        params=params,
         timeout=60,
     ), f"limpiar {tabla}")

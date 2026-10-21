@@ -42,6 +42,11 @@ CASOS_INSTALACION_DESDE = date.fromisoformat(
 CASOS_INSTALACION_ASIGNADO_A = int(
     os.getenv("CASOS_INSTALACION_ASIGNADO_A") or os.getenv("POSVENTA_ASIGNADO_A") or "133")
 
+# ---------- Casos de ampliaciones (misma tabla comun, otro alcance) ----------
+# Misma busqueda 2560 y misma fecha de corte, asignados a 232 (Jefe de
+# Instalaciones - Alarmas Ampliaciones), como el Power BI "Analisis Ampliaciones V2".
+CASOS_AMPLIACIONES_ASIGNADO_A = int(os.getenv("CASOS_AMPLIACIONES_ASIGNADO_A") or "232")
+
 # ---------- Posventa ----------
 # Busqueda 2557: relevamientos "creado despues del 1/5/2025 23:59".
 POSVENTA_RELEV_DESDE = date.fromisoformat(os.getenv("POSVENTA_RELEV_DESDE", "2025-05-02"))
