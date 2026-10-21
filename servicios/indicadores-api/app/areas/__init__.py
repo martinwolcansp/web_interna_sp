@@ -14,10 +14,11 @@
 # ind_tabla_area las tablas comunes que usa) y su pagina en
 # pages/indicadores-area/<area>.html.
 
-from app.areas import ampliaciones, instalaciones, posventa
+from app.areas import ampliaciones, comunicaciones, instalaciones, posventa
 
 AREAS = {
     "posventa": posventa,
     "instalaciones": instalaciones,
     "ampliaciones": ampliaciones,
+    "comunicaciones": comunicaciones,
 }

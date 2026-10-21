@@ -40,7 +40,16 @@ window.INDICADORES_AREAS = [
     archivo: 'ampliaciones.html',
     seccion: 'indicadores-ampliaciones',
     icono: 'ti-circle-plus',
-    descripcion: 'Ampliaciones y comunicaciones finalizadas, demora estimada, elementos, demoras y facturación.',
+    descripcion: 'Ampliaciones finalizadas (sin la unidad Comunicaciones), demora estimada, elementos, demoras y facturación.',
+  },
+  {
+    // Misma pagina y mismos datos que Ampliaciones, solo la unidad de negocio Comunicaciones.
+    id: 'comunicaciones',
+    label: 'Comunicaciones',
+    archivo: 'ampliaciones.html?area=comunicaciones',
+    seccion: 'indicadores-comunicaciones',
+    icono: 'ti-antenna',
+    descripcion: 'Trabajos de la unidad Comunicaciones (Lantrix, cambio de tecnología): finalizados, demora, elementos y facturación.',
   },
 ];
 
@@ -104,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // page-guard.js en esta página y la propia página del área.
     // ?v= evita que el navegador muestre una version vieja de la pagina del area
     // despues de un deploy (el iframe no se recarga con Ctrl+F5).
-    frame.src = area.archivo + '?v=' + Date.now();
+    frame.src = area.archivo + (area.archivo.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
     return;
   }
 

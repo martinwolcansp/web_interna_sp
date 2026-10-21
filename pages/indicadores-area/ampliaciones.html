@@ -224,9 +224,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 <body>
 <div class="wrap">
   <header class="report-header">
-    <div class="eyebrow">SP Seguridad Privada &middot; Indicadores por Área &middot; Ampliaciones</div>
-    <h1>Indicadores de Ampliaciones</h1>
-    <div class="sub">Ampliaciones y comunicaciones: casos, artículos instalados y facturación de NetSuite</div>
+    <div class="eyebrow">SP Seguridad Privada &middot; Indicadores por Área &middot; <span class="t-area">Ampliaciones</span></div>
+    <h1>Indicadores de <span class="t-area">Ampliaciones</span></h1>
+    <div class="sub" id="txt-sub">Ampliaciones: casos, artículos instalados y facturación de NetSuite</div>
     <div class="upd-hero" id="upd-hero" hidden>
       <span class="upd-hero-label">Última actualización</span>
       <span class="upd-hero-fecha" id="upd-hero-fecha"></span>
@@ -238,7 +238,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
     </div>
     <div class="upd-panel" id="upd-panel" hidden>
-      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite todos los casos asignados a Jefe de Instalaciones - Alarmas Ampliaciones, sus OV de productos y los artículos de esas OV (no sólo los nuevos). No modifica los datos de Instalaciones ni de Posventa.</div>
+      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite todos los casos asignados a Jefe de Instalaciones - Alarmas Ampliaciones, sus OV de productos y los artículos de esas OV (no sólo los nuevos). Los datos son los mismos para Ampliaciones y Comunicaciones: actualizar cualquiera de las dos refresca ambas. No modifica los datos de Instalaciones ni de Posventa.</div>
       <div class="upd-hist-scroll">
         <table class="upd-hist">
           <thead><tr><th>Actualizada el</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
@@ -253,8 +253,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     <span class="cargando-barra" aria-hidden="true"></span>
   </div>
 
-  <nav class="tabs" role="tablist" aria-label="Reportes de Ampliaciones">
-    <button type="button" class="tab-btn active" data-tab="instalaciones" role="tab" aria-selected="true" aria-controls="panel-instalaciones">Ampliaciones y comunicaciones</button>
+  <nav class="tabs" role="tablist" aria-label="Reportes del área">
+    <button type="button" class="tab-btn active" data-tab="instalaciones" role="tab" aria-selected="true" aria-controls="panel-instalaciones"><span class="t-area">Ampliaciones</span></button>
     <button type="button" class="tab-btn" data-tab="demoras" role="tab" aria-selected="false" aria-controls="panel-demoras">Demoras y variaciones</button>
     <button type="button" class="tab-btn" data-tab="facturacion" role="tab" aria-selected="false" aria-controls="panel-facturacion">Facturación</button>
     <button type="button" class="tab-btn" data-tab="casos" role="tab" aria-selected="false" aria-controls="panel-casos">Técnicos y elementos</button>
@@ -262,9 +262,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   </nav>
 
   <main class="main--cargando">
-    <!-- ============ Pestaña 1: Ampliaciones y comunicaciones ============ -->
+    <!-- ============ Pestaña 1: trabajos del area ============ -->
     <section class="tab-panel active" id="panel-instalaciones" role="tabpanel">
-      <h2>Trabajos de ampliaciones y comunicaciones por fecha de finalización</h2>
+      <h2>Trabajos de <span class="t-area-min">ampliaciones</span> por fecha de finalización</h2>
       <div class="kpi-row" id="kpi-inst"></div>
       <div class="note-box" id="nota-demora"></div>
 
@@ -273,18 +273,18 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       </div>
 
       <div class="bloque">
-        <p class="bloque-ayuda">Hacé click en un número de las tablas para ver esos trabajos en el detalle de abajo. Otro click en el mismo número quita el filtro. La flecha ▸ despliega los tipos de proyecto.</p>
-        <h3>Trabajos finalizados por mes, unidad de negocio y tipo de proyecto</h3>
+        <p class="bloque-ayuda">Hacé click en un número de las tablas para ver esos trabajos en el detalle de abajo. Otro click en el mismo número quita el filtro. La flecha ▸ despliega el detalle de cada fila.</p>
+        <h3>Trabajos finalizados por mes, <span class="t-clasif">unidad de negocio y tipo de proyecto</span></h3>
         <div id="inst-tipo-mes"></div>
         <div class="bloque-nota" id="nota-clasif"></div>
       </div>
-      <div class="bloque">
+      <div class="bloque" id="bloque-com">
         <h3>Trabajos finalizados por mes y tipo de comunicación</h3>
         <div id="inst-trabajo-mes"></div>
         <div class="bloque-nota">Solo los trabajos con tipo de comunicación cargado en el presupuesto.</div>
       </div>
       <div class="bloque">
-        <h3>Trabajos finalizados por técnico y unidad de negocio</h3>
+        <h3>Trabajos finalizados por técnico y <span class="t-dim">unidad de negocio</span></h3>
         <div id="inst-tec-tipo"></div>
       </div>
       <div class="bloque">
@@ -320,12 +320,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         </div>
       </div>
       <div class="bloque">
-        <h3>Promedio de demora por agenda por unidad de negocio (días)</h3>
+        <h3>Promedio de demora por agenda por <span class="t-dim">unidad de negocio</span> (días)</h3>
         <div id="dem-tipo-mes"></div>
         <div class="bloque-nota">Días corridos entre la creación del caso y el inicio del trabajo. Sin los casos de 30 días o más.</div>
       </div>
       <div class="bloque">
-        <h3>Suma de variaciones de mano de obra por unidad de negocio (días reales − presupuestados)</h3>
+        <h3>Suma de variaciones de mano de obra por <span class="t-dim">unidad de negocio</span> (días reales − presupuestados)</h3>
         <div id="var-tipo-mes"></div>
         <div class="bloque-nota">Positivo: se trabajaron más días de los presupuestados. Solo casos con mano de obra en la OV y días reales cargados; sin los de 30 días o más de diferencia.</div>
       </div>
@@ -350,12 +350,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       </div>
       <div class="kpi-row" id="kpi-fact"></div>
       <div class="bloque">
-        <h3>Trabajos finalizados con OV por mes, unidad de negocio y tipo de proyecto</h3>
+        <h3>Trabajos finalizados con OV por mes, <span class="t-clasif">unidad de negocio y tipo de proyecto</span></h3>
         <div id="fact-vc-uc"></div>
         <div class="bloque-nota">Trabajos con alguna OV de productos que cumple los filtros (incluido Estado de la OV).</div>
       </div>
       <div class="bloque">
-        <h3>Monto de las OV de productos por unidad de negocio, tipo de proyecto y mes</h3>
+        <h3>Monto de las OV de productos por mes, <span class="t-clasif">unidad de negocio y tipo de proyecto</span></h3>
         <div id="fact-tipo-mes"></div>
         <div class="bloque-nota">Total de las órdenes de venta de productos vinculadas a cada caso, por mes de fin del trabajo.</div>
       </div>
@@ -384,7 +384,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       </div>
 
       <div class="bloque">
-        <h3>Trabajos finalizados por mes, unidad de negocio y tipo de proyecto</h3>
+        <h3>Trabajos finalizados por mes, <span class="t-clasif">unidad de negocio y tipo de proyecto</span></h3>
         <div id="casos-tipo-mes"></div>
       </div>
       <div class="bloque">
@@ -439,7 +439,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       </div>
     </section>
   </main>
-  <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Indicadores de Ampliaciones &middot; datos de NetSuite</footer>
+  <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Indicadores de <span class="t-area">Ampliaciones</span> &middot; datos de NetSuite</footer>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -452,10 +452,36 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   var API_BASE_URL = "https://indicadores-api.200.5.196.50.sslip.io";
   // Direccion de la web interna habilitada en ALLOWED_ORIGINS del servicio.
   var ORIGEN_WEB = "https://portal.blogdns.com";
-  var AREA = "ampliaciones";
-  var SECCION = "indicadores-ampliaciones";
-  // Alcance de los casos en las tablas comunes: asignado 232 (Jefe de Instalaciones -
-  // Alarmas Ampliaciones). Instalaciones y Posventa usan "instalaciones" (asignado 133).
+  // Esta pagina sirve a dos areas con los mismos datos (casos del asignado 232,
+  // Jefe de Instalaciones - Alarmas Ampliaciones), separadas por unidad de negocio:
+  //   ampliaciones.html                      todas las unidades menos Comunicaciones
+  //   ampliaciones.html?area=comunicaciones  solo la unidad Comunicaciones
+  // Cada area tiene su seccion de permisos (indicadores-<area>) y su boton
+  // Actualizar; las dos refrescan los mismos datos (app/areas/ampliaciones.py).
+  var UNIDAD_COM = "Comunicaciones";
+  var CONFIGS = {
+    ampliaciones: {
+      titulo: "Ampliaciones", sub: "Ampliaciones (todas las unidades de negocio menos Comunicaciones): casos, artículos instalados y facturación de NetSuite",
+      pasaUnidad: function (un) { return un !== UNIDAD_COM; },
+      porUnidad: true, conComunicacion: false,
+      clasif: "unidad de negocio y tipo de proyecto", dim: "unidad de negocio", titClasif: "Unidad de negocio / Tipo de proyecto",
+      notaAlcance: "Incluye los casos asignados a Ampliaciones de todas las unidades de negocio menos Comunicaciones (que tiene su propio informe), también los que no tienen unidad de negocio.",
+    },
+    comunicaciones: {
+      titulo: "Comunicaciones", sub: "Unidad de negocio Comunicaciones: casos, artículos instalados y facturación de NetSuite",
+      pasaUnidad: function (un) { return un === UNIDAD_COM; },
+      porUnidad: false, conComunicacion: true,
+      clasif: "tipo de proyecto y tipo de comunicación", dim: "tipo de proyecto", titClasif: "Tipo de proyecto / Tipo de comunicación",
+      notaAlcance: "Incluye los casos asignados a Ampliaciones cuya unidad de negocio es Comunicaciones.",
+    },
+  };
+  var AREA = new URLSearchParams(location.search).get("area") === "comunicaciones" ? "comunicaciones" : "ampliaciones";
+  var CFG = CONFIGS[AREA];
+  var SECCION = "indicadores-" + AREA;
+  // Las dos areas refrescan los mismos datos: la ultima actualizacion puede venir de cualquiera.
+  var AREAS_DATOS = ["ampliaciones", "comunicaciones"];
+  // Alcance de los casos en las tablas comunes: asignado 232. Instalaciones y
+  // Posventa usan "instalaciones" (asignado 133).
   var ALCANCE = "ampliaciones";
   var TZ = "America/Argentina/Buenos_Aires";
   var POLL_MS = 4000;
@@ -720,7 +746,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         return { valor: String(i + 1).padStart(2, "0"), etiqueta: m };
       }), cambio),
     };
-    (extras || []).forEach(function (x, i) {
+    (extras || []).filter(Boolean).forEach(function (x, i) {
       filtros[x.clave] = crearFiltro(cont, contenedorId + "-x" + i, x.nombre, x.valores.map(function (v) {
         return { valor: v, etiqueta: v };
       }), cambio);
@@ -882,18 +908,25 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     return ' data-t="' + esc(t) + '" data-f="' + esc(f || "") + '" data-s="' + esc(sub || "") + '" data-c="' + esc(col || "") + '" title="Ver estos trabajos en el detalle"';
   }
   function ventaComodato(ov) { return ov.es_comodato ? "Comodato" : "Venta"; }
-  // Tabla Unidad de negocio > Tipo de proyecto x mes de fin (como las matrices del Power BI).
-  // id: clave para recordar que unidades estan desplegadas; sel: ver tablaCruzada.
+  // Agrupamiento de las matrices: Ampliaciones = Unidad de negocio > Tipo de proyecto
+  // (como el Power BI); Comunicaciones = Tipo de proyecto > Tipo de comunicacion.
+  function dimG(c) { return CFG.porUnidad ? c._un : c._tipo; }
+  function dimS(c) { return CFG.porUnidad ? c._tipo : c._com; }
+  // Columnas de "por tecnico" y filas de demoras: unidad de negocio o tipo de proyecto.
+  function dimTec(c) { return CFG.porUnidad ? c._un : c._tipo; }
+  // id: clave para recordar que grupos estan desplegados; sel: ver tablaCruzada.
   function tablaClasif(titulo, items, caso, medida, valor, fmt, id, sel) {
-    return tablaJerarquica({ titulo: titulo, items: items, grupo: function (x) { return caso(x)._un; }, sub: function (x) { return caso(x)._tipo; },
+    return tablaJerarquica({ titulo: titulo, items: items, grupo: function (x) { return dimG(caso(x)); }, sub: function (x) { return dimS(caso(x)); },
       col: function (x) { return anioMes(caso(x).fecha_fin_inst); }, medida: medida, valor: valor, fmt: fmt, id: id, sel: sel });
   }
   function yo(x) { return x; }
+  // "Alarmas : Ampliaciones" -> "Ampliaciones".
+  function unidadCorta(un) { return un ? String(un).split(" : ").pop() : "Sin unidad de negocio"; }
   // Filtros de unidad de negocio, tipo de proyecto y (si la pestaña lo tiene) tipo de comunicacion.
   function pasaDim(f, c) {
-    return f.pasa("un", c._un) && f.pasa("tipo", c._tipo) && (!f.tiene("com") || f.pasa("com", c._com));
+    return (!f.tiene("un") || f.pasa("un", c._un)) && f.pasa("tipo", c._tipo) && (!f.tiene("com") || f.pasa("com", c._com));
   }
-  var TIT_CLASIF = "Unidad de negocio / Tipo de proyecto";
+  var TIT_CLASIF = CFG.titClasif;
 
   // =====================================================================
   // Grafico de lineas por mes (SVG simple)
@@ -955,7 +988,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       c._finalizada = !!c.fecha_fin_inst;
       // Unidad de negocio (class del presupuesto: "Alarmas : Ampliaciones" -> "Ampliaciones"),
       // tipo de proyecto y tipo de comunicacion, como el Power BI (ver app/fuentes/clasificacion.py).
-      c._un = c.unidad_negocio ? String(c.unidad_negocio).split(" : ").pop() : "Sin unidad de negocio";
+      c._un = unidadCorta(c.unidad_negocio);
       c._tipo = c.tipo_proyecto || "Sin tipo de proyecto";
       c._com = c.tipo_comunicacion || "Sin tipo de comunicación";
       c._tecnico = c.tecnico || "(Sin técnico)";
@@ -1021,7 +1054,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       "<strong>Demora estimada</strong>: cuántos días hábiles llevaría iniciar todos los trabajos pendientes al ritmo actual. " +
       "Pendientes = casos No iniciados + Escalados sin fecha de inicio (" + d.pendientes + "). Ritmo = trabajos finalizados de " +
       etiquetaMes(d.desde.slice(0, 7)) + " a " + etiquetaMes(d.hasta.slice(0, 7)) + " (" + d.finalizadas + " en " + d.meses + " meses completos) por día hábil. Las tarjetas no cambian con los filtros. " +
-      "Incluye todos los casos asignados a Ampliaciones (ampliaciones, comunicaciones y los que no tienen tipo de proyecto).";
+      esc(CFG.notaAlcance);
   }
 
   function casosInst() {
@@ -1035,12 +1068,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var porInst = function (c) { return c.id_inst; };
     $("inst-tipo-mes").innerHTML = tablaClasif(TIT_CLASIF, fin, yo, "distintos", porInst, null, "inst-tipo-mes", "clasif");
     var sinUn = fin.filter(function (c) { return !c.unidad_negocio; }).length;
-    $("nota-clasif").textContent = fin.length ? "Unidad de negocio y tipo de proyecto: los del presupuesto de origen del caso (si no, de la oportunidad o de la OV). " +
-      "Casos finalizados sin unidad de negocio: " + sinUn + " (" + pct(sinUn, fin.length) + ")." : "";
+    $("nota-clasif").textContent = !fin.length ? "" : CFG.porUnidad
+      ? "Unidad de negocio y tipo de proyecto: los del presupuesto de origen del caso (si no, de la oportunidad o de la OV). Casos finalizados sin unidad de negocio: " + sinUn + " (" + pct(sinUn, fin.length) + ")."
+      : "Tipo de proyecto y tipo de comunicación: los del presupuesto de origen del caso. El tipo de comunicación solo está cargado en una parte de los presupuestos.";
     $("inst-trabajo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de comunicación", items: fin.filter(function (c) { return c.tipo_comunicacion; }),
       fila: function (c) { return c._com; }, col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "distintos", valor: porInst, sel: "com" });
     $("inst-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
-      col: function (c) { return c._un; }, medida: "distintos", valor: porInst, sel: "tecun" });
+      col: dimTec, medida: "distintos", valor: porInst, sel: "tecun" });
     pintarSeguimiento();
   }
 
@@ -1096,14 +1130,14 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     if (!x) return true;
     if (!c._finalizada) return false;
     var mes = anioMes(c.fecha_fin_inst);
-    if (x.t === "clasif") return (!x.f || c._un === x.f) && (!x.s || c._tipo === x.s) && (!x.c || mes === x.c);
+    if (x.t === "clasif") return (!x.f || dimG(c) === x.f) && (!x.s || dimS(c) === x.s) && (!x.c || mes === x.c);
     if (x.t === "com") return !!c.tipo_comunicacion && (!x.f || c._com === x.f) && (!x.c || mes === x.c);
-    if (x.t === "tecun") return (!x.f || c._tecnico === x.f) && (!x.c || c._un === x.c);
+    if (x.t === "tecun") return (!x.f || c._tecnico === x.f) && (!x.c || dimTec(c) === x.c);
     return true;
   }
   function textoSeleccion(x) {
     var partes = [];
-    if (x.t === "clasif") { partes.push(x.f ? x.f + (x.s ? " › " + x.s : "") : "Todas las unidades de negocio"); if (x.c) partes.push(etiquetaMes(x.c)); }
+    if (x.t === "clasif") { partes.push(x.f ? x.f + (x.s ? " › " + x.s : "") : "Todos"); if (x.c) partes.push(etiquetaMes(x.c)); }
     if (x.t === "com") { partes.push(x.f || "Con tipo de comunicación"); if (x.c) partes.push(etiquetaMes(x.c)); }
     if (x.t === "tecun") { partes.push(x.f || "Todos los técnicos"); if (x.c) partes.push(x.c); }
     return "Finalizados · " + partes.join(" · ");
@@ -1410,9 +1444,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto,es_comodato,presupuesto", ["caso_id", "ov_id"], [["alcance", ALCANCE]]),
       leerTodo("ind_caso_ov_linea", "caso_id,cantidad", ["caso_id", "ov_id", "linea_id"], [["alcance", ALCANCE], ["es_mo", true]]),
     ]);
-    // Todos los casos del asignado, como el Power BI (sin filtro de tipo de proyecto).
-    DATOS.casos = res[0];
-    DATOS.ovs = res[1];
+    // Casos del area segun su unidad de negocio (ver CONFIGS). Las OV y lineas de
+    // otros casos no se usan (se cruzan por caso), pero se descartan las OV para
+    // que los filtros solo muestren estados de esta area.
+    DATOS.casos = res[0].filter(function (c) { return CFG.pasaUnidad(unidadCorta(c.unidad_negocio)); });
+    var ids = new Set(DATOS.casos.map(function (c) { return c.caso_id; }));
+    DATOS.ovs = res[1].filter(function (o) { return ids.has(o.caso_id); });
     DATOS.lineasMo = res[2];
     DATOS.lineasElem = null;
     prepararDatos();
@@ -1420,19 +1457,19 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
     var estados = valoresDe(DATOS.casos, function (c) { return c.estado_caso; });
     fInst = crearFiltrosTab("filtros-inst", fechas, [
-      { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) },
+      CFG.porUnidad ? { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) } : null,
       { clave: "tipo", nombre: "Tipo de proyecto", valores: valoresDe(DATOS.casos, function (c) { return c._tipo; }) },
-      { clave: "com", nombre: "Tipo de comunicación", valores: valoresDe(DATOS.casos, function (c) { return c._com; }) },
+      CFG.conComunicacion ? { clave: "com", nombre: "Tipo de comunicación", valores: valoresDe(DATOS.casos, function (c) { return c._com; }) } : null,
       { clave: "estado", nombre: "Estado del caso", valores: estados },
     ], pintarInstalaciones);
     fFact = crearFiltrosTab("filtros-fact", fechas, [
-      { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) },
+      CFG.porUnidad ? { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) } : null,
       { clave: "tipo", nombre: "Tipo de proyecto", valores: valoresDe(DATOS.casos, function (c) { return c._tipo; }) },
       { clave: "vc", nombre: "Venta / Comodato", valores: ["Venta", "Comodato"] },
       { clave: "estadoOv", nombre: "Estado de la OV", valores: valoresDe(DATOS.ovs, function (o) { return o.estado_ov; }) },
     ], pintarFacturacion);
     fDem = crearFiltrosTab("filtros-dem", fechas, [
-      { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) },
+      CFG.porUnidad ? { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) } : null,
       { clave: "tipo", nombre: "Tipo de proyecto", valores: valoresDe(DATOS.casos, function (c) { return c._tipo; }) },
       { clave: "estado", nombre: "Estado del caso", valores: estados },
     ], pintarDemoras);
@@ -1451,7 +1488,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     prepararElementos();
     var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
     fCasos = crearFiltrosTab("filtros-casos", fechas, [
-      { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) },
+      CFG.porUnidad ? { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) } : null,
       { clave: "tipo", nombre: "Tipo de proyecto", valores: valoresDe(DATOS.casos, function (c) { return c._tipo; }) },
       { clave: "estado", nombre: "Estado del caso", valores: valoresDe(DATOS.casos, function (c) { return c.estado_caso; }) },
       { clave: "estadoInst", nombre: "Estado de la instalación", valores: valoresDe(DATOS.casos, function (c) { return c.estado_instalacion; }) },
@@ -1459,7 +1496,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       { clave: "sub", nombre: "Elementos", valores: valoresDe(DATOS.lineasElem, function (l) { return l.subcategoria; }) },
     ], pintarCasos);
     fElem = crearFiltrosTab("filtros-elem", fechas, [
-      { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) },
+      CFG.porUnidad ? { clave: "un", nombre: "Unidad de negocio", valores: valoresDe(DATOS.casos, function (c) { return c._un; }) } : null,
       { clave: "tipo", nombre: "Tipo de proyecto", valores: valoresDe(DATOS.casos, function (c) { return c._tipo; }) },
     ], pintarElementos);
   }
@@ -1513,14 +1550,14 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   async function pintarUltima() {
     var r = await sb.from("ind_corrida").select("finalizado_en,origen,mensaje,stats")
-      .eq("area", AREA).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
+      .in("area", AREAS_DATOS).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
     if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
     var c = r.data[0];
     // Sin actualizacion automatica por ahora: no se marca como atrasada.
     $("upd-hero").hidden = false;
     $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
     $("upd-hero-det").textContent = [c.origen === "automatica" ? "Automática" : "Manual", hace(c.finalizado_en)].join(" · ");
-    $("report-footer").innerHTML = "SP Seguridad Privada &middot; Indicadores de Ampliaciones &middot; datos de NetSuite, actualizados el " + esc(fmtFechaHora(c.finalizado_en));
+    $("report-footer").innerHTML = "SP Seguridad Privada &middot; Indicadores de " + esc(CFG.titulo) + " &middot; datos de NetSuite, actualizados el " + esc(fmtFechaHora(c.finalizado_en));
     if (c.mensaje && puedeEditar) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
   }
 
@@ -1658,12 +1695,23 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     document.querySelector(".wrap").innerHTML = '<div class="aviso-acceso">' + esc(mensaje) + "</div>";
   }
 
+  function aplicarTextos() {
+    document.title = "Indicadores de " + CFG.titulo + " — SP Seguridad";
+    document.querySelectorAll(".t-area").forEach(function (el) { el.textContent = CFG.titulo; });
+    document.querySelectorAll(".t-area-min").forEach(function (el) { el.textContent = CFG.titulo.toLowerCase(); });
+    document.querySelectorAll(".t-clasif").forEach(function (el) { el.textContent = CFG.clasif; });
+    document.querySelectorAll(".t-dim").forEach(function (el) { el.textContent = CFG.dim; });
+    $("txt-sub").textContent = CFG.sub;
+    $("bloque-com").hidden = !CFG.conComunicacion;
+  }
+
   async function iniciar() {
+    aplicarTextos();
     iniciarPestanas();
     var s = await sb.auth.getSession();
     if (!s.data || !s.data.session) { sinAcceso("Iniciá sesión en la web interna para ver estos indicadores."); return; }
     var ver = await sb.rpc("fn_tiene_permiso", { p_seccion_id: SECCION, p_nivel: "ver" });
-    if (!(ver && ver.data === true)) { sinAcceso("No tenés permiso para ver los indicadores de Ampliaciones. Pedile a un administrador que te lo habilite."); return; }
+    if (!(ver && ver.data === true)) { sinAcceso("No tenés permiso para ver los indicadores de " + CFG.titulo + ". Pedile a un administrador que te lo habilite."); return; }
     var ed = await sb.rpc("fn_tiene_permiso", { p_seccion_id: SECCION, p_nivel: "editar" });
     puedeEditar = !!(ed && ed.data === true);
     $("upd-btn").hidden = !puedeEditar;

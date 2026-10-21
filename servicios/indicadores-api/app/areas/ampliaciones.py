@@ -11,19 +11,33 @@
 #
 # Esta corrida solo reescribe y borra las filas del alcance "ampliaciones":
 # no toca los casos de Posventa / Instalaciones (alcance "instalaciones").
+# Comunicaciones usa los mismos datos (es la unidad de negocio Comunicaciones de
+# este alcance): su boton Actualizar corre esta misma funcion.
 #
 # Los indicadores se calculan en pages/indicadores-area/ampliaciones.html.
 
+from app import supabase_rest as sb
 from app.fuentes import casos as fuente_casos
 from app.fuentes import ov as fuente_ov
 
 SECCION = "indicadores-ampliaciones"
 ALCANCE = fuente_casos.AMPLIACIONES
+# Areas que muestran los datos de este alcance (la de Comunicaciones es la misma
+# pagina filtrada por unidad de negocio; ver app/areas/comunicaciones.py).
+AREAS_DEL_ALCANCE = ("ampliaciones", "comunicaciones")
 
 
-def actualizar(token, corrida_id, log, paso):
-    """Trae los datos, los guarda en Supabase y devuelve (stats, advertencias)."""
+def actualizar(token, corrida_id, log, paso, area="ampliaciones"):
+    """Trae los datos, los guarda en Supabase y devuelve (stats, advertencias).
+    La usan Ampliaciones y Comunicaciones (area = la que pidio la corrida)."""
     advertencias = []
+
+    # Dos corridas a la vez sobre el mismo alcance se borrarian las filas entre
+    # si (cada una borra lo que no escribio): si la otra area esta actualizando, se corta.
+    for otra in AREAS_DEL_ALCANCE:
+        if otra != area and sb.corrida_en_curso(token, otra):
+            raise RuntimeError(f"Ya se estan actualizando estos datos desde {otra.capitalize()}; "
+                               "espera a que termine (actualiza las dos areas).")
 
     paso("Consultando casos de ampliaciones en NetSuite")
     casos = fuente_casos.traer(log, corrida_id, token, alcance=ALCANCE)
