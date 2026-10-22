@@ -21,10 +21,12 @@ def actualizar(token, corrida_id, log, paso):
     """Trae los datos, los guarda en Supabase y devuelve (stats, advertencias)."""
     advertencias = []
 
+    cache = {}  # presupuestos y oportunidades ya consultados en esta corrida
+
     paso("Consultando casos de instalacion en NetSuite")
-    casos = fuente_casos.traer(log, corrida_id, token)
+    casos = fuente_casos.traer(log, corrida_id, token, cache=cache)
     paso("Consultando OV y articulos de los casos en NetSuite")
-    ovs, lineas = fuente_ov.traer([c["caso_id"] for c in casos], log, corrida_id)
+    ovs, lineas = fuente_ov.traer([c["caso_id"] for c in casos], log, corrida_id, cache=cache)
     if not ovs or not lineas:
         raise RuntimeError(f"NetSuite devolvio {len(ovs)} OV y {len(lineas)} lineas; "
                            "no se actualiza para no dejar el informe vacio.")

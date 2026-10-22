@@ -104,7 +104,7 @@ def _origenes(crudas):
     pres = {}
     for lote in _lotes(o.get("presupuesto_id") for o in ovs.values()):
         for f in netsuite.suiteql(f"""
-            SELECT e.id AS id, e.title AS titulo, e.opportunity AS oportunidad_id,
+            SELECT e.id AS id, e.tranid AS tranid, e.title AS titulo, e.opportunity AS oportunidad_id,
                    BUILTIN.DF(e.custbody_mw_sp_unidad_comercial) AS uc,
                    BUILTIN.DF(e.custbody_3k_categoria) AS categoria
             FROM transaction e
@@ -171,10 +171,15 @@ def _negocio(tr_ids, log):
     return salida
 
 
-def clasificar(crudas, equivalencias, log):
+def clasificar(crudas, equivalencias, log, cache=None):
     """Agrega a cada fila cruda (caso de SuiteQL) tipo_trabajo, unidad_comercial,
-    categoria, unidad_negocio, tipo_comunicacion y sus origenes."""
+    categoria, unidad_negocio, tipo_comunicacion y sus origenes.
+    cache: si viene, se guardan ahi los presupuestos y oportunidades consultados
+    (los reusa app/fuentes/ov.py en la misma corrida)."""
     ovs, pres, ops = _origenes(crudas)
+    if cache is not None:
+        cache.setdefault("presupuestos", {}).update(pres)
+        cache.setdefault("oportunidades", {}).update(ops)
     neg = _negocio(list(ovs) + list(pres) + list(ops), log)
     cuenta = {}
     for f in crudas:

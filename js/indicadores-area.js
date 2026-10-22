@@ -43,7 +43,7 @@ window.INDICADORES_AREAS = [
     descripcion: 'Ampliaciones finalizadas (sin la unidad Comunicaciones), demora estimada, elementos, demoras y facturación.',
   },
   {
-    // Misma pagina y mismos datos que Ampliaciones, solo la unidad de negocio Comunicaciones.
+    // Misma pagina que Ampliaciones; sus datos son el alcance "comunicaciones" (unidad de negocio Comunicaciones).
     id: 'comunicaciones',
     label: 'Comunicaciones',
     archivo: 'ampliaciones.html?area=comunicaciones',

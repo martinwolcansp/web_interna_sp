@@ -296,15 +296,19 @@ def _ov_productos(tr_ids):
     return ovs
 
 
-def _origen(ovs):
+def _origen(ovs, cache=None):
     """Presupuesto de origen de cada OV (custbody_3k_trans_orig_ov) y unidad
     comercial: la de la OV, si no la del presupuesto, si no la de la
     oportunidad (del presupuesto o de la OV). El campo es nuevo en el
     presupuesto (cargado desde sep-2026); en la oportunidad esta desde mar-2026.
-    Se consulta aparte y por ids: unido a la consulta de OV tarda 10 veces mas."""
+    Se consulta aparte y por ids: unido a la consulta de OV tarda 10 veces mas.
+    cache: presupuestos y oportunidades ya consultados en la corrida (los trae
+    la clasificacion de los casos); solo se piden los que falten."""
+    cache = cache or {}
     pres_ids = {int(f["presupuesto_id"]) for f in ovs.values() if f.get("presupuesto_id")}
-    pres = {}
-    for lote in _lotes(pres_ids):
+    conocidos = cache.get("presupuestos", {})
+    pres = {i: conocidos[i] for i in pres_ids if i in conocidos}
+    for lote in _lotes(pres_ids - set(pres)):
         for f in netsuite.suiteql(f"""
             SELECT e.id AS id, e.tranid AS tranid, e.opportunity AS oportunidad_id,
                    BUILTIN.DF(e.custbody_mw_sp_unidad_comercial) AS uc
@@ -314,8 +318,10 @@ def _origen(ovs):
         """):
             pres[int(f["id"])] = f
     op_ids = {int(x["oportunidad_id"]) for x in list(pres.values()) + list(ovs.values()) if x.get("oportunidad_id")}
-    ops = {}
-    for lote in _lotes(op_ids):
+    conocidas = cache.get("oportunidades", {})
+    ops = {i: conocidas[i].get("uc") for i in op_ids if i in conocidas}
+    pedidos = len(pres_ids - set(conocidos)) + len(op_ids - set(conocidas))
+    for lote in _lotes(op_ids - set(ops)):
         for f in netsuite.suiteql(f"""
             SELECT o.id AS id, BUILTIN.DF(o.custbody_mw_sp_unidad_comercial) AS uc
             FROM transaction o
@@ -323,6 +329,7 @@ def _origen(ovs):
             ORDER BY o.id
         """):
             ops[int(f["id"])] = f.get("uc")
+    _origen.consultadas = pedidos  # para el log de traer()
     for f in ovs.values():
         p = pres.get(int(f["presupuesto_id"])) if f.get("presupuesto_id") else None
         f["presupuesto"] = p.get("tranid") if p else None
@@ -411,13 +418,16 @@ def filas_lineas(crudas, corrida_id):
 # Extraccion y guardado
 # ---------------------------------------------------------------------------
 
-def traer(caso_ids, log, corrida_id=None, alcance="instalaciones"):
+def traer(caso_ids, log, corrida_id=None, alcance="instalaciones", cache=None):
     """OV de productos y sus lineas para los casos pedidos (los del alcance).
-    alcance: el de los casos (app/fuentes/casos.py); queda en cada fila."""
+    alcance: el de los casos (app/fuentes/casos.py); queda en cada fila.
+    cache: el de la corrida (ver app/fuentes/casos.traer)."""
     pares = _vinculos(caso_ids)
     ovs = _ov_productos(tr for _, tr in pares)
     pares = sorted((c, o) for c, o in pares if o in ovs)
-    _origen(ovs)
+    _origen(ovs, cache)
+    if cache is not None:
+        log(f"Presupuestos y oportunidades: {_origen.consultadas} consultados de nuevo (el resto ya estaba de la clasificacion).")
     lineas_ov = _lineas(ovs)
 
     filas_o = filas_ov([dict(ovs[o], caso_id=c) for c, o in pares], corrida_id)

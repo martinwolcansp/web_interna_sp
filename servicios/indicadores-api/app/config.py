@@ -45,6 +45,7 @@ CASOS_INSTALACION_ASIGNADO_A = int(
 # ---------- Casos de ampliaciones (misma tabla comun, otro alcance) ----------
 # Misma busqueda 2560 y misma fecha de corte, asignados a 232 (Jefe de
 # Instalaciones - Alarmas Ampliaciones), como el Power BI "Analisis Ampliaciones V2".
+# Lo usan los alcances ampliaciones y comunicaciones (separados por unidad de negocio).
 CASOS_AMPLIACIONES_ASIGNADO_A = int(os.getenv("CASOS_AMPLIACIONES_ASIGNADO_A") or "232")
 
 # ---------- Posventa ----------

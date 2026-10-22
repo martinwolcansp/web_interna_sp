@@ -238,7 +238,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
     </div>
     <div class="upd-panel" id="upd-panel" hidden>
-      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite todos los casos asignados a Jefe de Instalaciones - Alarmas Ampliaciones, sus OV de productos y los artículos de esas OV (no sólo los nuevos). Los datos son los mismos para Ampliaciones y Comunicaciones: actualizar cualquiera de las dos refresca ambas. No modifica los datos de Instalaciones ni de Posventa.</div>
+      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite todos los casos asignados a Jefe de Instalaciones - Alarmas Ampliaciones, sus OV de productos y los artículos de esas OV (no sólo los nuevos). Solo se guardan los casos de la unidad de negocio de este informe (Ampliaciones: todas menos Comunicaciones; Comunicaciones: solo esa unidad); el otro informe se actualiza con su propio botón. No modifica los datos de Instalaciones ni de Posventa.</div>
       <div class="upd-hist-scroll">
         <table class="upd-hist">
           <thead><tr><th>Actualizada el</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
@@ -452,12 +452,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   var API_BASE_URL = "https://indicadores-api.200.5.196.50.sslip.io";
   // Direccion de la web interna habilitada en ALLOWED_ORIGINS del servicio.
   var ORIGEN_WEB = "https://portal.blogdns.com";
-  // Esta pagina sirve a dos areas con los mismos datos (casos del asignado 232,
-  // Jefe de Instalaciones - Alarmas Ampliaciones), separadas por unidad de negocio:
+  // Esta pagina sirve a dos areas con casos del mismo asignado (232, Jefe de
+  // Instalaciones - Alarmas Ampliaciones), separadas por unidad de negocio:
   //   ampliaciones.html                      todas las unidades menos Comunicaciones
   //   ampliaciones.html?area=comunicaciones  solo la unidad Comunicaciones
-  // Cada area tiene su seccion de permisos (indicadores-<area>) y su boton
-  // Actualizar; las dos refrescan los mismos datos (app/areas/ampliaciones.py).
+  // Cada area tiene su seccion de permisos (indicadores-<area>), su boton
+  // Actualizar y su alcance en las tablas comunes (app/fuentes/casos.py).
   var UNIDAD_COM = "Comunicaciones";
   var CONFIGS = {
     ampliaciones: {
@@ -478,11 +478,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   var AREA = new URLSearchParams(location.search).get("area") === "comunicaciones" ? "comunicaciones" : "ampliaciones";
   var CFG = CONFIGS[AREA];
   var SECCION = "indicadores-" + AREA;
-  // Las dos areas refrescan los mismos datos: la ultima actualizacion puede venir de cualquiera.
-  var AREAS_DATOS = ["ampliaciones", "comunicaciones"];
-  // Alcance de los casos en las tablas comunes: asignado 232. Instalaciones y
-  // Posventa usan "instalaciones" (asignado 133).
-  var ALCANCE = "ampliaciones";
+  // Alcance de los casos en las tablas comunes: el del area (ampliaciones o
+  // comunicaciones). Instalaciones y Posventa usan "instalaciones" (asignado 133).
+  var ALCANCE = AREA;
   var TZ = "America/Argentina/Buenos_Aires";
   var POLL_MS = 4000;
   var HISTORIAL = 20;
@@ -1444,9 +1442,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto,es_comodato,presupuesto", ["caso_id", "ov_id"], [["alcance", ALCANCE]]),
       leerTodo("ind_caso_ov_linea", "caso_id,cantidad", ["caso_id", "ov_id", "linea_id"], [["alcance", ALCANCE], ["es_mo", true]]),
     ]);
-    // Casos del area segun su unidad de negocio (ver CONFIGS). Las OV y lineas de
-    // otros casos no se usan (se cruzan por caso), pero se descartan las OV para
-    // que los filtros solo muestren estados de esta area.
+    // El alcance ya trae solo la unidad de negocio del area; el filtro queda por
+    // las dudas (si un caso cambio de unidad y el otro informe todavia no se actualizo).
     DATOS.casos = res[0].filter(function (c) { return CFG.pasaUnidad(unidadCorta(c.unidad_negocio)); });
     var ids = new Set(DATOS.casos.map(function (c) { return c.caso_id; }));
     DATOS.ovs = res[1].filter(function (o) { return ids.has(o.caso_id); });
@@ -1550,7 +1547,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
   async function pintarUltima() {
     var r = await sb.from("ind_corrida").select("finalizado_en,origen,mensaje,stats")
-      .in("area", AREAS_DATOS).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
+      .eq("area", AREA).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
     if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
     var c = r.data[0];
     // Sin actualizacion automatica por ahora: no se marca como atrasada.

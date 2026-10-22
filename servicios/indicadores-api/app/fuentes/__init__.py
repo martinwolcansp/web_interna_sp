@@ -6,5 +6,5 @@
 #
 # Regla para que las areas no se pisen: cada fuente reescribe y borra solo
 # las filas de su alcance: los casos de la busqueda 2560 de un asignado
-# (columna alcance: instalaciones = 133, ampliaciones = 232) y lo que cuelga
-# de ellos. Ver app/fuentes/casos.py.
+# (columna alcance: instalaciones = 133; ampliaciones y comunicaciones = 232,
+# separados por unidad de negocio) y lo que cuelga de ellos. Ver app/fuentes/casos.py.

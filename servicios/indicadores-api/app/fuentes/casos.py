@@ -7,11 +7,20 @@
 #   instalaciones  asignado 133 (Jefe de Instalaciones). Lo usan Posventa e
 #                  Instalaciones: las dos traen exactamente el mismo alcance,
 #                  asi que cualquiera de las dos puede refrescarlo.
-#   ampliaciones   asignado 232 (Jefe de Instalaciones - Alarmas Ampliaciones).
-#                  Lo usa Ampliaciones.
+#   ampliaciones   asignado 232 (Jefe de Instalaciones - Alarmas Ampliaciones),
+#                  todas las unidades de negocio menos Comunicaciones (tambien
+#                  los casos sin unidad de negocio). Lo usa Ampliaciones.
+#   comunicaciones asignado 232, solo la unidad de negocio Comunicaciones. Lo
+#                  usa Comunicaciones (otra area, mismo jefe asignado).
+#
+# La unidad de negocio esta en el presupuesto, no en el caso: los dos alcances
+# del 232 traen todos los casos del asignado, los clasifican y recien ahi se
+# quedan con los suyos. Lo que se ahorra es lo que viene despues (OV, articulos
+# y guardado), que es lo mas pesado.
 #
 # Cada fila guarda su alcance y cada corrida borra solo las filas de su
-# alcance que no vinieron, asi un area no pisa los casos de otra.
+# alcance que no vinieron, asi un area no pisa los casos de otra. Si un caso
+# cambia de unidad de negocio, el upsert del area nueva le cambia el alcance.
 
 from app import config, netsuite
 from app import supabase_rest as sb
@@ -25,6 +34,22 @@ ESTADOS_ESTABLECIMIENTO = (1, 2, 3, 4, 5, 6)
 
 INSTALACIONES = "instalaciones"
 AMPLIACIONES = "ampliaciones"
+COMUNICACIONES = "comunicaciones"
+
+UNIDAD_COMUNICACIONES = "Comunicaciones"
+
+
+def unidad_corta(unidad_negocio):
+    """'Alarmas : Comunicaciones' -> 'Comunicaciones'."""
+    return str(unidad_negocio).split(" : ")[-1].strip() if unidad_negocio else None
+
+
+# Filtro por unidad de negocio de cada alcance (None = sin filtro).
+FILTRO_UNIDAD = {
+    INSTALACIONES: None,
+    AMPLIACIONES: lambda un: unidad_corta(un) != UNIDAD_COMUNICACIONES,
+    COMUNICACIONES: lambda un: unidad_corta(un) == UNIDAD_COMUNICACIONES,
+}
 
 
 def asignado(alcance=INSTALACIONES):
@@ -32,6 +57,7 @@ def asignado(alcance=INSTALACIONES):
     ids = {
         INSTALACIONES: config.CASOS_INSTALACION_ASIGNADO_A,
         AMPLIACIONES: config.CASOS_AMPLIACIONES_ASIGNADO_A,
+        COMUNICACIONES: config.CASOS_AMPLIACIONES_ASIGNADO_A,
     }
     if alcance not in ids:
         raise ValueError(f"Alcance de casos desconocido: {alcance}")
@@ -124,11 +150,23 @@ def filas(crudas, corrida_id, alcance=INSTALACIONES):
     return salida
 
 
-def traer(log, corrida_id=None, token=None, alcance=INSTALACIONES):
+def traer(log, corrida_id=None, token=None, alcance=INSTALACIONES, cache=None):
     """token: para leer las equivalencias de tipo de proyecto de Supabase (sin
-    token se usan las del servicio, por ejemplo en probar_*.py)."""
+    token se usan las del servicio, por ejemplo en probar_*.py).
+    cache: dict de la corrida; guarda los presupuestos y oportunidades ya
+    consultados para que app/fuentes/ov.py no los vuelva a pedir."""
     crudas = netsuite.suiteql(consulta(alcance))
-    clasificacion.clasificar(crudas, clasificacion.cargar_equivalencias(token, log), log)
+    clasificacion.clasificar(crudas, clasificacion.cargar_equivalencias(token, log), log, cache)
+    filtro = FILTRO_UNIDAD[alcance]
+    if filtro:
+        if crudas and not any(f.get("unidad_negocio") for f in crudas):
+            # Sin la unidad de negocio no se puede separar Ampliaciones de
+            # Comunicaciones: guardar asi mezclaria los dos informes.
+            raise RuntimeError("Ningun caso trajo unidad de negocio: no se puede separar Ampliaciones de "
+                               "Comunicaciones. Revisar el log de la corrida.")
+        total = len(crudas)
+        crudas = [f for f in crudas if filtro(f.get("unidad_negocio"))]
+        log(f"Unidad de negocio: {len(crudas)} de {total} casos del asignado {asignado(alcance)} son de {alcance}.")
     resultado = filas(crudas, corrida_id, alcance)
     log(f"NetSuite: {len(resultado)} casos ({alcance}) desde {config.CASOS_INSTALACION_DESDE} "
         f"(asignados a {asignado(alcance)}).")
