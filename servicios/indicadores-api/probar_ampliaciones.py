@@ -7,7 +7,8 @@
 # Deja lo que trajo en salida_prueba/<alcance>_*.json, muestra el tiempo de
 # cada paso y compara la suma de los dos alcances con los totales del Power BI
 # "Analisis Ampliaciones V2" (datos cacheados en el .pbix, casos creados hasta
-# el 18/09/2026: comparar los meses cerrados). El Power BI no separaba
+# el 18/09/2026: comparar los meses cerrados; los totales por unidad dan mas en
+# la web porque incluyen los casos posteriores). El Power BI no separaba
 # Comunicaciones, por eso se compara la suma.
 
 import json
@@ -25,9 +26,10 @@ ALCANCES = [fuente_casos.AMPLIACIONES, fuente_casos.COMUNICACIONES]
 PBI_FINALIZADOS = {"2026-01": 119, "2026-02": 118, "2026-03": 172, "2026-04": 167,
                    "2026-05": 156, "2026-06": 224, "2026-07": 249, "2026-08": 192}
 # Power BI: casos por Unidad de Negocio (todos los estados).
-PBI_UNIDAD_NEGOCIO = {"Alarmas : Ampliaciones": 990, "Alarmas : Comunicaciones": 730, "(vacio)": 372,
-                      "Alarmas : Servicio técnico": 11, "Alarmas : Nuevas": 5, "Alarmas : Operaciones": 3,
-                      "Alarmas": 1, "Alarmas : Comodato": 1}
+# (nombre corto: NetSuite devuelve "Ampliaciones", el Power BI "Alarmas : Ampliaciones")
+PBI_UNIDAD_NEGOCIO = {"Ampliaciones": 990, "Comunicaciones": 730, "(vacio)": 372,
+                      "Servicio técnico": 11, "Nuevas": 5, "Operaciones": 3,
+                      "Alarmas": 1, "Comodato": 1}
 PBI_TIPO_COMUNICACION = {"Radio": 32, "Telefono": 28, "Incomunicado": 2}
 
 
@@ -81,7 +83,7 @@ if __name__ == "__main__":
     print("  Trabajos finalizados por mes (web / Power BI):")
     for m in sorted(set(fin) | set(PBI_FINALIZADOS)):
         print(f"    {m}: {len(fin.get(m, ())):>4} / {PBI_FINALIZADOS.get(m, '-')}")
-    un = Counter(c["unidad_negocio"] or "(vacio)" for c in casos)
+    un = Counter(fuente_casos.unidad_corta(c["unidad_negocio"]) or "(vacio)" for c in casos)
     print("  Casos por unidad de negocio (web / Power BI):")
     for k in sorted(set(un) | set(PBI_UNIDAD_NEGOCIO), key=lambda k: -un.get(k, 0)):
         print(f"    {k}: {un.get(k, 0)} / {PBI_UNIDAD_NEGOCIO.get(k, '-')}")

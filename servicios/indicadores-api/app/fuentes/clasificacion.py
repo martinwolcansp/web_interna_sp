@@ -127,15 +127,15 @@ def _origenes(crudas):
     return ovs, pres, ops
 
 
-# Unidad de negocio (class, jerarquica: "Alarmas : Ampliaciones") y tipo de
-# comunicacion (custbody_3k_tipo_comunicacion: Radio, Telefono...) del
-# presupuesto de origen (si no tiene, de la oportunidad o de la OV). Son las
-# columnas "Unidad de Negocio" y "Tipo Comunicacion" de la busqueda 2560 que
-# usa Ampliaciones.
-# En SuiteQL la tabla transaction no tiene class: la unidad de negocio del
-# encabezado esta en la linea principal (transactionline.mainline = 'T').
-# Cada dato se consulta aparte y con tolerancia a error: si uno falla, se
-# sigue sin ese dato y Posventa / Instalaciones no se ven afectadas.
+# Unidad de negocio (class) del presupuesto de origen (si no tiene, de la
+# oportunidad o de la OV): columna "Unidad de Negocio" de la busqueda 2560 que
+# usa Ampliaciones. En SuiteQL la tabla transaction no tiene class: la unidad
+# de negocio del encabezado esta en la linea principal (transactionline.mainline = 'T').
+# El tipo de comunicacion NO sale de aca: esta copiado en el caso
+# (custevent_ap_sp_tipo_comunica_presup_sp, ver app/fuentes/casos.py); el campo
+# custbody_3k_tipo_comunicacion del presupuesto casi siempre esta vacio.
+# Tolerancia a error: si la consulta falla, se sigue sin el dato y Posventa /
+# Instalaciones no se ven afectadas (Ampliaciones y Comunicaciones cortan).
 _CONSULTAS_NEGOCIO = [
     ("unidad_negocio", """
         SELECT tl.transaction AS id, BUILTIN.DF(tl.class) AS unidad_negocio
@@ -143,17 +143,11 @@ _CONSULTAS_NEGOCIO = [
         WHERE tl.transaction IN ({lote}) AND tl.mainline = 'T'
         ORDER BY tl.transaction
     """),
-    ("tipo_comunicacion", """
-        SELECT t.id AS id, BUILTIN.DF(t.custbody_3k_tipo_comunicacion) AS tipo_comunicacion
-        FROM transaction t
-        WHERE t.id IN ({lote})
-        ORDER BY t.id
-    """),
 ]
 
 
 def _negocio(tr_ids, log):
-    """{transaccion_id: {unidad_negocio, tipo_comunicacion}}."""
+    """{transaccion_id: {unidad_negocio}}."""
     tr_ids = [i for i in tr_ids if i]
     salida = {}
     for campo, sql in _CONSULTAS_NEGOCIO:
@@ -173,7 +167,7 @@ def _negocio(tr_ids, log):
 
 def clasificar(crudas, equivalencias, log, cache=None):
     """Agrega a cada fila cruda (caso de SuiteQL) tipo_trabajo, unidad_comercial,
-    categoria, unidad_negocio, tipo_comunicacion y sus origenes.
+    categoria, unidad_negocio y sus origenes.
     cache: si viene, se guardan ahi los presupuestos y oportunidades consultados
     (los reusa app/fuentes/ov.py en la misma corrida)."""
     ovs, pres, ops = _origenes(crudas)
@@ -188,11 +182,10 @@ def clasificar(crudas, equivalencias, log, cache=None):
         op_id = (p or {}).get("oportunidad_id") or (ov or {}).get("oportunidad_id")
         op = ops.get(int(op_id)) if op_id else None
 
-        # Unidad de negocio y tipo de comunicacion: presupuesto > oportunidad > OV.
+        # Unidad de negocio: presupuesto > oportunidad > OV.
         origenes = [neg.get(int(x["id"])) for x in (p, op) if x] + ([neg.get(int(f["ov_productos_id"]))] if ov else [])
         origenes = [o for o in origenes if o]
         f["unidad_negocio"] = next((texto(o.get("unidad_negocio")) for o in origenes if texto(o.get("unidad_negocio"))), None)
-        f["tipo_comunicacion"] = next((texto(o.get("tipo_comunicacion")) for o in origenes if texto(o.get("tipo_comunicacion"))), None)
         tipo = texto(f.get("tipo_proyecto"))
         eq_trabajo, eq_uc = equivalencias.get(tipo, (False, None))
 

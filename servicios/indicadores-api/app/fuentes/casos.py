@@ -88,6 +88,7 @@ def consulta(alcance=INSTALACIONES):
             BUILTIN.DF(c.custentity_3k_nro_cuenta)                  AS nro_cuenta,
             BUILTIN.DF(sc.custevent_3k_tecnico_asignado_caso)       AS tecnico,
             BUILTIN.DF(sc.custevent_ap_sp_tipo_proyecto_presup_sp)  AS tipo_proyecto,
+            BUILTIN.DF(sc.custevent_ap_sp_tipo_comunica_presup_sp)  AS tipo_comunicacion,
             BUILTIN.DF(sc.status)                                   AS estado_caso,
             BUILTIN.DF(sc.custevent3k_estado_sp)                    AS estado_instalacion,
             BUILTIN.DF(sc.custevent_mw_sp_tipo_posventa)            AS tipo_posventa,
