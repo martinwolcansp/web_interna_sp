@@ -775,11 +775,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     [relevPorGhl, relevPorCaso].forEach(function (m) { Object.keys(m).forEach(function (k) { m[k].sort(porFecha); }); });
   }
   // Si la encuesta tiene caso de instalacion (el mas reciente del cliente
-  // asignado al Jefe de Instalaciones - Alarmas Nuevas), la accion se busca en
-  // ese caso; si no, en cualquier caso del cliente.
+  // asignado al Jefe de Instalaciones - Alarmas Nuevas), la accion es cualquier
+  // relevamiento Comunicación Cliente de ese caso, sin mirar la fecha: a veces
+  // se agrega la accion a un relevamiento cargado antes de la encuesta.
+  // Sin caso, se busca en cualquier caso del cliente desde la fecha de la encuesta.
   function accionesDeEncuesta(e) {
-    var lista = e.caso_ns_id ? relevPorCaso[e.caso_ns_id] : relevPorGhl[e.contact_id];
-    return (lista || []).filter(function (r) {
+    if (e.caso_ns_id) return (relevPorCaso[e.caso_ns_id] || []).slice();
+    return (relevPorGhl[e.contact_id] || []).filter(function (r) {
       return !e.fecha || !r.fecha_creacion || r.fecha_creacion >= e.fecha;
     });
   }
