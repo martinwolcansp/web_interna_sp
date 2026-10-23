@@ -91,6 +91,25 @@ def consulta_clientes_ghl(ids_ghl):
     """
 
 
+def consulta_casos_ghl(ids_ghl):
+    """Casos de instalacion (asignados al Jefe de Instalaciones - Alarmas Nuevas)
+    de los clientes de las encuestas. El ID de GHL puede estar en el subcliente
+    del caso o en su padre."""
+    lista = ", ".join(f"'{i}'" for i in ids_ghl)
+    return f"""
+        SELECT
+            COALESCE(c.custentity_ghl_contact_id, cp.custentity_ghl_contact_id) AS id_ghl,
+            sc.id                                                   AS caso_id,
+            sc.casenumber                                           AS numero,
+            TO_CHAR(sc.datecreated, 'YYYY-MM-DD')                   AS fecha
+        FROM supportcase sc
+        JOIN customer c ON c.id = sc.company
+        LEFT JOIN customer cp ON cp.id = c.parent
+        WHERE sc.assigned = {int(config.CASOS_INSTALACION_ASIGNADO_A)}
+          AND (c.custentity_ghl_contact_id IN ({lista}) OR cp.custentity_ghl_contact_id IN ({lista}))
+    """
+
+
 # ---------------------------------------------------------------------------
 # Transformaciones (mismas reglas que el Power Query del informe)
 # ---------------------------------------------------------------------------
@@ -258,6 +277,23 @@ def asignar_clientes_ns(filas, log):
     repetidos = sum(1 for v in por_ghl.values() if len(v) > 1)
     log(f"NetSuite: {vinculadas} de {len(filas)} encuestas con cliente vinculado"
         + (f"; {repetidos} ID de GHL estan en mas de un cliente." if repetidos else "."))
+
+    # Caso de instalacion de la encuesta: el mas reciente del cliente creado
+    # hasta la fecha de la encuesta (la encuesta sale despues de instalar).
+    # Si no hay ninguno anterior, el mas reciente. Ahi se busca la accion.
+    casos_por_ghl = {}
+    for i in range(0, len(ids), _LOTE_CLIENTES):
+        for c in netsuite.suiteql(consulta_casos_ghl(ids[i:i + _LOTE_CLIENTES])):
+            casos_por_ghl.setdefault(c["id_ghl"], []).append(c)
+    for f in filas:
+        casos = sorted(casos_por_ghl.get(f["contact_id"], []), key=lambda c: (c.get("fecha") or "", int(c["caso_id"])))
+        previos = [c for c in casos if f.get("fecha") and (c.get("fecha") or "") <= f["fecha"]]
+        caso = (previos or casos or [{}])[-1]
+        f["caso_ns_id"] = int(caso["caso_id"]) if caso.get("caso_id") else None
+        f["caso_ns"] = _texto(caso.get("numero"))
+        f["caso_ns_fecha"] = caso.get("fecha")
+        f["caso_ns_cant"] = len(casos)
+    log(f"NetSuite: {sum(1 for f in filas if f['caso_ns_id'])} de {len(filas)} encuestas con caso de instalacion.")
 
 
 def traer_encuestas(log, corrida_id=None):

@@ -334,6 +334,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // Relevamiento posventa en NetSuite (registro personalizado, busqueda 2557).
   var URL_RELEVAMIENTO = "https://7138551.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=3243&id=";
   var URL_CLIENTE = "https://7138551.app.netsuite.com/app/common/entity/custjob.nl?id=";
+  var URL_CASO = "https://7138551.app.netsuite.com/app/crm/support/supportcase.nl?id=";
   // Accion del relevamiento que responde a una encuesta ("Comunicación Cliiente" en NetSuite, con la errata).
   var ACCION_RESPUESTA = /comunicaci[oó]n\s+cli/i;
   // Texto libre (la persona escribio en vez de elegir): en las tortas se agrupa.
@@ -761,20 +762,34 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // como "+N". Los anteriores son del cierre de la instalacion y no responden
   // a la encuesta.
   var relevPorGhl = {};
+  var relevPorCaso = {};
   function indexarRelevamientos() {
     relevPorGhl = {};
+    relevPorCaso = {};
+    var porFecha = function (a, b) { return a.fecha_creacion < b.fecha_creacion ? -1 : a.fecha_creacion > b.fecha_creacion ? 1 : 0; };
     DATOS.relev.forEach(function (r) {
-      if (!r.id_cliente_ghl || !(r.acciones || []).some(function (a) { return ACCION_RESPUESTA.test(a); })) return;
-      (relevPorGhl[r.id_cliente_ghl] = relevPorGhl[r.id_cliente_ghl] || []).push(r);
+      if (!(r.acciones || []).some(function (a) { return ACCION_RESPUESTA.test(a); })) return;
+      if (r.id_cliente_ghl) (relevPorGhl[r.id_cliente_ghl] = relevPorGhl[r.id_cliente_ghl] || []).push(r);
+      if (r.caso_id) (relevPorCaso[r.caso_id] = relevPorCaso[r.caso_id] || []).push(r);
     });
-    Object.keys(relevPorGhl).forEach(function (k) {
-      relevPorGhl[k].sort(function (a, b) { return a.fecha_creacion < b.fecha_creacion ? -1 : a.fecha_creacion > b.fecha_creacion ? 1 : 0; });
-    });
+    [relevPorGhl, relevPorCaso].forEach(function (m) { Object.keys(m).forEach(function (k) { m[k].sort(porFecha); }); });
   }
+  // Si la encuesta tiene caso de instalacion (el mas reciente del cliente
+  // asignado al Jefe de Instalaciones - Alarmas Nuevas), la accion se busca en
+  // ese caso; si no, en cualquier caso del cliente.
   function accionesDeEncuesta(e) {
-    return (relevPorGhl[e.contact_id] || []).filter(function (r) {
+    var lista = e.caso_ns_id ? relevPorCaso[e.caso_ns_id] : relevPorGhl[e.contact_id];
+    return (lista || []).filter(function (r) {
       return !e.fecha || !r.fecha_creacion || r.fecha_creacion >= e.fecha;
     });
+  }
+  function htmlCaso(e) {
+    if (!e.caso_ns_id) return "";
+    return '<span class="accion-det">en <a class="accion-link" href="' + URL_CASO + encodeURIComponent(e.caso_ns_id) +
+      '" target="_blank" rel="noopener" title="Caso de instalación más reciente del cliente' +
+      (e.caso_ns_fecha ? " (creado el " + esc(fmtDia(e.caso_ns_fecha)) + ")" : "") +
+      (e.caso_ns_cant > 1 ? "; el cliente tiene " + e.caso_ns_cant + " casos de instalación" : "") + '">' +
+      esc(e.caso_ns || e.caso_ns_id) + " ↗</a></span>";
   }
   function htmlCliente(e) {
     if (!e.cliente_ns_id) return '<span class="sin-cliente" title="Ningún cliente de NetSuite tiene este ID de GHL">Sin vincular</span>';
@@ -786,7 +801,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   }
   function htmlAccion(e) {
     var r = e._accion;
-    if (!r) return e._alerta ? '<span class="sin-accion">Sin acción</span>' : "";
+    if (!r) return e._alerta ? '<span class="sin-accion">Sin acción</span>' + htmlCaso(e) : "";
     var titulo = [(r.acciones || []).join(", "), r.comentarios].filter(Boolean).join("\n\n");
     var mas = e._acciones.slice(1);
     return '<a class="accion-link" href="' + URL_RELEVAMIENTO + encodeURIComponent(r.relevamiento_id) +
@@ -862,8 +877,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var res = await Promise.all([
       // Tabla comun: solo los casos del alcance de Posventa / Instalaciones (asignado 133).
       leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id", ["alcance", "instalaciones"]),
-      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl", "relevamiento_id"),
-      leerTodo("ind_posventa_encuesta", "contact_id,contacto,estado,fecha,calificacion,expectativa,comentarios,cliente_ns_id,cliente_ns,cliente_ns_nombre,cliente_ns_cant", "contact_id"),
+      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl,caso_id", "relevamiento_id"),
+      leerTodo("ind_posventa_encuesta", "contact_id,contacto,estado,fecha,calificacion,expectativa,comentarios,cliente_ns_id,cliente_ns,cliente_ns_nombre,cliente_ns_cant,caso_ns_id,caso_ns,caso_ns_fecha,caso_ns_cant", "contact_id"),
     ]);
     DATOS.casos = res[0]; DATOS.relev = res[1]; DATOS.enc = res[2];
     indexarRelevamientos();
@@ -896,7 +911,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         { titulo: "Acción posventa", html: htmlAccion,
           valor: function (e) { return e._accion ? fmtDia(e._accion.fecha_creacion) : e._alerta ? "Sin acción" : ""; },
           orden: function (e) { return e._accion ? "2" + e._accion.fecha_creacion : e._alerta ? "1" : "0"; } },
-      ], function (e) { return [e.contacto, e.cliente_ns, e.cliente_ns_nombre, e.estado, e.calificacion, e.expectativa, e.comentarios, e._accion ? e._accion.numero_caso : e._alerta ? "sin acción" : ""].join(" "); }, {
+      ], function (e) { return [e.contacto, e.cliente_ns, e.cliente_ns_nombre, e.estado, e.calificacion, e.expectativa, e.comentarios, e.caso_ns, e._accion ? "" : e._alerta ? "sin acción" : ""].join(" "); }, {
         claseFila: function (e) { return e._alerta ? "fila-" + e._alerta : ""; },
         filtro: function (e) { return !$("solo-alerta-enc").checked || !!e._alerta; },
       });
