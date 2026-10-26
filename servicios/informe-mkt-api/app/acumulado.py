@@ -232,7 +232,10 @@ def consultar(token, desde, hasta):
         "date_added": f"gte.{inicio.isoformat()}", "and": f"(date_added.lt.{fin_excl.isoformat()})",
     }, "leer contactos GHL")]
     vistos = {c.get("id") for c in contactos}
-    ids_ns = {str(f["fila"].get("ID CLIENTE CRM")).strip() for f in ns if f["fila"].get("ID CLIENTE CRM")}
+    # Incluye el ID de GHL de la empresa matriz de los establecimientos (26/10/2026,
+    # mismo criterio que job.py y resumen_ejecutivo.generar).
+    ids_ns = {str(f["fila"].get(col)).strip() for f in ns
+              for col in ("ID CLIENTE CRM", "ID CLIENTE CRM MATRIZ") if f["fila"].get(col)}
     faltan = ids_ns - vistos
     if faltan:
         contactos += [f["crudo"] for f in sb.leer_por_ids(token, T_CONTACTO, "id", faltan, "crudo", "leer contactos GHL")]

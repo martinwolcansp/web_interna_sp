@@ -808,7 +808,11 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     var idGhl = c.contact_id && String(c.contact_id).indexOf("ns-") !== 0 ? String(c.contact_id) : null;
     html += '<div><div class="dg-label">ID cliente GHL</div><div class="dg-value">' + (idGhl
       ? '<a class="accion-link" href="' + GHL_CONTACTO_URL + encodeURIComponent(idGhl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el contacto en GHL">' + esc(idGhl) + " ↗</a>"
-      : "Sin contacto en GHL") + "</div></div>";
+      : "Sin contacto en GHL") +
+      // Establecimientos (subclientes) sin ID de GHL propio: se uso el de la matriz.
+      (idGhl && c.establecimientos_netsuite && c.establecimientos_netsuite.length
+        ? '<div style="color:var(--muted);font-size:12px;">De la empresa matriz (establecimiento ' + esc(c.establecimientos_netsuite.join(", ")) + ")</div>"
+        : "") + "</div></div>";
     html += '<div><div class="dg-label">Estado en GHL</div><div class="dg-value">' + estadoPill(c) + "</div></div>";
     if (c.ns_oportunidades && c.ns_oportunidades.length) {
       html += '<div class="dg-full"><div class="dg-label">Oportunidades en NetSuite</div><div class="dg-value ns-opp-scroll">' +

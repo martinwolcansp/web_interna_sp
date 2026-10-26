@@ -328,10 +328,30 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
 
     # ---- Oportunidades de NetSuite agrupadas por contacto ----
     ns_por_contacto = {}
+    # Establecimientos (26/10/2026): un subcliente de NetSuite (ej. C07843-1) no
+    # tiene ID de GHL; se usa el de su empresa matriz (C07843). Primero por el
+    # campo parent de NetSuite ("ID CLIENTE CRM MATRIZ", hasta dos niveles) y, si
+    # no, por el cliente del periodo con el mismo numero sin el sufijo "-N".
+    # establecimientos_por_contacto guarda que numeros se resolvieron asi.
+    establecimientos_por_contacto = {}
     if ventas_df is not None and len(ventas_df):
+        crm_por_nro = {}
+        for _, f in ventas_df.iterrows():
+            nro, crm = _limpio(f.get("ID")), _limpio(f.get("ID CLIENTE CRM"))
+            if nro and crm:
+                crm_por_nro.setdefault(str(nro).strip(), str(crm).strip())
         for _, f in ventas_df.iterrows():
             crm = _limpio(f.get("ID CLIENTE CRM"))
-            clave = str(crm) if crm else f"ns-{_limpio(f.get('ID')) or int(f.get('ID interno'))}"
+            if not crm:
+                nro = str(_limpio(f.get("ID")) or "").strip()
+                crm = _limpio(f.get("ID CLIENTE CRM MATRIZ"))
+                if not crm and "-" in nro:
+                    crm = crm_por_nro.get(nro.rsplit("-", 1)[0].strip())
+                if crm:
+                    lista = establecimientos_por_contacto.setdefault(str(crm).strip(), [])
+                    if nro and nro not in lista:
+                        lista.append(nro)
+            clave = str(crm).strip() if crm else f"ns-{_limpio(f.get('ID')) or int(f.get('ID interno'))}"
             ns_por_contacto.setdefault(clave, []).append(f)
 
     fuente_contador = {"origen": {"netsuite": 0, "ghl": 0, "sin_dato": 0},
@@ -347,6 +367,7 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
 
     def registro(contact_id, crudo, filas_ns):
         crudo = crudo or {}
+        filas_propias = [f for f in filas_ns if _limpio(f.get("ID CLIENTE CRM"))] or filas_ns
         cfs = crudo.get("customFields") or []
         opps_ghl = opp_ghl_por_contacto.get(contact_id, [])
         tags = crudo.get("tags") or []
@@ -435,9 +456,13 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
             "fecha_creacion_oportunidad": fecha_oportunidad,
             "fecha_cierre": None,
             "etapa_pipeline": etapa_pipeline,
-            "nro_cliente_netsuite": primero(filas_ns, "ID"),
+            # Si hay filas del cliente con ID de GHL propio (la matriz) y de sus
+            # establecimientos, se muestra el numero de la matriz.
+            "nro_cliente_netsuite": primero(filas_propias, "ID"),
             # ID interno del cliente en NetSuite, para el link (26/10/2026)
-            "ns_cliente_id_interno": _id_entero(primero(filas_ns, "ID interno cliente")),
+            "ns_cliente_id_interno": _id_entero(primero(filas_propias, "ID interno cliente")),
+            # Establecimientos cuyo ID de GHL se tomo de la empresa matriz (26/10/2026)
+            "establecimientos_netsuite": establecimientos_por_contacto.get(contact_id, []),
         }
         old = old_by_id.get(contact_id)
         for k in CONV_FIELDS_DEFAULT:
