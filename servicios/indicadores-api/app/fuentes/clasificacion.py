@@ -92,38 +92,37 @@ def cargar_equivalencias(token, log):
 
 def _origenes(crudas):
     """Presupuesto y oportunidad de cada caso, via su OV de productos."""
+    # Tres pasos encadenados (OV -> presupuesto -> oportunidad); dentro de cada
+    # paso los lotes se consultan en paralelo.
     ovs = {}
-    for lote in _lotes(f.get("ov_productos_id") for f in crudas):
-        for f in netsuite.suiteql(f"""
+    for f in netsuite.suiteql_unidas(f"""
             SELECT t.id AS id, t.custbody_3k_trans_orig_ov AS presupuesto_id, t.opportunity AS oportunidad_id
             FROM transaction t
             WHERE t.id IN ({lote})
             ORDER BY t.id
-        """):
-            ovs[int(f["id"])] = f
+        """ for lote in _lotes(f.get("ov_productos_id") for f in crudas)):
+        ovs[int(f["id"])] = f
     pres = {}
-    for lote in _lotes(o.get("presupuesto_id") for o in ovs.values()):
-        for f in netsuite.suiteql(f"""
+    for f in netsuite.suiteql_unidas(f"""
             SELECT e.id AS id, e.tranid AS tranid, e.title AS titulo, e.opportunity AS oportunidad_id,
                    BUILTIN.DF(e.custbody_mw_sp_unidad_comercial) AS uc,
                    BUILTIN.DF(e.custbody_3k_categoria) AS categoria
             FROM transaction e
             WHERE e.id IN ({lote})
             ORDER BY e.id
-        """):
-            pres[int(f["id"])] = f
+        """ for lote in _lotes(o.get("presupuesto_id") for o in ovs.values())):
+        pres[int(f["id"])] = f
     op_ids = [p.get("oportunidad_id") for p in pres.values()] + [o.get("oportunidad_id") for o in ovs.values()]
     ops = {}
-    for lote in _lotes(op_ids):
-        for f in netsuite.suiteql(f"""
+    for f in netsuite.suiteql_unidas(f"""
             SELECT o.id AS id, o.title AS titulo,
                    BUILTIN.DF(o.custbody_mw_sp_unidad_comercial) AS uc,
                    BUILTIN.DF(o.custbody_3k_categoria) AS categoria
             FROM transaction o
             WHERE o.id IN ({lote})
             ORDER BY o.id
-        """):
-            ops[int(f["id"])] = f
+        """ for lote in _lotes(op_ids)):
+        ops[int(f["id"])] = f
     return ovs, pres, ops
 
 
@@ -153,12 +152,11 @@ def _negocio(tr_ids, log):
     for campo, sql in _CONSULTAS_NEGOCIO:
         try:
             con_dato = 0
-            for lote in _lotes(tr_ids):
-                for f in netsuite.suiteql(sql.format(lote=lote)):
-                    valor = texto(f.get(campo))
-                    if valor:
-                        salida.setdefault(int(f["id"]), {})[campo] = valor
-                        con_dato += 1
+            for f in netsuite.suiteql_unidas(sql.format(lote=lote) for lote in _lotes(tr_ids)):
+                valor = texto(f.get(campo))
+                if valor:
+                    salida.setdefault(int(f["id"]), {})[campo] = valor
+                    con_dato += 1
             log(f"{campo}: {con_dato} de {len(tr_ids)} transacciones de origen con dato.")
         except Exception as e:
             log(f"AVISO: no se pudo leer {campo} ({str(e)[:300]}); se sigue sin ese dato.")

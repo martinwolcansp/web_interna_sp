@@ -251,30 +251,27 @@ def _lotes(ids):
 def _vinculos(caso_ids):
     """Pares (caso_id, transaccion_id) de los casos pedidos, de cualquier tipo de
     transaccion (despues se quedan solo las OV de productos)."""
-    pares = set()
+    consultas = []
     for lote in _lotes(caso_ids):
-        for f in netsuite.suiteql(f"""
+        consultas.append(f"""
             SELECT sc.id AS caso_id, sc.custevent_3k_ov_de_productos AS tr_id
             FROM supportcase sc
             WHERE sc.id IN ({lote}) AND sc.custevent_3k_ov_de_productos IS NOT NULL
             ORDER BY sc.id
-        """):
-            pares.add((int(f["caso_id"]), int(f["tr_id"])))
-        for f in netsuite.suiteql(f"""
+        """)
+        consultas.append(f"""
             SELECT DISTINCT x.custcol_3k_orden_instalacion AS caso_id, x.transaction AS tr_id
             FROM transactionline x
             WHERE x.custcol_3k_orden_instalacion IN ({lote})
             ORDER BY x.custcol_3k_orden_instalacion, x.transaction
-        """):
-            pares.add((int(f["caso_id"]), int(f["tr_id"])))
-    return pares
+        """)
+    return {(int(f["caso_id"]), int(f["tr_id"])) for f in netsuite.suiteql_unidas(consultas)}
 
 
 def _ov_productos(tr_ids):
     """Encabezado de las transacciones que son OV de productos (tipo 1)."""
     ovs = {}
-    for lote in _lotes(tr_ids):
-        for f in netsuite.suiteql(f"""
+    for f in netsuite.suiteql_unidas(f"""
             SELECT
                 t.id                                AS ov_id,
                 t.tranid                            AS ov_numero,
@@ -291,8 +288,8 @@ def _ov_productos(tr_ids):
               AND t.type = 'SalesOrd'
               AND t.custbody_3k_tipo_orden_de_venta = 1
             ORDER BY t.id
-        """):
-            ovs[int(f["ov_id"])] = f
+        """ for lote in _lotes(tr_ids)):
+        ovs[int(f["ov_id"])] = f
     return ovs
 
 
@@ -308,27 +305,25 @@ def _origen(ovs, cache=None):
     pres_ids = {int(f["presupuesto_id"]) for f in ovs.values() if f.get("presupuesto_id")}
     conocidos = cache.get("presupuestos", {})
     pres = {i: conocidos[i] for i in pres_ids if i in conocidos}
-    for lote in _lotes(pres_ids - set(pres)):
-        for f in netsuite.suiteql(f"""
+    for f in netsuite.suiteql_unidas(f"""
             SELECT e.id AS id, e.tranid AS tranid, e.opportunity AS oportunidad_id,
                    BUILTIN.DF(e.custbody_mw_sp_unidad_comercial) AS uc
             FROM transaction e
             WHERE e.id IN ({lote})
             ORDER BY e.id
-        """):
-            pres[int(f["id"])] = f
+        """ for lote in _lotes(pres_ids - set(pres))):
+        pres[int(f["id"])] = f
     op_ids = {int(x["oportunidad_id"]) for x in list(pres.values()) + list(ovs.values()) if x.get("oportunidad_id")}
     conocidas = cache.get("oportunidades", {})
     ops = {i: conocidas[i].get("uc") for i in op_ids if i in conocidas}
     pedidos = len(pres_ids - set(conocidos)) + len(op_ids - set(conocidas))
-    for lote in _lotes(op_ids - set(ops)):
-        for f in netsuite.suiteql(f"""
+    for f in netsuite.suiteql_unidas(f"""
             SELECT o.id AS id, BUILTIN.DF(o.custbody_mw_sp_unidad_comercial) AS uc
             FROM transaction o
             WHERE o.id IN ({lote})
             ORDER BY o.id
-        """):
-            ops[int(f["id"])] = f.get("uc")
+        """ for lote in _lotes(op_ids - set(ops))):
+        ops[int(f["id"])] = f.get("uc")
     _origen.consultadas = pedidos  # para el log de traer()
     for f in ovs.values():
         p = pres.get(int(f["presupuesto_id"])) if f.get("presupuesto_id") else None
@@ -342,8 +337,7 @@ def _origen(ovs, cache=None):
 def _lineas(ov_ids):
     """Lineas (no mainline) de las OV, agrupadas por OV."""
     por_ov, vistas = {}, set()
-    for lote in _lotes(ov_ids):
-        for f in netsuite.suiteql(f"""
+    for f in netsuite.suiteql_unidas(f"""
             SELECT
                 tl.transaction                      AS ov_id,
                 tl.id                               AS linea_id,
@@ -355,14 +349,14 @@ def _lineas(ov_ids):
             WHERE tl.transaction IN ({lote})
               AND tl.mainline = 'F'
             ORDER BY tl.transaction, tl.id
-        """):
-            # SuiteQL pagina de a 1000 con offset: sin ORDER BY las paginas pueden
-            # repetir o saltear filas. Ademas se descartan repetidos por las dudas.
-            clave = (int(f["ov_id"]), int(f["linea_id"]))
-            if clave in vistas:
-                continue
-            vistas.add(clave)
-            por_ov.setdefault(clave[0], []).append(f)
+        """ for lote in _lotes(ov_ids)):
+        # SuiteQL pagina de a 1000 con offset: sin ORDER BY las paginas pueden
+        # repetir o saltear filas. Ademas se descartan repetidos por las dudas.
+        clave = (int(f["ov_id"]), int(f["linea_id"]))
+        if clave in vistas:
+            continue
+        vistas.add(clave)
+        por_ov.setdefault(clave[0], []).append(f)
     return por_ov
 
 

@@ -16,6 +16,9 @@ NETSUITE_CLIENT_ID = os.getenv("NETSUITE_CLIENT_ID")
 NETSUITE_CERT_ID = os.getenv("NETSUITE_CERT_ID")
 NETSUITE_PRIVATE_KEY = os.getenv("NETSUITE_PRIVATE_KEY", "").replace("\\n", "\n")
 NETSUITE_PRIVATE_KEY_PATH = os.getenv("NETSUITE_PRIVATE_KEY_PATH")
+# Consultas SuiteQL simultaneas (lotes de ids y paginas). La cuenta comparte su
+# limite de concurrencia con otras integraciones: 3 deja margen.
+NETSUITE_CONCURRENCIA = int(os.getenv("NETSUITE_CONCURRENCIA", "3"))
 
 # ---------- GHL ----------
 GHL_API_TOKEN = os.getenv("GHL_API_TOKEN")

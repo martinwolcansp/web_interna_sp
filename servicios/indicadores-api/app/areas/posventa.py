@@ -14,6 +14,7 @@
 # pocos cientos de registros), hace upsert y borra lo que ya no vino.
 
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -262,10 +263,14 @@ def asignar_clientes_ns(filas, log):
     Si el ID esta en mas de un cliente, se toma el padre (o el primero) y se
     informa cuantos hay en cliente_ns_cant."""
     ids = sorted({f["contact_id"] for f in filas if _ID_GHL_VALIDO.match(f["contact_id"] or "")})
+    # Clientes y casos de todos los lotes, en paralelo.
+    lotes = [ids[i:i + _LOTE_CLIENTES] for i in range(0, len(ids), _LOTE_CLIENTES)]
+    resultados = netsuite.suiteql_varias([consulta_clientes_ghl(l) for l in lotes] + [consulta_casos_ghl(l) for l in lotes])
+    filas_clientes = [c for r in resultados[:len(lotes)] for c in r]
+    filas_casos = [c for r in resultados[len(lotes):] for c in r]
     por_ghl = {}
-    for i in range(0, len(ids), _LOTE_CLIENTES):
-        for c in netsuite.suiteql(consulta_clientes_ghl(ids[i:i + _LOTE_CLIENTES])):
-            por_ghl.setdefault(c["id_ghl"], []).append(c)
+    for c in filas_clientes:
+        por_ghl.setdefault(c["id_ghl"], []).append(c)
     for f in filas:
         clientes = por_ghl.get(f["contact_id"], [])
         primero = clientes[0] if clientes else {}
@@ -282,9 +287,8 @@ def asignar_clientes_ns(filas, log):
     # hasta la fecha de la encuesta (la encuesta sale despues de instalar).
     # Si no hay ninguno anterior, el mas reciente. Ahi se busca la accion.
     casos_por_ghl = {}
-    for i in range(0, len(ids), _LOTE_CLIENTES):
-        for c in netsuite.suiteql(consulta_casos_ghl(ids[i:i + _LOTE_CLIENTES])):
-            casos_por_ghl.setdefault(c["id_ghl"], []).append(c)
+    for c in filas_casos:
+        casos_por_ghl.setdefault(c["id_ghl"], []).append(c)
     for f in filas:
         casos = sorted(casos_por_ghl.get(f["contact_id"], []), key=lambda c: (c.get("fecha") or "", int(c["caso_id"])))
         previos = [c for c in casos if f.get("fecha") and (c.get("fecha") or "") <= f["fecha"]]
@@ -320,10 +324,12 @@ def actualizar(token, corrida_id, log, paso):
     NetSuite es obligatorio; si GHL falla se conservan las encuestas anteriores."""
     advertencias = []
 
-    paso("Consultando casos de instalacion en NetSuite")
-    casos = traer_casos(log, corrida_id, token)
-    paso("Consultando relevamientos posventa en NetSuite")
-    relevamientos = traer_relevamientos(log, corrida_id)
+    # Casos y relevamientos no dependen entre si: se consultan a la vez.
+    paso("Consultando casos de instalacion y relevamientos posventa en NetSuite")
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        f_casos = ex.submit(traer_casos, log, corrida_id, token)
+        f_relev = ex.submit(traer_relevamientos, log, corrida_id)
+        casos, relevamientos = f_casos.result(), f_relev.result()
     if not casos or not relevamientos:
         # Una respuesta vacia borraria todo lo cargado: se corta antes.
         raise RuntimeError(f"NetSuite devolvio {len(casos)} casos y {len(relevamientos)} relevamientos; "

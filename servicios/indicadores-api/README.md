@@ -23,6 +23,10 @@ Cada caso lleva dos dimensiones independientes:
 
 Las equivalencias están en la tabla `ind_equivalencia_tipo_proyecto` (editable; si está vacía se usan las del código). Cada caso guarda el origen del dato (`tipo_trabajo_origen`, `clasificacion_origen`). Requiere la `migracion_35_clasificacion_casos_instalacion.sql`, que hay que correr **antes** de desplegar el servicio.
 
+## Consultas a NetSuite en paralelo
+
+Las consultas por lotes de ids (clasificación, OV, líneas, clientes de las encuestas) y las páginas de una misma consulta se hacen en paralelo con `netsuite.suiteql_varias` / `suiteql_unidas`. Un semáforo común limita las llamadas simultáneas a `NETSUITE_CONCURRENCIA` (por defecto 3), aunque corran varias áreas a la vez. Si NetSuite rechaza por límite de concurrencia (429, `CONCURRENCY_LIMIT_EXCEEDED`) o falla la conexión, reintenta hasta 5 veces con espera creciente. La cuenta comparte ese límite con otras integraciones: no subirlo mucho.
+
 ## Qué hace una corrida de Instalaciones
 
 1. Casos de instalación (la misma consulta que Posventa).
