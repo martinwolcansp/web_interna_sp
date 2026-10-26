@@ -794,6 +794,12 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     rows.forEach(function (r) {
       html += '<div><div class="dg-label">' + esc(r[0]) + '</div><div class="dg-value">' + esc(r[1]) + "</div></div>";
     });
+    // ID del contacto en GHL con link (26/10/2026). Los clientes sin ID CLIENTE
+    // CRM llegan con contact_id "ns-..." y no tienen ficha en GHL.
+    var idGhl = c.contact_id && String(c.contact_id).indexOf("ns-") !== 0 ? String(c.contact_id) : null;
+    html += '<div><div class="dg-label">ID cliente GHL</div><div class="dg-value">' + (idGhl
+      ? '<a href="' + GHL_CONTACTO_URL + encodeURIComponent(idGhl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el contacto en GHL">' + esc(idGhl) + "</a>"
+      : "Sin contacto en GHL") + "</div></div>";
     html += '<div><div class="dg-label">Estado en GHL</div><div class="dg-value">' + estadoPill(c) + "</div></div>";
     if (c.ns_oportunidades && c.ns_oportunidades.length) {
       html += '<div class="dg-full"><div class="dg-label">Oportunidades en NetSuite</div><div class="dg-value ns-opp-scroll">' +
