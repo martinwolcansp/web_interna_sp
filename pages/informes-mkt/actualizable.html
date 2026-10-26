@@ -1480,19 +1480,33 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
 
   // ---- Informe general: contactos recibidos en GHL en el periodo, por
   // calificacion (tags nocalificado) y origen (tags de canal).
+  // Mismo criterio que servicios/informe-mkt-api/app/canales_origen.py
+  // (24/10/2026): tags comparadas normalizadas (sin mayusculas, tildes,
+  // espacios, guiones ni guiones bajos: "WEB" = "web", "formweb_aclho" =
+  // "formwebaclho"), en orden de prioridad (gana la primera); despues el tag
+  // de linea "wa: +549..." y, si no hay etiqueta de origen, Forma de Contacto.
   var ORIGEN_TAGS = [
-    ["fb-ad-lead-whatsapp", "Facebook Ads"],
-    ["instagram-ad-lead-whatsapp", "Instagram Ads"],
+    ["fbadleadwhatsapp", "Facebook Ads"],
+    ["instagramadleadwhatsapp", "Instagram Ads"],
+    ["formwebaclho", "Formulario ACLHO"],
     ["formweb", "Formulario web"],
+    ["web", "WhatsApp del sitio web"],
     ["organico", "Orgánico"],
-    ["whatsapp-missed-call", "Llamada perdida WhatsApp"],
-    ["inbound whatsapp", "WhatsApp (sin anuncio)"]
+    ["netsuitecomercio", "Repesca NetSuite"],
+    ["whatsappmissedcall", "Llamada perdida WhatsApp"],
+    ["inboundwhatsapp", "WhatsApp (sin anuncio)"]
   ];
+  function normTag(t) {
+    return String(t == null ? "" : t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
   var CALIFICACIONES = ["Calificado", "No calificado (cv)", "No calificado (otros)"];
   function tagsMin(c) { return (c.tags || []).map(function (t) { return String(t).toLowerCase().trim(); }); }
   function origenContacto(c) {
-    var t = tagsMin(c);
+    var t = (c.tags || []).map(normTag);
     for (var i = 0; i < ORIGEN_TAGS.length; i++) if (t.indexOf(ORIGEN_TAGS[i][0]) !== -1) return ORIGEN_TAGS[i][1];
+    if ((c.tags || []).some(function (x) { return /^\s*wa\s*:\s*\+?\d/i.test(String(x)); })) return "WhatsApp (sin anuncio)";
+    var forma = normTag(c.forma_contacto);
+    if (forma && forma !== "sindato") return String(c.forma_contacto).trim() + " (forma de contacto)";
     return "Sin etiqueta de origen";
   }
   function calificacionContacto(c) {
@@ -1553,7 +1567,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     var html = "<h3>Contactos recibidos en GHL en el período</h3>" +
       '<div class="kpi-caveat">Contactos creados en GHL con fecha de alta en el período. <strong>Calificación</strong> por tags: ' +
       "<em>nocalificado(cv)</em> y <em>nocalificado(otros)</em> son no calificados; el resto se cuenta como calificado. " +
-      "<strong>Origen</strong> por tag de canal (Facebook / Instagram Ads, formulario web, orgánico; \"WhatsApp (sin anuncio)\" = tag inbound whatsapp sin tag de anuncio).</div>";
+      "<strong>Origen</strong> por tag de canal (anuncios de Facebook / Instagram, formularios web y ACLHO, WhatsApp del sitio, orgánico, repesca NetSuite; \"WhatsApp (sin anuncio)\" = tag inbound whatsapp o de línea wa: sin tag de anuncio). " +
+      "Si el contacto no tiene etiqueta de origen se usa el campo Forma de Contacto, marcado \"(forma de contacto)\".</div>";
     if (!n) { cont.innerHTML = html + '<p style="color:var(--muted)">No hay contactos creados en GHL en el período.</p>'; return; }
 
     var porCalif = {};

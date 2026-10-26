@@ -56,12 +56,10 @@ CF_ORIGEN = "hGx9bXN5dGnYcI0mebR8"
 CF_FORMA = "piPfRw8woYcHiYXuiWu2"
 CF_INTERESADO = "69JMvwOeep8gnaQTiDTD"
 
-CANALES_TAGS = {
-    "fb-ad-lead-whatsapp": "Facebook Ads",
-    "instagram-ad-lead-whatsapp": "Instagram Ads",
-    "formweb": "Formulario Web",
-    "organico": "Organico",
-}
+# Mapeo etiqueta -> canal de origen (prioridades, nombres normalizados) y
+# respaldo por 'Forma de Contacto': app/canales_origen.py, copia de
+# Desarrollo/canales_origen.py (24/10/2026).
+from app.canales_origen import canal_por_tags, canal_por_forma_contacto
 
 # Mapa de ID de usuario de GHL -> nombre real, confirmado con el usuario el
 # 21/09/2026 (antes de esta fecha no se reconstruía por precaución: una
@@ -162,10 +160,7 @@ def cf_value(customfields, cf_id):
 
 
 def clasificar_canal(tags):
-    for tag, canal in CANALES_TAGS.items():
-        if tag in (tags or []):
-            return canal
-    return None
+    return canal_por_tags(tags)
 
 
 def parse_iso(s):
@@ -410,7 +405,8 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
             "forma_contacto": forma_ns or forma_ghl or "Sin dato",
             "interesado_en": cf_value(cfs, CF_INTERESADO) or "Sin dato",
             "vendedor": vendedor_ns or vendedor_ghl or "Sin asignar",
-            "canal_tag": f"{canal} (tag)" if canal else None,
+            # Sin etiqueta de origen -> respaldo con Forma de Contacto (24/10/2026)
+            "canal_tag": f"{canal} (tag)" if canal else canal_por_forma_contacto(forma_ns or forma_ghl),
             "tags": tags,
             "sin_contacto_ghl": (not contact_id) or contact_id.startswith("ns-") or not crudo,
             "ns_estado": ns_estado,
