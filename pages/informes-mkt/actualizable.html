@@ -535,6 +535,12 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     }
     render(explorerId);
   };
+  window.toggleFiltro = function (explorerId, campo, valor) {
+    var st = getState(explorerId);
+    if (st.filters[campo] === valor) delete st.filters[campo];
+    else st.filters[campo] = valor;
+    render(explorerId);
+  };
   window.setEtiquetaFilter = function (explorerId, value) {
     var st = getState(explorerId), k = campoEtiqueta(explorerId);
     if (!value) delete st.filters[k];
@@ -994,7 +1000,9 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       var pct = total ? (100 * count / total) : 0;
       var largo = total ? (circunf * count / total) : 0;
       var resto = circunf - largo;
-      var onclickStr = 'applyFilter("' + explorerId + '", {"' + filtroCampo + '": ' + JSON.stringify(label) + "})";
+      // Click en un segmento: filtra (o des-filtra) ese origen sin borrar los
+      // demas filtros de la tabla (fecha, estado, vendedor).
+      var onclickStr = 'toggleFiltro("' + explorerId + '", "' + filtroCampo + '", ' + JSON.stringify(label) + ")";
       segments += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="28" class="donut-seg clickable" stroke-dasharray="' + largo.toFixed(2) + " " + resto.toFixed(2) + '" stroke-dashoffset="-' + offset.toFixed(2) + '" transform="rotate(-90 ' + cx + " " + cy + ')" onclick=\'' + onclickStr + "'><title>" + esc(label) + ": " + count + " (" + pct.toFixed(1) + "%)</title></circle>";
       legend += '<span class="legend-item clickable" onclick=\'' + onclickStr + '\'><span class="swatch" style="background:' + color + '"></span>' + esc(label) + ": <strong>" + count + "</strong> (" + pct.toFixed(1) + "%)</span>";
       offset += largo;
@@ -1005,12 +1013,12 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     return '<div class="donut-flex">' + svg + '<div class="chart-legend chart-legend-wrap">' + legend + "</div></div>";
   }
 
-  // Grafico "Origen (tag)" del Reporte diario (26/10/2026): sigue el rango de
-  // fechas de alta elegido en el filtro de la tabla de contactos. Por defecto
-  // ese filtro es el dia de referencia, asi que al abrir muestra lo mismo que
-  // antes. Toma solo las fechas, no los demas filtros: al hacer click en un
-  // segmento la tabla se filtra por ese origen y el grafico tiene que seguir
-  // mostrando todos los origenes del rango.
+  // Grafico "Origen (tag)" del Reporte diario (26/10/2026): sigue los filtros
+  // de la tabla de contactos de fecha de alta, Estado GHL y Vendedor. Por
+  // defecto la fecha es el dia de referencia, asi que al abrir muestra lo mismo
+  // que antes. No toma el filtro de origen (click en un segmento, "sin
+  // etiqueta GHL") ni la busqueda por nombre: el grafico tiene que seguir
+  // mostrando todos los origenes de esa seleccion.
   function textoRangoContactos(st) {
     function f(s) { var p = s.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
     if (st.dateFrom && st.dateTo && st.dateFrom === st.dateTo) return st.dateFrom === HOY_AR ? "hoy, " + f(st.dateFrom) : "el " + f(st.dateFrom);
@@ -1023,16 +1031,22 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     var el = document.getElementById("contactos-hoy-donut-row");
     if (!el) return;
     var st = getState("contactos");
-    var rows = baseRows("contactos").filter(function (c) {
-      if (!st.dateFrom && !st.dateTo) return true;
-      if (!c.date_added) return false;
-      var d = diaAR(c.date_added);
-      if (st.dateFrom && d < st.dateFrom) return false;
-      if (st.dateTo && d > st.dateTo) return false;
-      return true;
+    var ek = estadoKey("contactos");
+    var filtrosGrafico = {}, extras = [];
+    if (st.filters.hasOwnProperty(ek)) {
+      filtrosGrafico[ek] = st.filters[ek];
+      extras.push("Estado GHL: " + (st.filters[ek] === null ? "Sin estado" : st.filters[ek]));
+    }
+    if (st.filters.hasOwnProperty("vendedor")) {
+      filtrosGrafico.vendedor = st.filters.vendedor;
+      extras.push("Vendedor: " + st.filters.vendedor);
+    }
+    var rows = applyFiltersAndSearch(baseRows("contactos"), {
+      filters: filtrosGrafico, search: "", dateFrom: st.dateFrom, dateTo: st.dateTo, sortKey: null, sortDir: "asc"
     });
     var counts = contarJs(rows, function (c) { return c.canal_tag; });
-    el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados ' + esc(textoRangoContactos(st)) + ' &middot; n=' + rows.length + "</div>" +
+    el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados ' + esc(textoRangoContactos(st)) +
+      (extras.length ? " &middot; " + esc(extras.join(" · ")) : "") + ' &middot; n=' + rows.length + "</div>" +
       donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
   }
 
@@ -1680,11 +1694,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     var cont = document.getElementById("contactos-recibidos");
     if (!cont) { cont = document.createElement("div"); cont.id = "contactos-recibidos"; panel.appendChild(cont); }
     var filas = contactosRecibidos(), n = filas.length;
-    var html = "<h3>Contactos recibidos en GHL en el período</h3>" +
-      '<div class="kpi-caveat">Contactos creados en GHL con fecha de alta en el período. <strong>Calificación</strong> por tags: ' +
-      "<em>nocalificado(cv)</em> y <em>nocalificado(otros)</em> son no calificados; el resto se cuenta como calificado. " +
-      "<strong>Origen</strong> por tag de canal (anuncios de Facebook / Instagram, formularios web y ACLHO, WhatsApp del sitio, orgánico, repesca NetSuite; \"WhatsApp (sin anuncio)\" = tag inbound whatsapp o de línea wa: sin tag de anuncio). " +
-      "Si el contacto no tiene etiqueta de origen se usa el campo Forma de Contacto, marcado \"(forma de contacto)\".</div>";
+    var html = "<h3>Contactos recibidos en GHL en el período</h3>";
     if (!n) { cont.innerHTML = html + '<p style="color:var(--muted)">No hay contactos creados en GHL en el período.</p>'; return; }
 
     var porCalif = {};
@@ -1732,6 +1742,12 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   renderContactosRecibidos();
   renderContactosHoyKpi();
   renderContactosHoyDonut();
+  // Las actualizaciones guardadas entre el 26/10/2026 a la manana y el Redeploy
+  // traen debajo del grafico de origen de las ganadas un texto explicativo que
+  // se decidio quitar; el servicio ya no lo genera y aca se oculta en esas.
+  document.querySelectorAll(".kpi-caveat").forEach(function (el) {
+    if (/^\s*Primero la etiqueta de origen de GHL/.test(el.textContent)) el.remove();
+  });
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
