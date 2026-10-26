@@ -214,6 +214,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 .estado-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .estado-curso { background: #e3eefb; color: #185fa5; }
 .estado-pendiente { background: #fdeee3; color: #9a4a12; }
+.estado-escalada { background: #fbe9f2; color: #8a2a5c; }
 .estado-finalizada { background: #e6f4ec; color: #1e7a44; }
 .estado-otra { background: #eeeeee; color: #52514e; }
 .pv-toggle { appearance: none; border: 0; background: transparent; color: var(--navy); font: inherit; font-size: 12px; width: 18px; padding: 0; cursor: pointer; }
@@ -298,7 +299,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           </div>
           <div class="table-scroll"><table class="data-table inst-tabla" id="tabla-seg"></table></div>
         </div>
-        <div class="bloque-nota">Días hábiles: en curso, desde el inicio hasta hoy; pendientes, desde la creación hasta hoy; finalizadas, desde la creación hasta el fin. Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras). Filtros: Año y Mes por fecha de fin en las finalizadas y por fecha de creación en las demás (todavía no tienen fin); Estado del caso sobre cada caso.</div>
+        <div class="bloque-nota">Días hábiles: en curso, desde el inicio hasta hoy; pendientes y escaladas sin iniciar, desde la creación hasta hoy; finalizadas, desde la creación hasta el fin. Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras). Filtros: Año y Mes por fecha de fin en las finalizadas y por fecha de creación en las demás (todavía no tienen fin); Estado del caso sobre cada caso.</div>
       </div>
     </section>
 
@@ -969,16 +970,15 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // =====================================================================
   // Demora estimada (version corregida)
   // =====================================================================
-  // Pendientes = instalaciones No iniciadas + Escaladas que nunca se iniciaron.
+  // Pendientes = instalaciones No iniciadas. Las Escaladas sin iniciar no cuentan
+  // (se ven aparte en el detalle de instalaciones).
   // Ritmo = instalaciones finalizadas por dia habil desde RITMO_DESDE hasta el
   // ultimo mes completo. Demora = pendientes / ritmo, en dias habiles.
   // No depende de los filtros de la pagina (como la tarjeta del Power BI).
   function demoraEstimada() {
     var hoy = hoyAR();
-    var pend = DATOS.casos.filter(esPendiente);
-    var noIni = distintos(pend.filter(function (c) { return c.estado_caso === "No iniciado"; }), function (c) { return c.id_inst; });
-    var escal = distintos(pend.filter(function (c) { return c.estado_caso === "Escalado"; }), function (c) { return c.id_inst; });
-    var pendientes = distintos(pend, function (c) { return c.id_inst; });
+    var pendientes = distintos(DATOS.casos.filter(esPendiente), function (c) { return c.id_inst; });
+    var escal = distintos(DATOS.casos.filter(esEscaladaSinIniciar), function (c) { return c.id_inst; });
     var a = +hoy.slice(0, 4), m = +hoy.slice(5, 7);
     var fin = new Date(Date.UTC(a, m - 1, 0));                 // ultimo dia del mes anterior
     var desde = RITMO_DESDE + "-01", hasta = fin.toISOString().slice(0, 10);
@@ -989,7 +989,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var habiles = diasHabiles(desde, hasta) + 1; // el rango incluye ambos extremos
     var porDia = habiles > 0 ? finalizadas / habiles : 0;
     return {
-      pendientes: pendientes, noIniciadas: noIni, escaladas: escal,
+      pendientes: pendientes, escaladas: escal,
       finalizadas: finalizadas, porMes: meses > 0 ? finalizadas / meses : 0, meses: meses, desde: desde, hasta: hasta,
       dias: porDia > 0 ? Math.ceil(pendientes / porDia) : null,
     };
@@ -1010,13 +1010,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     kpis("kpi-inst", [
       { num: fmtNum(finMes), label: "Finalizadas en " + MESES[+mesActual.slice(5, 7) - 1].toLowerCase(), sub: "Por fecha de fin de instalación" },
       { num: fmtNum(enCurso), label: "En curso" },
-      { num: fmtNum(d.pendientes), label: "Pendientes de iniciar", sub: d.noIniciadas + " no iniciadas · " + d.escaladas + " escaladas sin iniciar" },
+      { num: fmtNum(d.pendientes), label: "Pendientes de iniciar", sub: "No iniciadas · sin contar " + d.escaladas + " escaladas sin iniciar" },
       { num: d.dias === null ? "–" : d.dias + " días hábiles", label: "Demora estimada", destacada: true,
         sub: "Ritmo: " + fmtNum(d.porMes, 1) + " instalaciones/mes (" + etiquetaMes(d.desde.slice(0, 7)) + " a " + etiquetaMes(d.hasta.slice(0, 7)) + ")" },
     ]);
     $("nota-demora").innerHTML =
       "<strong>Demora estimada</strong>: cuántos días hábiles llevaría iniciar todas las instalaciones pendientes al ritmo actual. " +
-      "Pendientes = casos No iniciados + Escalados sin fecha de inicio (" + d.pendientes + "). Ritmo = instalaciones finalizadas de " +
+      "Pendientes = casos No iniciados (" + d.pendientes + "); no se cuentan las escaladas sin iniciar (" + d.escaladas + "), que se ven aparte en el detalle. Ritmo = instalaciones finalizadas de " +
       etiquetaMes(d.desde.slice(0, 7)) + " a " + etiquetaMes(d.hasta.slice(0, 7)) + " (" + d.finalizadas + " en " + d.meses + " meses completos) por día hábil. Las tarjetas no cambian con los filtros. " +
       "No se incluyen los tipos de proyecto " + esc(TIPOS_EXCLUIDOS.join(", ")) + " ni los casos sin tipo de proyecto.";
   }
@@ -1047,12 +1047,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // Seguimiento: instalaciones en curso y pendientes de iniciar
   // ---------------------------------------------------------------------
   var SEG = { filtro: "todas", abiertas: {}, orden: "estado", asc: true, armado: false };
-  function esPendiente(c) { return c.estado_caso === "No iniciado" || (c.estado_caso === "Escalado" && !c.fecha_inicio_inst); }
+  function esPendiente(c) { return c.estado_caso === "No iniciado"; }
+  function esEscaladaSinIniciar(c) { return c.estado_caso === "Escalado" && !c.fecha_inicio_inst; }
 
   // Una fila por instalacion con algun caso en curso o pendiente (con todos sus casos).
   // Una fila por instalacion (todas: en curso, pendientes, finalizadas y otras).
-  var GRUPOS_SEG = [["todas", "Todas"], ["curso", "En curso"], ["pendiente", "Pendientes de iniciar"], ["finalizada", "Finalizadas"], ["otra", "Otras"]];
-  var RANGO_GRUPO = { curso: 1, pendiente: 2, otra: 3, finalizada: 4 };
+  var GRUPOS_SEG = [["todas", "Todas"], ["curso", "En curso"], ["pendiente", "Pendientes de iniciar"], ["escalada", "Escaladas sin iniciar"], ["finalizada", "Finalizadas"], ["otra", "Otras"]];
+  var RANGO_GRUPO = { curso: 1, pendiente: 2, escalada: 3, otra: 4, finalizada: 5 };
   function instalacionesDetalle() {
     var porInst = {};
     // Estado del caso: filtro por caso, antes de agrupar.
@@ -1069,8 +1070,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       if (casos.some(function (c) { return c.estado_caso === "En curso"; })) {
         grupo = "curso"; estado = "En curso"; dias = inicio ? diasHabiles(inicio, hoy) : null;
       } else if (casos.some(esPendiente)) {
-        grupo = "pendiente"; dias = creacion ? diasHabiles(creacion, hoy) : null;
-        estado = casos.some(function (c) { return c.estado_caso === "No iniciado"; }) ? "No iniciada" : "Escalada sin iniciar";
+        grupo = "pendiente"; estado = "No iniciada"; dias = creacion ? diasHabiles(creacion, hoy) : null;
+      } else if (casos.some(esEscaladaSinIniciar)) {
+        grupo = "escalada"; estado = "Escalada sin iniciar"; dias = creacion ? diasHabiles(creacion, hoy) : null;
       } else if (casos.every(function (c) { return c.fecha_fin_inst; })) {
         grupo = "finalizada"; estado = "Finalizada"; dias = creacion ? diasHabiles(creacion, fin) : null;
       } else {
@@ -1132,7 +1134,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       $("sel-inst-quitar").addEventListener("click", function () { SEL_INST = null; pintarInstalaciones(); });
     }
     var todas = instalacionesDetalle();
-    var cuenta = { todas: todas.length, curso: 0, pendiente: 0, finalizada: 0, otra: 0 };
+    var cuenta = { todas: todas.length, curso: 0, pendiente: 0, escalada: 0, finalizada: 0, otra: 0 };
     todas.forEach(function (i) { cuenta[i.grupo]++; });
     $("seg-estado").innerHTML = GRUPOS_SEG.filter(function (o) { return o[0] !== "otra" || cuenta.otra; }).map(function (o) {
       return '<button type="button" class="seg-btn' + (SEG.filtro === o[0] ? " activo" : "") + '" data-seg="' + o[0] + '">' + o[1] + " <span>" + cuenta[o[0]] + "</span></button>";

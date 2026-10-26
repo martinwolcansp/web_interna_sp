@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indicadores de Instalaciones — SP Seguridad</title>
+<style>
+/* Mismo modelo visual que pages/indicadores-area/posventa.html */
+:root {
+  --navy: #1F3864; --navy-solid: #1F3864; --ink: #202124; --second: #52514E; --muted: #6B6B6B;
+  --rule: #DEDCD3; --light-fill: #EEF1F6; --blue: #2a78d6; --orange: #eb6834;
+  --page: #F7F8FA; --surface: #FFFFFF;
+  --win-bg: #E6F4EC; --win-border: #bfe3cd; --win-text: #1e7a44;
+  --warn-bg: #FCEEE3;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: Calibri, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15.5px; line-height: 1.55;
+}
+.wrap { max-width: 1600px; margin: 0 auto; padding: 28px 24px 64px; }
+header.report-header { border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 22px; }
+header.report-header .eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .02em; margin-bottom: 6px; }
+header.report-header h1 { color: var(--navy); font-size: 26px; margin: 0 0 6px; font-weight: 700; }
+header.report-header .sub { color: var(--second); font-size: 15.5px; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--rule); }
+.tab-btn { appearance: none; border: 1px solid transparent; background: transparent; color: var(--second); font: inherit; font-size: 14px; padding: 9px 14px; cursor: pointer; border-radius: 6px 6px 0 0; margin-bottom: -1px; }
+.tab-btn:hover { background: var(--light-fill); color: var(--navy); }
+.tab-btn.active { color: var(--navy); font-weight: 700; border: 1px solid var(--rule); border-bottom-color: var(--surface); background: var(--surface); }
+main { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 28px 28px; }
+.tab-panel { display: none; padding-top: 18px; }
+.tab-panel.active { display: block; }
+.tab-panel h2 { color: var(--navy); font-size: 21px; margin: 0 0 16px; padding-left: 12px; border-left: 4px solid var(--navy); }
+.tab-panel h3 { color: var(--navy); font-size: 16px; margin: 0 0 8px; }
+.note-box { background: var(--light-fill); border-left: 4px solid var(--navy); padding: 12px 16px; margin: 10px 0 18px; border-radius: 0 6px 6px 0; font-size: 14.5px; }
+
+/* KPIs */
+.kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 22px; }
+.kpi-card { flex: 1 1 170px; background: var(--light-fill); border-radius: 8px; padding: 14px 16px; border-top: 3px solid var(--navy); }
+.kpi-num { font-size: 26px; font-weight: 700; line-height: 1.1; color: var(--navy); }
+.kpi-label { font-size: 12.5px; color: var(--second); margin-top: 4px; }
+
+/* Bloques */
+.grid-2 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.bloque { margin: 0 0 26px; }
+.bloque-nota { font-size: 12.5px; color: var(--second); margin-top: 6px; }
+@media (max-width: 980px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Matrices (mismo estilo que .pivot del informe MKT) */
+.pivot-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 8px; }
+.pivot { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0; }
+.pivot th { background: var(--navy-solid); color: #fff; font-weight: 600; padding: 7px 10px; text-align: center; white-space: nowrap; border-left: 1px solid rgba(255,255,255,.18); }
+.pivot th.pv-fila { text-align: left; border-left: 0; }
+.pivot td { padding: 7px 10px; border-bottom: 1px solid var(--rule); text-align: center; font-variant-numeric: tabular-nums; }
+.pivot td.pv-fila { text-align: left; white-space: nowrap; }
+.pivot td.pv-total, .pivot th.pv-total { font-weight: 700; color: var(--navy); background: #dfe6f2; }
+.pivot thead th.pv-total { background: #16294d; color: #fff; }
+.pivot td.pv-cero { color: #b7b4ab; }
+.pivot tfoot td { font-weight: 700; color: var(--navy); background: var(--light-fill); border-top: 2px solid var(--navy); border-bottom: 0; }
+.pivot th.pv-fila, .pivot td.pv-fila { position: sticky; left: 0; z-index: 1; }
+.pivot td.pv-fila { background: var(--surface); }
+.pivot tfoot td.pv-fila { background: var(--light-fill); }
+.vacio { color: var(--muted); font-style: italic; padding: 10px 0; }
+/* Números que filtran el detalle (como el filtro cruzado de Power BI) */
+.pivot td.pv-clic { cursor: pointer; }
+.pivot td.pv-clic:hover { background: #dfe6f2; color: var(--navy); font-weight: 700; }
+.pivot td.pv-sel, .pivot td.pv-sel:hover { background: var(--orange); color: #fff; font-weight: 700; }
+.sel-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; padding: 8px 12px; background: var(--warn-bg); border-left: 4px solid var(--orange); border-radius: 0 6px 6px 0; font-size: 13.5px; }
+.sel-chip[hidden] { display: none; }
+.sel-chip strong { color: var(--navy); }
+.sel-chip button { appearance: none; border: 1px solid var(--orange); background: #fff; color: var(--ink); font: inherit; font-size: 12.5px; padding: 3px 10px; border-radius: 5px; cursor: pointer; }
+.sel-chip button:hover { background: var(--orange); color: #fff; }
+.bloque-ayuda { font-size: 13px; color: var(--second); margin: -8px 0 16px; }
+
+/* Tortas */
+.donut-row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; margin: 8px 0 22px; }
+.donut-block { flex: 1 1 280px; min-width: 260px; }
+.donut-block-title { font-size: 13.5px; color: var(--navy); font-weight: 700; margin-bottom: 8px; }
+.donut-flex { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.donut-center-num { font-size: 30px; font-weight: 700; fill: var(--navy); }
+.donut-center-sub { font-size: 11px; fill: var(--muted); }
+.chart-legend-wrap { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.legend-item { display: inline-flex; align-items: center; gap: 8px; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+
+/* Filtros con casillas (estilo segmentador de Power BI) */
+.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; margin: 0 0 18px; background: var(--light-fill); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; }
+.filtros-titulo { color: var(--navy); font-weight: 700; font-size: 14px; margin-right: 4px; }
+.chk-filtro { position: relative; }
+.chk-btn { appearance: none; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); font: inherit; font-size: 13.5px; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chk-btn:hover, .chk-btn[aria-expanded="true"] { border-color: var(--navy); }
+.chk-btn .chk-nombre { color: var(--second); }
+.chk-btn .chk-valor { font-weight: 700; color: var(--navy); }
+.chk-btn.chk-activo { background: var(--navy); border-color: var(--navy); }
+.chk-btn.chk-activo .chk-nombre, .chk-btn.chk-activo .chk-valor { color: #fff; }
+.chk-panel { position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 210px; max-height: 340px; overflow: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 6px; }
+.chk-panel[hidden] { display: none; }
+.chk-op { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 5px; font-size: 13.5px; cursor: pointer; user-select: none; }
+.chk-op:hover { background: var(--light-fill); }
+.chk-op input { width: 15px; height: 15px; accent-color: var(--navy); margin: 0; cursor: pointer; }
+.chk-op--todos { border-bottom: 1px solid var(--rule); border-radius: 5px 5px 0 0; margin-bottom: 4px; font-weight: 600; color: var(--navy); }
+.chk-limpiar { appearance: none; border: 1px solid var(--rule); background: #fff; color: var(--second); font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.chk-limpiar:hover { background: var(--surface); border-color: var(--navy); color: var(--navy); }
+.chk-limpiar[hidden] { display: none; }
+
+/* Detalle */
+.explorer { margin: 4px 0 8px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.explorer-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--light-fill); border-bottom: 1px solid var(--rule); }
+.explorer-title { font-weight: 700; color: var(--navy); font-size: 13.5px; }
+.explorer-search { border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; width: 220px; }
+.explorer-count { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.table-scroll { max-height: 520px; overflow: auto; }
+.data-table { width: 100%; border-collapse: collapse; margin: 0; font-size: 13.5px; }
+.data-table th { background: var(--navy-solid); color: #fff; text-align: left; padding: 8px 10px; font-weight: 600; position: sticky; top: 0; z-index: 2; white-space: nowrap; cursor: pointer; user-select: none; }
+.data-table th:hover { background: #16294d; }
+.data-table th .sort-arrow { font-size: 10px; opacity: .6; margin-left: 3px; }
+.data-table td { padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.data-table td.nowrap { white-space: nowrap; }
+.data-table td.texto-largo { min-width: 280px; }
+/* Encuestas con alerta: pide llamado (rojo) o respuesta negativa (ambar) */
+.data-table tr.fila-llamado td { background: #fde8e6; }
+.data-table tr.fila-llamado td:first-child { box-shadow: inset 4px 0 0 #c0392b; }
+.data-table tr.fila-negativa td { background: #fff4dc; }
+.data-table tr.fila-negativa td:first-child { box-shadow: inset 4px 0 0 #d99a00; }
+.data-table a.accion-link { color: var(--navy); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.data-table a.accion-link:hover { text-decoration: underline; }
+.accion-det { display: block; font-size: 12px; color: var(--second); }
+.sin-accion { color: #b3261e; font-weight: 600; white-space: nowrap; }
+.explorer-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--second); cursor: pointer; }
+.explorer-check input { width: 15px; height: 15px; accent-color: var(--navy); margin: 0; }
+.leyenda-alerta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--second); margin: 0 0 8px; }
+.leyenda-alerta span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -2px; }
+.leyenda-alerta .ley-llamado::before { background: #fde8e6; box-shadow: inset 3px 0 0 #c0392b; }
+.leyenda-alerta .ley-negativa::before { background: #fff4dc; box-shadow: inset 3px 0 0 #d99a00; }
+
+/* Barra de actualizacion (igual que el informe MKT) */
+.upd-hero { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 16px; background: var(--navy); color: #fff; border-left: 6px solid #8fb3e8; border-radius: 0 6px 6px 0; }
+.upd-hero[hidden] { display: none; }
+.upd-hero-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; opacity: .85; }
+.upd-hero-fecha { font-size: 22px; font-weight: 700; }
+.upd-hero-det { font-size: 13.5px; opacity: .9; }
+.upd-hero--atrasada { background: var(--warn-bg); color: var(--ink); border-left-color: var(--orange); }
+.upd-hero--atrasada .upd-hero-fecha { color: #b3261e; }
+.upd-bar { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.upd-btn[hidden], .upd-menu-btn[hidden] { display: none; }
+.upd-btn { appearance: none; border: 0; background: var(--navy); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; padding: 7px 16px; border-radius: 5px; cursor: pointer; }
+.upd-btn:hover { background: #16294d; }
+.upd-btn:disabled { opacity: .55; cursor: progress; }
+.upd-menu-btn { appearance: none; border: 1px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 14px; border-radius: 5px; cursor: pointer; }
+.upd-menu-btn[aria-expanded="true"], .upd-menu-btn:hover { background: var(--navy); color: #fff; }
+.upd-estado { font-size: 13px; color: var(--second); }
+.upd-estado:empty { display: none; }
+.upd-estado--error { color: #b3261e; }
+.upd-estado--ok { color: var(--win-text); }
+.upd-panel { margin-top: 10px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; }
+.upd-panel[hidden] { display: none; }
+.upd-panel-ayuda { color: var(--second); font-size: 13px; margin-bottom: 8px; }
+.upd-hist-scroll { max-height: 300px; overflow: auto; border: 1px solid var(--rule); border-radius: 6px; }
+.upd-hist { width: 100%; border-collapse: collapse; font-size: 13px; }
+.upd-hist th { position: sticky; top: 0; background: var(--light-fill); color: var(--navy); text-align: left; font-weight: 600; padding: 7px 10px; }
+.upd-hist td { padding: 7px 10px; border-top: 1px solid var(--rule); vertical-align: top; }
+.upd-hist .upd-det { color: var(--second); max-width: 420px; }
+.upd-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; color: #fff; }
+.upd-tag--ok { background: #2a9d5c; } .upd-tag--error { background: #c0392b; } .upd-tag--en_curso { background: #eb6834; }
+footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 22px; }
+.aviso-acceso { margin: 40px auto; max-width: 560px; text-align: center; color: var(--second); }
+@media (max-width: 640px) { .wrap { padding: 16px 12px 40px; } main { padding: 4px 14px 20px; } header.report-header h1 { font-size: 20px; } .explorer-search { width: 160px; } }
+
+/* Instalaciones: grafico de lineas, KPIs con detalle y barras */
+.kpi-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.kpi-card--destacada { background: var(--navy); border-top-color: var(--orange); }
+.kpi-card--destacada .kpi-num, .kpi-card--destacada .kpi-label, .kpi-card--destacada .kpi-sub { color: #fff; }
+.kpi-card--destacada .kpi-sub { opacity: .85; }
+.grid-2b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 980px) { .grid-2b { grid-template-columns: minmax(0, 1fr); } }
+.linea-chart { width: 100%; height: auto; display: block; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+.linea-chart .eje { stroke: var(--rule); stroke-width: 1; }
+.linea-chart .eje-txt { font-size: 11px; fill: var(--muted); }
+.linea-chart .serie { fill: none; stroke: var(--navy); stroke-width: 2.25; }
+.linea-chart .punto { fill: var(--navy); }
+.linea-chart .valor { font-size: 11.5px; fill: var(--navy); font-weight: 700; }
+.linea-chart .cero { stroke: var(--orange); stroke-width: 1; stroke-dasharray: 3 3; }
+.barra-cel { display: flex; align-items: center; gap: 8px; }
+.barra-cel span.b { display: inline-block; height: 10px; border-radius: 2px; background: var(--navy); min-width: 2px; }
+.barra-cel span.b.b2 { background: var(--blue); }
+.pivot td.pv-txt { text-align: left; }
+.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media print { nav.tabs, .filtros, .upd-bar, .upd-panel { display: none; } .tab-panel { display: block !important; page-break-before: always; } main { border: none; } }
+
+/* Aviso de carga inicial */
+.cargando { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 12px 16px; background: var(--light-fill); border-left: 4px solid var(--navy); border-radius: 0 6px 6px 0; color: var(--navy); font-weight: 600; font-size: 14.5px; }
+.cargando[hidden] { display: none; }
+.cargando-barra { position: relative; flex: 1; max-width: 320px; height: 6px; background: #dfe6f2; border-radius: 3px; overflow: hidden; }
+.cargando-barra::after { content: ""; position: absolute; top: 0; left: -40%; width: 40%; height: 100%; background: var(--navy); border-radius: 3px; animation: cargando-mov 1.1s ease-in-out infinite; }
+@keyframes cargando-mov { to { left: 100%; } }
+main.main--cargando { opacity: .35; pointer-events: none; }
+.pivot tr.pv-grupo td { font-weight: 700; color: var(--navy); background: var(--light-fill); }
+.pivot tr.pv-sub td.pv-fila { padding-left: 28px; color: var(--second); }
+.seg-bar { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.seg-btn { appearance: none; border: 1px solid var(--rule); background: var(--surface); color: var(--second); font: inherit; font-size: 13.5px; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.seg-btn span { font-weight: 700; color: var(--navy); margin-left: 4px; }
+.seg-btn:hover { border-color: var(--navy); }
+.seg-btn.activo { background: var(--navy); border-color: var(--navy); color: #fff; }
+.seg-btn.activo span { color: #fff; }
+.inst-tabla tr.inst-multi { cursor: pointer; }
+.inst-tabla tr.inst-multi:hover td { background: var(--light-fill); }
+.inst-tabla tr.inst-abierta td { background: #e7edf6; border-bottom: 0; }
+.inst-toggle { color: var(--navy); font-weight: 700; white-space: nowrap; }
+.inst-tabla tr.inst-det > td { background: #f4f6fa; padding: 4px 10px 12px 34px; }
+.sub-tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); border: 1px solid var(--rule); }
+.sub-tabla th { background: #dfe6f2; color: var(--navy); text-align: left; padding: 6px 8px; font-weight: 600; white-space: nowrap; }
+.sub-tabla td { padding: 6px 8px; border-top: 1px solid var(--rule); }
+.estado-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.estado-curso { background: #e3eefb; color: #185fa5; }
+.estado-pendiente { background: #fdeee3; color: #9a4a12; }
+.estado-finalizada { background: #e6f4ec; color: #1e7a44; }
+.estado-otra { background: #eeeeee; color: #52514e; }
+.pv-toggle { appearance: none; border: 0; background: transparent; color: var(--navy); font: inherit; font-size: 12px; width: 18px; padding: 0; cursor: pointer; }
+.pv-toggle:hover { color: var(--orange); }
+.pivot tr[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="report-header">
+    <div class="eyebrow">SP Seguridad Privada &middot; Indicadores por Área &middot; Instalaciones</div>
+    <h1>Indicadores de Instalaciones</h1>
+    <div class="sub">Casos de instalación, artículos instalados y facturación de NetSuite</div>
+    <div class="upd-hero" id="upd-hero" hidden>
+      <span class="upd-hero-label">Última actualización</span>
+      <span class="upd-hero-fecha" id="upd-hero-fecha"></span>
+      <span class="upd-hero-det" id="upd-hero-det"></span>
+    </div>
+    <div class="upd-bar" id="upd-bar">
+      <button type="button" class="upd-btn" id="upd-btn" hidden>Actualizar ahora</button>
+      <button type="button" class="upd-menu-btn" id="upd-menu-btn" aria-expanded="false" aria-controls="upd-panel" hidden>Actualizaciones anteriores &#9662;</button>
+      <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
+    </div>
+    <div class="upd-panel" id="upd-panel" hidden>
+      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite todos los casos de instalación, sus OV de productos y los artículos de esas OV (no sólo los nuevos). Los casos son los mismos que usa Posventa: actualizar acá también los actualiza allá.</div>
+      <div class="upd-hist-scroll">
+        <table class="upd-hist">
+          <thead><tr><th>Actualizada el</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
+          <tbody id="upd-hist-body"><tr><td colspan="4">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </header>
+
+  <div class="cargando" id="cargando" role="status" aria-live="polite">
+    <span>Cargando datos…</span>
+    <span class="cargando-barra" aria-hidden="true"></span>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Reportes de Instalaciones">
+    <button type="button" class="tab-btn active" data-tab="instalaciones" role="tab" aria-selected="true" aria-controls="panel-instalaciones">Instalaciones</button>
+    <button type="button" class="tab-btn" data-tab="demoras" role="tab" aria-selected="false" aria-controls="panel-demoras">Demoras y variaciones</button>
+    <button type="button" class="tab-btn" data-tab="facturacion" role="tab" aria-selected="false" aria-controls="panel-facturacion">Facturación</button>
+    <button type="button" class="tab-btn" data-tab="casos" role="tab" aria-selected="false" aria-controls="panel-casos">Casos y elementos instalados</button>
+    <button type="button" class="tab-btn" data-tab="elementos" role="tab" aria-selected="false" aria-controls="panel-elementos">Elementos</button>
+  </nav>
+
+  <main class="main--cargando">
+    <!-- ============ Pestaña 1: Instalaciones ============ -->
+    <section class="tab-panel active" id="panel-instalaciones" role="tabpanel">
+      <h2>Análisis de instalaciones por fecha de finalización</h2>
+      <div class="kpi-row" id="kpi-inst"></div>
+      <div class="note-box" id="nota-demora"></div>
+
+      <div class="filtros" id="filtros-inst">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
+
+      <div class="bloque">
+        <p class="bloque-ayuda">Hacé click en un número de las tablas para ver esas instalaciones en el detalle de abajo. Otro click en el mismo número quita el filtro. La flecha ▸ despliega las categorías.</p>
+        <h3>Instalaciones finalizadas por mes y clasificación comercial</h3>
+        <div id="inst-tipo-mes"></div>
+        <div class="bloque-nota" id="nota-clasif"></div>
+      </div>
+      <div class="bloque">
+        <h3>Instalaciones finalizadas por mes y tipo de trabajo</h3>
+        <div id="inst-trabajo-mes"></div>
+      </div>
+      <div class="bloque">
+        <h3>Instalaciones finalizadas por técnico y unidad comercial</h3>
+        <div id="inst-tec-tipo"></div>
+      </div>
+      <div class="bloque">
+        <h3>Detalle de instalaciones</h3>
+        <div class="sel-chip" id="sel-inst" hidden></div>
+        <div class="seg-bar" id="seg-estado" role="group" aria-label="Estado de las instalaciones"></div>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Una fila por instalación · click para ver sus casos</span>
+            <input type="search" class="explorer-search" id="buscar-seg" placeholder="Buscar cliente, cuenta, caso, técnico…">
+            <span class="explorer-count" id="cuenta-seg"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table inst-tabla" id="tabla-seg"></table></div>
+        </div>
+        <div class="bloque-nota">Días hábiles: en curso, desde el inicio hasta hoy; pendientes, desde la creación hasta hoy; finalizadas, desde la creación hasta el fin. Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras). Filtros: Año y Mes por fecha de fin en las finalizadas y por fecha de creación en las demás (todavía no tienen fin); Estado del caso sobre cada caso.</div>
+      </div>
+    </section>
+
+    <!-- ============ Pestaña 2: Demoras y variaciones ============ -->
+    <section class="tab-panel" id="panel-demoras" role="tabpanel">
+      <h2>Demoras y variaciones de mano de obra</h2>
+      <div class="filtros" id="filtros-dem">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
+      <div class="grid-2b">
+        <div class="bloque">
+          <h3>Promedio de demora por agenda</h3>
+          <div id="dem-linea"></div>
+        </div>
+        <div class="bloque">
+          <h3>Promedio de variación de mano de obra</h3>
+          <div id="var-linea"></div>
+        </div>
+      </div>
+      <div class="bloque">
+        <h3>Promedio de demora por agenda por clasificación comercial (días)</h3>
+        <div id="dem-tipo-mes"></div>
+        <div class="bloque-nota">Días corridos entre la creación del caso y el inicio de la instalación. Sin los casos de 30 días o más.</div>
+      </div>
+      <div class="bloque">
+        <h3>Suma de variaciones de mano de obra por clasificación comercial (días reales − presupuestados)</h3>
+        <div id="var-tipo-mes"></div>
+        <div class="bloque-nota">Positivo: se trabajaron más días de los presupuestados. Solo casos con mano de obra en la OV y días reales cargados; sin los de 30 días o más de diferencia.</div>
+      </div>
+      <div class="bloque">
+        <h3>Detalle</h3>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Demoras y mano de obra por caso</span>
+            <input type="search" class="explorer-search" id="buscar-dem" placeholder="Buscar caso, cliente, técnico…">
+            <span class="explorer-count" id="cuenta-dem"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table" id="tabla-dem"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Pestaña 3: Facturación ============ -->
+    <section class="tab-panel" id="panel-facturacion" role="tabpanel">
+      <h2>Facturación de instalaciones por fecha de finalización</h2>
+      <div class="filtros" id="filtros-fact">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
+      <div class="kpi-row" id="kpi-fact"></div>
+      <div class="bloque">
+        <h3>Facturación por Venta / Comodato y unidad comercial</h3>
+        <div id="fact-vc-uc"></div>
+        <div class="bloque-nota">Venta o comodato según el campo Comodato de la OV. Unidad comercial: la de la OV; si no la tiene, la del presupuesto de origen; si no, la de la oportunidad. El campo es reciente, por eso muchas OV anteriores figuran "Sin unidad comercial".</div>
+      </div>
+      <div class="bloque">
+        <h3>Monto de las OV de productos por clasificación comercial y mes</h3>
+        <div id="fact-tipo-mes"></div>
+        <div class="bloque-nota">Total de las órdenes de venta de productos vinculadas a cada caso, por mes de fin de la instalación.</div>
+      </div>
+      <div class="bloque">
+        <h3>OV por estado</h3>
+        <div id="fact-estado"></div>
+      </div>
+      <div class="bloque">
+        <h3>Detalle de OV</h3>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Órdenes de venta de productos</span>
+            <input type="search" class="explorer-search" id="buscar-fact" placeholder="Buscar OV, caso, cliente…">
+            <span class="explorer-count" id="cuenta-fact"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table" id="tabla-fact"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Pestaña 4: Casos y elementos instalados ============ -->
+    <section class="tab-panel" id="panel-casos" role="tabpanel">
+      <h2>Casos y elementos instalados</h2>
+      <div class="filtros" id="filtros-casos">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
+
+      <div class="bloque">
+        <h3>Instalaciones finalizadas por mes y clasificación comercial</h3>
+        <div id="casos-tipo-mes"></div>
+      </div>
+      <div class="bloque">
+        <h3>Instalaciones finalizadas por técnico y unidad comercial</h3>
+        <div id="casos-tec-tipo"></div>
+      </div>
+      <div class="bloque">
+        <h3>Elementos instalados por técnico y unidad comercial</h3>
+        <div id="elem-tec-tipo"></div>
+      </div>
+      <div class="bloque">
+        <h3>Elementos instalados por técnico y mes</h3>
+        <div id="elem-tec-mes"></div>
+        <div class="bloque-nota">Elementos = equipos instalados según los artículos de la OV de productos. No cuentan IVA, descuentos, mano de obra, cable (va por metro) ni artículos administrativos o internos.</div>
+      </div>
+      <div class="bloque">
+        <h3>Instalaciones por técnico y tipo de posventa</h3>
+        <div id="casos-tec-posventa"></div>
+      </div>
+
+      <div class="bloque">
+        <h3>Detalle de casos</h3>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Casos de instalación</span>
+            <input type="search" class="explorer-search" id="buscar-casos" placeholder="Buscar caso, cuenta, cliente, técnico…">
+            <span class="explorer-count" id="cuenta-casos"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table" id="tabla-casos"></table></div>
+        </div>
+      </div>
+      <div class="bloque">
+        <h3>Artículos instalados</h3>
+        <div class="explorer">
+          <div class="explorer-bar">
+            <span class="explorer-title">Elementos de los casos filtrados</span>
+            <input type="search" class="explorer-search" id="buscar-arts" placeholder="Buscar artículo…">
+            <span class="explorer-count" id="cuenta-arts"></span>
+          </div>
+          <div class="table-scroll"><table class="data-table" id="tabla-arts"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Pestaña 5: Elementos ============ -->
+    <section class="tab-panel" id="panel-elementos" role="tabpanel">
+      <h2>Elementos instalados</h2>
+      <div class="filtros" id="filtros-elem">
+        <span class="filtros-titulo">Filtros</span>
+      </div>
+      <div class="kpi-row" id="kpi-elem"></div>
+      <div class="donut-row" id="donuts-elem"></div>
+      <div class="bloque">
+        <h3>Elementos por subcategoría y mes</h3>
+        <div id="elem-sub-mes"></div>
+      </div>
+    </section>
+  </main>
+  <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Indicadores de Instalaciones &middot; datos de NetSuite</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // URL del servicio indicadores-api en Coolify (el mismo que Posventa).
+  var API_BASE_URL = "https://indicadores-api.200.5.196.50.sslip.io";
+  // Direccion de la web interna habilitada en ALLOWED_ORIGINS del servicio.
+  var ORIGEN_WEB = "https://portal.blogdns.com";
+  var AREA = "instalaciones";
+  var SECCION = "indicadores-instalaciones";
+  // Alcance de los casos en las tablas comunes (asignado 133; Ampliaciones usa "ampliaciones").
+  var ALCANCE = "instalaciones";
+  var TZ = "America/Argentina/Buenos_Aires";
+  var POLL_MS = 4000;
+  var HISTORIAL = 20;
+  var MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  var MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  var PALETA = ["#1F3864", "#2a78d6", "#2a9d5c", "#8e6bb0", "#eb6834", "#c9a227", "#6b6b6b", "#9AA0A6"];
+
+  // Filtro general del Power BI: tipos de proyecto que no son de este informe.
+  var TIPOS_EXCLUIDOS = ["Comunicaciones Lantrix", "Proyecto Especial", "Ampliacion Cámaras"];
+  // Demoras y variaciones: los casos de 30 días o más se toman como error de carga (igual que el Power BI).
+  var TOPE_DIAS = 30;
+  // Demora estimada: el ritmo de finalización se promedia desde este mes (AAAA-MM)
+  // hasta el último mes completo. Enero 2026 es el primer mes de datos (casos desde el 2/1/2026).
+  var RITMO_DESDE = "2026-01";
+  // Subcategorías destacadas en la pestaña Elementos (tarjetas del Power BI).
+  var DESTACADAS = [["Centrales de Alarma", "Centrales instaladas"], ["Cámaras", "Cámaras instaladas"], ["Sensor Movimiento", "Sensores de movimiento instalados"]];
+  var URL_CASO = "https://7138551.app.netsuite.com/app/crm/support/supportcase.nl?id=";
+  var URL_OV = "https://7138551.app.netsuite.com/app/accounting/transactions/salesord.nl?id=";
+
+  var sb = window.supabaseClient;
+  // lineasMo: lineas de mano de obra (se leen al entrar). lineasElem: elementos
+  // instalados, se leen recien al abrir una pestaña que los usa (null = sin leer).
+  var DATOS = { casos: [], ovs: [], lineasMo: [], lineasElem: null };
+  var puedeEditar = false;
+  var pollTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fmtDia(s) { if (!s) return ""; var p = String(s).slice(0, 10).split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
+  function fmtFechaHora(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    return d.toLocaleDateString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }) +
+      " " + d.toLocaleTimeString("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }) + " hs";
+  }
+  function anioMes(fecha) { return fecha ? String(fecha).slice(0, 7) : null; }
+  function etiquetaMes(am) { if (!am) return "Sin fecha"; var p = am.split("-"); return MESES_CORTO[+p[1] - 1] + " " + p[0]; }
+  function fmtNum(n, dec) {
+    if (n === null || n === undefined || isNaN(n)) return "";
+    return Number(n).toLocaleString("es-AR", { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
+  }
+  function fmtPesos(n) { return n === null || n === undefined ? "" : "$ " + fmtNum(Math.round(n)); }
+  function fmtDias(n) { return n === null || n === undefined || isNaN(n) ? "" : fmtNum(n, 1); }
+  function hoyAR() { return new Date().toLocaleDateString("en-CA", { timeZone: TZ }); } // AAAA-MM-DD
+  function dia(s) { var p = s.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+  function diasEntre(a, b) { return Math.round((dia(b) - dia(a)) / 86400000); }
+  // Dias habiles (lunes a viernes, sin feriados) entre dos fechas, como
+  // DiasTrabajadosHastaHoy del Power BI: dias corridos menos sabados y domingos del rango.
+  function diasHabiles(desde, hasta) {
+    var total = diasEntre(desde, hasta), finde = 0;
+    for (var t = dia(desde); t <= dia(hasta); t += 86400000) {
+      var w = new Date(t).getUTCDay();
+      if (w === 0 || w === 6) finde++;
+    }
+    return total - finde;
+  }
+  function suma(lista, f) { return lista.reduce(function (s, x) { var v = f(x); return s + (v || 0); }, 0); }
+  function distintos(lista, f) { return new Set(lista.map(f)).size; }
+  function pct(a, b) { return b ? Math.round(100 * a / b) + "%" : "–"; }
+  function kpis(id, lista) {
+    $(id).innerHTML = lista.map(function (k) {
+      return '<div class="kpi-card' + (k.destacada ? " kpi-card--destacada" : "") + '"><div class="kpi-num">' + k.num + '</div><div class="kpi-label">' +
+        esc(k.label) + "</div>" + (k.sub ? '<div class="kpi-sub">' + esc(k.sub) + "</div>" : "") + "</div>";
+    }).join("");
+  }
+  function vacio() { return '<div class="vacio">Sin datos para los filtros elegidos.</div>'; }
+
+  // =====================================================================
+  // Filtros con casillas
+  // =====================================================================
+  // Cada filtro guarda el conjunto de valores elegidos; vacio = todos.
+  function crearFiltro(contenedor, id, nombre, opciones, alCambiar) {
+    var estado = { elegidos: new Set() };
+    var cont = document.createElement("div");
+    cont.className = "chk-filtro";
+    cont.innerHTML =
+      '<button type="button" class="chk-btn" aria-expanded="false" aria-haspopup="true" id="' + id + '-btn">' +
+      '<span class="chk-nombre">' + esc(nombre) + ':</span> <span class="chk-valor">Todos</span> &#9662;</button>' +
+      '<div class="chk-panel" id="' + id + '-panel" hidden role="group" aria-label="' + esc(nombre) + '">' +
+      '<label class="chk-op chk-op--todos"><input type="checkbox" data-todos="1" checked> Seleccionar todo</label>' +
+      opciones.map(function (o) {
+        return '<label class="chk-op"><input type="checkbox" value="' + esc(o.valor) + '" checked> ' + esc(o.etiqueta) + "</label>";
+      }).join("") + "</div>";
+    contenedor.appendChild(cont);
+
+    var btn = cont.querySelector(".chk-btn");
+    var panel = cont.querySelector(".chk-panel");
+    var todos = panel.querySelector("[data-todos]");
+    var casillas = Array.prototype.slice.call(panel.querySelectorAll("input:not([data-todos])"));
+
+    function pintarBoton() {
+      var marcadas = casillas.filter(function (c) { return c.checked; });
+      var valor = marcadas.length === casillas.length ? "Todos"
+        : marcadas.length === 0 ? "Ninguno"
+        : marcadas.length === 1 ? marcadas[0].parentNode.textContent.trim()
+        : marcadas.length + " elegidos";
+      btn.querySelector(".chk-valor").textContent = valor;
+      btn.classList.toggle("chk-activo", marcadas.length !== casillas.length);
+      todos.checked = marcadas.length === casillas.length;
+      todos.indeterminate = marcadas.length > 0 && marcadas.length < casillas.length;
+    }
+    function leer() {
+      var marcadas = casillas.filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+      // Todas marcadas = sin filtro. Ninguna marcada = no pasa nada (como el segmentador).
+      estado.elegidos = marcadas.length === casillas.length ? new Set() : new Set(marcadas.length ? marcadas : ["__ninguno__"]);
+      pintarBoton();
+      alCambiar();
+    }
+    todos.addEventListener("change", function () {
+      casillas.forEach(function (c) { c.checked = todos.checked; });
+      leer();
+    });
+    casillas.forEach(function (c) { c.addEventListener("change", leer); });
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var abrir = panel.hidden;
+      document.querySelectorAll(".chk-panel").forEach(function (p) { p.hidden = true; });
+      document.querySelectorAll(".chk-btn").forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+      panel.hidden = !abrir;
+      btn.setAttribute("aria-expanded", abrir ? "true" : "false");
+    });
+    panel.addEventListener("click", function (e) { e.stopPropagation(); });
+
+    return {
+      pasa: function (valor) { return estado.elegidos.size === 0 || estado.elegidos.has(String(valor)); },
+      activo: function () { return estado.elegidos.size > 0; },
+      limpiar: function () { casillas.forEach(function (c) { c.checked = true; }); estado.elegidos = new Set(); pintarBoton(); },
+    };
+  }
+  document.addEventListener("click", function () {
+    document.querySelectorAll(".chk-panel").forEach(function (p) { p.hidden = true; });
+    document.querySelectorAll(".chk-btn").forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") document.querySelectorAll(".chk-panel").forEach(function (p) { p.hidden = true; });
+  });
+
+  // Filtro Año + Mes sobre una fecha (AAAA-MM-DD). Las filas sin fecha solo
+  // pasan cuando no hay ningun filtro elegido.
+  function crearFiltrosPeriodo(contenedorId, fechas, alCambiar) {
+    var cont = $(contenedorId);
+    // Se rearma en cada carga de datos (los años dependen de lo que haya en la base).
+    cont.querySelectorAll(".chk-filtro, .chk-limpiar").forEach(function (el) { el.remove(); });
+    var anios = Array.from(new Set(fechas.filter(Boolean).map(function (f) { return f.slice(0, 4); }))).sort();
+    var filtros = {
+      anio: crearFiltro(cont, contenedorId + "-anio", "Año", anios.map(function (a) { return { valor: a, etiqueta: a }; }), alCambiar),
+      mes: crearFiltro(cont, contenedorId + "-mes", "Mes", MESES.map(function (m, i) {
+        return { valor: String(i + 1).padStart(2, "0"), etiqueta: m };
+      }), alCambiar),
+    };
+    var limpiar = document.createElement("button");
+    limpiar.type = "button";
+    limpiar.className = "chk-limpiar";
+    limpiar.textContent = "Quitar filtros";
+    limpiar.hidden = true;
+    limpiar.addEventListener("click", function () { filtros.anio.limpiar(); filtros.mes.limpiar(); alCambiar(); });
+    cont.appendChild(limpiar);
+    return {
+      pasa: function (fecha) {
+        if (!fecha) return !filtros.anio.activo() && !filtros.mes.activo();
+        return filtros.anio.pasa(fecha.slice(0, 4)) && filtros.mes.pasa(fecha.slice(5, 7));
+      },
+      pintarLimpiar: function () { limpiar.hidden = !(filtros.anio.activo() || filtros.mes.activo()); },
+    };
+  }
+
+  // =====================================================================
+  // Torta (mismo dibujo que el informe MKT)
+  // =====================================================================
+  function torta(titulo, pares, nLabel, colores) {
+    var total = pares.reduce(function (s, p) { return s + p[1]; }, 0);
+    if (!total) return '<div class="donut-block"><div class="donut-block-title">' + esc(titulo) + '</div><div class="vacio">Sin datos.</div></div>';
+    var r = 76, cx = 90, cy = 90, circ = 2 * Math.PI * r, offset = 0, segs = "", ley = "";
+    pares.forEach(function (p, i) {
+      if (!p[1]) return;
+      var color = (colores && colores[p[0]]) || PALETA[i % PALETA.length];
+      var largo = circ * p[1] / total, porc = (100 * p[1] / total).toFixed(1);
+      segs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="28" stroke-dasharray="' +
+        largo.toFixed(2) + " " + (circ - largo).toFixed(2) + '" stroke-dashoffset="-' + offset.toFixed(2) + '" transform="rotate(-90 ' + cx + " " + cy +
+        ')"><title>' + esc(p[0]) + ": " + p[1] + " (" + porc + "%)</title></circle>";
+      ley += '<span class="legend-item"><span class="swatch" style="background:' + color + '"></span>' + esc(p[0]) + ": <strong>" + p[1] + "</strong> (" + porc + "%)</span>";
+      offset += largo;
+    });
+    return '<div class="donut-block"><div class="donut-block-title">' + esc(titulo) + " &middot; n=" + total + '</div><div class="donut-flex">' +
+      '<svg viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="' + esc(titulo) + '"><circle cx="' + cx + '" cy="' + cy + '" r="' + r +
+      '" fill="none" stroke="#DEDCD3" stroke-width="28"/>' + segs +
+      '<text x="' + cx + '" y="87" text-anchor="middle" class="donut-center-num">' + total + "</text>" +
+      '<text x="' + cx + '" y="106" text-anchor="middle" class="donut-center-sub">' + esc(nLabel) + "</text></svg>" +
+      '<div class="chart-legend-wrap">' + ley + "</div></div></div>";
+  }
+
+  function ordenarPares(mapa, orden) {
+    var pares = Object.keys(mapa).map(function (k) { return [k, mapa[k]]; });
+    if (orden) {
+      return pares.sort(function (a, b) {
+        var ia = orden.indexOf(a[0]), ib = orden.indexOf(b[0]);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || b[1] - a[1];
+      });
+    }
+    return pares.sort(function (a, b) { return b[1] - a[1]; });
+  }
+
+  // =====================================================================
+  // Tabla de detalle (busqueda + orden por columna)
+  // =====================================================================
+  function crearTabla(tablaId, buscarId, cuentaId, columnas, textoBusqueda, opciones) {
+    opciones = opciones || {};
+    var estado = { filas: [], orden: null, asc: true };
+    var tabla = $(tablaId);
+    function pintar() {
+      var q = $(buscarId).value.trim().toLowerCase();
+      var filas = estado.filas.filter(function (f) {
+        return (!q || textoBusqueda(f).toLowerCase().indexOf(q) >= 0) && (!opciones.filtro || opciones.filtro(f));
+      });
+      if (estado.orden !== null) {
+        var col = columnas[estado.orden];
+        filas = filas.slice().sort(function (a, b) {
+          var x = col.orden ? col.orden(a) : col.valor(a), y = col.orden ? col.orden(b) : col.valor(b);
+          x = x === null || x === undefined ? "" : x; y = y === null || y === undefined ? "" : y;
+          return (x < y ? -1 : x > y ? 1 : 0) * (estado.asc ? 1 : -1);
+        });
+      }
+      tabla.innerHTML = "<thead><tr>" + columnas.map(function (c, i) {
+        var flecha = estado.orden === i ? (estado.asc ? "▲" : "▼") : "↕";
+        return '<th data-col="' + i + '">' + esc(c.titulo) + '<span class="sort-arrow">' + flecha + "</span></th>";
+      }).join("") + "</tr></thead><tbody>" + (filas.length ? filas.map(function (f) {
+        var claseFila = opciones.claseFila ? opciones.claseFila(f) : "";
+        return "<tr" + (claseFila ? ' class="' + claseFila + '"' : "") + ">" + columnas.map(function (c) {
+          return '<td class="' + (c.clase || "") + '">' + (c.html ? c.html(f) : esc(c.valor(f))) + "</td>";
+        }).join("") + "</tr>";
+      }).join("") : '<tr><td colspan="' + columnas.length + '" class="vacio">Sin resultados.</td></tr>') + "</tbody>";
+      $(cuentaId).textContent = filas.length + " de " + estado.filas.length;
+      tabla.querySelectorAll("th").forEach(function (th) {
+        th.addEventListener("click", function () {
+          var i = +th.getAttribute("data-col");
+          estado.asc = estado.orden === i ? !estado.asc : true;
+          estado.orden = i;
+          pintar();
+        });
+      });
+    }
+    $(buscarId).addEventListener("input", pintar);
+    return { mostrar: function (filas) { estado.filas = filas; pintar(); }, repintar: pintar };
+  }
+
+  // =====================================================================
+  // Filtros de cada pestaña: Año y Mes (fecha de fin) + filtros por valor
+  // =====================================================================
+  // extras: [{ clave, nombre, valores: [..] }]. Devuelve { periodo(fecha), pasa(clave, valor) }.
+  function crearFiltrosTab(contenedorId, fechas, extras, alCambiar) {
+    var cont = $(contenedorId);
+    cont.querySelectorAll(".chk-filtro, .chk-limpiar").forEach(function (el) { el.remove(); });
+    var anios = Array.from(new Set(fechas.filter(Boolean).map(function (f) { return f.slice(0, 4); }))).sort();
+    var limpiar = document.createElement("button");
+    function cambio() { limpiar.hidden = !Object.keys(filtros).some(function (k) { return filtros[k].activo(); }); alCambiar(); }
+    var filtros = {
+      anio: crearFiltro(cont, contenedorId + "-anio", "Año", anios.map(function (a) { return { valor: a, etiqueta: a }; }), cambio),
+      mes: crearFiltro(cont, contenedorId + "-mes", "Mes", MESES.map(function (m, i) {
+        return { valor: String(i + 1).padStart(2, "0"), etiqueta: m };
+      }), cambio),
+    };
+    (extras || []).forEach(function (x, i) {
+      filtros[x.clave] = crearFiltro(cont, contenedorId + "-x" + i, x.nombre, x.valores.map(function (v) {
+        return { valor: v, etiqueta: v };
+      }), cambio);
+    });
+    limpiar.type = "button";
+    limpiar.className = "chk-limpiar";
+    limpiar.textContent = "Quitar filtros";
+    limpiar.hidden = true;
+    limpiar.addEventListener("click", function () {
+      Object.keys(filtros).forEach(function (k) { filtros[k].limpiar(); });
+      cambio();
+    });
+    cont.appendChild(limpiar);
+    return {
+      // Las filas sin fecha de fin (instalaciones sin terminar) solo pasan sin filtro de Año/Mes.
+      periodo: function (fecha) {
+        if (!fecha) return !filtros.anio.activo() && !filtros.mes.activo();
+        return filtros.anio.pasa(fecha.slice(0, 4)) && filtros.mes.pasa(fecha.slice(5, 7));
+      },
+      pasa: function (clave, valor) { return filtros[clave].pasa(valor === null || valor === undefined || valor === "" ? "(Sin dato)" : valor); },
+    };
+  }
+
+  function valoresDe(lista, f) {
+    return Array.from(new Set(lista.map(function (x) { var v = f(x); return v === null || v === undefined || v === "" ? "(Sin dato)" : v; })))
+      .sort(function (a, b) { return a === "(Sin dato)" ? 1 : b === "(Sin dato)" ? -1 : a.localeCompare(b, "es"); });
+  }
+
+  // =====================================================================
+  // Tabla cruzada: filas x columnas con totales recalculados (no sumados),
+  // asi los distintos y los promedios del total son correctos.
+  // =====================================================================
+  // o = { titulo, items, fila(x), col(x), medida: "distintos"|"suma"|"promedio",
+  //       valor(x) (clave para distintos, numero para suma/promedio),
+  //       cols: "mes"|"alfa"|[orden], fmt(n), etiquetaCol(c), ordenFilas: "total"|"alfa" }
+  function agregar(lista, o) {
+    if (!lista || !lista.length) return null;
+    if (o.medida === "distintos") return distintos(lista, o.valor);
+    var nums = lista.map(o.valor).filter(function (v) { return v !== null && v !== undefined && !isNaN(v); });
+    if (!nums.length) return null;
+    var s = nums.reduce(function (a, b) { return a + b; }, 0);
+    return o.medida === "promedio" ? s / nums.length : s;
+  }
+  function tablaCruzada(o) {
+    var celdas = {}, porFila = {}, porCol = {};
+    o.items.forEach(function (x) {
+      var f = o.fila(x), c = o.col(x);
+      if (f === null || f === undefined || c === null || c === undefined) return;
+      (celdas[f + "\u0001" + c] = celdas[f + "\u0001" + c] || []).push(x);
+      (porFila[f] = porFila[f] || []).push(x);
+      (porCol[c] = porCol[c] || []).push(x);
+    });
+    var filas = Object.keys(porFila), cols = Object.keys(porCol);
+    if (!filas.length) return vacio();
+    if (Array.isArray(o.cols)) cols = o.cols.filter(function (c) { return porCol[c]; });
+    else cols.sort(function (a, b) { return a.localeCompare(b, "es"); });
+    var totFila = {};
+    filas.forEach(function (f) { totFila[f] = agregar(porFila[f], o); });
+    filas.sort(o.ordenFilas === "alfa"
+      ? function (a, b) { return a.localeCompare(b, "es"); }
+      : function (a, b) { return (totFila[b] || 0) - (totFila[a] || 0) || a.localeCompare(b, "es"); });
+    var fmt = o.fmt || function (n) { return fmtNum(n); };
+    var etq = o.etiquetaCol || (o.cols === "mes" ? etiquetaMes : function (c) { return c; });
+    // o.sel: nombre de la tabla; sus numeros filtran el detalle de instalaciones (fila/col vacias = total).
+    function td(v, cls, f, col) {
+      var c = cls ? [cls] : [];
+      if (v === null || v === 0) c.push("pv-cero");
+      var at = atrSel(o.sel, v, c, f, "", col);
+      return '<td class="' + c.join(" ") + '"' + at + ">" + (v === null ? "–" : fmt(v)) + "</td>";
+    }
+    var cuerpo = filas.map(function (f) {
+      return '<tr><td class="pv-fila">' + esc(f) + "</td>" + cols.map(function (c) {
+        return td(agregar(celdas[f + "\u0001" + c], o), null, f, c);
+      }).join("") + td(totFila[f], "pv-total", f, "") + "</tr>";
+    }).join("");
+    var pie = '<tfoot><tr><td class="pv-fila">Total</td>' + cols.map(function (c) { return td(agregar(porCol[c], o), null, "", c); }).join("") +
+      td(agregar(o.items.filter(function (x) { var f = o.fila(x), c = o.col(x); return f !== null && f !== undefined && c !== null && c !== undefined; }), o), null, "", "") + "</tr></tfoot>";
+    return '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">' + esc(o.titulo) + "</th>" +
+      cols.map(function (c) { return "<th>" + esc(etq(c)) + "</th>"; }).join("") +
+      '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
+  }
+
+  // Tabla con grupos y subgrupos (filas) x meses (columnas), suma de valor.
+  // o = { titulo, items, grupo(x), sub(x), grupos: [orden], col(x), valor(x), fmt }
+  // o.id: si viene, las subcategorias arrancan contraidas y se despliegan con la flecha del grupo.
+  // o.sel: como en tablaCruzada (los numeros filtran el detalle).
+  var DESPLEGADOS = {};
+  function tablaJerarquica(o) {
+    var items = o.items.filter(function (x) { return o.col(x); });
+    if (!items.length) return vacio();
+    var cols = Array.from(new Set(items.map(o.col))).sort();
+    var fmt = o.fmt || fmtNum, med = { medida: o.medida || "suma", valor: o.valor };
+    var abiertos = o.id ? (DESPLEGADOS[o.id] = DESPLEGADOS[o.id] || {}) : null;
+    function fila(nombre, lista, clase, g, sub, conSubs) {
+      var abierto = !abiertos || abiertos[g];
+      var atr = "", etiqueta = esc(nombre);
+      if (clase === "pv-sub" && abiertos) atr = ' data-tk="' + esc(o.id) + '" data-g="' + esc(g) + '"' + (abierto ? "" : " hidden");
+      if (clase === "pv-grupo" && abiertos && conSubs) {
+        etiqueta = '<button type="button" class="pv-toggle" data-tk="' + esc(o.id) + '" data-g="' + esc(g) + '" aria-expanded="' + (abierto ? "true" : "false") +
+          '" title="Ver categorías">' + (abierto ? "▾" : "▸") + "</button> " + etiqueta;
+      }
+      return '<tr class="' + clase + '"' + atr + '><td class="pv-fila">' + etiqueta + "</td>" + cols.map(function (c) {
+        var v = agregar(lista.filter(function (x) { return o.col(x) === c; }), med);
+        var cl = [v ? "" : "pv-cero"], at = atrSel(o.sel, v, cl, g, sub, c);
+        return '<td class="' + cl.join(" ") + '"' + at + ">" + (v === null ? "–" : fmt(v)) + "</td>";
+      }).join("") + (function () {
+        var v = agregar(lista, med) || 0, cl = ["pv-total"], at = atrSel(o.sel, v, cl, g, sub, "");
+        return '<td class="' + cl.join(" ") + '"' + at + ">" + fmt(v) + "</td>";
+      })() + "</tr>";
+    }
+    var grupos = Array.from(new Set(items.map(o.grupo)));
+    var totG = {};
+    grupos.forEach(function (g) { totG[g] = agregar(items.filter(function (x) { return o.grupo(x) === g; }), med) || 0; });
+    grupos.sort(function (a, b) {
+      if (o.grupos) { var ia = o.grupos.indexOf(a), ib = o.grupos.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "es"); }
+      var ua = /^Sin /.test(a), ub = /^Sin /.test(b);
+      return ua !== ub ? (ua ? 1 : -1) : totG[b] - totG[a] || a.localeCompare(b, "es");
+    });
+    var cuerpo = grupos.map(function (g) {
+      var deG = items.filter(function (x) { return o.grupo(x) === g; });
+      var subs = Array.from(new Set(deG.map(o.sub)));
+      subs.sort(function (a, b) {
+        var ua = /^Sin /.test(a), ub = /^Sin /.test(b);
+        if (ua !== ub) return ua ? 1 : -1;
+        return (agregar(deG.filter(function (x) { return o.sub(x) === b; }), med) || 0) - (agregar(deG.filter(function (x) { return o.sub(x) === a; }), med) || 0);
+      });
+      return fila(g, deG, "pv-grupo", g, "", subs.length > 0) +
+        subs.map(function (sname) { return fila(sname, deG.filter(function (x) { return o.sub(x) === sname; }), "pv-sub", g, sname); }).join("");
+    }).join("");
+    var pie = fila("Total", items, "", "", "").replace('<tr class="">', "<tfoot><tr>").replace(/<\/tr>$/, "</tr></tfoot>");
+    return '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">' + esc(o.titulo) + "</th>" +
+      cols.map(function (c) { return "<th>" + esc(etiquetaMes(c)) + "</th>"; }).join("") +
+      '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
+  }
+  // Flecha de grupo: muestra u oculta sus categorias sin redibujar la tabla.
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest(".pv-toggle");
+    if (!b) return;
+    var tk = b.getAttribute("data-tk"), g = b.getAttribute("data-g");
+    var abiertos = DESPLEGADOS[tk] = DESPLEGADOS[tk] || {};
+    abiertos[g] = !abiertos[g];
+    b.textContent = abiertos[g] ? "▾" : "▸";
+    b.setAttribute("aria-expanded", abiertos[g] ? "true" : "false");
+    b.closest("table").querySelectorAll("tr.pv-sub").forEach(function (tr) {
+      if (tr.getAttribute("data-tk") === tk && tr.getAttribute("data-g") === g) tr.hidden = !abiertos[g];
+    });
+  });
+
+  // =====================================================================
+  // Seleccion en tablas -> filtro del detalle de instalaciones
+  // =====================================================================
+  // SEL_INST = { t: tabla, f: fila/grupo, s: subcategoria, c: columna } ("" = todos).
+  var SEL_INST = null;
+  function atrSel(t, v, clases, f, sub, col) {
+    if (!t || !v) return "";
+    clases.push("pv-clic");
+    if (SEL_INST && SEL_INST.t === t && SEL_INST.f === (f || "") && SEL_INST.s === (sub || "") && SEL_INST.c === (col || "")) clases.push("pv-sel");
+    return ' data-t="' + esc(t) + '" data-f="' + esc(f || "") + '" data-s="' + esc(sub || "") + '" data-c="' + esc(col || "") + '" title="Ver estas instalaciones en el detalle"';
+  }
+  function ventaComodato(ov) { return ov.es_comodato ? "Comodato" : "Venta"; }
+  // Tabla Unidad comercial > Categoria x mes de fin (filas desplegadas).
+  // id: clave para recordar que unidades estan desplegadas; sel: ver tablaCruzada.
+  function tablaClasif(titulo, items, caso, medida, valor, fmt, id, sel) {
+    return tablaJerarquica({ titulo: titulo, items: items, grupo: function (x) { return caso(x)._uc; }, sub: function (x) { return caso(x)._cat; },
+      col: function (x) { return anioMes(caso(x).fecha_fin_inst); }, medida: medida, valor: valor, fmt: fmt, id: id, sel: sel });
+  }
+  function yo(x) { return x; }
+
+  // =====================================================================
+  // Grafico de lineas por mes (SVG simple)
+  // =====================================================================
+  // puntos: [[AAAA-MM, valor]] ordenados.
+  function lineaMeses(puntos, fmt) {
+    puntos = puntos.filter(function (p) { return p[1] !== null && p[1] !== undefined && !isNaN(p[1]); });
+    if (!puntos.length) return vacio();
+    fmt = fmt || fmtDias;
+    var W = 560, H = 230, L = 34, R = 30, T = 22, B = 34;
+    var vals = puntos.map(function (p) { return p[1]; });
+    var min = Math.min(0, Math.min.apply(null, vals)), max = Math.max.apply(null, vals);
+    if (max === min) max = min + 1;
+    var paso = puntos.length > 1 ? (W - L - R) / (puntos.length - 1) : 0;
+    function x(i) { return puntos.length > 1 ? L + i * paso : (L + W - R) / 2; }
+    function y(v) { return T + (H - T - B) * (1 - (v - min) / (max - min)); }
+    var d = puntos.map(function (p, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1); }).join(" ");
+    var svg = '<svg class="linea-chart" viewBox="0 0 ' + W + " " + H + '" role="img">' +
+      '<line class="eje" x1="' + L + '" x2="' + (W - R) + '" y1="' + (H - B) + '" y2="' + (H - B) + '"/>' +
+      (min < 0 ? '<line class="cero" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '"/>' : "") +
+      '<path class="serie" d="' + d + '"/>';
+    puntos.forEach(function (p, i) {
+      svg += '<circle class="punto" cx="' + x(i) + '" cy="' + y(p[1]) + '" r="3.5"><title>' + esc(etiquetaMes(p[0])) + ": " + esc(fmt(p[1])) + "</title></circle>" +
+        '<text class="valor" x="' + x(i) + '" y="' + (y(p[1]) - 8) + '" text-anchor="middle">' + esc(fmt(p[1])) + "</text>" +
+        '<text class="eje-txt" x="' + x(i) + '" y="' + (H - B + 16) + '" text-anchor="middle">' + esc(etiquetaMes(p[0])) + "</text>";
+    });
+    return svg + "</svg>";
+  }
+  function serieMensual(items, fecha, valor, medida) {
+    var porMes = {};
+    items.forEach(function (x) { var m = anioMes(fecha(x)); if (m) (porMes[m] = porMes[m] || []).push(x); });
+    return Object.keys(porMes).sort().map(function (m) { return [m, agregar(porMes[m], { medida: medida, valor: valor })]; });
+  }
+
+  // =====================================================================
+  // Datos derivados por caso
+  // =====================================================================
+  var MO_POR_CASO = {}, ELEM_POR_CASO = {}, OV_POR_CASO = {}, CASO_POR_ID = {};
+
+  function prepararDatos() {
+    MO_POR_CASO = {}; OV_POR_CASO = {}; CASO_POR_ID = {};
+    DATOS.lineasMo.forEach(function (l) { (MO_POR_CASO[l.caso_id] = MO_POR_CASO[l.caso_id] || []).push(l); });
+    DATOS.ovs.forEach(function (o) { (OV_POR_CASO[o.caso_id] = OV_POR_CASO[o.caso_id] || []).push(o); });
+    var hoy = hoyAR();
+    DATOS.casos.forEach(function (c) {
+      CASO_POR_ID[c.caso_id] = c;
+      var mo = MO_POR_CASO[c.caso_id] || [];
+      // Demora por agenda: creacion del caso -> inicio de la instalacion (dias corridos).
+      c._demora = c.fecha_creacion && c.fecha_inicio_inst ? diasEntre(c.fecha_creacion, c.fecha_inicio_inst) : null;
+      // Mano de obra: dias presupuestados (lineas MO de la OV) vs dias reales del caso.
+      // El Power BI sumaba los dias reales una vez por linea de MO; aca se toman una vez por caso.
+      c._mo_presup = mo.length ? suma(mo, function (l) { return +l.cantidad; }) : null;
+      c._mo_reales = c.dias_reales_trabajo === null || c.dias_reales_trabajo === undefined ? null : +c.dias_reales_trabajo;
+      c._variacion = c._mo_presup !== null && c._mo_reales !== null ? c._mo_reales - c._mo_presup : null;
+      c._monto = OV_POR_CASO[c.caso_id] ? suma(OV_POR_CASO[c.caso_id], function (o) { return +o.monto; }) : null;
+      c._elementos = null; // se completa en prepararElementos()
+      // Dias habiles trabajados hasta hoy, solo para las instalaciones en curso.
+      c._dias_hoy = c.estado_caso === "En curso" && c.fecha_inicio_inst ? diasHabiles(c.fecha_inicio_inst, hoy) : null;
+      c._finalizada = !!c.fecha_fin_inst;
+      // Clasificacion: tipo de trabajo y unidad comercial > categoria (ver app/fuentes/clasificacion.py).
+      c._trabajo = c.tipo_trabajo || "Sin tipo de trabajo";
+      c._uc = c.unidad_comercial || "Sin clasificar";
+      c._cat = c.categoria || "Sin categoría";
+      c._tecnico = c.tecnico || "(Sin técnico)";
+    });
+  }
+  function prepararElementos() {
+    ELEM_POR_CASO = {};
+    (DATOS.lineasElem || []).forEach(function (l) { (ELEM_POR_CASO[l.caso_id] = ELEM_POR_CASO[l.caso_id] || []).push(l); });
+    DATOS.casos.forEach(function (c) { c._elementos = suma(ELEM_POR_CASO[c.caso_id] || [], function (l) { return +l.cantidad; }); });
+  }
+  function demoraValida(c) { return c._demora !== null && c._demora < TOPE_DIAS; }
+  function variacionValida(c) { return c._variacion !== null && Math.abs(c._variacion) < TOPE_DIAS; }
+
+  // =====================================================================
+  // Demora estimada (version corregida)
+  // =====================================================================
+  // Pendientes = instalaciones No iniciadas + Escaladas que nunca se iniciaron.
+  // Ritmo = instalaciones finalizadas por dia habil desde RITMO_DESDE hasta el
+  // ultimo mes completo. Demora = pendientes / ritmo, en dias habiles.
+  // No depende de los filtros de la pagina (como la tarjeta del Power BI).
+  function demoraEstimada() {
+    var hoy = hoyAR();
+    var pend = DATOS.casos.filter(esPendiente);
+    var noIni = distintos(pend.filter(function (c) { return c.estado_caso === "No iniciado"; }), function (c) { return c.id_inst; });
+    var escal = distintos(pend.filter(function (c) { return c.estado_caso === "Escalado"; }), function (c) { return c.id_inst; });
+    var pendientes = distintos(pend, function (c) { return c.id_inst; });
+    var a = +hoy.slice(0, 4), m = +hoy.slice(5, 7);
+    var fin = new Date(Date.UTC(a, m - 1, 0));                 // ultimo dia del mes anterior
+    var desde = RITMO_DESDE + "-01", hasta = fin.toISOString().slice(0, 10);
+    var meses = (+hasta.slice(0, 4) - +desde.slice(0, 4)) * 12 + (+hasta.slice(5, 7) - +desde.slice(5, 7)) + 1;
+    var finalizadas = distintos(DATOS.casos.filter(function (c) {
+      return c.fecha_fin_inst && c.fecha_fin_inst >= desde && c.fecha_fin_inst <= hasta;
+    }), function (c) { return c.id_inst; });
+    var habiles = diasHabiles(desde, hasta) + 1; // el rango incluye ambos extremos
+    var porDia = habiles > 0 ? finalizadas / habiles : 0;
+    return {
+      pendientes: pendientes, noIniciadas: noIni, escaladas: escal,
+      finalizadas: finalizadas, porMes: meses > 0 ? finalizadas / meses : 0, meses: meses, desde: desde, hasta: hasta,
+      dias: porDia > 0 ? Math.ceil(pendientes / porDia) : null,
+    };
+  }
+
+
+  // =====================================================================
+  // Pestaña 1: Instalaciones
+  // =====================================================================
+  var fInst, fCasos, fFact, fDem, fElem;
+  var tablaCasos, tablaArts, tablaFact, tablaDem;
+
+  function pintarKpisInstalaciones() {
+    var hoy = hoyAR(), mesActual = hoy.slice(0, 7);
+    var finMes = distintos(DATOS.casos.filter(function (c) { return anioMes(c.fecha_fin_inst) === mesActual; }), function (c) { return c.id_inst; });
+    var enCurso = distintos(DATOS.casos.filter(function (c) { return c.estado_caso === "En curso"; }), function (c) { return c.id_inst; });
+    var d = demoraEstimada();
+    kpis("kpi-inst", [
+      { num: fmtNum(finMes), label: "Finalizadas en " + MESES[+mesActual.slice(5, 7) - 1].toLowerCase(), sub: "Por fecha de fin de instalación" },
+      { num: fmtNum(enCurso), label: "En curso" },
+      { num: fmtNum(d.pendientes), label: "Pendientes de iniciar", sub: d.noIniciadas + " no iniciadas · " + d.escaladas + " escaladas sin iniciar" },
+      { num: d.dias === null ? "–" : d.dias + " días hábiles", label: "Demora estimada", destacada: true,
+        sub: "Ritmo: " + fmtNum(d.porMes, 1) + " instalaciones/mes (" + etiquetaMes(d.desde.slice(0, 7)) + " a " + etiquetaMes(d.hasta.slice(0, 7)) + ")" },
+    ]);
+    $("nota-demora").innerHTML =
+      "<strong>Demora estimada</strong>: cuántos días hábiles llevaría iniciar todas las instalaciones pendientes al ritmo actual. " +
+      "Pendientes = casos No iniciados + Escalados sin fecha de inicio (" + d.pendientes + "). Ritmo = instalaciones finalizadas de " +
+      etiquetaMes(d.desde.slice(0, 7)) + " a " + etiquetaMes(d.hasta.slice(0, 7)) + " (" + d.finalizadas + " en " + d.meses + " meses completos) por día hábil. Las tarjetas no cambian con los filtros. " +
+      "No se incluyen los tipos de proyecto " + esc(TIPOS_EXCLUIDOS.join(", ")) + " ni los casos sin tipo de proyecto.";
+  }
+
+  function casosInst() {
+    return DATOS.casos.filter(function (c) {
+      return fInst.periodo(c.fecha_fin_inst) && fInst.pasa("estado", c.estado_caso) && fInst.pasa("trabajo", c._trabajo);
+    });
+  }
+
+  function pintarInstalaciones() {
+    var casos = casosInst(), fin = casos.filter(function (c) { return c._finalizada; });
+    var porInst = function (c) { return c.id_inst; };
+    $("inst-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", fin, yo, "distintos", porInst, null, "inst-tipo-mes", "clasif");
+    var orig = {};
+    fin.forEach(function (c) { var k = c.clasificacion_origen || "sin dato"; orig[k] = (orig[k] || 0) + 1; });
+    $("nota-clasif").textContent = fin.length ? "Origen de la clasificación (casos): " + ["presupuesto", "oportunidad", "equivalencia", "sin dato"].filter(function (k) { return orig[k]; })
+      .map(function (k) { return k + " " + pct(orig[k], fin.length); }).join(" · ") +
+      ". Equivalencia: casos viejos (Alarma Hogar / Comercio / Obra) sin dato en presupuesto ni oportunidad; tienen unidad comercial pero no categoría." : "";
+    $("inst-trabajo-mes").innerHTML = tablaCruzada({ titulo: "Tipo de trabajo", items: fin, fila: function (c) { return c._trabajo; },
+      col: function (c) { return anioMes(c.fecha_fin_inst); }, cols: "mes", medida: "distintos", valor: porInst, sel: "trabajo" });
+    $("inst-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
+      col: function (c) { return c._uc; }, medida: "distintos", valor: porInst, sel: "tecuc" });
+    pintarSeguimiento();
+  }
+
+  // ---------------------------------------------------------------------
+  // Seguimiento: instalaciones en curso y pendientes de iniciar
+  // ---------------------------------------------------------------------
+  var SEG = { filtro: "todas", abiertas: {}, orden: "estado", asc: true, armado: false };
+  function esPendiente(c) { return c.estado_caso === "No iniciado" || (c.estado_caso === "Escalado" && !c.fecha_inicio_inst); }
+
+  // Una fila por instalacion con algun caso en curso o pendiente (con todos sus casos).
+  // Una fila por instalacion (todas: en curso, pendientes, finalizadas y otras).
+  var GRUPOS_SEG = [["todas", "Todas"], ["curso", "En curso"], ["pendiente", "Pendientes de iniciar"], ["finalizada", "Finalizadas"], ["otra", "Otras"]];
+  var RANGO_GRUPO = { curso: 1, pendiente: 2, otra: 3, finalizada: 4 };
+  function instalacionesDetalle() {
+    var porInst = {};
+    // Estado del caso: filtro por caso, antes de agrupar.
+    DATOS.casos.filter(function (c) { return fInst.pasa("estado", c.estado_caso) && fInst.pasa("trabajo", c._trabajo) && pasaSeleccion(c); })
+      .forEach(function (c) { (porInst[c.id_inst] = porInst[c.id_inst] || []).push(c); });
+    var hoy = hoyAR(), salida = [];
+    Object.keys(porInst).forEach(function (k) {
+      var casos = porInst[k].slice().sort(function (a, b) { return a.caso_id - b.caso_id; });
+      var min = function (campo) { return casos.map(function (c) { return c[campo]; }).filter(Boolean).sort()[0] || null; };
+      var max = function (campo) { return casos.map(function (c) { return c[campo]; }).filter(Boolean).sort().pop() || null; };
+      var unicos = function (f) { return Array.from(new Set(casos.map(f).filter(Boolean))).join(", "); };
+      var inicio = min("fecha_inicio_inst"), creacion = min("fecha_creacion"), fin = max("fecha_fin_inst");
+      var grupo, estado, dias;
+      if (casos.some(function (c) { return c.estado_caso === "En curso"; })) {
+        grupo = "curso"; estado = "En curso"; dias = inicio ? diasHabiles(inicio, hoy) : null;
+      } else if (casos.some(esPendiente)) {
+        grupo = "pendiente"; dias = creacion ? diasHabiles(creacion, hoy) : null;
+        estado = casos.some(function (c) { return c.estado_caso === "No iniciado"; }) ? "No iniciada" : "Escalada sin iniciar";
+      } else if (casos.every(function (c) { return c.fecha_fin_inst; })) {
+        grupo = "finalizada"; estado = "Finalizada"; dias = creacion ? diasHabiles(creacion, fin) : null;
+      } else {
+        grupo = "otra"; estado = unicos(function (c) { return c.estado_caso; }) || "Sin estado"; dias = null;
+      }
+      // Año/Mes: finalizadas por fecha de fin (como el resto de la pestaña); las demás, por creación.
+      if (!fInst.periodo(grupo === "finalizada" ? fin : creacion)) return;
+      salida.push({
+        id: k, casos: casos, estado: estado, grupo: grupo,
+        cliente: casos[0].cliente || "", nro_cuenta: casos[0].nro_cuenta || "",
+        tipos: unicos(function (c) { return c.tipo_trabajo; }), tecnicos: unicos(function (c) { return c.tecnico; }),
+        clasif: unicos(function (c) { return [c.unidad_comercial, c.categoria].filter(Boolean).join(" › "); }),
+        creacion: creacion, inicio: inicio, fin: fin, dias: dias,
+      });
+    });
+    return salida;
+  }
+
+  // Caso dentro del numero elegido en una tabla (todas son de instalaciones finalizadas).
+  function pasaSeleccion(c) {
+    var x = SEL_INST;
+    if (!x) return true;
+    if (!c._finalizada) return false;
+    var mes = anioMes(c.fecha_fin_inst);
+    if (x.t === "clasif") return (!x.f || c._uc === x.f) && (!x.s || c._cat === x.s) && (!x.c || mes === x.c);
+    if (x.t === "trabajo") return (!x.f || c._trabajo === x.f) && (!x.c || mes === x.c);
+    if (x.t === "tecuc") return (!x.f || c._tecnico === x.f) && (!x.c || c._uc === x.c);
+    return true;
+  }
+  function textoSeleccion(x) {
+    var partes = [];
+    if (x.t === "clasif") { partes.push(x.f ? x.f + (x.s ? " › " + x.s : "") : "Todas las unidades comerciales"); if (x.c) partes.push(etiquetaMes(x.c)); }
+    if (x.t === "trabajo") { partes.push(x.f || "Todos los tipos de trabajo"); if (x.c) partes.push(etiquetaMes(x.c)); }
+    if (x.t === "tecuc") { partes.push(x.f || "Todos los técnicos"); if (x.c) partes.push(x.c); }
+    return "Finalizadas · " + partes.join(" · ");
+  }
+  function clicTablaInst(e) {
+    var td = e.target.closest("td.pv-clic");
+    if (!td) return;
+    var nueva = { t: td.getAttribute("data-t"), f: td.getAttribute("data-f"), s: td.getAttribute("data-s"), c: td.getAttribute("data-c") };
+    var misma = SEL_INST && ["t", "f", "s", "c"].every(function (k) { return SEL_INST[k] === nueva[k]; });
+    SEL_INST = misma ? null : nueva;
+    if (SEL_INST) SEG.filtro = "todas";
+    pintarInstalaciones();
+    if (SEL_INST) {
+      // La pagina vive en un iframe sin scroll propio: la posicion se mide en la ventana contenedora.
+      var det = $("sel-inst"), r = det.getBoundingClientRect(), arriba = r.top, alto = window.innerHeight;
+      try { if (window.frameElement) { arriba += window.frameElement.getBoundingClientRect().top; alto = window.parent.innerHeight; } } catch (err) { /* otro origen */ }
+      if (arriba > alto - 80 || arriba < 0) det.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function pintarSeguimiento() {
+    var chip = $("sel-inst");
+    chip.hidden = !SEL_INST;
+    if (SEL_INST) {
+      chip.innerHTML = "<span>Filtrado por: <strong>" + esc(textoSeleccion(SEL_INST)) + "</strong></span>" +
+        '<button type="button" id="sel-inst-quitar">Quitar filtro &times;</button>';
+      $("sel-inst-quitar").addEventListener("click", function () { SEL_INST = null; pintarInstalaciones(); });
+    }
+    var todas = instalacionesDetalle();
+    var cuenta = { todas: todas.length, curso: 0, pendiente: 0, finalizada: 0, otra: 0 };
+    todas.forEach(function (i) { cuenta[i.grupo]++; });
+    $("seg-estado").innerHTML = GRUPOS_SEG.filter(function (o) { return o[0] !== "otra" || cuenta.otra; }).map(function (o) {
+      return '<button type="button" class="seg-btn' + (SEG.filtro === o[0] ? " activo" : "") + '" data-seg="' + o[0] + '">' + o[1] + " <span>" + cuenta[o[0]] + "</span></button>";
+    }).join("");
+    if (!SEG.armado) {
+      SEG.armado = true;
+      $("seg-estado").addEventListener("click", function (e) {
+        var b = e.target.closest("[data-seg]"); if (!b) return;
+        SEG.filtro = b.getAttribute("data-seg"); pintarSeguimiento();
+      });
+      $("buscar-seg").addEventListener("input", pintarSeguimiento);
+      $("tabla-seg").addEventListener("click", function (e) {
+        var th = e.target.closest("th[data-ord]");
+        if (th) { var o = th.getAttribute("data-ord"); SEG.asc = SEG.orden === o ? !SEG.asc : true; SEG.orden = o; pintarSeguimiento(); return; }
+        var tr = e.target.closest("tr.inst-fila[data-k]");
+        if (tr && tr.classList.contains("inst-multi")) { var k = tr.getAttribute("data-k"); SEG.abiertas[k] = !SEG.abiertas[k]; pintarSeguimiento(); }
+      });
+    }
+    var q = $("buscar-seg").value.trim().toLowerCase();
+    var filas = todas.filter(function (i) {
+      if (SEG.filtro !== "todas" && i.grupo !== SEG.filtro) return false;
+      if (!q) return true;
+      return [i.cliente, i.nro_cuenta, i.tipos, i.clasif, i.tecnicos, i.estado].concat(i.casos.map(function (c) { return c.numero; })).join(" ").toLowerCase().indexOf(q) >= 0;
+    });
+    var cols = [
+      ["casos", "Caso(s)"], ["cliente", "Cliente"], ["nro_cuenta", "Nro cuenta"], ["estado", "Estado"], ["tipos", "Tipo de trabajo"], ["clasif", "Clasificación"],
+      ["tecnicos", "Técnico"], ["creacion", "Creación"], ["inicio", "Inicio"], ["fin", "Fin"], ["dias", "Días hábiles"],
+    ];
+    filas.sort(function (a, b) {
+      var val = function (i) { return SEG.orden === "casos" ? i.casos.length : SEG.orden === "estado" ? RANGO_GRUPO[i.grupo] : i[SEG.orden]; };
+      var x = val(a), y = val(b);
+      x = x === null || x === undefined ? "" : x; y = y === null || y === undefined ? "" : y;
+      var r = (x < y ? -1 : x > y ? 1 : 0) * (SEG.asc ? 1 : -1);
+      // Desempate: las de más días primero.
+      return r || ((b.dias === null ? -1 : b.dias) - (a.dias === null ? -1 : a.dias));
+    });
+    var cuerpo = filas.map(function (i) {
+      var multi = i.casos.length > 1, abierta = multi && SEG.abiertas[i.id];
+      var casoTxt = multi ? '<span class="inst-toggle">' + (abierta ? "▾" : "▸") + " " + i.casos.length + " casos</span>" : linkCaso(i.casos[0]);
+      var fila = '<tr class="inst-fila' + (multi ? " inst-multi" : "") + (abierta ? " inst-abierta" : "") + '" data-k="' + esc(i.id) + '">' +
+        '<td class="nowrap">' + casoTxt + "</td><td>" + esc(i.cliente) + "</td><td>" + esc(i.nro_cuenta) + "</td>" +
+        '<td><span class="estado-tag estado-' + i.grupo + '">' + esc(i.estado) + "</span></td><td>" + esc(i.tipos) + "</td><td>" + esc(i.clasif) + "</td><td>" + esc(i.tecnicos) + "</td>" +
+        '<td class="nowrap">' + esc(fmtDia(i.creacion)) + '</td><td class="nowrap">' + esc(fmtDia(i.inicio)) + '</td><td class="nowrap">' + esc(fmtDia(i.fin)) + '</td><td class="num">' + (i.dias === null ? "" : fmtNum(i.dias)) + "</td></tr>";
+      if (!abierta) return fila;
+      return fila + '<tr class="inst-det"><td colspan="' + cols.length + '"><table class="sub-tabla"><thead><tr>' +
+        "<th>Caso</th><th>Tipo de trabajo</th><th>Clasificación</th><th>Estado del caso</th><th>Estado de la instalación</th><th>Técnico</th><th>Tipo de posventa</th><th>Creación</th><th>Inicio</th><th>Fin</th></tr></thead><tbody>" +
+        i.casos.map(function (c) {
+          return '<tr><td class="nowrap">' + linkCaso(c) + "</td><td>" + esc(c.tipo_trabajo || "") + "</td><td>" + esc([c.unidad_comercial, c.categoria].filter(Boolean).join(" › ")) + "</td><td>" + esc(c.estado_caso || "") + "</td><td>" +
+            esc(c.estado_instalacion || "") + "</td><td>" + esc(c.tecnico || "") + "</td><td>" + esc(c.tipo_posventa || "") + '</td><td class="nowrap">' +
+            esc(fmtDia(c.fecha_creacion)) + '</td><td class="nowrap">' + esc(fmtDia(c.fecha_inicio_inst)) + '</td><td class="nowrap">' + esc(fmtDia(c.fecha_fin_inst)) + "</td></tr>";
+        }).join("") + "</tbody></table></td></tr>";
+    }).join("");
+    $("tabla-seg").innerHTML = "<thead><tr>" + cols.map(function (c) {
+      return '<th data-ord="' + c[0] + '">' + esc(c[1]) + '<span class="sort-arrow">' + (SEG.orden === c[0] ? (SEG.asc ? "▲" : "▼") : "↕") + "</span></th>";
+    }).join("") + "</tr></thead><tbody>" + (cuerpo || '<tr><td colspan="' + cols.length + '" class="vacio">Sin instalaciones.</td></tr>') + "</tbody>";
+    $("cuenta-seg").textContent = filas.length + " de " + todas.length;
+  }
+
+  // =====================================================================
+  // Pestaña 2: Casos y elementos instalados
+  // =====================================================================
+  function casosCasos() {
+    return DATOS.casos.filter(function (c) {
+      return fCasos.periodo(c.fecha_fin_inst) && fCasos.pasa("estado", c.estado_caso) && fCasos.pasa("trabajo", c._trabajo) &&
+        fCasos.pasa("estadoInst", c.estado_instalacion) && fCasos.pasa("tecnico", c._tecnico);
+    });
+  }
+  function elementosDe(casos) {
+    var salida = [];
+    casos.forEach(function (c) {
+      (ELEM_POR_CASO[c.caso_id] || []).forEach(function (l) {
+        if (fCasos.pasa("sub", l.subcategoria)) salida.push({ caso: c, linea: l });
+      });
+    });
+    return salida;
+  }
+
+  function pintarCasos() {
+    var casos = casosCasos(), fin = casos.filter(function (c) { return c._finalizada; });
+    var porInst = function (c) { return c.id_inst; };
+    $("casos-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", fin, yo, "distintos", porInst, null, "casos-tipo-mes");
+    $("casos-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; },
+      col: function (c) { return c._uc; }, medida: "distintos", valor: porInst });
+    var elemFin = elementosDe(fin);
+    var cant = function (e) { return +e.linea.cantidad; };
+    $("elem-tec-tipo").innerHTML = tablaCruzada({ titulo: "Técnico", items: elemFin, fila: function (e) { return e.caso._tecnico; },
+      col: function (e) { return e.caso._uc; }, medida: "suma", valor: cant });
+    $("elem-tec-mes").innerHTML = tablaCruzada({ titulo: "Técnico", items: elemFin, fila: function (e) { return e.caso._tecnico; },
+      col: function (e) { return anioMes(e.caso.fecha_fin_inst); }, cols: "mes", medida: "suma", valor: cant });
+    $("casos-tec-posventa").innerHTML = tablaCruzada({ titulo: "Técnico",
+      items: fin.filter(function (c) { return c.tipo_posventa === "Presencial" || c.tipo_posventa === "Remoto"; }),
+      fila: function (c) { return c._tecnico; }, col: function (c) { return c.tipo_posventa; }, cols: ["Presencial", "Remoto"],
+      medida: "distintos", valor: porInst });
+
+    tablaCasos.mostrar(casos);
+    // Articulos de los casos filtrados (todos, terminados o no)
+    var porArt = {};
+    elementosDe(casos).forEach(function (e) {
+      var k = e.linea.articulo || "(Sin artículo)";
+      porArt[k] = porArt[k] || { articulo: k, subcategoria: e.linea.subcategoria, cantidad: 0, casos: new Set() };
+      porArt[k].cantidad += +e.linea.cantidad || 0;
+      porArt[k].casos.add(e.caso.caso_id);
+    });
+    tablaArts.mostrar(Object.keys(porArt).map(function (k) { var a = porArt[k]; a.n_casos = a.casos.size; return a; })
+      .sort(function (a, b) { return b.cantidad - a.cantidad; }));
+  }
+
+  // =====================================================================
+  // Pestaña 3: Facturacion
+  // =====================================================================
+  function pintarFacturacion() {
+    var ovs = DATOS.ovs.filter(function (o) {
+      var c = CASO_POR_ID[o.caso_id];
+      return c && fFact.periodo(c.fecha_fin_inst) && fFact.pasa("trabajo", c._trabajo) && fFact.pasa("estadoOv", o.estado_ov) &&
+        fFact.pasa("vc", ventaComodato(o)) && fFact.pasa("uc", o.unidad_comercial);
+    }).map(function (o) { return { ov: o, caso: CASO_POR_ID[o.caso_id] }; });
+    var total = suma(ovs, function (x) { return +x.ov.monto; });
+    var inst = distintos(ovs, function (x) { return x.caso.id_inst; });
+    var deTipo = function (t) { return ovs.filter(function (x) { return ventaComodato(x.ov) === t; }); };
+    kpis("kpi-fact", [
+      { num: fmtPesos(total), label: "Monto de las OV de productos" },
+      { num: fmtPesos(suma(deTipo("Venta"), function (x) { return +x.ov.monto; })), label: "Venta", sub: fmtNum(distintos(deTipo("Venta"), function (x) { return x.ov.ov_id; })) + " OV" },
+      { num: fmtPesos(suma(deTipo("Comodato"), function (x) { return +x.ov.monto; })), label: "Comodato", sub: fmtNum(distintos(deTipo("Comodato"), function (x) { return x.ov.ov_id; })) + " OV" },
+      { num: fmtNum(inst), label: "Instalaciones con OV" },
+      { num: inst ? fmtPesos(total / inst) : "–", label: "Promedio por instalación" },
+    ]);
+    var monto = function (x) { return +x.ov.monto; };
+    $("fact-vc-uc").innerHTML = tablaJerarquica({ titulo: "Venta / Comodato", items: ovs.filter(function (x) { return x.caso.fecha_fin_inst; }),
+      grupo: function (x) { return ventaComodato(x.ov); }, sub: function (x) { return x.ov.unidad_comercial || "Sin unidad comercial"; },
+      grupos: ["Venta", "Comodato"], col: function (x) { return anioMes(x.caso.fecha_fin_inst); }, valor: monto, fmt: fmtPesos });
+    $("fact-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", ovs.filter(function (x) { return x.caso.fecha_fin_inst; }),
+      function (x) { return x.caso; }, "suma", monto, fmtPesos, "fact-tipo-mes");
+    var porEstado = {};
+    ovs.forEach(function (x) { var k = x.ov.estado_ov || "(Sin estado)"; (porEstado[k] = porEstado[k] || []).push(x); });
+    var estados = Object.keys(porEstado).sort(function (a, b) { return suma(porEstado[b], monto) - suma(porEstado[a], monto); });
+    $("fact-estado").innerHTML = estados.length ? '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">Estado de la OV</th><th>Cantidad de OV</th><th>Monto</th><th>% del monto</th></tr></thead><tbody>' +
+      estados.map(function (k) {
+        var m = suma(porEstado[k], monto);
+        return '<tr><td class="pv-fila">' + esc(k) + "</td><td>" + fmtNum(distintos(porEstado[k], function (x) { return x.ov.ov_id; })) + "</td><td>" + fmtPesos(m) + "</td><td>" + pct(m, total) + "</td></tr>";
+      }).join("") + '</tbody><tfoot><tr><td class="pv-fila">Total</td><td>' + fmtNum(distintos(ovs, function (x) { return x.ov.ov_id; })) + "</td><td>" + fmtPesos(total) + "</td><td>100%</td></tr></tfoot></table></div>" : vacio();
+    tablaFact.mostrar(ovs);
+  }
+
+  // =====================================================================
+  // Pestaña 4: Demoras y variaciones
+  // =====================================================================
+  function pintarDemoras() {
+    var casos = DATOS.casos.filter(function (c) { return c._finalizada && fDem.periodo(c.fecha_fin_inst) && fDem.pasa("estado", c.estado_caso) && fDem.pasa("trabajo", c._trabajo); });
+    var fecha = function (c) { return c.fecha_fin_inst; };
+    var dem = casos.filter(demoraValida), vari = casos.filter(variacionValida);
+    $("dem-linea").innerHTML = lineaMeses(serieMensual(dem, fecha, function (c) { return c._demora; }, "promedio"));
+    $("var-linea").innerHTML = lineaMeses(serieMensual(vari, fecha, function (c) { return c._variacion; }, "promedio"));
+    $("dem-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", dem, yo, "promedio", function (c) { return c._demora; }, fmtDias, "dem-tipo-mes");
+    $("var-tipo-mes").innerHTML = tablaClasif("Unidad comercial / Categoría", vari, yo, "suma", function (c) { return c._variacion; }, fmtDias, "var-tipo-mes");
+    tablaDem.mostrar(casos);
+  }
+
+  // =====================================================================
+  // Pestaña 5: Elementos
+  // =====================================================================
+  function pintarElementos() {
+    var elems = [];
+    DATOS.casos.forEach(function (c) {
+      if (!fElem.periodo(c.fecha_fin_inst) || !fElem.pasa("trabajo", c._trabajo)) return;
+      (ELEM_POR_CASO[c.caso_id] || []).forEach(function (l) { elems.push({ caso: c, linea: l }); });
+    });
+    var cant = function (e) { return +e.linea.cantidad || 0; };
+    kpis("kpi-elem", DESTACADAS.map(function (d) {
+      return { num: fmtNum(suma(elems.filter(function (e) { return e.linea.subcategoria === d[0]; }), cant)), label: d[1] };
+    }).concat([{ num: fmtNum(suma(elems, cant)), label: "Elementos instalados en total", sub: "Sin cable, mano de obra ni artículos internos" }]));
+    $("donuts-elem").innerHTML = DESTACADAS.map(function (d) {
+      var porArt = {};
+      elems.forEach(function (e) { if (e.linea.subcategoria === d[0]) { var k = e.linea.articulo; porArt[k] = (porArt[k] || 0) + cant(e); } });
+      var pares = Object.keys(porArt).map(function (k) { return [k, Math.round(porArt[k])]; }).sort(function (a, b) { return b[1] - a[1]; });
+      if (pares.length > 7) {
+        var resto = pares.slice(6).reduce(function (s, p) { return s + p[1]; }, 0);
+        pares = pares.slice(0, 6).concat([["Otros", resto]]);
+      }
+      return torta(d[0] + " por artículo", pares, "unidades");
+    }).join("");
+    $("elem-sub-mes").innerHTML = tablaCruzada({ titulo: "Subcategoría", items: elems.filter(function (e) { return e.caso.fecha_fin_inst; }),
+      fila: function (e) { return e.linea.subcategoria || "(Sin subcategoría)"; }, col: function (e) { return anioMes(e.caso.fecha_fin_inst); },
+      cols: "mes", medida: "suma", valor: cant });
+  }
+
+  // =====================================================================
+  // Carga de datos
+  // =====================================================================
+  // orden: columnas de la clave primaria (el paginado necesita un orden sin empates).
+  // filtros: [[columna, valor], ...] opcional (igualdades).
+  async function leerTodo(tabla, select, orden, filtros) {
+    var filas = [], desde = 0, PAG = 1000;
+    for (;;) {
+      var q = sb.from(tabla).select(select);
+      (filtros || []).forEach(function (f) { q = q.eq(f[0], f[1]); });
+      orden.forEach(function (col) { q = q.order(col, { ascending: true }); });
+      var r = await q.range(desde, desde + PAG - 1);
+      if (r.error) throw new Error(tabla + ": " + r.error.message);
+      filas = filas.concat(r.data);
+      if (r.data.length < PAG) return filas;
+      desde += PAG;
+    }
+  }
+
+  function linkCaso(c) {
+    return '<a class="accion-link" href="' + URL_CASO + encodeURIComponent(c.caso_id) + '" target="_blank" rel="noopener">' + esc(c.numero || c.caso_id) + " ↗</a>";
+  }
+  function numCol(titulo, f, fmt) {
+    return { titulo: titulo, valor: function (x) { var v = f(x); return v === null || v === undefined ? "" : (fmt || fmtNum)(v); },
+      orden: function (x) { var v = f(x); return v === null || v === undefined ? -1e15 : v; }, clase: "num" };
+  }
+
+  function armarTablas() {
+    var colsCaso = [
+      { titulo: "Número", html: linkCaso, valor: function (c) { return c.numero || ""; }, clase: "nowrap" },
+      { titulo: "Nro cuenta", valor: function (c) { return c.nro_cuenta || ""; }, orden: function (c) { return +c.nro_cuenta || 0; } },
+      { titulo: "Cliente", valor: function (c) { return c.cliente || ""; } },
+      { titulo: "Creación", valor: function (c) { return fmtDia(c.fecha_creacion); }, orden: function (c) { return c.fecha_creacion; }, clase: "nowrap" },
+      { titulo: "Inicio", valor: function (c) { return fmtDia(c.fecha_inicio_inst); }, orden: function (c) { return c.fecha_inicio_inst; }, clase: "nowrap" },
+      { titulo: "Fin", valor: function (c) { return fmtDia(c.fecha_fin_inst); }, orden: function (c) { return c.fecha_fin_inst; }, clase: "nowrap" },
+      { titulo: "Técnico", valor: function (c) { return c.tecnico || ""; } },
+      { titulo: "Tipo de trabajo", valor: function (c) { return c.tipo_trabajo || ""; } },
+      { titulo: "Unidad comercial", valor: function (c) { return c.unidad_comercial || ""; } },
+      { titulo: "Categoría", valor: function (c) { return c.categoria || ""; } },
+    ];
+    tablaCasos = crearTabla("tabla-casos", "buscar-casos", "cuenta-casos", colsCaso.concat([
+      { titulo: "Estado", valor: function (c) { return c.estado_caso || ""; } },
+      { titulo: "Tipo de posventa", valor: function (c) { return c.tipo_posventa || ""; } },
+      numCol("Días MO presup.", function (c) { return c._mo_presup; }, fmtDias),
+      numCol("Días hábiles en curso", function (c) { return c._dias_hoy; }),
+      numCol("Elementos", function (c) { return c._elementos || null; }),
+      numCol("Monto OV", function (c) { return c._monto; }, fmtPesos),
+    ]), function (c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c.tipo_trabajo, c.unidad_comercial, c.categoria, c.estado_caso, c.tipo_posventa].join(" "); });
+
+    tablaArts = crearTabla("tabla-arts", "buscar-arts", "cuenta-arts", [
+      { titulo: "Artículo", valor: function (a) { return a.articulo; } },
+      { titulo: "Subcategoría", valor: function (a) { return a.subcategoria || ""; } },
+      numCol("Cantidad", function (a) { return a.cantidad; }),
+      numCol("Casos", function (a) { return a.n_casos; }),
+    ], function (a) { return [a.articulo, a.subcategoria].join(" "); });
+
+    tablaFact = crearTabla("tabla-fact", "buscar-fact", "cuenta-fact", [
+      { titulo: "OV", html: function (x) { return '<a class="accion-link" href="' + URL_OV + encodeURIComponent(x.ov.ov_id) + '" target="_blank" rel="noopener">' + esc(x.ov.ov_numero || x.ov.ov_id) + " ↗</a>"; },
+        valor: function (x) { return x.ov.ov_numero || ""; }, clase: "nowrap" },
+      { titulo: "Estado OV", valor: function (x) { return x.ov.estado_ov || ""; } },
+      { titulo: "Venta / Comodato", valor: function (x) { return ventaComodato(x.ov); } },
+      { titulo: "Unidad comercial", valor: function (x) { return x.ov.unidad_comercial || ""; } },
+      numCol("Monto", function (x) { return x.ov.monto === null ? null : +x.ov.monto; }, fmtPesos),
+      { titulo: "Caso", html: function (x) { return linkCaso(x.caso); }, valor: function (x) { return x.caso.numero || ""; }, clase: "nowrap" },
+      { titulo: "Cliente", valor: function (x) { return x.caso.cliente || ""; } },
+      { titulo: "Tipo de trabajo", valor: function (x) { return x.caso.tipo_trabajo || ""; } },
+      { titulo: "Clasificación", valor: function (x) { return [x.caso.unidad_comercial, x.caso.categoria].filter(Boolean).join(" › "); } },
+      { titulo: "Fin instalación", valor: function (x) { return fmtDia(x.caso.fecha_fin_inst); }, orden: function (x) { return x.caso.fecha_fin_inst; }, clase: "nowrap" },
+      { titulo: "Presupuesto", valor: function (x) { return x.ov.presupuesto || ""; }, clase: "nowrap" },
+      { titulo: "Oportunidad", valor: function (x) { return x.ov.oportunidad || ""; } },
+    ], function (x) { return [x.ov.ov_numero, x.ov.estado_ov, ventaComodato(x.ov), x.ov.unidad_comercial, x.ov.presupuesto, x.caso.numero, x.caso.cliente, x.caso.tipo_trabajo, x.caso.unidad_comercial, x.caso.categoria, x.ov.oportunidad].join(" "); });
+
+    tablaDem = crearTabla("tabla-dem", "buscar-dem", "cuenta-dem", colsCaso.concat([
+      numCol("Demora agenda (días)", function (c) { return c._demora; }),
+      numCol("Días reales", function (c) { return c._mo_reales; }, fmtDias),
+      numCol("Días presup.", function (c) { return c._mo_presup; }, fmtDias),
+      numCol("Variación", function (c) { return c._variacion; }, fmtDias),
+    ]), function (c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c.tipo_trabajo, c.unidad_comercial, c.categoria].join(" "); });
+  }
+
+  var iniciado = false;
+  // Aviso "Cargando datos…" mientras se leen las tablas (al entrar y despues de actualizar).
+  function mostrarCargando(si) {
+    var aviso = $("cargando"), principal = document.querySelector("main");
+    if (aviso) aviso.hidden = !si;
+    if (principal) principal.classList.toggle("main--cargando", !!si);
+  }
+  async function cargarDatos() {
+    mostrarCargando(true);
+    try { await cargarDatosInterno(); } finally { mostrarCargando(false); }
+  }
+  async function cargarDatosInterno() {
+    // Tablas comunes: solo el alcance de este informe (casos del asignado 133).
+    var res = await Promise.all([
+      leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_creacion,fecha_inicio_inst,fecha_fin_inst,cliente,nro_cuenta,tecnico,tipo_proyecto,estado_caso,estado_instalacion,tipo_posventa,dias_reales_trabajo,tipo_trabajo,unidad_comercial,categoria,clasificacion_origen", ["caso_id"], [["alcance", ALCANCE]]),
+      leerTodo("ind_caso_ov", "caso_id,ov_id,ov_numero,fecha_ov,estado_ov,oportunidad,monto,es_comodato,unidad_comercial,presupuesto", ["caso_id", "ov_id"], [["alcance", ALCANCE]]),
+      leerTodo("ind_caso_ov_linea", "caso_id,cantidad", ["caso_id", "ov_id", "linea_id"], [["alcance", ALCANCE], ["es_mo", true]]),
+    ]);
+    // Filtro general del informe (como el Power BI): sin tipo de proyecto o tipos ajenos.
+    DATOS.casos = res[0].filter(function (c) { return c.tipo_proyecto && TIPOS_EXCLUIDOS.indexOf(c.tipo_proyecto) < 0; });
+    DATOS.ovs = res[1];
+    DATOS.lineasMo = res[2];
+    DATOS.lineasElem = null;
+    prepararDatos();
+
+    var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
+    var estados = valoresDe(DATOS.casos, function (c) { return c.estado_caso; });
+    fInst = crearFiltrosTab("filtros-inst", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
+      { clave: "estado", nombre: "Estado del caso", valores: estados },
+    ], pintarInstalaciones);
+    fFact = crearFiltrosTab("filtros-fact", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
+      { clave: "vc", nombre: "Venta / Comodato", valores: ["Venta", "Comodato"] },
+      { clave: "uc", nombre: "Unidad comercial", valores: valoresDe(DATOS.ovs, function (o) { return o.unidad_comercial; }) },
+      { clave: "estadoOv", nombre: "Estado de la OV", valores: valoresDe(DATOS.ovs, function (o) { return o.estado_ov; }) },
+    ], pintarFacturacion);
+    fDem = crearFiltrosTab("filtros-dem", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
+      { clave: "estado", nombre: "Estado del caso", valores: estados },
+    ], pintarDemoras);
+
+    if (!iniciado) { iniciado = true; armarTablas(); }
+    // Cada pestaña se dibuja (y lee sus datos extra) recien cuando se abre.
+    PINTADAS = {};
+    await abrirPestana(PESTANA_ACTIVA, true);
+  }
+
+  // Elementos instalados: lineas de OV con es_elemento. Son la mayor parte de los
+  // datos del informe, por eso se leen solo al abrir Casos y elementos o Elementos.
+  async function cargarElementos() {
+    DATOS.lineasElem = await leerTodo("ind_caso_ov_linea", "caso_id,ov_id,linea_id,articulo,cantidad,subcategoria",
+      ["caso_id", "ov_id", "linea_id"], [["alcance", ALCANCE], ["es_elemento", true]]);
+    prepararElementos();
+    var fechas = DATOS.casos.map(function (c) { return c.fecha_fin_inst; });
+    fCasos = crearFiltrosTab("filtros-casos", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
+      { clave: "estado", nombre: "Estado del caso", valores: valoresDe(DATOS.casos, function (c) { return c.estado_caso; }) },
+      { clave: "estadoInst", nombre: "Estado de la instalación", valores: valoresDe(DATOS.casos, function (c) { return c.estado_instalacion; }) },
+      { clave: "tecnico", nombre: "Técnico", valores: valoresDe(DATOS.casos, function (c) { return c._tecnico; }) },
+      { clave: "sub", nombre: "Elementos", valores: valoresDe(DATOS.lineasElem, function (l) { return l.subcategoria; }) },
+    ], pintarCasos);
+    fElem = crearFiltrosTab("filtros-elem", fechas, [
+      { clave: "trabajo", nombre: "Tipo de trabajo", valores: valoresDe(DATOS.casos, function (c) { return c._trabajo; }) },
+    ], pintarElementos);
+  }
+
+  var PESTANA_ACTIVA = "instalaciones", PINTADAS = {}, LEYENDO_ELEM = null;
+  var PESTANAS = {
+    instalaciones: { pintar: function () { pintarKpisInstalaciones(); pintarInstalaciones(); } },
+    casos: { pintar: pintarCasos, elementos: true },
+    facturacion: { pintar: pintarFacturacion },
+    demoras: { pintar: pintarDemoras },
+    elementos: { pintar: pintarElementos, elementos: true },
+  };
+  // enCarga: ya hay un aviso de carga activo (lo maneja cargarDatos).
+  async function abrirPestana(id, enCarga) {
+    var p = PESTANAS[id];
+    if (!p || !DATOS.casos.length && !iniciado) return;
+    if (p.elementos && DATOS.lineasElem === null) {
+      if (!enCarga) mostrarCargando(true);
+      try {
+        // Una sola lectura aunque se cambie de pestaña mientras carga.
+        LEYENDO_ELEM = LEYENDO_ELEM || cargarElementos();
+        await LEYENDO_ELEM;
+      } catch (e) {
+        setEstado("No se pudieron leer los elementos instalados: " + e.message, "error");
+        return;
+      } finally {
+        LEYENDO_ELEM = null;
+        if (!enCarga) mostrarCargando(false);
+      }
+    }
+    if (!PINTADAS[id]) { p.pintar(); PINTADAS[id] = true; }
+  }
+
+  // =====================================================================
+  // Ultima actualizacion, boton Actualizar e historial
+  // =====================================================================
+  function setEstado(texto, tipo) {
+    var el = $("upd-estado");
+    el.textContent = texto || "";
+    el.className = "upd-estado" + (tipo ? " upd-estado--" + tipo : "");
+  }
+  function hace(iso) {
+    var min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 1) return "recién";
+    if (min < 60) return "hace " + min + " min";
+    var h = Math.floor(min / 60);
+    if (h < 24) return "hace " + h + (h === 1 ? " hora" : " horas");
+    var d = Math.floor(h / 24);
+    return "hace " + d + (d === 1 ? " día" : " días");
+  }
+
+  async function pintarUltima() {
+    var r = await sb.from("ind_corrida").select("finalizado_en,origen,mensaje,stats")
+      .eq("area", AREA).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
+    if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
+    var c = r.data[0];
+    // Sin actualizacion automatica por ahora: no se marca como atrasada.
+    $("upd-hero").hidden = false;
+    $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
+    $("upd-hero-det").textContent = [c.origen === "automatica" ? "Automática" : "Manual", hace(c.finalizado_en)].join(" · ");
+    $("report-footer").innerHTML = "SP Seguridad Privada &middot; Indicadores de Instalaciones &middot; datos de NetSuite, actualizados el " + esc(fmtFechaHora(c.finalizado_en));
+    if (c.mensaje && puedeEditar) setEstado("Aviso de la última actualización: " + c.mensaje, "error");
+  }
+
+  async function cargarHistorial() {
+    var r = await sb.from("ind_corrida").select("id,estado,origen,iniciado_en,finalizado_en,mensaje,paso,stats")
+      .eq("area", AREA).order("iniciado_en", { ascending: false }).limit(HISTORIAL);
+    var body = $("upd-hist-body");
+    if (r.error) { body.innerHTML = '<tr><td colspan="4">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
+    if (!r.data.length) { body.innerHTML = '<tr><td colspan="4">Todavía no hay actualizaciones.</td></tr>'; return; }
+    var etiquetas = { ok: "OK", error: "Error", en_curso: "En curso" };
+    body.innerHTML = r.data.map(function (c) {
+      var s = c.stats || {};
+      var detalle = c.estado === "en_curso" ? (c.paso || "")
+        : c.estado === "error" ? (c.mensaje || "")
+        : [s.casos != null ? s.casos + " casos" : null, s.ov != null ? s.ov + " OV" : null,
+           s.elementos != null ? fmtNum(s.elementos) + " elementos" : null, c.mensaje].filter(Boolean).join(" · ");
+      if (detalle.length > 200) detalle = detalle.slice(0, 200) + "…";
+      return "<tr><td>" + esc(fmtFechaHora(c.finalizado_en || c.iniciado_en)) + "</td>" +
+        "<td>" + (c.origen === "automatica" ? "Automática" : "Manual") + "</td>" +
+        '<td><span class="upd-tag upd-tag--' + esc(c.estado) + '">' + esc(etiquetas[c.estado] || c.estado) + "</span></td>" +
+        '<td class="upd-det">' + esc(detalle) + "</td></tr>";
+    }).join("");
+  }
+
+  function bloquear(b) {
+    $("upd-btn").disabled = b;
+    $("upd-btn").textContent = b ? "Actualizando…" : "Actualizar ahora";
+  }
+
+  function seguirCorrida(id) {
+    bloquear(true);
+    setEstado("Actualizando…");
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async function () {
+      var r = await sb.from("ind_corrida").select("estado,paso,mensaje").eq("id", id).single();
+      if (r.error) { setEstado("No se pudo consultar el avance: " + r.error.message, "error"); return; }
+      var c = r.data;
+      if (c.estado === "en_curso") { setEstado("Actualizando: " + (c.paso || "…")); return; }
+      clearInterval(pollTimer); pollTimer = null;
+      bloquear(false);
+      if (c.estado === "ok") {
+        setEstado(c.mensaje ? "Actualización terminada con avisos: " + c.mensaje : "Actualización terminada.", c.mensaje ? "error" : "ok");
+        await cargarDatos();
+        await pintarUltima();
+      } else {
+        setEstado("La actualización falló: " + (c.mensaje || "error desconocido") + ". Se siguen mostrando los datos anteriores.", "error");
+      }
+      if (!$("upd-panel").hidden) cargarHistorial();
+    }, POLL_MS);
+  }
+
+  async function actualizar() {
+    bloquear(true);
+    setEstado("Iniciando actualización…");
+    var s = await sb.auth.getSession();
+    var token = s.data && s.data.session && s.data.session.access_token;
+    if (!token) { bloquear(false); setEstado("Tu sesión venció: volvé a ingresar a la web interna.", "error"); return; }
+    try {
+      var resp = await llamarActualizar(token);
+      var body = await resp.json().catch(function () { return {}; });
+      if (resp.status === 409 && body.detail && body.detail.corrida_id) {
+        setEstado("Ya había una actualización en curso; se muestra su avance.");
+        seguirCorrida(body.detail.corrida_id);
+        return;
+      }
+      if (!resp.ok) {
+        var det = body.detail;
+        bloquear(false);
+        setEstado("No se pudo iniciar la actualización: " + (typeof det === "string" ? det : (det && det.mensaje) || "error " + resp.status), "error");
+        return;
+      }
+      seguirCorrida(body.corrida_id);
+    } catch (e) {
+      bloquear(false);
+      setEstado(await diagnosticoConexion(e), "error");
+    }
+  }
+
+  // POST de actualizacion. Si falla la conexion se reintenta una vez a los 3 s
+  // (por ejemplo, si el servicio se estaba reiniciando por un despliegue).
+  async function llamarActualizar(token) {
+    var pedir = function () {
+      return fetch(API_BASE_URL + "/indicadores/" + AREA + "/actualizar", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+      });
+    };
+    try {
+      return await pedir();
+    } catch (e) {
+      setEstado("Reintentando la conexión con el servicio…");
+      await new Promise(function (r) { setTimeout(r, 3000); });
+      return await pedir();
+    }
+  }
+
+  // "Failed to fetch" no dice la causa. Se prueba /health sin CORS para
+  // distinguir servicio caido / red bloqueada de una direccion no autorizada.
+  async function diagnosticoConexion(e) {
+    var alcanzable = true;
+    try { await fetch(API_BASE_URL + "/health", { mode: "no-cors", cache: "no-store" }); }
+    catch (x) { alcanzable = false; }
+    if (!alcanzable) {
+      return "No hay conexión con el servicio de actualización desde esta PC. Puede estar reiniciándose " +
+        "(probá de nuevo en un minuto) o la red de esta PC bloquea " + API_BASE_URL + ".";
+    }
+    if (location.origin !== ORIGEN_WEB) {
+      return "Abriste la web interna desde " + location.origin + " y el servicio de actualización sólo acepta " +
+        ORIGEN_WEB + ". Ingresá desde esa dirección y volvé a intentar.";
+    }
+    return "El servicio responde pero el navegador bloqueó la llamada (" + e.message + "). " +
+      "Puede ser una extensión del navegador o el antivirus; probá desde una ventana de incógnito.";
+  }
+
+  // =====================================================================
+  // Inicio
+  // =====================================================================
+  function iniciarPestanas() {
+    $("panel-instalaciones").addEventListener("click", clicTablaInst);
+    document.querySelectorAll(".tab-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-tab");
+        document.querySelectorAll(".tab-btn").forEach(function (b) {
+          b.classList.toggle("active", b === btn);
+          b.setAttribute("aria-selected", b === btn ? "true" : "false");
+        });
+        document.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.toggle("active", p.id === "panel-" + id); });
+        PESTANA_ACTIVA = id;
+        if (iniciado) abrirPestana(id);
+      });
+    });
+  }
+
+  function sinAcceso(mensaje) {
+    document.querySelector(".wrap").innerHTML = '<div class="aviso-acceso">' + esc(mensaje) + "</div>";
+  }
+
+  async function iniciar() {
+    iniciarPestanas();
+    var s = await sb.auth.getSession();
+    if (!s.data || !s.data.session) { sinAcceso("Iniciá sesión en la web interna para ver estos indicadores."); return; }
+    var ver = await sb.rpc("fn_tiene_permiso", { p_seccion_id: SECCION, p_nivel: "ver" });
+    if (!(ver && ver.data === true)) { sinAcceso("No tenés permiso para ver los indicadores de Instalaciones. Pedile a un administrador que te lo habilite."); return; }
+    var ed = await sb.rpc("fn_tiene_permiso", { p_seccion_id: SECCION, p_nivel: "editar" });
+    puedeEditar = !!(ed && ed.data === true);
+    $("upd-btn").hidden = !puedeEditar;
+    $("upd-menu-btn").hidden = !puedeEditar;
+    $("upd-btn").addEventListener("click", actualizar);
+    $("upd-menu-btn").addEventListener("click", function () {
+      var abrir = $("upd-panel").hidden;
+      $("upd-panel").hidden = !abrir;
+      $("upd-menu-btn").setAttribute("aria-expanded", abrir ? "true" : "false");
+      if (abrir) cargarHistorial();
+    });
+
+    try {
+      await cargarDatos();
+    } catch (e) {
+      setEstado("No se pudieron leer los datos: " + e.message, "error");
+      return;
+    }
+    await pintarUltima();
+    if (!DATOS.casos.length) {
+      setEstado(puedeEditar ? "Todavía no hay datos cargados: apretá Actualizar ahora." : "Todavía no hay datos cargados.");
+    }
+    if (puedeEditar) {
+      var enCurso = await sb.from("ind_corrida").select("id").eq("area", AREA).eq("estado", "en_curso").limit(1);
+      if (enCurso.data && enCurso.data.length) seguirCorrida(enCurso.data[0].id);
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+</script>
+</body>
+</html>
