@@ -5,7 +5,8 @@
    ============================================================ */
 
 .informes-mkt-wrap {
-  max-width: var(--max-width-content);
+  /* Mismo ancho que Indicadores por Área: el informe tiene tablas y gráficos anchos. */
+  max-width: 1400px;
   margin: var(--space-10) auto;
   padding: 0 var(--space-6) 3rem;
 }
