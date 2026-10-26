@@ -885,10 +885,19 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   // interno del cliente (ns_cliente_id_interno), que viene en las
   // actualizaciones desde esa fecha; sin ese dato el numero queda sin link.
   var NS_CLIENTE_URL = "https://7138551.app.netsuite.com/app/common/entity/custjob.nl?id=";
+  // Respaldo: las actualizaciones anteriores no traen el ID interno; en ese caso
+  // el numero abre la busqueda global de NetSuite por numero de cliente.
+  var NS_BUSQUEDA_URL = "https://7138551.app.netsuite.com/app/common/search/ubersearchresults.nl?quicksearch=T&searchtype=Uber&frame=be&Uber_NAMEtype=KEYWORDSTARTSWITH&Uber_NAME=";
+  function urlNetSuiteCliente(c) {
+    if (c.ns_cliente_id_interno) return NS_CLIENTE_URL + encodeURIComponent(c.ns_cliente_id_interno);
+    if (c.nro_cliente_netsuite) return NS_BUSQUEDA_URL + encodeURIComponent("cus:" + c.nro_cliente_netsuite);
+    return null;
+  }
   function linkNetSuite(c, texto) {
-    var id = c.ns_cliente_id_interno;
-    if (!id) return esc(texto);
-    return '<a class="accion-link" href="' + NS_CLIENTE_URL + encodeURIComponent(id) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el cliente en NetSuite">' + esc(texto) + " ↗</a>";
+    var url = urlNetSuiteCliente(c);
+    if (!url) return esc(texto);
+    var titulo = c.ns_cliente_id_interno ? "Abrir el cliente en NetSuite" : "Buscar el cliente en NetSuite";
+    return '<a class="accion-link" href="' + url + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + titulo + '">' + esc(texto) + " ↗</a>";
   }
 
   function rowCells(explorerId, c) {
@@ -1119,7 +1128,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
           "Nro cliente (NetSuite)": vacio(c.nro_cliente_netsuite),
           "Cliente": vacio(c.nombre),
           "ID CLIENTE CRM": crm,
-          "Link NetSuite": c.ns_cliente_id_interno ? NS_CLIENTE_URL + encodeURIComponent(c.ns_cliente_id_interno) : null,
+          "Link NetSuite": urlNetSuiteCliente(c),
           "Link GHL": crm ? GHL_CONTACTO_URL + encodeURIComponent(crm) : null,
           "Oportunidad": vacio(o.oportunidad),
           "Fecha oportunidad": fechaExcel(o.fecha),
