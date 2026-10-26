@@ -13,7 +13,9 @@ import requests
 
 from app import config
 
-TAMANO_LOTE = 200
+# Filas por envio en los upsert. Con 200, las ~6.000 filas de OV y lineas de
+# Instalaciones tardaban ~36 s (unos 30 envios seguidos); con 1000 son ~7.
+TAMANO_LOTE = 1000
 
 
 def _h(token, prefer=None):
