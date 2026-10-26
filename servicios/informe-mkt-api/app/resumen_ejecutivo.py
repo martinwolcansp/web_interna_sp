@@ -288,6 +288,16 @@ def _limpio(v):
     return None if _vacio(v) else v
 
 
+def _id_entero(v):
+    """'12345', 12345 o 12345.0 (pandas lo pasa a float si hay vacios) -> '12345'."""
+    if v is None:
+        return None
+    try:
+        return str(int(float(v)))
+    except (TypeError, ValueError):
+        return str(v).strip() or None
+
+
 def _fecha_iso(v):
     if _vacio(v):
         return None
@@ -426,6 +436,8 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
             "fecha_cierre": None,
             "etapa_pipeline": etapa_pipeline,
             "nro_cliente_netsuite": primero(filas_ns, "ID"),
+            # ID interno del cliente en NetSuite, para el link (26/10/2026)
+            "ns_cliente_id_interno": _id_entero(primero(filas_ns, "ID interno cliente")),
         }
         old = old_by_id.get(contact_id)
         for k in CONV_FIELDS_DEFAULT:
@@ -456,10 +468,6 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
     n_ganados = len(contactos_ganados)
     n_del_periodo = sum(1 for c in nuevos_contacts if c["contacto_del_periodo"])
     origen_ganadas = contar(contactos_ganados, "origen_combinado")
-    fuente_origen_ganadas = {}
-    for c in contactos_ganados:
-        f = c.get("origen_combinado_fuente") or "sin_dato"
-        fuente_origen_ganadas[f] = fuente_origen_ganadas.get(f, 0) + 1
     sin_ghl = sum(1 for c in contactos_con_oportunidad if c["sin_contacto_ghl"])
 
     rango_fechas = f"{periodo_inicio.strftime('%d/%m')} al {periodo_fin.strftime('%d/%m')}"
@@ -491,7 +499,6 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
 <div class="donut-row donut-row-single">
   <div class="donut-block">
     <div class="donut-block-title">Origen de los clientes con oportunidad ganada &middot; n={n_ganados}</div>
-    <div class="kpi-caveat">Primero la etiqueta de origen de GHL (anuncio, formulario, web, org&aacute;nico, repesca); si no tiene, el campo Origen del Cliente (NetSuite; si no, GHL); despu&eacute;s la etiqueta gen&eacute;rica de WhatsApp y, por &uacute;ltimo, la Forma de Contacto. Resuelto por etiqueta {fuente_origen_ganadas.get("tag", 0)}, por campo Origen {fuente_origen_ganadas.get("origen_cliente", 0)}, por WhatsApp gen&eacute;rico {fuente_origen_ganadas.get("tag_generico", 0)}, por Forma de Contacto {fuente_origen_ganadas.get("forma_contacto", 0)}, sin dato {fuente_origen_ganadas.get("sin_dato", 0)}. <strong>Sin etiqueta de origen en GHL: {n_ganados - fuente_origen_ganadas.get("tag", 0) - fuente_origen_ganadas.get("tag_generico", 0)}</strong> &middot; <a href="#" onclick='applyFilter("oportunidades", {{"grupo_venta": "Cerrada (venta)", "origen_desde_etiqueta": "No"}}); return false;'>ver en la tabla</a> (marcados &laquo;sin etiqueta GHL&raquo;).</div>
     {donut_svg(origen_ganadas, n_ganados, "origen_combinado", "oportunidades")}
   </div>
 </div>

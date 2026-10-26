@@ -56,6 +56,7 @@ ETIQUETAS = {
     "oportunidad": "Oportunidad",
     "creacion_cliente": "Creación cliente potencial",
     "id_cliente": "ID",
+    "id_interno_cliente": "ID interno cliente",  # 26/10/2026: link al cliente en NetSuite
     "cliente": "Cliente",
     "origen": "Origen de clientes potenciales",
     "forma_contacto": "Forma de Contacto con SP",
@@ -226,6 +227,7 @@ def consulta_oportunidades(desde, hasta, clase_completa=True, campos_extra=True)
             t.tranid                                        AS oportunidad,
             TO_CHAR(c.datecreated, 'YYYY-MM-DD HH24:MI')    AS creacion_cliente,
             c.entityid                                      AS id_cliente,
+            c.id                                            AS id_interno_cliente,
             NVL(c.companyname, c.altname)                   AS cliente,
             BUILTIN.DF(c.leadsource)                        AS origen,
             BUILTIN.DF(c.custentity_ap_sp_forma_de_contactoi) AS forma_contacto,

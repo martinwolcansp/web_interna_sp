@@ -402,11 +402,15 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       c.origen_desde_etiqueta = (f === "tag" || f === "tag_generico") ? "Sí" : "No";
     }
   });
-  // Marca "sin etiqueta GHL" junto al origen; el click filtra la tabla por esos
-  // contactos (otro click quita el filtro).
-  function marcaSinEtiqueta(explorerId, filtro, fuente) {
+  // Campo del filtro "Origen desde etiqueta GHL" de cada tabla.
+  function campoEtiqueta(explorerId) {
+    return explorerId === "oportunidades" ? "origen_desde_etiqueta" : "canal_tag_desde_etiqueta";
+  }
+  // Marca "sin etiqueta GHL" junto al origen; el click aplica (o quita) el
+  // filtro de la tabla, sin tocar los demas filtros.
+  function marcaSinEtiqueta(explorerId, fuente) {
     var titulo = "El origen no viene de una etiqueta de GHL" + (fuente ? " (sale de: " + fuente + ")" : "") + ". Click para ver solo estos contactos.";
-    return ' <span class="pill pill-sin-etiqueta" title="' + esc(titulo) + '" onclick=\'event.stopPropagation(); applyFilter("' + explorerId + '", ' + JSON.stringify(filtro) + ')\'>sin etiqueta GHL</span>';
+    return ' <span class="pill pill-sin-etiqueta" title="' + esc(titulo) + '" onclick=\'event.stopPropagation(); toggleSinEtiqueta("' + explorerId + '")\'>sin etiqueta GHL</span>';
   }
   // Dia de referencia de "Contactos cargados": hoy, o el ultimo dia con datos
   // si el informe mostrado termina antes de hoy. Fechas en hora de Argentina.
@@ -530,6 +534,16 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       st.filters.vendedor = value;
     }
     render(explorerId);
+  };
+  window.setEtiquetaFilter = function (explorerId, value) {
+    var st = getState(explorerId), k = campoEtiqueta(explorerId);
+    if (!value) delete st.filters[k];
+    else st.filters[k] = value;
+    render(explorerId);
+  };
+  window.toggleSinEtiqueta = function (explorerId) {
+    var st = getState(explorerId);
+    setEtiquetaFilter(explorerId, st.filters[campoEtiqueta(explorerId)] === "No" ? "" : "No");
   };
   window.setGrupoFilter = function (explorerId, value) {
     var st = getState(explorerId);
@@ -708,6 +722,28 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     sel.dataset.built = "1";
   }
 
+  // Selector "Origen: desde etiqueta GHL / sin etiqueta GHL" (26/10/2026). Lo
+  // agrega la pagina en la barra de la tabla (el HTML de la barra viene del
+  // servicio). En el Informe general solo aparece si la actualizacion trae el
+  // origen combinado (desde el 26/10/2026).
+  function renderEtiquetaFilter(explorerId) {
+    var k = campoEtiqueta(explorerId);
+    var sel = document.getElementById(explorerId + "-etiqueta-select");
+    if (!sel) {
+      var controles = document.querySelector("#explorer-" + explorerId + " .explorer-bar-controls");
+      if (!controles || !baseRows(explorerId).some(function (c) { return c[k] !== undefined; })) return;
+      sel = document.createElement("select");
+      sel.className = "explorer-select";
+      sel.id = explorerId + "-etiqueta-select";
+      sel.title = "Filtra según si el origen viene de una etiqueta de GHL";
+      sel.innerHTML = '<option value="">Origen: todos</option><option value="Sí">Origen desde etiqueta GHL</option><option value="No">Sin etiqueta GHL</option>';
+      sel.onchange = function () { setEtiquetaFilter(explorerId, this.value); };
+      var antesDe = controles.querySelector(".explorer-date-group");
+      controles.insertBefore(sel, antesDe || null);
+    }
+    sel.value = getState(explorerId).filters[k] || "";
+  }
+
   function renderGrupoFilter(explorerId) {
     var sel = document.getElementById(explorerId + "-grupo-select");
     if (!sel || sel.dataset.built) return;
@@ -818,19 +854,22 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     if (explorerId === "conversaciones") {
       cols = ["Contacto", "Grupo", "Mensajes", "Origen del Cliente", "Ultimo mensaje"];
     } else {
-      cols = ["Contacto", "Origen (tag)"];
+      cols = ["Contacto", "Fecha de alta", "Origen (tag)"];
     }
     thead.innerHTML = "<tr>" + cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr>";
   }
 
-  // Link al contacto en GHL (26/10/2026), misma cuenta que la auditoria
-  // GHL-NetSuite. Los clientes sin ID CLIENTE CRM llegan con contact_id "ns-...":
-  // a esos no se les pone link.
+  // Link al contacto en GHL, misma cuenta que la auditoria GHL-NetSuite (se usa
+  // en el Excel).
   var GHL_CONTACTO_URL = "https://app.gohighlevel.com/v2/location/goympjLjeLIBzCFxsbFM/contacts/detail/";
-  function linkGhl(c, texto) {
-    var id = c.contact_id && String(c.contact_id).indexOf("ns-") !== 0 ? c.contact_id : null;
+  // Link al cliente en NetSuite desde el Nro cliente (26/10/2026). Usa el ID
+  // interno del cliente (ns_cliente_id_interno), que viene en las
+  // actualizaciones desde esa fecha; sin ese dato el numero queda sin link.
+  var NS_CLIENTE_URL = "https://7138551.app.netsuite.com/app/common/entity/custjob.nl?id=";
+  function linkNetSuite(c, texto) {
+    var id = c.ns_cliente_id_interno;
     if (!id) return esc(texto);
-    return '<a href="' + GHL_CONTACTO_URL + encodeURIComponent(id) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el contacto en GHL">' + esc(texto) + "</a>";
+    return '<a href="' + NS_CLIENTE_URL + encodeURIComponent(id) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el cliente en NetSuite">' + esc(texto) + "</a>";
   }
 
   function rowCells(explorerId, c) {
@@ -838,9 +877,10 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       return [esc(c.nombre), grupoPill(c), c.mensajes_total, esc(c.origen_cliente), esc(fmtDateTime(c.ultimo_mensaje))];
     }
     if (explorerId === "oportunidades") {
-      return [linkGhl(c, c.nro_cliente_netsuite || "Sin dato"), esc(c.nombre), esc(c.vendedor), esc(c.origen_combinado || c.origen_cliente) + (c.origen_desde_etiqueta === "No" ? marcaSinEtiqueta("oportunidades", { grupo_venta: "Cerrada (venta)", origen_desde_etiqueta: "No" }, c.origen_fuente) : ""), c.n_oportunidades, nsEstadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), estadoPill(c)];
+      return [linkNetSuite(c, c.nro_cliente_netsuite || "Sin dato"), esc(c.nombre), esc(c.vendedor), esc(c.origen_combinado || c.origen_cliente) + (c.origen_desde_etiqueta === "No" ? marcaSinEtiqueta("oportunidades", c.origen_fuente) : ""), c.n_oportunidades, nsEstadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), estadoPill(c)];
     }
-    return [esc(c.nombre), esc(c.canal_tag || "Sin dato") + (c.canal_tag_desde_etiqueta === "No" ? marcaSinEtiqueta("contactos", { canal_tag_desde_etiqueta: "No" }, c.canal_tag ? "Forma de Contacto" : "Sin dato") : "")];
+    // Fecha de alta en GHL, en hora de Argentina (26/10/2026)
+    return [esc(c.nombre), '<span style="white-space:nowrap">' + esc(c.date_added ? fmtDateTime(c.date_added) : "Sin dato") + "</span>", esc(c.canal_tag || "Sin dato") + (c.canal_tag_desde_etiqueta === "No" ? marcaSinEtiqueta("contactos", c.canal_tag ? "Forma de Contacto" : "Sin dato") : "")];
   }
 
   function render(explorerId) {
@@ -864,6 +904,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     if (grupoSelEl) {
       grupoSelEl.value = st.filters.hasOwnProperty("grupo_venta") ? st.filters.grupo_venta : "";
     }
+    renderEtiquetaFilter(explorerId);
     var fromSyncEl = document.getElementById(explorerId + "-date-from");
     if (fromSyncEl) fromSyncEl.value = st.dateFrom || "";
     var toSyncEl = document.getElementById(explorerId + "-date-to");
@@ -884,7 +925,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       countEl.textContent = countText;
     }
     renderThead(explorerId);
-    var colCount = (explorerId === "oportunidades") ? 11 : 2;
+    var colCount = (explorerId === "oportunidades") ? 11 : 3;
 
     var htmlOut = "";
     rows.forEach(function (c, i) {
@@ -985,13 +1026,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       return true;
     });
     var counts = contarJs(rows, function (c) { return c.canal_tag; });
-    var nSinEtiqueta = rows.filter(function (c) { return c.canal_tag_desde_etiqueta === "No"; }).length;
-    var avisoSinEtiqueta = nSinEtiqueta
-      ? '<div class="kpi-caveat">' + nSinEtiqueta + " de " + rows.length + " sin etiqueta de origen en GHL (origen por Forma de Contacto o sin dato) &middot; " +
-        '<a href="#" onclick=\'applyFilter("contactos", {"canal_tag_desde_etiqueta": "No"}); return false;\'>ver en la tabla</a></div>'
-      : "";
     el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados ' + esc(textoRangoContactos(st)) + ' &middot; n=' + rows.length + "</div>" +
-      avisoSinEtiqueta + donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
+      donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
   }
 
   // ---- Exportar a Excel: todas las oportunidades de NetSuite del periodo que
@@ -1056,6 +1092,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
           "Nro cliente (NetSuite)": vacio(c.nro_cliente_netsuite),
           "Cliente": vacio(c.nombre),
           "ID CLIENTE CRM": crm,
+          "Link NetSuite": c.ns_cliente_id_interno ? NS_CLIENTE_URL + encodeURIComponent(c.ns_cliente_id_interno) : null,
           "Link GHL": crm ? GHL_CONTACTO_URL + encodeURIComponent(crm) : null,
           "Oportunidad": vacio(o.oportunidad),
           "Fecha oportunidad": fechaExcel(o.fecha),
