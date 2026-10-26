@@ -59,7 +59,7 @@ CF_INTERESADO = "69JMvwOeep8gnaQTiDTD"
 # Mapeo etiqueta -> canal de origen (prioridades, nombres normalizados) y
 # respaldo por 'Forma de Contacto': app/canales_origen.py, copia de
 # Desarrollo/canales_origen.py (24/10/2026).
-from app.canales_origen import canal_por_tags, canal_por_forma_contacto
+from app.canales_origen import canal_por_tags, canal_por_forma_contacto, origen_combinado
 
 # Mapa de ID de usuario de GHL -> nombre real, confirmado con el usuario el
 # 21/09/2026 (antes de esta fecha no se reconstruía por precaución: una
@@ -396,12 +396,17 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
         date_added = crudo.get("dateAdded")
         da = parse_iso(date_added)
         canal = clasificar_canal(tags)
+        # Origen cruzando tags de GHL con el campo Origen del Cliente (26/10/2026,
+        # ver canales_origen.origen_combinado): grafico de origen de las ganadas.
+        origen_comb, origen_comb_fuente = origen_combinado(tags, origen_ns or origen_ghl, forma_ns or forma_ghl)
         reg = {
             "contact_id": contact_id,
             "nombre": nombre,
             "date_added": date_added,
             "contacto_del_periodo": bool(da and periodo_inicio <= da <= periodo_fin),
             "origen_cliente": origen_ns or origen_ghl or "Sin dato",
+            "origen_combinado": origen_comb,
+            "origen_combinado_fuente": origen_comb_fuente,
             "forma_contacto": forma_ns or forma_ghl or "Sin dato",
             "interesado_en": cf_value(cfs, CF_INTERESADO) or "Sin dato",
             "vendedor": vendedor_ns or vendedor_ghl or "Sin asignar",
@@ -450,7 +455,11 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
     contactos_ganados = [c for c in contactos_con_oportunidad if c["n_ganadas"] > 0]
     n_ganados = len(contactos_ganados)
     n_del_periodo = sum(1 for c in nuevos_contacts if c["contacto_del_periodo"])
-    origen_ganadas = contar(contactos_ganados, "origen_cliente")
+    origen_ganadas = contar(contactos_ganados, "origen_combinado")
+    fuente_origen_ganadas = {}
+    for c in contactos_ganados:
+        f = c.get("origen_combinado_fuente") or "sin_dato"
+        fuente_origen_ganadas[f] = fuente_origen_ganadas.get(f, 0) + 1
     sin_ghl = sum(1 for c in contactos_con_oportunidad if c["sin_contacto_ghl"])
 
     rango_fechas = f"{periodo_inicio.strftime('%d/%m')} al {periodo_fin.strftime('%d/%m')}"
@@ -482,7 +491,8 @@ def generar(contactos, oportunidades, ventas_df, old_contacts, periodo_inicio, p
 <div class="donut-row donut-row-single">
   <div class="donut-block">
     <div class="donut-block-title">Origen de los clientes con oportunidad ganada &middot; n={n_ganados}</div>
-    {donut_svg(origen_ganadas, n_ganados, "origen_cliente", "oportunidades")}
+    <div class="kpi-caveat">Primero la etiqueta de origen de GHL (anuncio, formulario, web, org&aacute;nico, repesca); si no tiene, el campo Origen del Cliente (NetSuite; si no, GHL); despu&eacute;s la etiqueta gen&eacute;rica de WhatsApp y, por &uacute;ltimo, la Forma de Contacto. Resuelto por etiqueta {fuente_origen_ganadas.get("tag", 0)}, por campo Origen {fuente_origen_ganadas.get("origen_cliente", 0)}, por WhatsApp gen&eacute;rico {fuente_origen_ganadas.get("tag_generico", 0)}, por Forma de Contacto {fuente_origen_ganadas.get("forma_contacto", 0)}, sin dato {fuente_origen_ganadas.get("sin_dato", 0)}. <strong>Sin etiqueta de origen en GHL: {n_ganados - fuente_origen_ganadas.get("tag", 0) - fuente_origen_ganadas.get("tag_generico", 0)}</strong> &middot; <a href="#" onclick='applyFilter("oportunidades", {{"grupo_venta": "Cerrada (venta)", "origen_desde_etiqueta": "No"}}); return false;'>ver en la tabla</a> (marcados &laquo;sin etiqueta GHL&raquo;).</div>
+    {donut_svg(origen_ganadas, n_ganados, "origen_combinado", "oportunidades")}
   </div>
 </div>
 

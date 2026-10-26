@@ -112,6 +112,7 @@ footer.report-footer { text-align: center; color: var(--muted); font-size: 12.5p
 .detail-grid .dg-value { color: var(--ink); }
 .detail-grid .dg-full { grid-column: 1 / -1; }
 .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: #fff; }
+.pill-sin-etiqueta { background: #eb6834; margin-left: 6px; cursor: pointer; white-space: nowrap; font-size: 10.5px; }
 .ns-opp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; background: var(--surface); }
 .explorer-table .ns-opp-table th { position: static; background: var(--light-fill); text-align: left; color: var(--navy); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .02em; padding: 4px 8px; border-bottom: 1px solid var(--rule); }
 .ns-opp-table td { padding: 5px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
@@ -378,6 +379,35 @@ document.addEventListener("DOMContentLoaded", function () {
 window.iniciarInforme = function (CONTACTS, OPTS) {
   var STATE = {};
   OPTS = OPTS || {};
+
+  // ---- Contactos cuyo origen NO viene de una etiqueta de GHL (26/10/2026) ----
+  // Reporte diario (canal_tag): sale de una etiqueta salvo que este vacio o
+  // termine en "(forma de contacto)". Informe general (origen_combinado, solo
+  // en actualizaciones desde el 26/10/2026): segun origen_combinado_fuente.
+  // Se guardan como campos del contacto para poder filtrar la tabla con
+  // applyFilter() y exportarlos.
+  var FUENTE_ORIGEN_LABELS = {
+    tag: "Etiqueta GHL",
+    tag_generico: "Etiqueta GHL (WhatsApp genérico)",
+    origen_cliente: "Campo Origen del Cliente",
+    forma_contacto: "Forma de Contacto",
+    sin_dato: "Sin dato"
+  };
+  function esFormaContacto(v) { return /\(forma de contacto\)$/.test(String(v || "")); }
+  CONTACTS.forEach(function (c) {
+    c.canal_tag_desde_etiqueta = (c.canal_tag && !esFormaContacto(c.canal_tag)) ? "Sí" : "No";
+    if (c.origen_combinado !== undefined) {
+      var f = c.origen_combinado_fuente || "sin_dato";
+      c.origen_fuente = FUENTE_ORIGEN_LABELS[f] || f;
+      c.origen_desde_etiqueta = (f === "tag" || f === "tag_generico") ? "Sí" : "No";
+    }
+  });
+  // Marca "sin etiqueta GHL" junto al origen; el click filtra la tabla por esos
+  // contactos (otro click quita el filtro).
+  function marcaSinEtiqueta(explorerId, filtro, fuente) {
+    var titulo = "El origen no viene de una etiqueta de GHL" + (fuente ? " (sale de: " + fuente + ")" : "") + ". Click para ver solo estos contactos.";
+    return ' <span class="pill pill-sin-etiqueta" title="' + esc(titulo) + '" onclick=\'event.stopPropagation(); applyFilter("' + explorerId + '", ' + JSON.stringify(filtro) + ')\'>sin etiqueta GHL</span>';
+  }
   // Dia de referencia de "Contactos cargados": hoy, o el ultimo dia con datos
   // si el informe mostrado termina antes de hoy. Fechas en hora de Argentina.
   var TZ_AR = "America/Argentina/Buenos_Aires";
@@ -594,7 +624,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     return String(va).localeCompare(String(vb), "es", { sensitivity: "base" });
   }
 
-  var CHIP_KEY_LABELS = { "ghl_estado": "Estado de oportunidad", "vendedor": "Vendedor", "grupo_venta": "Grupo", "canal_tag": "Origen (tag)" };
+  var CHIP_KEY_LABELS = { "ghl_estado": "Estado de oportunidad", "vendedor": "Vendedor", "grupo_venta": "Grupo", "canal_tag": "Origen (tag)", "origen_combinado": "Origen", "origen_desde_etiqueta": "Origen desde etiqueta GHL", "canal_tag_desde_etiqueta": "Origen desde etiqueta GHL" };
   function chips(explorerId) {
     var st = getState(explorerId);
     var out = [];
@@ -763,7 +793,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     { label: "Nro cliente (NetSuite)", key: "nro_cliente_netsuite" },
     { label: "Contacto", key: "nombre" },
     { label: "Vendedor", key: "vendedor" },
-    { label: "Origen del Cliente", key: "origen_cliente" },
+    { label: "Origen", key: "origen_combinado" },
     { label: "Cantidad", key: "n_oportunidades" },
     { label: "Estado NetSuite", key: "ns_estado" },
     { label: "Grupo", key: "grupo_venta" },
@@ -793,14 +823,24 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     thead.innerHTML = "<tr>" + cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr>";
   }
 
+  // Link al contacto en GHL (26/10/2026), misma cuenta que la auditoria
+  // GHL-NetSuite. Los clientes sin ID CLIENTE CRM llegan con contact_id "ns-...":
+  // a esos no se les pone link.
+  var GHL_CONTACTO_URL = "https://app.gohighlevel.com/v2/location/goympjLjeLIBzCFxsbFM/contacts/detail/";
+  function linkGhl(c, texto) {
+    var id = c.contact_id && String(c.contact_id).indexOf("ns-") !== 0 ? c.contact_id : null;
+    if (!id) return esc(texto);
+    return '<a href="' + GHL_CONTACTO_URL + encodeURIComponent(id) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir el contacto en GHL">' + esc(texto) + "</a>";
+  }
+
   function rowCells(explorerId, c) {
     if (explorerId === "conversaciones") {
       return [esc(c.nombre), grupoPill(c), c.mensajes_total, esc(c.origen_cliente), esc(fmtDateTime(c.ultimo_mensaje))];
     }
     if (explorerId === "oportunidades") {
-      return [esc(c.nro_cliente_netsuite || "Sin dato"), esc(c.nombre), esc(c.vendedor), esc(c.origen_cliente), c.n_oportunidades, nsEstadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), estadoPill(c)];
+      return [linkGhl(c, c.nro_cliente_netsuite || "Sin dato"), esc(c.nombre), esc(c.vendedor), esc(c.origen_combinado || c.origen_cliente) + (c.origen_desde_etiqueta === "No" ? marcaSinEtiqueta("oportunidades", { grupo_venta: "Cerrada (venta)", origen_desde_etiqueta: "No" }, c.origen_fuente) : ""), c.n_oportunidades, nsEstadoPill(c), grupoPill(c), esc(fmtDate(c.fecha_creacion_oportunidad)), esc(fmtMonto(c.monto)), esc(c.etapa_pipeline || "Sin dato"), estadoPill(c)];
     }
-    return [esc(c.nombre), esc(c.canal_tag || "Sin dato")];
+    return [esc(c.nombre), esc(c.canal_tag || "Sin dato") + (c.canal_tag_desde_etiqueta === "No" ? marcaSinEtiqueta("contactos", { canal_tag_desde_etiqueta: "No" }, c.canal_tag ? "Forma de Contacto" : "Sin dato") : "")];
   }
 
   function render(explorerId) {
@@ -859,6 +899,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       htmlOut = '<tr><td colspan="' + colCount + '" style="text-align:center;color:#6B6B6B;padding:18px;">Sin resultados para este filtro.</td></tr>';
     }
     tbody.innerHTML = htmlOut;
+    // El grafico del Reporte diario sigue el filtro de fechas de esta tabla.
+    if (explorerId === "contactos") renderContactosHoyDonut();
   }
 
   function renderContactosHoyKpi() {
@@ -916,14 +958,40 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     return '<div class="donut-flex">' + svg + '<div class="chart-legend chart-legend-wrap">' + legend + "</div></div>";
   }
 
+  // Grafico "Origen (tag)" del Reporte diario (26/10/2026): sigue el rango de
+  // fechas de alta elegido en el filtro de la tabla de contactos. Por defecto
+  // ese filtro es el dia de referencia, asi que al abrir muestra lo mismo que
+  // antes. Toma solo las fechas, no los demas filtros: al hacer click en un
+  // segmento la tabla se filtra por ese origen y el grafico tiene que seguir
+  // mostrando todos los origenes del rango.
+  function textoRangoContactos(st) {
+    function f(s) { var p = s.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
+    if (st.dateFrom && st.dateTo && st.dateFrom === st.dateTo) return st.dateFrom === HOY_AR ? "hoy, " + f(st.dateFrom) : "el " + f(st.dateFrom);
+    if (st.dateFrom && st.dateTo) return "del " + f(st.dateFrom) + " al " + f(st.dateTo);
+    if (st.dateFrom) return "desde el " + f(st.dateFrom);
+    if (st.dateTo) return "hasta el " + f(st.dateTo);
+    return "en todo el período";
+  }
   function renderContactosHoyDonut() {
     var el = document.getElementById("contactos-hoy-donut-row");
     if (!el) return;
-    var hoy = todayStr();
-    var rows = CONTACTS.filter(function (c) { return c.date_added && diaAR(c.date_added) === hoy; });
+    var st = getState("contactos");
+    var rows = baseRows("contactos").filter(function (c) {
+      if (!st.dateFrom && !st.dateTo) return true;
+      if (!c.date_added) return false;
+      var d = diaAR(c.date_added);
+      if (st.dateFrom && d < st.dateFrom) return false;
+      if (st.dateTo && d > st.dateTo) return false;
+      return true;
+    });
     var counts = contarJs(rows, function (c) { return c.canal_tag; });
-    el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados ' + esc(textoDiaRef()) + ' &middot; n=' + rows.length + "</div>" +
-      donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
+    var nSinEtiqueta = rows.filter(function (c) { return c.canal_tag_desde_etiqueta === "No"; }).length;
+    var avisoSinEtiqueta = nSinEtiqueta
+      ? '<div class="kpi-caveat">' + nSinEtiqueta + " de " + rows.length + " sin etiqueta de origen en GHL (origen por Forma de Contacto o sin dato) &middot; " +
+        '<a href="#" onclick=\'applyFilter("contactos", {"canal_tag_desde_etiqueta": "No"}); return false;\'>ver en la tabla</a></div>'
+      : "";
+    el.innerHTML = '<div class="donut-block"><div class="donut-block-title">Origen (tag) de los contactos cargados ' + esc(textoRangoContactos(st)) + ' &middot; n=' + rows.length + "</div>" +
+      avisoSinEtiqueta + donutSvgJs(counts, rows.length, "canal_tag", "contactos", "contactos") + "</div>";
   }
 
   // ---- Exportar a Excel: todas las oportunidades de NetSuite del periodo que
@@ -962,6 +1030,9 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       var base = {
         "Grupo (cliente)": vacio(c.grupo_venta),
         "Vendedor": vacio(c.vendedor),
+        "Origen (tags + campo)": vacio(c.origen_combinado),
+        "Origen desde etiqueta GHL": c.origen_desde_etiqueta || null,
+        "Fuente del origen": c.origen_fuente || null,
         "Origen del Cliente": vacio(c.origen_cliente),
         "Forma de Contacto": vacio(c.forma_contacto),
         "Interesado en": vacio(c.interesado_en),
@@ -985,6 +1056,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
           "Nro cliente (NetSuite)": vacio(c.nro_cliente_netsuite),
           "Cliente": vacio(c.nombre),
           "ID CLIENTE CRM": crm,
+          "Link GHL": crm ? GHL_CONTACTO_URL + encodeURIComponent(crm) : null,
           "Oportunidad": vacio(o.oportunidad),
           "Fecha oportunidad": fechaExcel(o.fecha),
           "Estado NetSuite": vacio(o.estado),
@@ -1533,6 +1605,7 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     cargarXlsx().then(function (XLSX) {
       var datos = filas.map(function (f) {
         return { "Fecha de alta": fechaExcel(diaAR(f.c.date_added)), "Contacto": f.c.nombre, "Origen (tag)": f.origen,
+                 "Origen desde etiqueta GHL": (f.origen === "Sin etiqueta de origen" || esFormaContacto(f.origen)) ? "No" : "Sí",
                  "Calificación": f.calif, "Línea de WhatsApp": f.linea, "Vendedor": f.c.vendedor,
                  "Tiene oportunidad NetSuite": siNo(f.c.tiene_oportunidad), "Tags": (f.c.tags || []).join(", "), "ID GHL": f.c.contact_id };
       }).sort(function (a, b) { return (a["Fecha de alta"] || 0) - (b["Fecha de alta"] || 0); });

@@ -37,25 +37,30 @@ import re
 import unicodedata
 
 # (etiqueta normalizada, canal) -- en orden de prioridad.
-# Los nombres de canal de las 4 etiquetas originales se mantienen igual que
-# antes para que los informes sigan siendo comparables mes a mes.
+# Nombres de canal iguales a los de la pagina actualizable.html (ORIGEN_TAGS),
+# unificados el 26/10/2026 (antes: "Formulario Web", "Organico", "WhatsApp
+# entrante").
 TAGS_ORIGEN = [
     ("fbadleadwhatsapp", "Facebook Ads"),
     ("instagramadleadwhatsapp", "Instagram Ads"),
     ("formwebaclho", "Formulario ACLHO"),
-    ("formweb", "Formulario Web"),
+    ("formweb", "Formulario web"),
     ("web", "WhatsApp del sitio web"),
-    ("organico", "Organico"),
+    ("organico", "Orgánico"),
     ("netsuitecomercio", "Repesca NetSuite"),
     ("whatsappmissedcall", "Llamada perdida WhatsApp"),
-    ("inboundwhatsapp", "WhatsApp entrante"),
+    ("inboundwhatsapp", "WhatsApp (sin anuncio)"),
 ]
+
+# Etiquetas que solo dicen "entro por WhatsApp" (sin campana ni accion de
+# MKT detras). En origen_combinado() no le ganan al campo Origen del Cliente.
+TAGS_GENERICOS = {"whatsappmissedcall", "inboundwhatsapp"}
 
 # (prefijo normalizado, canal) -- se evaluan DESPUES de TAGS_ORIGEN.
 # 'wa: +549...' indica el numero de WhatsApp por el que entro el contacto:
 # solo dice "entro por WhatsApp", por eso va ultimo.
 PREFIJOS_ORIGEN = [
-    ("wa", "WhatsApp entrante"),
+    ("wa", "WhatsApp (sin anuncio)"),
 ]
 
 _PRIORIDAD = {clave: i for i, (clave, _) in enumerate(TAGS_ORIGEN)}
@@ -77,12 +82,17 @@ def _es_prefijo_wa(tag):
     return bool(re.match(r"^\s*wa\s*:\s*\+?\d", str(tag or ""), re.IGNORECASE))
 
 
-def canal_por_tags(tags):
-    """Canal de origen segun las etiquetas, o None si ninguna indica origen."""
+def canal_por_tags(tags, solo_especificos=False):
+    """Canal de origen segun las etiquetas, o None si ninguna indica origen.
+    Con solo_especificos=True ignora las genericas de WhatsApp (TAGS_GENERICOS
+    y el prefijo 'wa:')."""
     normalizadas = {normalizar_tag(t) for t in (tags or [])}
-    encontradas = [c for c in normalizadas if c in _PRIORIDAD]
+    encontradas = [c for c in normalizadas if c in _PRIORIDAD
+                   and not (solo_especificos and c in TAGS_GENERICOS)]
     if encontradas:
         return _CANAL[min(encontradas, key=_PRIORIDAD.get)]
+    if solo_especificos:
+        return None
     for prefijo, canal in PREFIJOS_ORIGEN:
         if prefijo == "wa" and any(_es_prefijo_wa(t) for t in (tags or [])):
             return canal
@@ -109,3 +119,32 @@ def canal_origen(tags, forma_contacto=None):
     if canal:
         return canal, "forma_contacto"
     return None, None
+
+
+def origen_combinado(tags, origen_cliente=None, forma_contacto=None):
+    """Origen de un cliente cruzando etiquetas de GHL con el campo Origen del
+    Cliente (NetSuite manda; si no, el custom field de GHL). Lo usa el grafico
+    "Origen de los clientes con oportunidad ganada" (26/10/2026).
+
+    Orden:
+      1. Etiqueta de origen especifica (anuncio, formulario, web, organico,
+         repesca): es el dato que registra la automatizacion, gana.
+      2. Campo Origen del Cliente (Referido, Ya es Cliente, Carteleria...).
+      3. Etiqueta generica de WhatsApp (inbound whatsapp, llamada perdida,
+         'wa: +549...'): no le gana al campo porque un referido o un cliente
+         de cartera tambien escribe por WhatsApp.
+      4. Forma de Contacto, marcada '(forma de contacto)'.
+    Devuelve (valor, fuente) con fuente = 'tag' | 'origen_cliente' |
+    'tag_generico' | 'forma_contacto' | None (valor 'Sin dato')."""
+    canal = canal_por_tags(tags, solo_especificos=True)
+    if canal:
+        return canal, "tag"
+    if origen_cliente is not None and normalizar_tag(origen_cliente) not in VALORES_VACIOS:
+        return str(origen_cliente).strip(), "origen_cliente"
+    canal = canal_por_tags(tags)
+    if canal:
+        return canal, "tag_generico"
+    canal = canal_por_forma_contacto(forma_contacto)
+    if canal:
+        return canal, "forma_contacto"
+    return "Sin dato", None
