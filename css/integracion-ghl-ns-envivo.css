@@ -1,0 +1,284 @@
+/* ============================================================
+   integracion-ghl-ns-envivo.css — Pestaña "En vivo" de la sección
+   Integración NetSuite ↔ GHL (migración 41).
+   Complementa integracion-ghl-ns.css (.ig-toolbar, .ig-mono,
+   .status-badge--err) e integracion-ghl-ns-auditoria.css (.au-nota,
+   .au-aviso).
+   ============================================================ */
+
+/* ── Tarjetas de estado ───────────────────────────────────── */
+
+.ev-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--space-3);
+}
+
+.ev-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-navy);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg);
+  text-align: left;
+  font: inherit;
+  color: var(--color-text-body);
+}
+
+.ev-card--err {
+  border-left-color: var(--color-red);
+}
+
+.ev-card--aviso {
+  border-left-color: var(--color-status-prog-text);
+}
+
+.ev-card--boton {
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+.ev-card--boton:hover,
+.ev-card--boton:focus-visible {
+  box-shadow: var(--shadow-sm);
+}
+
+.ev-card__titulo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-navy);
+}
+
+.ev-card__flujo {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.ev-card__valor .status-badge {
+  margin-left: 0;
+}
+
+.ev-card__numero {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-dark);
+  line-height: var(--line-height-tight);
+}
+
+.ev-card--err .ev-card__numero {
+  color: var(--color-red);
+}
+
+.ev-card__vacio {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.ev-card__sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-base);
+}
+
+/* ── Registro de eventos ──────────────────────────────────── */
+
+.ev-log {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.ev-fila {
+  border-bottom: 1px solid var(--color-border-light);
+  border-left: 3px solid transparent;
+}
+
+.ev-fila:last-child {
+  border-bottom: none;
+}
+
+.ev-fila--err {
+  border-left-color: var(--color-red);
+}
+
+.ev-fila--aviso {
+  border-left-color: var(--color-status-prog-text);
+}
+
+.ev-fila--nueva {
+  animation: ev-resaltar 2.5s ease-out;
+}
+
+@keyframes ev-resaltar {
+  from { background: var(--color-blue-light); }
+  to   { background: transparent; }
+}
+
+.ev-fila > summary {
+  display: grid;
+  grid-template-columns: 7.5rem 8.5rem 7rem 11rem minmax(0, 1fr) 4.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ev-fila > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ev-fila > summary:hover {
+  background: var(--color-bg-soft);
+}
+
+.ev-fila[open] > summary {
+  background: var(--color-bg-soft);
+}
+
+.ev-fila__hora {
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.ev-fila__etapa {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-navy);
+  white-space: nowrap;
+}
+
+.ev-fila__resultado .status-badge {
+  margin-left: 0;
+}
+
+.ev-fila__ref {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-fila__detalle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-body);
+}
+
+.ev-fila__dur {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.ev-tenue {
+  color: var(--color-text-muted);
+}
+
+.ev-fila__cuerpo {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--color-border-light);
+  background: var(--color-bg);
+}
+
+.ev-dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.ev-dl dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.ev-dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ev-dl__ancho {
+  flex-basis: 100%;
+}
+
+.ev-jsons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.ev-json__titulo {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-navy);
+  margin-bottom: var(--space-1);
+}
+
+.ev-json pre {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-soft);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-base);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ev-vacio {
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.ev-mas [hidden] {
+  display: none;
+}
+
+.ev-mas {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-3);
+}
+
+/* ── Pantallas chicas: la fila pasa a dos líneas ──────────── */
+
+@media (max-width: 900px) {
+  .ev-fila > summary {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "hora etapa resultado"
+      "ref ref dur"
+      "detalle detalle detalle";
+    gap: var(--space-1) var(--space-3);
+  }
+  .ev-fila__hora { grid-area: hora; }
+  .ev-fila__etapa { grid-area: etapa; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ev-fila__resultado { grid-area: resultado; justify-self: end; }
+  .ev-fila__ref { grid-area: ref; }
+  .ev-fila__dur { grid-area: dur; }
+  .ev-fila__detalle { grid-area: detalle; white-space: normal; }
+}

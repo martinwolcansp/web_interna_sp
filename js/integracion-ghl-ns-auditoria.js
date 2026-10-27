@@ -69,15 +69,17 @@ const au = {
 /* ── Pestañas ────────────────────────────────────────────────────────── */
 
 function auMostrarTab(tab) {
-  ['consola', 'auditoria'].forEach((t) => {
+  ['consola', 'auditoria', 'envivo'].forEach((t) => {
     const activo = t === tab;
     document.getElementById(`ig-tab-${t}`).hidden = !activo;
     const btn = document.getElementById(`ig-tabbtn-${t}`);
     btn.classList.toggle('is-active', activo);
     btn.setAttribute('aria-selected', activo ? 'true' : 'false');
   });
-  // La Auditoría es la pestaña por defecto: sólo la Consola queda en la URL.
-  try { history.replaceState(null, '', tab === 'consola' ? '#consola' : location.pathname + location.search); } catch (e) { /* sin historial */ }
+  // La Auditoría es la pestaña por defecto: las otras quedan en la URL.
+  try { history.replaceState(null, '', tab === 'auditoria' ? location.pathname + location.search : `#${tab}`); } catch (e) { /* sin historial */ }
+  // Aviso para la pestaña En vivo (arranca o frena su actualización).
+  document.dispatchEvent(new CustomEvent('ig:tab', { detail: { tab } }));
   if (tab === 'auditoria' && au.authListo && !au.cargado && !au.cargando) auditar();
 }
 
@@ -88,6 +90,7 @@ if (typeof document !== 'undefined' && document.getElementById('ig-tab-auditoria
 
   auInicializar();
   if (location.hash === '#consola') auMostrarTab('consola');
+  if (location.hash === '#envivo') auMostrarTab('envivo');
 
   document.addEventListener('sp:auth-ready', async (e) => {
     if (!e.detail.session || !window.supabaseClient) return;

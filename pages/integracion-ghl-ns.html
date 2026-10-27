@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="../css/admin.css">
   <link rel="stylesheet" href="../css/integracion-ghl-ns.css">
   <link rel="stylesheet" href="../css/integracion-ghl-ns-auditoria.css">
+  <link rel="stylesheet" href="../css/integracion-ghl-ns-envivo.css">
 </head>
 <body>
 
@@ -46,9 +47,10 @@
       <p class="admin-page-subtitle">Contactos y oportunidades de la integración, con sus IDs en GHL y en NetSuite. Los registros que vienen de GHL o de NetSuite son de consulta; la carga manual queda para casos puntuales.</p>
     </div>
 
-    <!-- Pestañas: Auditoría (cruce por vendedor, la que abre por defecto) / Consola (consulta y carga manual) -->
+    <!-- Pestañas: Auditoría (cruce por vendedor, la que abre por defecto) / En vivo (registro de eventos) / Consola (consulta y carga manual) -->
     <nav class="segment-nav" role="tablist" aria-label="Vistas de la integración">
       <button type="button" class="segment-tab is-active" role="tab" id="ig-tabbtn-auditoria" data-tab="auditoria" aria-controls="ig-tab-auditoria" aria-selected="true"><i class="ti ti-list-check"></i> Auditoría</button>
+      <button type="button" class="segment-tab" role="tab" id="ig-tabbtn-envivo" data-tab="envivo" aria-controls="ig-tab-envivo" aria-selected="false"><i class="ti ti-activity"></i> En vivo</button>
       <button type="button" class="segment-tab" role="tab" id="ig-tabbtn-consola" data-tab="consola" aria-controls="ig-tab-consola" aria-selected="false"><i class="ti ti-database"></i> Consola</button>
     </nav>
 
@@ -450,6 +452,66 @@
       </div>
     </div><!-- /ig-tab-auditoria -->
 
+    <!-- ══════════════════════════════════════════════════════════
+         En vivo (migración 41).
+         Registro de cada llamada que reciben los servicios de la
+         integración (tabla integration_events) y estado de la
+         integración (tabla integracion_estado: vencimiento del token de
+         NetSuite). Se actualiza solo mientras la pestaña está visible.
+         Lógica en js/integracion-ghl-ns-envivo.js.
+         ══════════════════════════════════════════════════════════ -->
+    <div id="ig-tab-envivo" role="tabpanel" aria-labelledby="ig-tabbtn-envivo" hidden>
+
+      <section class="admin-section" aria-labelledby="ev-estado-title">
+        <div class="admin-section__header ig-section-header">
+          <div>
+            <h2 id="ev-estado-title" class="admin-section__title">Estado de la integración</h2>
+            <p class="admin-section__subtitle">Último evento de cada etapa, errores de las últimas 24 horas y vencimiento del token de NetSuite.</p>
+          </div>
+        </div>
+        <div id="ev-estado" class="ev-estado">
+          <p class="admin-loading">Cargando…</p>
+        </div>
+      </section>
+
+      <section class="admin-section" aria-labelledby="ev-log-title">
+        <div class="admin-section__header ig-section-header">
+          <div>
+            <h2 id="ev-log-title" class="admin-section__title">Registro de eventos</h2>
+            <p class="admin-section__subtitle">Cada llamada que reciben los servicios de la integración, más recientes primero. Se actualiza solo cada 10 segundos. Tocá un evento para ver qué llegó y qué se respondió.</p>
+          </div>
+          <button type="button" id="ev-pausa" class="btn btn--secondary" aria-pressed="false"><i class="ti ti-player-pause"></i> Pausar</button>
+        </div>
+
+        <form id="ev-filtros" class="ig-toolbar" autocomplete="off">
+          <input type="search" id="ev-q" class="admin-input ig-toolbar__search" placeholder="Buscar por ID (presupuesto, oportunidad o contacto) o por texto del detalle">
+          <select id="ev-f-etapa" class="admin-select" aria-label="Etapa">
+            <option value="">Etapa: todas</option>
+            <option value="lead">Lead (GHL → NetSuite)</option>
+            <option value="oportunidad">Oportunidad (NetSuite → GHL)</option>
+            <option value="presupuesto">Presupuesto (NetSuite → GHL)</option>
+            <option value="sistema">Sistema</option>
+          </select>
+          <select id="ev-f-resultado" class="admin-select" aria-label="Resultado">
+            <option value="">Resultado: todos</option>
+            <option value="ok">Correctos</option>
+            <option value="error">Errores y rechazos</option>
+            <option value="aviso">Avisos</option>
+          </select>
+          <button type="button" id="ev-limpiar" class="btn btn--secondary">Limpiar</button>
+        </form>
+
+        <p id="ev-actualizado" class="au-nota"></p>
+        <div id="ev-log" class="ev-log" role="log" aria-live="polite">
+          <p class="admin-loading">Cargando eventos…</p>
+        </div>
+        <div class="ev-mas">
+          <button type="button" id="ev-mas" class="btn btn--secondary" hidden>Ver eventos anteriores</button>
+        </div>
+      </section>
+
+    </div><!-- /ig-tab-envivo -->
+
     <footer class="site-footer" role="contentinfo">
       <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
       <div>
@@ -462,6 +524,7 @@
 
   <script src="../js/integracion-ghl-ns.js"></script>
   <script src="../js/integracion-ghl-ns-auditoria.js"></script>
+  <script src="../js/integracion-ghl-ns-envivo.js"></script>
 
 </body>
 </html>
