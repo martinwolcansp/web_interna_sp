@@ -66,6 +66,7 @@ const ev = {
   primerId: null,    // menor id mostrado (para "Ver eventos anteriores")
   cantidad: 0,
   cargando: false,
+  generacion: 0,     // sube con cada recarga completa: descarta respuestas viejas
   error: null,
   detalles: new Map(), // id -> { payload, respuesta }
 };
@@ -292,13 +293,24 @@ function evPintar(filas, modo) {
 }
 
 async function evCargar(modo) {
-  if (!ev.authListo || ev.cargando) return;
+  if (!ev.authListo) return;
+  // Una recarga completa (filtros, Limpiar, volver a la pestaña) nunca se
+  // saltea: invalida lo que esté en curso. Las actualizaciones automáticas
+  // y "Ver eventos anteriores" sí esperan a que termine lo anterior.
+  if (modo === 'reemplazar') {
+    ev.generacion += 1;
+  } else if (ev.cargando) {
+    return;
+  }
+  const generacion = ev.generacion;
+  const vigente = () => generacion === ev.generacion;
   ev.cargando = true;
   try {
     let q = evAplicarFiltros(evSb().from('integration_events').select(EV_COLUMNAS));
     if (modo === 'nuevos') q = q.gt('id', ev.ultimoId);
     if (modo === 'anteriores') q = q.lt('id', ev.primerId);
     const { data, error } = await q.order('id', { ascending: false }).limit(EV_PAGE);
+    if (!vigente()) return;
     if (error) throw error;
 
     if (modo === 'reemplazar') { ev.ultimoId = 0; ev.primerId = null; }
@@ -309,15 +321,17 @@ async function evCargar(modo) {
     }
 
     await evCargarEstado();
+    if (!vigente()) return;
     ev.error = null;
     evMensaje(`Actualizado a las ${evHoraAR(new Date().toISOString(), false)}${ev.pausado ? ' · en pausa' : ''}`);
   } catch (error) {
+    if (!vigente()) return;
     ev.error = error;
     const texto = evErrorTexto(error);
     evMensaje(texto, 'error');
     if (modo === 'reemplazar') document.getElementById('ev-log').innerHTML = `<p class="ev-vacio">${escapeHtml(texto)}</p>`;
   } finally {
-    ev.cargando = false;
+    if (vigente()) ev.cargando = false;
   }
 }
 
@@ -365,7 +379,11 @@ if (typeof document !== 'undefined' && document.getElementById('ig-tab-envivo'))
   document.getElementById('ev-f-resultado').addEventListener('change', recargar);
   document.getElementById('ev-filtros').addEventListener('submit', (e) => { e.preventDefault(); recargar(); });
   document.getElementById('ev-limpiar').addEventListener('click', () => {
+    clearTimeout(demoraBusqueda);
     document.getElementById('ev-filtros').reset();
+    document.getElementById('ev-q').value = '';
+    document.getElementById('ev-f-etapa').value = '';
+    document.getElementById('ev-f-resultado').value = '';
     recargar();
   });
   document.getElementById('ev-pausa').addEventListener('click', () => evPausar(!ev.pausado));
