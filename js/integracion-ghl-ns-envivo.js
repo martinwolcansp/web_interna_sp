@@ -67,6 +67,8 @@ const ev = {
   cantidad: 0,
   cargando: false,
   generacion: 0,     // sube con cada recarga completa: descarta respuestas viejas
+  corteId: null,     // "Limpiar pantalla": sólo se muestran eventos con id mayor
+  corteEn: null,     // hora del corte (para el aviso)
   error: null,
   detalles: new Map(), // id -> { payload, respuesta }
 };
@@ -278,7 +280,9 @@ function evPintar(filas, modo) {
   if (modo === 'reemplazar') {
     log.innerHTML = filas.length
       ? filas.map((e) => evFilaHtml(e, false)).join('')
-      : '<p class="ev-vacio">No hay eventos con estos filtros.</p>';
+      : `<p class="ev-vacio">${ev.corteId != null
+        ? 'Pantalla limpia. Los eventos nuevos van a aparecer acá.'
+        : 'No hay eventos con estos filtros.'}</p>`;
   } else if (filas.length) {
     log.querySelector('.ev-vacio')?.remove();
     const html = filas.map((e) => evFilaHtml(e, modo === 'nuevos')).join('');
@@ -309,14 +313,23 @@ async function evCargar(modo) {
     let q = evAplicarFiltros(evSb().from('integration_events').select(EV_COLUMNAS));
     if (modo === 'nuevos') q = q.gt('id', ev.ultimoId);
     if (modo === 'anteriores') q = q.lt('id', ev.primerId);
+    // Con la pantalla limpia, una recarga completa (filtros, volver a la
+    // pestaña) sigue mostrando sólo lo posterior al corte.
+    if (modo === 'reemplazar' && ev.corteId != null) q = q.gt('id', ev.corteId);
     const { data, error } = await q.order('id', { ascending: false }).limit(EV_PAGE);
     if (!vigente()) return;
     if (error) throw error;
 
-    if (modo === 'reemplazar') { ev.ultimoId = 0; ev.primerId = null; }
+    if (modo === 'reemplazar') {
+      ev.ultimoId = ev.corteId != null ? ev.corteId : 0;
+      ev.primerId = ev.corteId != null ? ev.corteId + 1 : null;
+    }
     evPintar(data || [], modo);
 
-    if (modo !== 'nuevos') {
+    if (modo === 'reemplazar') {
+      // Con corte siempre hay eventos anteriores para traer.
+      document.getElementById('ev-mas').hidden = ev.corteId == null && (data || []).length < EV_PAGE;
+    } else if (modo === 'anteriores') {
       document.getElementById('ev-mas').hidden = (data || []).length < EV_PAGE;
     }
 
@@ -365,6 +378,39 @@ function evPausar(pausar) {
   }
 }
 
+/* ── Limpiar pantalla ─────────────────────────────────────────────────── */
+
+// Vacía la vista: desde ahora sólo se muestran los eventos que lleguen
+// después del último visible. No borra nada de la base.
+function evLimpiarPantalla() {
+  ev.corteId = ev.ultimoId;
+  ev.corteEn = new Date().toISOString();
+  ev.detalles.clear();
+  evMostrarCorte();
+  evActivar();
+}
+
+// Vuelve a mostrar todo el registro.
+function evMostrarTodo() {
+  ev.corteId = null;
+  ev.corteEn = null;
+  evMostrarCorte();
+  evActivar();
+}
+
+function evMostrarCorte() {
+  const el = document.getElementById('ev-corte');
+  if (ev.corteId == null) {
+    el.hidden = true;
+    el.innerHTML = '';
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML = `
+    <span><i class="ti ti-eraser" aria-hidden="true"></i> Pantalla limpia a las ${escapeHtml(evHoraAR(ev.corteEn, false))}: se muestran los eventos que llegaron después.</span>
+    <button type="button" class="ev-corte__link" data-ev-accion="mostrar-todo">Mostrar todo</button>`;
+}
+
 /* ── Inicialización ──────────────────────────────────────────────────── */
 
 if (typeof document !== 'undefined' && document.getElementById('ig-tab-envivo')) {
@@ -387,6 +433,10 @@ if (typeof document !== 'undefined' && document.getElementById('ig-tab-envivo'))
     recargar();
   });
   document.getElementById('ev-pausa').addEventListener('click', () => evPausar(!ev.pausado));
+  document.getElementById('ev-limpiar-pantalla').addEventListener('click', evLimpiarPantalla);
+  document.getElementById('ev-corte').addEventListener('click', (e) => {
+    if (e.target.closest('[data-ev-accion="mostrar-todo"]')) evMostrarTodo();
+  });
   document.getElementById('ev-mas').addEventListener('click', () => evCargar('anteriores'));
 
   // Detalle de cada evento: se lee recién al abrirlo.

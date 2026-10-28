@@ -480,7 +480,10 @@
             <h2 id="ev-log-title" class="admin-section__title">Registro de eventos</h2>
             <p class="admin-section__subtitle">Cada llamada que reciben los servicios de la integración, más recientes primero. Se actualiza solo cada 10 segundos. Tocá un evento para ver qué llegó y qué se respondió.</p>
           </div>
-          <button type="button" id="ev-pausa" class="btn btn--secondary" aria-pressed="false"><i class="ti ti-player-pause"></i> Pausar</button>
+          <div class="ev-acciones">
+            <button type="button" id="ev-limpiar-pantalla" class="btn btn--secondary" title="Vacía la vista y muestra sólo los eventos que lleguen desde ahora. No borra nada."><i class="ti ti-eraser"></i> Limpiar pantalla</button>
+            <button type="button" id="ev-pausa" class="btn btn--secondary" aria-pressed="false"><i class="ti ti-player-pause"></i> Pausar</button>
+          </div>
         </div>
 
         <form id="ev-filtros" class="ig-toolbar" autocomplete="off">
@@ -498,10 +501,11 @@
             <option value="error">Errores y rechazos</option>
             <option value="aviso">Avisos</option>
           </select>
-          <button type="button" id="ev-limpiar" class="btn btn--secondary">Limpiar</button>
+          <button type="button" id="ev-limpiar" class="btn btn--secondary">Quitar filtros</button>
         </form>
 
         <p id="ev-actualizado" class="au-nota"></p>
+        <p id="ev-corte" class="ev-corte" hidden></p>
         <div id="ev-log" class="ev-log" role="log" aria-live="polite">
           <p class="admin-loading">Cargando eventos…</p>
         </div>
