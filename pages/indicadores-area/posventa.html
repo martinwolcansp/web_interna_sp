@@ -103,6 +103,11 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .chk-limpiar { appearance: none; border: 1px solid var(--rule); background: #fff; color: var(--second); font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
 .chk-limpiar:hover { background: var(--surface); border-color: var(--navy); color: var(--navy); }
 .chk-limpiar[hidden] { display: none; }
+/* Descarga a Excel (queda a la derecha de la barra de filtros) */
+.xls-btn { order: 99; margin-left: auto; appearance: none; border: 1px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 14px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.xls-btn:hover { background: var(--navy); color: #fff; }
+.xls-btn:disabled { opacity: .6; cursor: progress; }
+.xls-btn svg { width: 15px; height: 15px; }
 
 /* Detalle */
 .explorer { margin: 4px 0 8px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
@@ -222,6 +227,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Análisis Posventa Instalaciones</h2>
       <div class="filtros" id="filtros-inst">
         <span class="filtros-titulo">Filtros</span>
+        <button type="button" class="xls-btn" id="xls-inst" title="Resumen por mes, acciones, tipo de posventa y detalle de relevamientos, con el Año y Mes elegidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg> Descargar Excel</button>
       </div>
       <div class="kpi-row" id="kpi-inst"></div>
       <p class="bloque-ayuda">Hacé click en un número de las tablas para ver esos relevamientos en el detalle de abajo. Otro click en el mismo número quita el filtro.</p>
@@ -268,6 +274,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Encuestas Posventa</h2>
       <div class="filtros" id="filtros-enc">
         <span class="filtros-titulo">Filtros</span>
+        <button type="button" class="xls-btn" id="xls-enc" title="Resumen por mes, encuestas por estado y detalle de encuestas, con el Año y Mes elegidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg> Descargar Excel</button>
       </div>
       <div class="kpi-row" id="kpi-enc"></div>
 
@@ -426,6 +433,17 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     return {
       pasa: function (valor) { return estado.elegidos.size === 0 || estado.elegidos.has(String(valor)); },
       activo: function () { return estado.elegidos.size > 0; },
+      // Etiquetas / valores elegidos; null = todos.
+      etiquetas: function () {
+        if (!estado.elegidos.size) return null;
+        var m = casillas.filter(function (c) { return c.checked; }).map(function (c) { return c.parentNode.textContent.trim(); });
+        return m.length ? m : ["ninguno"];
+      },
+      valores: function () {
+        if (!estado.elegidos.size) return null;
+        var m = casillas.filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+        return m.length ? m : ["ninguno"];
+      },
       limpiar: function () { casillas.forEach(function (c) { c.checked = true; }); estado.elegidos = new Set(); pintarBoton(); },
     };
   }
@@ -463,6 +481,16 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         return filtros.anio.pasa(fecha.slice(0, 4)) && filtros.mes.pasa(fecha.slice(5, 7));
       },
       pintarLimpiar: function () { limpiar.hidden = !(filtros.anio.activo() || filtros.mes.activo()); },
+      descripcion: function () {
+        var a = filtros.anio.etiquetas(), m = filtros.mes.etiquetas();
+        return (a ? "Año " + a.join(", ") : "Todos los años") + " · " + (m ? "Mes " + m.join(", ") : "Todos los meses");
+      },
+      // Para el nombre del archivo: 2026, 2026_09-10, todos_09 o completo.
+      sufijo: function () {
+        var a = filtros.anio.valores(), m = filtros.mes.valores();
+        if (!a && !m) return "completo";
+        return [(a || ["todos"]).join("-"), m ? m.join("-") : null].filter(Boolean).join("_");
+      },
     };
   }
 
@@ -636,6 +664,14 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       };
     }
     return { filas: relev, texto: null };
+  }
+
+  // Caso de instalacion del relevamiento, con link a NetSuite.
+  function htmlCasoRelev(r) {
+    if (!r.numero_caso) return "";
+    if (!r.caso_id) return esc(r.numero_caso);
+    return '<a class="accion-link" href="' + URL_CASO + encodeURIComponent(r.caso_id) + '" target="_blank" rel="noopener">' +
+      esc(r.numero_caso) + " ↗</a>";
   }
 
   function pintarSeleccion(sel) {
@@ -848,6 +884,330 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   }
 
   // =====================================================================
+  // Descarga a Excel (un libro por pestaña, con el filtro de Año y Mes de la pestaña)
+  // =====================================================================
+  var EXCELJS_URL = "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js";
+  var XL_NAVY = "FF1F3864", XL_TOTAL = "FFDFE6F2", XL_GRIS = "FF52514E", XL_LINK = "FF2A78D6";
+  var XL_LLAMADO = "FFFDE8E6", XL_NEGATIVA = "FFFFF4DC";
+  var XL_PCT = "0%", XL_DIA = "dd/mm/yyyy";
+  var ultimaActualizacion = null;
+
+  // La libreria se carga recien al primer click (no demora la apertura del informe).
+  function cargarExcelJS() {
+    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+    if (!window.__exceljsCarga) {
+      window.__exceljsCarga = new Promise(function (ok, mal) {
+        var s = document.createElement("script");
+        s.src = EXCELJS_URL;
+        s.onload = function () { ok(window.ExcelJS); };
+        s.onerror = function () { window.__exceljsCarga = null; mal(new Error("no se pudo cargar la librería de Excel")); };
+        document.head.appendChild(s);
+      });
+    }
+    return window.__exceljsCarga;
+  }
+
+  function suma(a, b) { return a + b; }
+  function xlFecha(s) {
+    if (!s) return null;
+    var p = String(s).slice(0, 10).split("-");
+    return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  }
+  function xlLink(texto, url) { return texto && url ? { text: String(texto), hyperlink: url } : (texto || null); }
+  function xlRatio(a, b) { return b ? a / b : null; }
+  function xlNumero(s) { return s && /^\d+$/.test(String(s)) ? +s : (s || null); }
+  function ordenarMeses(lista) {
+    return Array.from(new Set(lista)).sort(function (a, b) { return a === null ? 1 : b === null ? -1 : a < b ? -1 : 1; });
+  }
+
+  // Hoja con titulo, periodo y fecha de exportacion en las filas 1 a 3; las tablas van desde la fila 5.
+  function xlHoja(wb, nombre, titulo, periodo) {
+    var ws = wb.addWorksheet(nombre);
+    ws.getCell("A1").value = titulo;
+    ws.getCell("A1").font = { bold: true, size: 14, color: { argb: XL_NAVY } };
+    ws.getCell("A2").value = "Período: " + periodo;
+    ws.getCell("A3").value = "Exportado el " + fmtFechaHora(new Date().toISOString()) +
+      (ultimaActualizacion ? " · datos actualizados el " + fmtFechaHora(ultimaActualizacion) : "");
+    ["A2", "A3"].forEach(function (c) { ws.getCell(c).font = { size: 10, color: { argb: XL_GRIS } }; });
+    return ws;
+  }
+
+  // Notas al pie de una tabla. Devuelve la siguiente fila libre.
+  function xlNotas(ws, desde, notas) {
+    notas.forEach(function (t, i) {
+      var c = ws.getCell("A" + (desde + i));
+      c.value = t;
+      c.font = { italic: true, size: 10, color: { argb: XL_GRIS } };
+    });
+    return desde + notas.length + 1;
+  }
+
+  // Tabla desde la fila 'desde'. columnas: [{titulo, ancho, fmt, ajustar}]; filas: arrays
+  // de valores ({text, hyperlink} = link). opciones: totales (arrays), filtro (autofiltro),
+  // fijar / fijarCol (inmoviliza encabezado y columnas), relleno(i) (color de la fila i).
+  // Devuelve la primera fila libre despues de la tabla (dejando una en blanco).
+  function xlTabla(ws, desde, columnas, filas, opciones) {
+    opciones = opciones || {};
+    var enc = ws.getRow(desde);
+    enc.height = 32;
+    columnas.forEach(function (c, i) {
+      var col = ws.getColumn(i + 1);
+      col.width = Math.max(col.width || 0, c.ancho || 12);
+      var cel = enc.getCell(i + 1);
+      cel.value = c.titulo;
+      cel.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cel.fill = { type: "pattern", pattern: "solid", fgColor: { argb: XL_NAVY } };
+      cel.alignment = { vertical: "middle", horizontal: i ? "center" : "left", wrapText: true };
+    });
+    function escribir(nro, valores, estilo) {
+      var row = ws.getRow(nro);
+      valores.forEach(function (v, i) {
+        var cel = row.getCell(i + 1), c = columnas[i] || {};
+        cel.value = v === undefined || v === "" ? null : v;
+        if (c.fmt) cel.numFmt = c.fmt;
+        if (c.ajustar) cel.alignment = { vertical: "top", wrapText: true };
+        else cel.alignment = { vertical: "top" };
+        if (v && typeof v === "object" && v.hyperlink) cel.font = { color: { argb: XL_LINK }, underline: true };
+        if (estilo && estilo.fill) cel.fill = { type: "pattern", pattern: "solid", fgColor: { argb: estilo.fill } };
+        if (estilo && estilo.bold) cel.font = { bold: true, color: { argb: XL_NAVY } };
+      });
+    }
+    filas.forEach(function (f, i) {
+      var fill = opciones.relleno ? opciones.relleno(i) : null;
+      escribir(desde + 1 + i, f, fill ? { fill: fill } : null);
+    });
+    var sig = desde + 1 + filas.length;
+    if (!filas.length) {
+      ws.getCell("A" + sig).value = "Sin datos para el período elegido.";
+      ws.getCell("A" + sig).font = { italic: true, color: { argb: XL_GRIS } };
+      sig++;
+    }
+    (opciones.totales || []).forEach(function (t) { escribir(sig++, t, { bold: true, fill: XL_TOTAL }); });
+    if (opciones.filtro && filas.length) ws.autoFilter = { from: { row: desde, column: 1 }, to: { row: desde, column: columnas.length } };
+    if (opciones.fijar) ws.views = [{ state: "frozen", ySplit: desde, xSplit: opciones.fijarCol || 0 }];
+    return sig + 1;
+  }
+
+  // Matriz filas x meses con columna Total y fila Total. opciones.extra: filas al pie
+  // [etiqueta, valor(mes), total]; opciones.etiquetaTotal.
+  function xlMatriz(ws, desde, titulo, filas, meses, valor, opciones) {
+    opciones = opciones || {};
+    var cols = [{ titulo: titulo, ancho: 34 }]
+      .concat(meses.map(function (m) { return { titulo: etiquetaMes(m), ancho: 10 }; }), [{ titulo: "Total", ancho: 10 }]);
+    var totCol = meses.map(function () { return 0; });
+    var cuerpo = filas.map(function (f) {
+      var vals = meses.map(function (m, i) { var n = valor(f, m) || 0; totCol[i] += n; return n; });
+      return [f].concat(vals, [vals.reduce(suma, 0)]);
+    });
+    var totales = [[opciones.etiquetaTotal || "Total"].concat(totCol, [totCol.reduce(suma, 0)])];
+    (opciones.extra || []).forEach(function (x) { totales.push([x[0]].concat(meses.map(x[1]), [x[2]])); });
+    return xlTabla(ws, desde, cols, cuerpo, { totales: filas.length ? totales : [], fijar: true, fijarCol: 1 });
+  }
+
+  async function descargarLibro(wb, nombre) {
+    var buf = await wb.xlsx.writeBuffer();
+    var url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    var a = document.createElement("a");
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  // ---------- Pestaña 1: Analisis Posventa Instalaciones ----------
+  async function excelInstalaciones() {
+    var ExcelJS = await cargarExcelJS();
+    var relev = DATOS.relev.filter(function (r) { return filtroInst.pasa(r.fecha_creacion); });
+    var casosFin = DATOS.casos.filter(function (c) { return c.fecha_fin_inst && filtroInst.pasa(c.fecha_fin_inst); });
+    var periodo = filtroInst.descripcion();
+    var wb = new ExcelJS.Workbook();
+    wb.creator = "Web interna SP";
+
+    // Casos con algun relevamiento, de cualquier fecha (el relevamiento suele
+    // ser de un mes posterior al fin de la instalacion).
+    var casosConRelev = new Set(DATOS.relev.filter(function (r) { return r.numero_caso; }).map(function (r) { return r.numero_caso; }));
+    function resumen(rs, cs) {
+      var con = rs.filter(function (r) { return r.numero_caso; }).length;
+      var inst = new Set(cs.map(function (c) { return c.id_inst; }));
+      var instRelev = new Set(cs.filter(function (c) { return casosConRelev.has(c.numero); }).map(function (c) { return c.id_inst; }));
+      var acciones = rs.reduce(function (s, r) { return s + (r.acciones || []).length; }, 0);
+      return [rs.length, con, rs.length - con, xlRatio(con, rs.length), inst.size, cs.length, instRelev.size,
+        xlRatio(instRelev.size, inst.size), acciones, xlRatio(acciones, rs.length)];
+    }
+
+    // 1. Resumen por mes (datos de las tarjetas, desagregados)
+    var ws = xlHoja(wb, "Resumen", "Análisis Posventa Instalaciones — resumen por mes", periodo);
+    var meses = ordenarMeses(relev.map(function (r) { return anioMes(r.fecha_creacion); })
+      .concat(casosFin.map(function (c) { return anioMes(c.fecha_fin_inst); })));
+    var sig = xlTabla(ws, 5, [
+      { titulo: "Mes", ancho: 12 }, { titulo: "Relevamientos posventa", ancho: 14 },
+      { titulo: "Con caso de instalación", ancho: 14 }, { titulo: "Sin caso de instalación", ancho: 14 },
+      { titulo: "% con caso", ancho: 10, fmt: XL_PCT }, { titulo: "Instalaciones finalizadas", ancho: 14 },
+      { titulo: "Casos de instalación finalizados", ancho: 16 }, { titulo: "Instalaciones con relevamiento", ancho: 15 },
+      { titulo: "% instalaciones con relevamiento", ancho: 16, fmt: XL_PCT }, { titulo: "Acciones registradas", ancho: 12 },
+      { titulo: "Acciones por relevamiento", ancho: 14, fmt: "0.00" },
+    ], meses.map(function (m) {
+      return [etiquetaMes(m)].concat(resumen(
+        relev.filter(function (r) { return anioMes(r.fecha_creacion) === m; }),
+        casosFin.filter(function (c) { return anioMes(c.fecha_fin_inst) === m; })));
+    }), { totales: meses.length ? [["Total"].concat(resumen(relev, casosFin))] : [], fijar: true, fijarCol: 1 });
+    xlNotas(ws, sig, [
+      "Relevamientos y acciones: por mes de creación del relevamiento. Instalaciones y casos: por mes de fin de instalación.",
+      "Una instalación con dos casos (alarma y cámaras) cuenta una vez; el total cuenta cada instalación una sola vez en el período.",
+      "Instalaciones con relevamiento: instalaciones finalizadas en el mes con al menos un relevamiento en alguno de sus casos, de cualquier fecha.",
+      "Un relevamiento puede tener varias acciones.",
+    ]);
+
+    // 2. Analisis por accion de posventa
+    var porAccion = {};
+    relev.forEach(function (r) {
+      var m = anioMes(r.fecha_creacion);
+      (r.acciones || []).forEach(function (a) {
+        porAccion[a] = porAccion[a] || {};
+        porAccion[a][m] = (porAccion[a][m] || 0) + 1;
+      });
+    });
+    var totAccion = function (a) { return Object.keys(porAccion[a]).reduce(function (s, m) { return s + porAccion[a][m]; }, 0); };
+    var acciones = Object.keys(porAccion).sort(function (a, b) { return totAccion(b) - totAccion(a); });
+    var mesesRelev = mesesDe(relev, "fecha_creacion");
+    ws = xlHoja(wb, "Acciones posventa", "Análisis por acción de posventa", periodo);
+    sig = xlMatriz(ws, 5, "Acción posventa", acciones, mesesRelev, function (a, m) { return porAccion[a][m]; }, {
+      etiquetaTotal: "Total de acciones",
+      extra: [["Relevamientos del mes", function (m) {
+        return relev.filter(function (r) { return anioMes(r.fecha_creacion) === m; }).length;
+      }, relev.length]],
+    });
+    xlNotas(ws, sig, ["Cantidad de relevamientos por acción y mes de creación del relevamiento. Un relevamiento puede tener varias acciones, por eso el total de acciones puede superar al de relevamientos."]);
+
+    // 3. Clasificacion por tipo de posventa
+    var relevCaso = relev.filter(function (r) { return r.numero_caso; });
+    var porTipo = {};
+    relevCaso.forEach(function (r) {
+      var k = r.tipo_posventa || "Sin tipo", m = anioMes(r.fecha_creacion);
+      porTipo[k] = porTipo[k] || {};
+      porTipo[k][m] = (porTipo[k][m] || 0) + 1;
+    });
+    var tipos = Object.keys(porTipo).sort(function (a, b) { return a === "Sin tipo" ? 1 : b === "Sin tipo" ? -1 : a.localeCompare(b); });
+    ws = xlHoja(wb, "Tipo de posventa", "Clasificación por tipo de posventa", periodo);
+    sig = xlMatriz(ws, 5, "Tipo de posventa", tipos, mesesDe(relevCaso, "fecha_creacion"), function (k, m) { return porTipo[k][m]; });
+    xlNotas(ws, sig, ["Relevamientos con caso de instalación, según el tipo de posventa del caso, por mes de creación del relevamiento."]);
+
+    // 4. Detalle de relevamientos
+    ws = xlHoja(wb, "Detalle relevamientos", "Detalle de relevamientos", periodo);
+    var orden = relev.slice().sort(function (a, b) { return (b.fecha_creacion || "").localeCompare(a.fecha_creacion || ""); });
+    xlTabla(ws, 5, [
+      { titulo: "Número de caso", ancho: 16 }, { titulo: "Nro cuenta", ancho: 11 }, { titulo: "Empresa", ancho: 34 },
+      { titulo: "Fecha de creación", ancho: 12, fmt: XL_DIA }, { titulo: "Acciones posventa", ancho: 32, ajustar: true },
+      { titulo: "Comentarios posventa", ancho: 70, ajustar: true }, { titulo: "Tipo de posventa", ancho: 22 },
+      { titulo: "Realizó", ancho: 24 }, { titulo: "Relevamiento", ancho: 13 },
+    ], orden.map(function (r) {
+      return [
+        r.caso_id ? xlLink(r.numero_caso, URL_CASO + encodeURIComponent(r.caso_id)) : r.numero_caso,
+        xlNumero(r.nro_cuenta), r.empresa, xlFecha(r.fecha_creacion), (r.acciones || []).join(", "), r.comentarios,
+        r.tipo_posventa, r.realizo, xlLink(r.relevamiento_id, URL_RELEVAMIENTO + encodeURIComponent(r.relevamiento_id)),
+      ];
+    }), { filtro: true, fijar: true });
+
+    await descargarLibro(wb, "Posventa_Instalaciones_" + filtroInst.sufijo() + ".xlsx");
+  }
+
+  // ---------- Pestaña 2: Encuestas Posventa ----------
+  async function excelEncuestas() {
+    var ExcelJS = await cargarExcelJS();
+    var periodo = filtroEnc.descripcion();
+    var enc = DATOS.enc.filter(function (e) { return filtroEnc.pasa(e.fecha); });
+    var info = new Map(enc.map(function (e) { return [e, { alerta: alertaEncuesta(e), acciones: accionesDeEncuesta(e) }]; }));
+    var wb = new ExcelJS.Workbook();
+    wb.creator = "Web interna SP";
+
+    function resumen(lista) {
+      var fin = lista.filter(function (e) { return e.estado === "Finalizada"; });
+      var cal = contar(fin, function (e) { return opcion(e.calificacion, CALIFICACIONES); });
+      var exp = contar(fin, function (e) { return opcion(e.expectativa, EXPECTATIVAS); });
+      var conCal = fin.filter(function (e) { return e.calificacion; }).length;
+      var alertas = lista.filter(function (e) { return info.get(e).alerta; });
+      var conAccion = alertas.filter(function (e) { return info.get(e).acciones.length; }).length;
+      var n = function (m, k) { return m[k] || 0; };
+      return [lista.length, fin.length, lista.length - fin.length, xlRatio(fin.length, lista.length),
+        n(cal, "Excelente"), n(cal, "Buena"), n(cal, "Mala"), n(cal, "Otra respuesta") + n(cal, "Sin respuesta"),
+        xlRatio(n(cal, "Excelente") + n(cal, "Buena"), conCal),
+        n(exp, "Las superó"), n(exp, "Las cumplió"), n(exp, "No las cumplió"), n(exp, "Otra respuesta") + n(exp, "Sin respuesta"),
+        lista.filter(function (e) { return info.get(e).alerta === "llamado"; }).length,
+        alertas.length, conAccion, alertas.length - conAccion];
+    }
+
+    // 1. Resumen por mes (datos de las tarjetas, desagregados)
+    var ws = xlHoja(wb, "Resumen", "Encuestas Posventa — resumen por mes", periodo);
+    var meses = mesesDe(enc, "fecha");
+    var sig = xlTabla(ws, 5, [
+      { titulo: "Mes", ancho: 12 }, { titulo: "Encuestas enviadas", ancho: 12 }, { titulo: "Finalizadas", ancho: 11 },
+      { titulo: "Sin responder", ancho: 11 }, { titulo: "Tasa de respuesta", ancho: 11, fmt: XL_PCT },
+      { titulo: "Calificación Excelente", ancho: 12 }, { titulo: "Calificación Buena", ancho: 12 }, { titulo: "Calificación Mala", ancho: 12 },
+      { titulo: "Calificación otra o sin respuesta", ancho: 14 }, { titulo: "% buena o excelente", ancho: 12, fmt: XL_PCT },
+      { titulo: "Expectativa: las superó", ancho: 12 }, { titulo: "Expectativa: las cumplió", ancho: 12 },
+      { titulo: "Expectativa: no las cumplió", ancho: 13 }, { titulo: "Expectativa otra o sin respuesta", ancho: 14 },
+      { titulo: "Solicitan llamado", ancho: 11 }, { titulo: "Con alerta", ancho: 10 },
+      { titulo: "Alertas con acción posventa", ancho: 13 }, { titulo: "Alertas sin acción posventa", ancho: 13 },
+    ], meses.map(function (m) {
+      return [etiquetaMes(m)].concat(resumen(enc.filter(function (e) { return anioMes(e.fecha) === m; })));
+    }), { totales: meses.length ? [["Total"].concat(resumen(enc))] : [], fijar: true, fijarCol: 1 });
+    xlNotas(ws, sig, [
+      "Por mes en que se envió la encuesta. Si un contacto recibió más de una, cuenta la más reciente.",
+      "Calificación y expectativa: sobre las encuestas finalizadas. % buena o excelente: sobre las finalizadas con calificación.",
+      "Alerta: solicita llamado, calificación Mala o expectativa No las cumplió. Acción posventa: relevamiento con la acción Comunicación Cliente (mismo criterio que la tabla de detalle).",
+    ]);
+
+    // 2. Encuestas por estado y mes
+    var porEstado = {};
+    enc.forEach(function (e) {
+      var m = anioMes(e.fecha);
+      porEstado[e.estado] = porEstado[e.estado] || {};
+      porEstado[e.estado][m] = (porEstado[e.estado][m] || 0) + 1;
+    });
+    var estados = ["Enviada", "Finalizada"].filter(function (k) { return porEstado[k]; })
+      .concat(Object.keys(porEstado).filter(function (k) { return k !== "Enviada" && k !== "Finalizada"; }));
+    ws = xlHoja(wb, "Estado por mes", "Encuestas por estado y mes", periodo);
+    sig = xlMatriz(ws, 5, "Estado", estados, meses, function (k, m) { return porEstado[k][m]; });
+    xlNotas(ws, sig, ["Mes en que se envió la encuesta. Si un contacto recibió más de una, cuenta la más reciente."]);
+
+    // 3. Detalle de encuestas
+    ws = xlHoja(wb, "Detalle encuestas", "Detalle de encuestas", periodo);
+    var orden = enc.slice().sort(function (a, b) { return (b.fecha || "").localeCompare(a.fecha || ""); });
+    var ALERTA = { llamado: "Solicita llamado", negativa: "Respuesta negativa" };
+    xlTabla(ws, 5, [
+      { titulo: "Contacto", ancho: 28 }, { titulo: "Cliente NetSuite", ancho: 14 }, { titulo: "Nombre cliente NetSuite", ancho: 32 },
+      { titulo: "Fecha", ancho: 12, fmt: XL_DIA }, { titulo: "Estado", ancho: 11 }, { titulo: "Calificación", ancho: 13 },
+      { titulo: "Expectativa", ancho: 15 }, { titulo: "Comentarios", ancho: 60, ajustar: true }, { titulo: "Alerta", ancho: 18 },
+      { titulo: "Caso de instalación", ancho: 16 }, { titulo: "Acción posventa", ancho: 14 }, { titulo: "Caso de la acción", ancho: 16 },
+      { titulo: "Realizó la acción", ancho: 24 }, { titulo: "Otros relevamientos Comunicación Cliente", ancho: 16 },
+    ], orden.map(function (e) {
+      var x = info.get(e), r = x.acciones[0] || null;
+      return [
+        e.contacto,
+        e.cliente_ns_id ? xlLink(e.cliente_ns || e.cliente_ns_id, URL_CLIENTE + encodeURIComponent(e.cliente_ns_id)) : "Sin vincular",
+        e.cliente_ns_nombre, xlFecha(e.fecha), e.estado, e.calificacion, e.expectativa, e.comentarios, ALERTA[x.alerta] || null,
+        e.caso_ns_id ? xlLink(e.caso_ns || e.caso_ns_id, URL_CASO + encodeURIComponent(e.caso_ns_id)) : null,
+        r ? xlLink(fmtDia(r.fecha_creacion), URL_RELEVAMIENTO + encodeURIComponent(r.relevamiento_id)) : x.alerta ? "Sin acción" : null,
+        r ? r.numero_caso : null, r ? r.realizo : null, x.acciones.length > 1 ? x.acciones.length - 1 : null,
+      ];
+    }), {
+      filtro: true, fijar: true,
+      relleno: function (i) { var a = info.get(orden[i]).alerta; return a === "llamado" ? XL_LLAMADO : a === "negativa" ? XL_NEGATIVA : null; },
+    });
+
+    await descargarLibro(wb, "Posventa_Encuestas_" + filtroEnc.sufijo() + ".xlsx");
+  }
+
+  async function exportar(btn, generar) {
+    if (btn.disabled || !filtroInst || !filtroEnc) return;
+    var html = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "Generando…";
+    try { await generar(); }
+    catch (e) { setEstado("No se pudo generar el Excel: " + e.message, "error"); }
+    finally { btn.disabled = false; btn.innerHTML = html; }
+  }
+
+  // =====================================================================
   // Carga de datos
   // =====================================================================
   // filtro: [columna, valor] opcional (igualdad).
@@ -893,7 +1253,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     if (!iniciado) {
       iniciado = true;
       tablaRelev = crearTabla("tabla-relev", "buscar-relev", "cuenta-relev", [
-        { titulo: "Número", valor: function (r) { return r.numero_caso || ""; }, clase: "nowrap" },
+        { titulo: "Número", html: htmlCasoRelev, valor: function (r) { return r.numero_caso || ""; }, clase: "nowrap" },
         { titulo: "Nro cuenta", valor: function (r) { return r.nro_cuenta || ""; }, orden: function (r) { return +r.nro_cuenta || 0; } },
         { titulo: "Empresa", valor: function (r) { return r.empresa || ""; } },
         { titulo: "Fecha de creación", valor: function (r) { return fmtDia(r.fecha_creacion); }, orden: function (r) { return r.fecha_creacion; }, clase: "nowrap" },
@@ -946,6 +1306,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       .eq("area", AREA).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
     if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
     var c = r.data[0];
+    ultimaActualizacion = c.finalizado_en;
     // Sin actualizacion automatica por ahora: no se marca como atrasada.
     $("upd-hero").hidden = false;
     $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
@@ -1070,6 +1431,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // =====================================================================
   function iniciarPestanas() {
     $("panel-instalaciones").addEventListener("click", clicMatriz);
+    $("xls-inst").addEventListener("click", function () { exportar($("xls-inst"), excelInstalaciones); });
+    $("xls-enc").addEventListener("click", function () { exportar($("xls-enc"), excelEncuestas); });
     document.querySelectorAll(".tab-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var id = btn.getAttribute("data-tab");
