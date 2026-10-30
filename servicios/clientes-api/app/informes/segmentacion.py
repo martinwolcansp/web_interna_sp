@@ -149,7 +149,7 @@ def traer(log, paso):
     paso("Verificando campos de NetSuite")
     grupos, avisos = consulta.grupos_validos(log)
     paso("Consultando clientes en NetSuite")
-    filas = consulta.consultar(grupos, config.CRITERIO_CLIENTES)
+    filas = consulta.consultar(grupos, config.CRITERIO_CLIENTES, log=log, avisos=avisos)
     log(f"{len(filas)} registros de clientes ({config.CRITERIO_CLIENTES})")
     por_id = {int(f["ns_id"]): f for f in filas}
     for _ in range(NIVELES_PADRE):
@@ -174,14 +174,21 @@ def actualizar(token, corrida_id, log, paso, periodo=None):
     sb.upsert(token, T_CLIENTE, clientes, "ns_id")
     paso("Guardando establecimientos")
     sb.upsert(token, T_ESTABLECIMIENTO, establecimientos, "ns_id")
+    # Si las compras fallan, la actualizacion de clientes sigue igual y las
+    # compras quedan como estaban (no se marcan como no vigentes).
     paso("Consultando compras (OV de productos) en NetSuite")
-    filas_compra, avisos_compra = compras.traer(por_id, raices(por_id), corrida_id, ts, log)
-    avisos += avisos_compra
-    paso("Guardando compras")
-    sb.upsert(token, T_COMPRA, filas_compra, "ov_id")
+    try:
+        filas_compra, avisos_compra = compras.traer(por_id, raices(por_id), corrida_id, ts, log)
+        avisos += avisos_compra
+        paso("Guardando compras")
+        sb.upsert(token, T_COMPRA, filas_compra, "ov_id")
+        sb.marcar_no_vistos(token, T_COMPRA, corrida_id)
+    except RuntimeError as e:
+        log(f"ERROR en compras (se conservan las anteriores): {e}")
+        avisos.append(f"No se pudieron actualizar las compras: {str(e)[:200]}")
+        filas_compra = None
 
     paso("Marcando registros que ya no vienen")
-    sb.marcar_no_vistos(token, T_COMPRA, corrida_id)
     sb.marcar_no_vistos(token, T_ESTABLECIMIENTO, corrida_id)
     sb.marcar_no_vistos(token, T_CLIENTE, corrida_id)
 
@@ -195,7 +202,7 @@ def actualizar(token, corrida_id, log, paso, periodo=None):
         "activos": activos,
         "inactivos": len(establecimientos) - activos - sin_estado,
         "sin_estado": sin_estado,
-        "compras": len(filas_compra),
-        "clientes_con_compras": len({c["cliente_ns_id"] for c in filas_compra}),
+        "compras": len(filas_compra) if filas_compra is not None else None,
+        "clientes_con_compras": len({c["cliente_ns_id"] for c in filas_compra}) if filas_compra is not None else None,
     }
     return stats, avisos

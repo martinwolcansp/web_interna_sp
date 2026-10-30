@@ -19,13 +19,15 @@
 # nombre del establecimiento o del cliente). Las OV de entidades que no estan
 # en la base de clientes (ej. clientes potenciales) se descartan con aviso.
 
+from datetime import date
+
 from app import config, netsuite
 from app.comun import entero, numero, texto
 
 LOTE_IDS = 900
 
 
-def _consulta(con_extra=True):
+def _consulta(desde, hasta, con_extra=True):
     extra = (",\n            t.foreigntotal AS total,\n            BUILTIN.DF(t.status) AS estado" if con_extra else "")
     return f"""
         SELECT
@@ -41,7 +43,8 @@ def _consulta(con_extra=True):
         FROM transaction t
         WHERE t.type = 'SalesOrd'
           AND t.custbody_3k_tipo_orden_de_venta = 1
-          AND t.trandate >= TO_DATE('{config.COMPRAS_DESDE}', 'YYYY-MM-DD')
+          AND t.trandate >= TO_DATE('{desde}', 'YYYY-MM-DD')
+          AND t.trandate < TO_DATE('{hasta}', 'YYYY-MM-DD')
         ORDER BY t.id
     """
 
@@ -72,11 +75,17 @@ def _unidad_comercial_origen(ovs, log):
 def traer(por_id, raiz, corrida_id, ts, log):
     """OV de productos -> (filas cli_compra, avisos). por_id/raiz: de segmentacion."""
     avisos = []
+    # Una consulta por anio: con todas las OV desde 2022 juntas NetSuite puede
+    # responder 500 (consulta pesada).
+    desde = date.fromisoformat(config.COMPRAS_DESDE)
+    rangos = []
+    for anio in range(desde.year, date.today().year + 1):
+        rangos.append((max(desde, date(anio, 1, 1)).isoformat(), date(anio + 1, 1, 1).isoformat()))
     try:
-        ovs = netsuite.suiteql(_consulta(True))
+        ovs = netsuite.suiteql_unidas([_consulta(a, b, True) for a, b in rangos])
     except RuntimeError as e:
         log(f"La consulta de OV con monto y estado fallo, se repite sin ellos: {str(e)[:300]}")
-        ovs = netsuite.suiteql(_consulta(False))
+        ovs = netsuite.suiteql_unidas([_consulta(a, b, False) for a, b in rangos])
         avisos.append("NetSuite no dejo leer monto y estado de las OV (se omitieron)")
     log(f"{len(ovs)} OV de productos desde {config.COMPRAS_DESDE}")
 

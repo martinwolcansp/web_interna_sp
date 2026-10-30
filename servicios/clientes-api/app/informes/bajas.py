@@ -95,7 +95,7 @@ def traer_mes(periodo, log, paso):
     paso("Verificando campos de NetSuite")
     grupos, avisos = consulta.grupos_validos(log)
     paso(f"Consultando bajas de {periodo:%m/%Y} en NetSuite")
-    filas = consulta.consultar(grupos, where_mes(periodo, _mes_siguiente(periodo)), EXTRA)
+    filas = consulta.consultar(grupos, where_mes(periodo, _mes_siguiente(periodo)), EXTRA, log=log, avisos=avisos)
     filas = [f for f in filas if fecha_hora(f.get("fecha_suspension"))]
     log(f"{len(filas)} bajas en NetSuite para {periodo:%m/%Y}")
     return filas, grupos, avisos

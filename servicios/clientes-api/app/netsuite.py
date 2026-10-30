@@ -32,7 +32,8 @@ _semaforo = threading.BoundedSemaphore(max(1, config.NETSUITE_CONCURRENCIA))
 # Reintentos cuando NetSuite rechaza por exceso de pedidos o falla la conexion.
 REINTENTOS = 5
 ESPERA_BASE_SEG = 2
-_ERRORES_REINTENTABLES = ("CONCURRENCY_LIMIT_EXCEEDED", "SSS_REQUEST_LIMIT_EXCEEDED", "REQUEST_LIMIT_EXCEEDED")
+_ERRORES_REINTENTABLES = ("CONCURRENCY_LIMIT_EXCEEDED", "SSS_REQUEST_LIMIT_EXCEEDED", "REQUEST_LIMIT_EXCEEDED",
+                          "UNEXPECTED_ERROR")  # 500 de NetSuite: a veces transitorio (clientes-api, 30/10/2026)
 
 
 def _host_cuenta():

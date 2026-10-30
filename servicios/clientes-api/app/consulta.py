@@ -53,8 +53,24 @@ def grupos_validos(log):
     return ok, avisos
 
 
-def consultar(grupos, where, extra=None):
-    return netsuite.suiteql(armar(grupos, where, extra))
+def consultar(grupos, where, extra=None, log=None, avisos=None):
+    """Consulta completa. Si NetSuite falla (por ejemplo un 500 por una consulta
+    pesada), se repite sin los grupos opcionales que agregan un JOIN (direccion
+    de facturacion) y queda como aviso. grupos_validos solo prueba una fila, asi
+    que una consulta que anda con una fila puede fallar con todas."""
+    try:
+        return netsuite.suiteql(armar(grupos, where, extra))
+    except RuntimeError as e:
+        con_join = [g for g in grupos if g.get("join")]
+        if not con_join:
+            raise
+        if log:
+            log(f"La consulta completa fallo, se repite sin {', '.join(g['nombre'] for g in con_join)}: {str(e)[:300]}")
+        if avisos is not None:
+            avisos.extend(f"Se omitio {g['nombre']} (NetSuite fallo con la consulta completa)" for g in con_join)
+        for g in con_join:
+            grupos.remove(g)
+        return netsuite.suiteql(armar(grupos, where, extra))
 
 
 def por_ids(grupos, ids, extra=None):
