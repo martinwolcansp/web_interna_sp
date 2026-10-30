@@ -42,10 +42,17 @@
   <nav class="tabs" role="tablist">
     <button type="button" class="tab-btn active" data-tab="resumen" role="tab" aria-selected="true">Resumen</button>
     <button type="button" class="tab-btn" data-tab="plan" role="tab" aria-selected="false">Plan de acción</button>
-    <button type="button" class="tab-btn" data-tab="detalle" role="tab" aria-selected="false">Detalle</button>
   </nav>
 
   <main id="main" class="main--cargando">
+    <!-- Filtros: aplican a todo el informe (Resumen y Plan de accion) -->
+    <div class="filtros" id="filtros" style="margin-top:18px">
+      <span class="filtros-titulo">Filtros</span>
+      <input type="search" class="filtro-buscar" id="buscar" placeholder="Buscar cliente, cuenta, comentario…" aria-label="Buscar baja">
+      <button type="button" class="chk-limpiar" id="limpiar" hidden>Quitar filtros</button>
+      <button type="button" class="xls-btn" id="xls">Descargar Excel</button>
+    </div>
+
     <!-- Resumen -->
     <div class="tab-panel active" id="panel-resumen">
       <h2 id="titulo-resumen">Resumen</h2>
@@ -55,7 +62,7 @@
         <div class="bloque">
           <h3>Ranking de motivos de baja</h3>
           <div class="pivot-scroll"><table class="pivot" id="ranking"></table></div>
-          <div class="bloque-nota">Prioridad: Alta ≥ 20% del total, Media ≥ 5%, Baja &lt; 5%.</div>
+          <div class="bloque-nota">Prioridad: Alta ≥ 20% del total, Media ≥ 5%, Baja &lt; 5%. Click en un motivo o en una barra para filtrar.</div>
         </div>
         <div>
           <div class="bloque">
@@ -78,24 +85,8 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Plan de accion -->
-    <div class="tab-panel" id="panel-plan">
-      <h2>Plan de acción</h2>
-      <p class="bloque-nota" style="margin:-6px 0 16px">Categoría según el motivo de baja; las de motivo “Otro” se clasifican por el comentario. Hasta tres comentarios de ejemplo por categoría.</p>
-      <div class="plan-grid" id="plan"></div>
-    </div>
-
-    <!-- Detalle -->
-    <div class="tab-panel" id="panel-detalle">
-      <h2>Detalle de bajas</h2>
-      <div class="filtros" id="filtros">
-        <span class="filtros-titulo">Filtros</span>
-        <input type="search" class="filtro-buscar" id="buscar" placeholder="Buscar cliente, cuenta, comentario…" aria-label="Buscar baja">
-        <button type="button" class="chk-limpiar" id="limpiar" hidden>Quitar filtros</button>
-        <button type="button" class="xls-btn" id="xls">Descargar Excel</button>
-      </div>
+      <h3>Detalle de bajas</h3>
       <div class="explorer">
         <div class="explorer-bar">
           <span class="explorer-title">Bajas del mes</span>
@@ -105,6 +96,14 @@
       </div>
       <div class="bloque-nota">Filas marcadas en naranja: ya no figuran como baja en NetSuite (se muestra su estado actual).</div>
     </div>
+
+    <!-- Plan de accion -->
+    <div class="tab-panel" id="panel-plan">
+      <h2>Plan de acción</h2>
+      <p class="bloque-nota" style="margin:-6px 0 16px">Categoría según el motivo de baja; las de motivo “Otro” se clasifican por el comentario. Hasta tres comentarios de ejemplo por categoría.</p>
+      <div class="plan-grid" id="plan"></div>
+    </div>
+
   </main>
   <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Análisis de Bajas &middot; datos de NetSuite</footer>
 </div>
@@ -193,6 +192,12 @@
       b._tel = b.telefono || c.telefono || c.telefono_movil || null;
       b._email = b.email || c.email || null;
       b._vig = b.vigente ? "Figura como baja" : "Ya no figura como baja";
+      b._motivo = b.motivo_baja || "Sin motivo";
+      b._cat = b.categoria || "Revisión manual";
+      b._estini = b.estado_servicio || "Sin estado";
+      b._esthoy = b.estado_actual || "Sin estado";
+      b._loc = b.localidad ? b.localidad.trim().toUpperCase() : "Sin localidad";
+      b._sem = "Semana " + semanaISO(b.fecha_suspension);
       b._busqueda = [b.entity_id, b.nombre, b.nro_cuenta, b.direccion, b.localidad, b.motivo_baja, b.comentarios_motivo, b.comentarios, b._tel, b._email].join(" ").toLowerCase();
     });
     armarFiltros();
@@ -212,14 +217,17 @@
     }
   }
 
-  function incluidas() { return BAJAS; }
 
   // ---------------------------------------------------------------
   // Resumen
   // ---------------------------------------------------------------
+  function hayFiltro() { return Object.keys(F).some(function (k) { return F[k].activo(); }) || !!$("buscar").value.trim(); }
+
   function pintarTodo() {
-    var lista = incluidas();
+    var lista = filtradas();
     var total = lista.length;
+    var filtrado = hayFiltro();
+    $("limpiar").hidden = !filtrado;
     var corr = corridasPorMes[periodo] || [];
     $("titulo-resumen").textContent = "Resumen — " + etiquetaMes(periodo);
     if (corr.length) {
@@ -239,7 +247,8 @@
       "</strong> como baja en NetSuite (reactivadas o con otra fecha de suspensión). Se cuentan igual porque la foto es del mes; el detalle muestra su estado actual." : "";
 
     if (!total) {
-      $("kpis").innerHTML = '<p class="vacio">No hay bajas cargadas para ' + esc(etiquetaMes(periodo)) + (barra && !$("upd-btn").hidden ? ". Apretá “Actualizar " + esc(etiquetaMes(periodo)) + "”." : ".") + "</p>";
+      $("kpis").innerHTML = '<p class="vacio">' + (BAJAS.length ? "Ninguna baja cumple los filtros elegidos." :
+        "No hay bajas cargadas para " + esc(etiquetaMes(periodo)) + (barra && !$("upd-btn").hidden ? ". Apretá “Actualizar " + esc(etiquetaMes(periodo)) + "”." : ".")) + "</p>";
       $("ranking").innerHTML = ""; ["b-estado", "b-estado-hoy", "b-semanas", "b-localidad"].forEach(function (id) { $(id).innerHTML = ""; }); $("plan").innerHTML = '<p class="vacio">Sin datos.</p>';
       pintarTabla();
       return;
@@ -248,13 +257,14 @@
     var dias = lista.map(function (b) { return b.dias_suspendido; }).filter(function (d) { return d !== null && d !== undefined; });
     var prom = dias.length ? dias.reduce(function (a, b) { return a + b; }, 0) / dias.length : null;
     var delta = "";
-    if (PREVIAS.length) {
+    if (PREVIAS.length && !filtrado) {
       var dif = total - PREVIAS.length;
       delta = ' <span class="kpi-delta ' + (dif > 0 ? "kpi-delta--sube" : "kpi-delta--baja") + '">' + (dif > 0 ? "▲ " : dif < 0 ? "▼ " : "= ") + num(Math.abs(dif)) + "</span>";
     }
     var ultima = lista.reduce(function (m, b) { return b.ultima_captura_en > m ? b.ultima_captura_en : m; }, "");
     $("kpis").innerHTML = CI.kpis([
-      { num: num(total) + delta, label: "Total de bajas", det: PREVIAS.length ? "vs " + num(PREVIAS.length) + " en " + etiquetaMes(mesAnterior(periodo)) : "establecimientos" },
+      { num: num(total) + delta, label: "Total de bajas", det: filtrado ? "de " + num(BAJAS.length) + " en el mes (filtradas)"
+        : PREVIAS.length ? "vs " + num(PREVIAS.length) + " en " + etiquetaMes(mesAnterior(periodo)) : "establecimientos" },
       { num: esc(motivos[0][0]), label: "Motivo principal", det: num(motivos[0][1]) + " casos (" + pct(motivos[0][1], total, 1) + ")" },
       { num: prom === null ? "–" : num(prom, 1), label: "Días suspendido promedio", det: dias.length ? "rango " + Math.min.apply(null, dias) + "–" + Math.max.apply(null, dias) + " días, al " + CI.fmtDiaLocal(ultima) : "" },
       { num: num(motivos.length), label: "Motivos distintos", det: "categorías registradas" },
@@ -263,15 +273,15 @@
 
     $("ranking").innerHTML = '<thead><tr><th>#</th><th class="pv-fila">Motivo de baja</th><th>Cantidad</th><th>% del total</th><th>Prioridad</th></tr></thead><tbody>' +
       motivos.map(function (m, i) {
-        return "<tr><td>" + (i + 1) + '</td><td class="pv-fila">' + esc(m[0]) + "</td><td>" + num(m[1]) + "</td><td>" + pct(m[1], total, 1) + "</td><td>" + tagPrioridad(prioridadRanking(m[1], total)) + "</td></tr>";
+        return '<tr class="fila-clic" data-valor="' + esc(m[0]) + '"><td>' + (i + 1) + '</td><td class="pv-fila">' + esc(m[0]) + "</td><td>" + num(m[1]) + "</td><td>" + pct(m[1], total, 1) + "</td><td>" + tagPrioridad(prioridadRanking(m[1], total)) + "</td></tr>";
       }).join("") + '</tbody><tfoot><tr><td></td><td class="pv-fila">Total</td><td>' + num(total) + "</td><td>100%</td><td></td></tr></tfoot>";
 
-    $("b-estado").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b.estado_servicio || "Sin estado"; })), total);
-    $("b-estado-hoy").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b.estado_actual || "Sin estado"; })), total);
-    $("b-localidad").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b.localidad ? b.localidad.toUpperCase() : "Sin localidad"; })).slice(0, 10), total, { sec: true });
-    var sem = CI.contar(lista, function (b) { return semanaISO(b.fecha_suspension); });
-    $("b-semanas").innerHTML = CI.barras(Object.keys(sem).map(Number).sort(function (a, b) { return a - b; })
-      .map(function (s) { return ["Semana " + s, sem[s]]; }), total, { sec: true });
+    $("b-estado").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b._estini; })), total, { clic: true });
+    $("b-estado-hoy").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b._esthoy; })), total, { clic: true });
+    $("b-localidad").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b._loc; })).slice(0, 10), total, { sec: true, clic: true });
+    var sem = CI.contar(lista, function (b) { return b._sem; });
+    $("b-semanas").innerHTML = CI.barras(Object.keys(sem).sort(function (a, b) { return +a.split(" ")[1] - +b.split(" ")[1]; })
+      .map(function (k) { return [k, sem[k]]; }), total, { sec: true, clic: true });
 
     pintarPlan(lista);
     pintarTabla();
@@ -304,18 +314,27 @@
     var cont = $("filtros");
     cont.querySelectorAll(".chk-filtro").forEach(function (el) { el.remove(); });
     var tmp = document.createElement("div");
-    F.motivo = CI.crearFiltro(tmp, "f-motivo", "Motivo", CI.opcionesDe(BAJAS, function (b) { return b.motivo_baja || "Sin motivo"; }), pintarTabla);
-    F.cat = CI.crearFiltro(tmp, "f-cat", "Categoría", CI.opcionesDe(BAJAS, function (b) { return b.categoria || "Revisión manual"; }), pintarTabla);
-    F.estado = CI.crearFiltro(tmp, "f-estado", "Estado actual", CI.opcionesDe(BAJAS, function (b) { return b.estado_actual || "Sin estado"; }), pintarTabla);
-    F.vig = CI.crearFiltro(tmp, "f-vig", "En NetSuite", CI.opcionesDe(BAJAS, function (b) { return b._vig; }), pintarTabla);
+    var porCant = function (clave) {
+      var m = CI.contar(BAJAS, clave);
+      return Object.keys(m).sort(function (x, y) { return m[y] - m[x]; }).map(function (k) { return { valor: k, etiqueta: k + " (" + num(m[k]) + ")" }; });
+    };
+    var cambio = function () { pintarTodo(); };
+    F.motivo = CI.crearFiltro(tmp, "f-motivo", "Motivo", porCant(function (b) { return b._motivo; }), cambio);
+    F.cat = CI.crearFiltro(tmp, "f-cat", "Categoría", porCant(function (b) { return b._cat; }), cambio);
+    F.estini = CI.crearFiltro(tmp, "f-estini", "Estado de servicio", porCant(function (b) { return b._estini; }), cambio);
+    F.estado = CI.crearFiltro(tmp, "f-estado", "Estado hoy", porCant(function (b) { return b._esthoy; }), cambio);
+    F.loc = CI.crearFiltro(tmp, "f-loc", "Localidad", porCant(function (b) { return b._loc; }), cambio);
+    F.sem = CI.crearFiltro(tmp, "f-sem", "Semana", CI.opcionesDe(BAJAS, function (b) { return b._sem; },
+      function (x, y) { return +x.split(" ")[1] - +y.split(" ")[1]; }), cambio);
+    F.vig = CI.crearFiltro(tmp, "f-vig", "En NetSuite", porCant(function (b) { return b._vig; }), cambio);
     Array.prototype.slice.call(tmp.children).forEach(function (el) { cont.insertBefore(el, $("limpiar")); });
   }
 
   function filtradas() {
     var q = $("buscar").value.trim().toLowerCase();
     return BAJAS.filter(function (b) {
-      return F.motivo.pasa(b.motivo_baja || "Sin motivo") && F.cat.pasa(b.categoria || "Revisión manual") &&
-        F.estado.pasa(b.estado_actual || "Sin estado") && F.vig.pasa(b._vig) && (!q || b._busqueda.indexOf(q) >= 0);
+      return F.motivo.pasa(b._motivo) && F.cat.pasa(b._cat) && F.estini.pasa(b._estini) && F.estado.pasa(b._esthoy) &&
+        F.loc.pasa(b._loc) && F.sem.pasa(b._sem) && F.vig.pasa(b._vig) && (!q || b._busqueda.indexOf(q) >= 0);
     });
   }
 
@@ -339,8 +358,6 @@
 
   function pintarTabla() {
     var lista = filtradas();
-    var hayFiltro = Object.keys(F).some(function (k) { return F[k].activo(); }) || $("buscar").value.trim();
-    $("limpiar").hidden = !hayFiltro;
     var col = COLUMNAS.filter(function (c) { return c.id === orden.col; })[0];
     lista.sort(function (a, b) {
       var x = col.valor(a), y = col.valor(b);
@@ -360,19 +377,19 @@
 
   async function excel(ExcelJS) {
     var wb = new ExcelJS.Workbook();
-    var lista = filtradas(), total = BAJAS.length;
-    var sub = etiquetaMes(periodo) + " · " + num(total) + " bajas";
-    var motivos = CI.paresOrdenados(CI.contar(BAJAS, function (b) { return b.motivo_baja || "Sin motivo"; }));
+    var lista = filtradas(), total = lista.length;
+    var sub = etiquetaMes(periodo) + " · " + num(total) + " bajas" + (hayFiltro() ? " (filtradas de " + num(BAJAS.length) + ")" : "");
+    var motivos = CI.paresOrdenados(CI.contar(lista, function (b) { return b._motivo; }));
     CI.xlHoja(wb, "Ranking de motivos", "Análisis de Bajas — Ranking de motivos", sub, [
       { titulo: "#", ancho: 5 }, { titulo: "Motivo de baja", ancho: 38 }, { titulo: "Cantidad", ancho: 10 },
       { titulo: "% del total", ancho: 11, fmt: "0.0%" }, { titulo: "Prioridad", ancho: 10 },
     ], motivos.map(function (m, i) { return [i + 1, m[0], m[1], m[1] / total, prioridadRanking(m[1], total)]; }));
-    var porCat = CI.contar(BAJAS, function (b) { return b.categoria || "Revisión manual"; });
+    var porCat = CI.contar(lista, function (b) { return b._cat; });
     CI.xlHoja(wb, "Plan de acción", "Análisis de Bajas — Plan de acción", sub, [
       { titulo: "Categoría", ancho: 36 }, { titulo: "Cantidad", ancho: 10 }, { titulo: "% del total", ancho: 11, fmt: "0.0%" },
       { titulo: "Prioridad", ancho: 10 }, { titulo: "Acción recomendada", ancho: 70, ajustar: true },
     ], PLAN.filter(function (p) { return porCat[p[0]]; }).map(function (p) { return [p[0], porCat[p[0]], porCat[p[0]] / total, p[1], p[2]]; }));
-    CI.xlHoja(wb, "Detalle", "Análisis de Bajas — Detalle", sub + (lista.length !== total ? " (filtradas: " + num(lista.length) + ")" : ""), [
+    CI.xlHoja(wb, "Detalle", "Análisis de Bajas — Detalle", sub, [
       { titulo: "ID", ancho: 12 }, { titulo: "Cliente / establecimiento", ancho: 40 }, { titulo: "Cuenta", ancho: 10 },
       { titulo: "Dirección", ancho: 26 }, { titulo: "Localidad", ancho: 16 },
       { titulo: "Suspensión", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "Días", ancho: 7 }, { titulo: "Motivo", ancho: 26 },
@@ -394,8 +411,19 @@
   function eventos() {
     CI.iniciarPestanas();
     $("mes-sel").addEventListener("change", function () { periodo = $("mes-sel").value; cargarMes().catch(errorCarga); });
-    $("buscar").addEventListener("input", pintarTabla);
-    $("limpiar").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k].limpiar(); }); $("buscar").value = ""; pintarTabla(); });
+    $("buscar").addEventListener("input", function () { clearTimeout(eventos.t); eventos.t = setTimeout(pintarTodo, 200); });
+    $("limpiar").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k].limpiar(); }); $("buscar").value = ""; pintarTodo(); });
+    // Click en un motivo del ranking o en una barra: filtra por ese valor.
+    $("ranking").addEventListener("click", function (e) {
+      var tr = e.target.closest("tr.fila-clic");
+      if (tr) F.motivo.solo(tr.getAttribute("data-valor"));
+    });
+    [["b-estado", "estini"], ["b-estado-hoy", "estado"], ["b-localidad", "loc"], ["b-semanas", "sem"]].forEach(function (p) {
+      $(p[0]).addEventListener("click", function (e) {
+        var b = e.target.closest(".barra--clic");
+        if (b) F[p[1]].solo(b.getAttribute("data-valor"));
+      });
+    });
     $("xls").addEventListener("click", function () { CI.exportar($("xls"), excel, barra && barra.setEstado); });
     $("tabla").addEventListener("click", function (e) {
       var th = e.target.closest("th[data-col]");

@@ -69,6 +69,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 .pivot th { background: var(--navy); color: #fff; font-weight: 600; padding: 7px 10px; text-align: center; white-space: nowrap; }
 .pivot th.pv-fila, .pivot td.pv-fila { text-align: left; }
 .pivot td { padding: 7px 10px; border-bottom: 1px solid var(--rule); text-align: center; font-variant-numeric: tabular-nums; }
+.pivot tr.fila-clic { cursor: pointer; }
+.pivot tr.fila-clic:hover td { background: #dfe6f2; color: var(--navy); }
 .pivot tfoot td { font-weight: 700; color: var(--navy); background: var(--light-fill); border-top: 2px solid var(--navy); border-bottom: 0; }
 
 /* Etiquetas */
