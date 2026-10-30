@@ -51,6 +51,14 @@ window.INDICADORES_AREAS = [
     icono: 'ti-antenna',
     descripcion: 'Trabajos de la unidad Comunicaciones (Lantrix, cambio de tecnología): finalizados, demora, elementos y facturación.',
   },
+  {
+    id: 'servicio-tecnico',
+    label: 'Servicio Técnico',
+    archivo: 'servicio-tecnico.html',
+    seccion: 'indicadores-servicio-tecnico',
+    icono: 'ti-settings-cog',
+    descripcion: 'Casos de servicio técnico: recurrencia por cliente, reincidencia y clasificación por problema.',
+  },
 ];
 
 function indicadoresAreaActual() {

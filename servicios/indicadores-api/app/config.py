@@ -51,6 +51,18 @@ CASOS_INSTALACION_ASIGNADO_A = int(
 # Lo usan los alcances ampliaciones y comunicaciones (separados por unidad de negocio).
 CASOS_AMPLIACIONES_ASIGNADO_A = int(os.getenv("CASOS_AMPLIACIONES_ASIGNADO_A") or "232")
 
+# ---------- Servicio Tecnico ----------
+# Casos asignados a "Servicio Tecnico" (tabla propia ind_servicio_tecnico_caso).
+# Fecha de corte por fecha de creacion: conviene al menos un año de historia
+# para medir la recurrencia por cliente.
+SERVICIO_TECNICO_DESDE = date.fromisoformat(os.getenv("SERVICIO_TECNICO_DESDE") or "2025-01-01")
+# Ids de supportcase.assigned separados por coma. Vacio = se buscan por nombre.
+SERVICIO_TECNICO_ASIGNADO_A = (os.getenv("SERVICIO_TECNICO_ASIGNADO_A") or "").strip()
+SERVICIO_TECNICO_ASIGNADO_NOMBRE = os.getenv("SERVICIO_TECNICO_ASIGNADO_NOMBRE") or "Servicio Técnico"
+# Campo del caso con la categoria del formulario estructurado (ej. custevent_xx_categoria_st).
+# Vacio = la categoria sale de palabras clave del comentario (app/fuentes/clasificacion_st.py).
+SERVICIO_TECNICO_CAMPO_CATEGORIA = (os.getenv("SERVICIO_TECNICO_CAMPO_CATEGORIA") or "").strip()
+
 # ---------- Posventa ----------
 # Busqueda 2557: relevamientos "creado despues del 1/5/2025 23:59".
 POSVENTA_RELEV_DESDE = date.fromisoformat(os.getenv("POSVENTA_RELEV_DESDE", "2025-05-02"))

@@ -1,6 +1,6 @@
 # indicadores-api
 
-Servicio que actualiza **Indicadores por Área** de la web interna. Un módulo por área en `app/areas/`: **Posventa** (reemplaza el Power BI "Análisis Posventa V3") e **Instalaciones** (reemplaza "Análisis Instalaciones V2"). Los dos reemplazan el RESTlet `powerbi-netsuite-api`.
+Servicio que actualiza **Indicadores por Área** de la web interna. Un módulo por área en `app/areas/` (Posventa, Instalaciones, Ampliaciones, Comunicaciones y Servicio Técnico): **Posventa** (reemplaza el Power BI "Análisis Posventa V3") e **Instalaciones** (reemplaza "Análisis Instalaciones V2"). Los dos reemplazan el RESTlet `powerbi-netsuite-api`.
 
 ## Tablas comunes
 
@@ -38,6 +38,22 @@ Las consultas por lotes de ids (clasificación, OV, líneas, clientes de las enc
 Validado el 13/10/2026: 520 de 528 pares caso-OV iguales a la búsqueda 2833.
 
 Prueba sin tocar Supabase: `python probar_instalaciones.py`.
+
+## Qué hace una corrida de Servicio Técnico
+
+1. Busca el asignado "Servicio Técnico" entre los asignados de los casos (sin distinguir mayúsculas ni acentos; hoy es el 207). Si no lo encuentra o hay más de uno parecido, la corrida falla y lista los candidatos: cargar el id en `SERVICIO_TECNICO_ASIGNADO_A` (acepta varios separados por coma).
+2. Trae los casos de ese asignado creados desde `SERVICIO_TECNICO_DESDE` (por defecto 2025-01-01; unos 16.300 casos a octubre de 2026), con cliente, técnico (sin los prefijos "DST " y "DAI "), estado, fecha de cierre y el comentario técnico (`custevent_3k_comentarios_tecnico`).
+3. Clasifica cada caso en una **categoría de problema** (`app/fuentes/clasificacion_st.py`). El comentario técnico es texto libre con el trabajo realizado (14.851 textos distintos en 16.300 casos), así que no se puede agrupar por texto:
+   - Si está configurado `SERVICIO_TECNICO_CAMPO_CATEGORIA` (campo del formulario estructurado), se usa ese valor.
+   - Si no, palabras clave del comentario; si no alcanza, del título del caso. Validado el 30/10/2026: 99,3% de los casos clasificados.
+   - Marca la **vuelta planificada** (el técnico dejó pendiente volver: "recoordinar 2T para…", "llevar…"), sin contar lo condicional ("si vuelve a fallar…").
+   - Guarda el origen de la categoría (`categoria_origen`: formulario, comentario o título).
+4. Upsert en su tabla propia `ind_servicio_tecnico_caso` (no usa las tablas comunes) y borra lo que ya no vino.
+5. La página `pages/indicadores-area/servicio-tecnico.html` calcula la recurrencia por cliente (ventana de 30 a 365 días), la reincidencia y el retorno por categoría y por técnico, y el ranking de categorías. Por defecto no cuenta en la recurrencia las visitas no realizadas ni las bajas, y no toma las vueltas planificadas como reincidencia (las dos cosas se pueden cambiar con casillas).
+
+Las categorías del formulario estructurado deberían ser las mismas que las de `clasificacion_st.py` (`ORDEN`), para que el histórico y los casos nuevos se puedan comparar.
+
+Requiere la `migracion_44_indicadores_servicio_tecnico.sql` (sección `indicadores-servicio-tecnico`, tabla y RLS). Prueba sin tocar Supabase: `python probar_servicio_tecnico.py` (consulta NetSuite) o `python probar_servicio_tecnico.py --local` (reclasifica la última salida, para ajustar las reglas sin consultar NetSuite).
 
 ## Qué hace una corrida de Posventa
 
