@@ -3,12 +3,16 @@
 -- Clientes activos: compras de cada cliente (30 de octubre de 2026)
 -- ---------------------------------------------------------------------
 -- cli_compra   una fila por orden de venta de productos (tipo 1) desde
---              2022, asignada al cliente principal. La carga la
---              actualizacion de Segmentacion (clientes-api, app/compras.py).
---              Las OV en comodato cuentan como compra, marcadas.
+--              2022, asignada al cliente principal. Las OV en comodato
+--              cuentan como compra, marcadas.
+--              alcance: que informe la carga. La Segmentacion carga las
+--              instalaciones nuevas: unidades "Alarmas : Nuevas" y "Alarmas :
+--              Comodato" (alcance 'nuevas'; venta/comodato = es_comodato).
+--              Servicio tecnico, Ampliaciones, etc. los cargaran otros
+--              informes con su propio alcance, sin pisarse.
 --
--- v_cli_cliente  se recrea con: cantidad de compras, compras en comodato,
---                fecha y unidad de la ultima compra y monto total.
+-- v_cli_cliente  se recrea con (solo alcance 'nuevas'): cantidad de compras,
+--                compras en comodato, fecha y unidad de la ultima compra y monto.
 --
 -- Permisos: los mismos que cli_cliente (clientes-segmentacion).
 -- Requiere la migracion_42. Segura de correr mas de una vez.
@@ -18,6 +22,7 @@ begin;
 
 create table if not exists cli_compra (
   ov_id                    bigint primary key,       -- ID interno de la OV en NetSuite
+  alcance                  text not null default 'nuevas',  -- informe que la carga ('nuevas' = Segmentacion)
   numero                   text,                     -- numero de la OV
   fecha                    date,
   cliente_ns_id            bigint not null references cli_cliente(ns_id) on delete cascade,
@@ -39,7 +44,11 @@ create table if not exists cli_compra (
 
 comment on table cli_compra is 'Compras de cada cliente: OV de productos (tipo 1) desde 2022. Comodato cuenta como compra (es_comodato). Unidad comercial de la OV, si no del presupuesto, si no de la oportunidad.';
 
+-- Por si la tabla ya se habia creado sin alcance.
+alter table cli_compra add column if not exists alcance text not null default 'nuevas';
+
 create index if not exists cli_compra_cliente_idx on cli_compra (cliente_ns_id, fecha desc);
+create index if not exists cli_compra_alcance_idx on cli_compra (alcance, cliente_ns_id);
 create index if not exists cli_compra_fecha_idx on cli_compra (fecha);
 
 alter table cli_compra enable row level security;
@@ -87,18 +96,18 @@ left join lateral (
     max(cp.fecha)                             as ultima_compra,
     sum(cp.total)                             as monto_total
   from cli_compra cp
-  where cp.cliente_ns_id = c.ns_id and cp.vigente
+  where cp.cliente_ns_id = c.ns_id and cp.vigente and cp.alcance = 'nuevas'
 ) k on true
 left join lateral (
   select cp.unidad_negocio, cp.unidad_comercial, cp.es_comodato
   from cli_compra cp
-  where cp.cliente_ns_id = c.ns_id and cp.vigente
+  where cp.cliente_ns_id = c.ns_id and cp.vigente and cp.alcance = 'nuevas'
   order by cp.fecha desc, cp.ov_id desc
   limit 1
 ) u on true
 left join contacto ct on ct.ghl_contact_id = c.ghl_contact_id;
 
-comment on view v_cli_cliente is 'Clientes con establecimientos activos/inactivos, compras (OV de productos desde 2022) y contacto de la integracion GHL (contacto.id).';
+comment on view v_cli_cliente is 'Clientes con establecimientos activos/inactivos, compras de instalaciones nuevas (OV de productos "Alarmas : Nuevas" y "Alarmas : Comodato" desde 2022) y contacto de la integracion GHL (contacto.id).';
 
 grant select on v_cli_cliente to authenticated;
 

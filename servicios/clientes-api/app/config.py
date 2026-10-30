@@ -64,6 +64,14 @@ ESTADOS_ACTIVOS = [e.upper() for e in _lista("ESTADOS_ACTIVOS", "ACTIVO")]
 
 # Compras: OV de productos (tipo 1) desde esta fecha (migracion a ByKom).
 COMPRAS_DESDE = os.getenv("COMPRAS_DESDE", "2022-01-01")
+# Unidades de negocio (nombre completo de la clase) que trae la Segmentacion.
+# Definido con MKT el 30/10/2026: instalaciones nuevas, "Alarmas : Nuevas" mas
+# "Alarmas : Comodato" (las nuevas en comodato van con esa clase; la modalidad
+# sale de custbody_3k_comodato, no de la unidad). Servicio tecnico,
+# Ampliaciones, etc. los cargaran otros informes en la misma tabla cli_compra,
+# cada uno con su alcance.
+COMPRAS_UNIDADES = _lista("COMPRAS_UNIDADES", "Alarmas : Nuevas,Alarmas : Comodato")
+COMPRAS_ALCANCE = os.getenv("COMPRAS_ALCANCE", "nuevas")
 
 # ---------- Bajas ----------
 # Condicion SuiteQL de la busqueda de bajas, ademas de la fecha de suspension

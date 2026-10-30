@@ -182,7 +182,7 @@ def actualizar(token, corrida_id, log, paso, periodo=None):
         avisos += avisos_compra
         paso("Guardando compras")
         sb.upsert(token, T_COMPRA, filas_compra, "ov_id")
-        sb.marcar_no_vistos(token, T_COMPRA, corrida_id)
+        sb.marcar_no_vistos(token, T_COMPRA, corrida_id, {"alcance": f"eq.{config.COMPRAS_ALCANCE}"})
     except RuntimeError as e:
         log(f"ERROR en compras (se conservan las anteriores): {e}")
         avisos.append(f"No se pudieron actualizar las compras: {str(e)[:200]}")

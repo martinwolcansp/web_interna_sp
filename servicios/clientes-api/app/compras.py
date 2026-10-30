@@ -1,7 +1,11 @@
 # app/compras.py — Compras de cada cliente: ordenes de venta de productos.
 #
 # Se trae en la actualizacion de Segmentacion (tabla cli_compra, una fila por
-# OV). Criterio, definido con MKT el 30/10/2026:
+# OV, alcance "nuevas"). Criterio, definido con MKT el 30/10/2026:
+#   - Solo instalaciones nuevas: unidades "Alarmas : Nuevas" y "Alarmas :
+#     Comodato" (COMPRAS_UNIDADES), fusionadas. Las OV de
+#     otras unidades (Servicio tecnico, Ampliaciones...) las cargaran otros
+#     informes en la misma tabla con su propio alcance.
 #   - OV (SalesOrd) con tipo de orden de venta = 1 (productos), igual que
 #     Indicadores; las demas OV no son compras.
 #   - Desde COMPRAS_DESDE (2022-01-01, migracion a ByKom).
@@ -40,6 +44,19 @@ VARIANTES = [
 ]
 
 
+def _filtro_unidades(clase_completa):
+    """Condicion sobre la unidad de negocio. Sin classification, BUILTIN.DF da
+    solo la ultima parte ("Nuevas"), asi que se compara con esa parte."""
+    if not config.COMPRAS_UNIDADES:
+        return ""
+    if clase_completa:
+        valores, expr = config.COMPRAS_UNIDADES, "cl.fullname"
+    else:
+        valores, expr = [u.split(" : ")[-1] for u in config.COMPRAS_UNIDADES], "BUILTIN.DF(tl.class)"
+    lista = ", ".join("'" + v.replace("'", "''") + "'" for v in valores)
+    return f"\n          AND {expr} IN ({lista})"
+
+
 def _consulta(desde, hasta, clase_completa=True, con_extra=True):
     unidad = "cl.fullname" if clase_completa else "BUILTIN.DF(tl.class)"
     join_clase = "        LEFT JOIN classification cl ON cl.id = tl.class\n" if clase_completa else ""
@@ -60,7 +77,7 @@ def _consulta(desde, hasta, clase_completa=True, con_extra=True):
 {join_clase}        WHERE t.type = 'SalesOrd'
           AND t.custbody_3k_tipo_orden_de_venta = 1
           AND t.trandate >= TO_DATE('{desde}', 'YYYY-MM-DD')
-          AND t.trandate < TO_DATE('{hasta}', 'YYYY-MM-DD')
+          AND t.trandate < TO_DATE('{hasta}', 'YYYY-MM-DD'){_filtro_unidades(clase_completa)}
         ORDER BY t.id
     """
 
@@ -114,7 +131,7 @@ def traer(por_id, raiz, corrida_id, ts, log):
     if elegida is not VARIANTES[0]:
         avisos.append(f"Compras: consulta {elegida['nombre']}")
     ovs = netsuite.suiteql_unidas([_consulta(a, b, elegida["clase_completa"], elegida["extra"]) for a, b in rangos])
-    log(f"{len(ovs)} OV de productos desde {config.COMPRAS_DESDE}")
+    log(f"{len(ovs)} OV de productos desde {config.COMPRAS_DESDE} ({', '.join(config.COMPRAS_UNIDADES) or 'todas las unidades'})")
 
     anuladas = [o for o in ovs if any(p in str(o.get("estado") or "").upper() for p in ("ANULAD", "CANCEL"))]
     ovs = [o for o in ovs if o not in anuladas]
@@ -139,6 +156,7 @@ def traer(por_id, raiz, corrida_id, ts, log):
                 uc, uc_origen = texto(d["uc"]), "oportunidad"
         filas.append({
             "ov_id": int(o["ov_id"]),
+            "alcance": config.COMPRAS_ALCANCE,
             "numero": texto(o.get("numero")),
             "fecha": texto(o.get("fecha")),
             "cliente_ns_id": cliente,

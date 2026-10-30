@@ -181,13 +181,14 @@ def upsert(token, tabla, filas, on_conflict):
         ), f"upsert {tabla}")
 
 
-def marcar_no_vistos(token, tabla, corrida_id):
+def marcar_no_vistos(token, tabla, corrida_id, filtros=None):
     """vigente = false en las filas que no vinieron en esta corrida. No se
-    borran: de cli_cliente pueden colgar otras tablas (FK)."""
+    borran: de cli_cliente pueden colgar otras tablas (FK). filtros: limita a
+    una parte de la tabla (ej. {"alcance": "eq.nuevas"} en cli_compra)."""
     _check(requests.patch(
         _rest(tabla),
         headers=_h(token, "return=minimal"),
-        params={"vigente": "eq.true", "or": f"(corrida_id.is.null,corrida_id.neq.{corrida_id})"},
+        params=dict(filtros or {}, vigente="eq.true", **{"or": f"(corrida_id.is.null,corrida_id.neq.{corrida_id})"}),
         json={"vigente": False},
         timeout=120,
     ), f"marcar no vistos en {tabla}")
