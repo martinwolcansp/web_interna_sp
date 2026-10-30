@@ -51,6 +51,10 @@ if __name__ == "__main__":
             print(f"  {m}: {n}")
         print("\nEstados:", dict(Counter(c["estado_caso"] for c in casos).most_common()))
         print("Tecnicos:", dict(Counter(c["tecnico"] or "(vacio)" for c in casos).most_common(15)))
+        pst = Counter(c["problema_st"] or "(vacio)" for c in casos)
+        print(f"\nProblema ST (custevent_3k_problema_st): {len(pst)} valores distintos")
+        for k, n in pst.most_common(30):
+            print(f"  {n:>6}  {k}")
 
     total = len(casos)
     print("\nCategorias de problema:")

@@ -11,6 +11,8 @@
 #   2. Clasificacion de los servicios por problema.
 # El problema sale del campo custevent_3k_comentarios_tecnico (texto libre con el
 # trabajo realizado): se clasifica en categorias en app/fuentes/clasificacion_st.py.
+# Ademas se guarda el campo Problema ST del caso (custevent_3k_problema_st) tal
+# como viene de NetSuite, para filtrar y graficar por el.
 # Cuando exista el formulario estructurado, su campo de categoria
 # (SERVICIO_TECNICO_CAMPO_CATEGORIA) tiene prioridad sobre las palabras clave.
 # Los indicadores (recurrencia, reincidencia, ranking de problemas) se calculan
@@ -99,6 +101,7 @@ def consulta(ids):
             BUILTIN.DF(c.custentity_3k_nro_cuenta)              AS nro_cuenta,
             BUILTIN.DF(sc.custevent_3k_tecnico_asignado_caso)   AS tecnico,
             BUILTIN.DF(sc.custevent_3k_comentarios_tecnico)     AS problema,
+            BUILTIN.DF(sc.custevent_3k_problema_st)             AS problema_st,
             BUILTIN.DF(sc.status)                               AS estado_caso,
             BUILTIN.DF(sc.category)                             AS categoria,
             BUILTIN.DF(sc.assigned)                             AS asignado_a{_campo_formulario()}
@@ -132,6 +135,7 @@ def fila(f, problema, titulo, categoria, origen, corrida_id, ahora):
         "nro_cuenta": texto(f.get("nro_cuenta")),
         "tecnico": sin_prefijo(texto(f.get("tecnico"))),
         "problema": problema,
+        "problema_st": texto(f.get("problema_st")),
         "categoria_problema": categoria,
         "categoria_origen": origen,
         "vuelta_planificada": clasificacion_st.vuelta_planificada(problema, categoria),

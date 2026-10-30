@@ -42,7 +42,7 @@ Prueba sin tocar Supabase: `python probar_instalaciones.py`.
 ## Qué hace una corrida de Servicio Técnico
 
 1. Busca el asignado "Servicio Técnico" entre los asignados de los casos (sin distinguir mayúsculas ni acentos; hoy es el 207). Si no lo encuentra o hay más de uno parecido, la corrida falla y lista los candidatos: cargar el id en `SERVICIO_TECNICO_ASIGNADO_A` (acepta varios separados por coma).
-2. Trae los casos de ese asignado creados desde `SERVICIO_TECNICO_DESDE` (por defecto 2025-01-01; unos 16.300 casos a octubre de 2026), con cliente, técnico (sin los prefijos "DST " y "DAI "), estado, fecha de cierre y el comentario técnico (`custevent_3k_comentarios_tecnico`).
+2. Trae los casos de ese asignado creados desde `SERVICIO_TECNICO_DESDE` (por defecto 2025-01-01; unos 16.300 casos a octubre de 2026), con cliente, técnico (sin los prefijos "DST " y "DAI "), estado, fecha de cierre, el **Problema ST** (`custevent_3k_problema_st`, tal como viene de NetSuite; filtro y gráfico propios en la página) y el comentario técnico (`custevent_3k_comentarios_tecnico`).
 3. Clasifica cada caso en una **categoría de problema** (`app/fuentes/clasificacion_st.py`). El comentario técnico es texto libre con el trabajo realizado (14.851 textos distintos en 16.300 casos), así que no se puede agrupar por texto:
    - Si está configurado `SERVICIO_TECNICO_CAMPO_CATEGORIA` (campo del formulario estructurado), se usa ese valor.
    - Si no, palabras clave del comentario; si no alcanza, del título del caso. Validado el 30/10/2026: 99,3% de los casos clasificados.

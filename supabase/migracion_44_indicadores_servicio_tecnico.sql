@@ -37,6 +37,7 @@ create table if not exists ind_servicio_tecnico_caso (
   nro_cuenta      text,
   tecnico         text,                    -- custevent_3k_tecnico_asignado_caso (sin "DAI ")
   problema        text,                    -- custevent_3k_comentarios_tecnico (texto libre)
+  problema_st     text,                    -- custevent_3k_problema_st (valor de NetSuite)
   categoria_problema text,                 -- categoría asignada (formulario o palabras clave)
   categoria_origen   text,                 -- formulario | comentario | titulo | null (sin clasificar)
   vuelta_planificada boolean not null default false, -- el técnico dejó pendiente volver
@@ -50,6 +51,7 @@ create table if not exists ind_servicio_tecnico_caso (
 comment on table ind_servicio_tecnico_caso is 'Indicadores - Servicio Técnico: casos asignados a Servicio Técnico (indicadores-api, app/areas/servicio_tecnico.py).';
 
 -- Por si la tabla se creó con una versión anterior de esta migración.
+alter table ind_servicio_tecnico_caso add column if not exists problema_st text;
 alter table ind_servicio_tecnico_caso add column if not exists categoria_problema text;
 alter table ind_servicio_tecnico_caso add column if not exists categoria_origen text;
 alter table ind_servicio_tecnico_caso add column if not exists vuelta_planificada boolean not null default false;
