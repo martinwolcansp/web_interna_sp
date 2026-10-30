@@ -27,7 +27,22 @@ from app.comun import entero, numero, texto
 LOTE_IDS = 900
 
 
-def _consulta(desde, hasta, con_extra=True):
+# Variantes de la consulta, de la mas completa a la mas simple. La unidad de
+# negocio (class) NO esta en transaction: esta en la linea principal
+# (transactionline.mainline = 'T'), como en informe-mkt-api e indicadores-api.
+# Pedir t.class hacia responder a NetSuite 500 UNEXPECTED_ERROR (30/10/2026).
+# El nombre completo ("Alarmas : Comunicaciones") sale de classification, que
+# requiere el permiso "Clases" en el rol; si no, BUILTIN.DF da solo la ultima parte.
+VARIANTES = [
+    {"nombre": "completa", "clase_completa": True, "extra": True},
+    {"nombre": "sin nombre completo de la clase", "clase_completa": False, "extra": True},
+    {"nombre": "sin monto ni estado", "clase_completa": False, "extra": False},
+]
+
+
+def _consulta(desde, hasta, clase_completa=True, con_extra=True):
+    unidad = "cl.fullname" if clase_completa else "BUILTIN.DF(tl.class)"
+    join_clase = "        LEFT JOIN classification cl ON cl.id = tl.class\n" if clase_completa else ""
     extra = (",\n            t.foreigntotal AS total,\n            BUILTIN.DF(t.status) AS estado" if con_extra else "")
     return f"""
         SELECT
@@ -35,13 +50,14 @@ def _consulta(desde, hasta, con_extra=True):
             t.tranid AS numero,
             TO_CHAR(t.trandate, 'YYYY-MM-DD') AS fecha,
             t.entity AS entidad_id,
-            BUILTIN.DF(t.class) AS unidad_negocio,
+            {unidad} AS unidad_negocio,
             BUILTIN.DF(t.custbody_mw_sp_unidad_comercial) AS uc_ov,
             t.custbody_3k_comodato AS comodato,
             t.opportunity AS oportunidad_id,
             t.custbody_3k_trans_orig_ov AS presupuesto_id{extra}
         FROM transaction t
-        WHERE t.type = 'SalesOrd'
+        INNER JOIN transactionline tl ON tl.transaction = t.id AND tl.mainline = 'T'
+{join_clase}        WHERE t.type = 'SalesOrd'
           AND t.custbody_3k_tipo_orden_de_venta = 1
           AND t.trandate >= TO_DATE('{desde}', 'YYYY-MM-DD')
           AND t.trandate < TO_DATE('{hasta}', 'YYYY-MM-DD')
@@ -81,12 +97,23 @@ def traer(por_id, raiz, corrida_id, ts, log):
     rangos = []
     for anio in range(desde.year, date.today().year + 1):
         rangos.append((max(desde, date(anio, 1, 1)).isoformat(), date(anio + 1, 1, 1).isoformat()))
-    try:
-        ovs = netsuite.suiteql_unidas([_consulta(a, b, True) for a, b in rangos])
-    except RuntimeError as e:
-        log(f"La consulta de OV con monto y estado fallo, se repite sin ellos: {str(e)[:300]}")
-        ovs = netsuite.suiteql_unidas([_consulta(a, b, False) for a, b in rangos])
-        avisos.append("NetSuite no dejo leer monto y estado de las OV (se omitieron)")
+    # Se prueba cada variante con un mes antes de la consulta grande.
+    hoy = date.today()
+    mes = (date(hoy.year, hoy.month, 1).isoformat(), hoy.isoformat() if hoy.day > 1 else date(hoy.year, hoy.month, 2).isoformat())
+    elegida, errores = None, []
+    for v in VARIANTES:
+        try:
+            netsuite.suiteql(_consulta(*mes, v["clase_completa"], v["extra"]))
+            elegida = v
+            break
+        except RuntimeError as e:
+            errores.append(f"{v['nombre']}: {str(e)[:200]}")
+            log(f"Consulta de OV ({v['nombre']}) rechazada: {str(e)[:300]}")
+    if elegida is None:
+        raise RuntimeError("NetSuite rechazo todas las variantes de la consulta de OV. " + " | ".join(errores))
+    if elegida is not VARIANTES[0]:
+        avisos.append(f"Compras: consulta {elegida['nombre']}")
+    ovs = netsuite.suiteql_unidas([_consulta(a, b, elegida["clase_completa"], elegida["extra"]) for a, b in rangos])
     log(f"{len(ovs)} OV de productos desde {config.COMPRAS_DESDE}")
 
     anuladas = [o for o in ovs if any(p in str(o.get("estado") or "").upper() for p in ("ANULAD", "CANCEL"))]
