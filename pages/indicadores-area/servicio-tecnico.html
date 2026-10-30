@@ -393,6 +393,23 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Clasificación de servicios técnicos por categoría de problema</h2>
       <div class="kpi-row" id="kpi-prob"></div>
       <div class="note-box">El comentario técnico es texto libre con el trabajo realizado. Cada caso se clasifica en una categoría por palabras clave del comentario (si no alcanza, del título del caso); cuando el técnico cargue el formulario estructurado, se usa la categoría del formulario. La columna <strong>Clasificado por</strong> del detalle indica el origen.</div>
+      <div class="grid-2b">
+        <div class="bloque">
+          <h3>Servicios por Problema ST</h3>
+          <div id="prob-st"></div>
+          <div class="bloque-nota">Campo Problema ST del caso (custevent_3k_problema_st), tal como está cargado en NetSuite. Barra naranja: reincidencias con el mismo Problema ST dentro de la ventana.</div>
+        </div>
+        <div class="bloque">
+          <h3>Problema ST por mes</h3>
+          <div id="prob-st-linea"></div>
+          <div class="bloque-nota">Porcentaje de casos del mes con Problema ST cargado.</div>
+        </div>
+      </div>
+      <div class="bloque">
+        <h3>Problema ST por categoría (según el comentario técnico)</h3>
+        <div id="prob-st-cat"></div>
+        <div class="bloque-nota">Cruza lo que se cargó como Problema ST con la categoría que surge del trabajo realizado. Sirve para ver qué se termina haciendo en cada tipo de problema.</div>
+      </div>
       <div class="bloque">
         <h3>Ranking de categorías</h3>
         <div id="prob-ranking"></div>
@@ -461,6 +478,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   var COLOR_PLANIF = "#2a78d6", COLOR_NO_SERV = "#9AA0A6";
   // Opciones de la recurrencia (casillas arriba).
   var INCLUIR_NO_SERVICIO = false, CONTAR_PLANIFICADAS = false;
+  var SIN_PROBLEMA_ST = "(Sin Problema ST)";
   var URL_CASO = "https://7138551.app.netsuite.com/app/crm/support/supportcase.nl?id=";
 
   var sb = window.supabaseClient;
@@ -698,6 +716,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       c._pk = SIN_CATEGORIA.has(c._problema) ? "" : c._problema;
       c._noServicio = NO_SERVICIO.has(c._problema);
       c._origen = ORIGENES[c.categoria_origen] || "Sin clasificar";
+      c._pst = c.problema_st || SIN_PROBLEMA_ST;
       c._tecnico = c.tecnico || "(Sin técnico)";
       c._estado = c.estado_caso || "(Sin estado)";
       c._cerrado = !!c.fecha_cerrada || /cerrad|closed/i.test(c.estado_caso || "");
@@ -717,7 +736,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     DATOS.casos.forEach(function (c) {
       c._cuenta = !!c._cli && !!c.fecha_creacion && (INCLUIR_NO_SERVICIO || !c._noServicio);
       c._nCliente = null; c._prev = c._next = null;
-      c._gapPrev = c._gapPrevMismo = c._gapNext = c._gapNextMismo = null;
+      c._gapPrev = c._gapPrevMismo = c._gapNext = c._gapNextMismo = c._gapPrevSt = null;
       if (c._cuenta) (POR_CLIENTE[c._cli] = POR_CLIENTE[c._cli] || []).push(c);
     });
     Object.keys(POR_CLIENTE).forEach(function (k) {
@@ -731,6 +750,11 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           if (c._prev === null) { c._prev = l[j]; c._gapPrev = diasEntre(l[j].fecha_creacion, c.fecha_creacion); }
           if (c._pk && l[j]._pk === c._pk) { c._gapPrevMismo = diasEntre(l[j].fecha_creacion, c.fecha_creacion); break; }
           if (!c._pk) break;
+        }
+        if (c.problema_st) {
+          for (var q = i - 1; q >= 0; q--) {
+            if (l[q].fecha_creacion < c.fecha_creacion && l[q].problema_st === c.problema_st) { c._gapPrevSt = diasEntre(l[q].fecha_creacion, c.fecha_creacion); break; }
+          }
         }
         for (var n = i + 1; n < l.length; n++) {
           if (l[n].fecha_creacion <= c.fecha_creacion) continue;
@@ -752,6 +776,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       c._planificada = previo && !!c._prev.vuelta_planificada;
       c._reinc = previo && (CONTAR_PLANIFICADAS || !c._planificada);
       c._reincMismo = c._reinc && c._gapPrevMismo !== null && c._gapPrevMismo <= VENTANA;
+      c._reincSt = c._reinc && c._gapPrevSt !== null && c._gapPrevSt <= VENTANA;
       var siguiente = c._gapNext !== null && c._gapNext <= VENTANA && (CONTAR_PLANIFICADAS || !c.vuelta_planificada);
       c._retorno = siguiente;
       c._retornoMismo = siguiente && c._gapNextMismo !== null && c._gapNextMismo <= VENTANA;
@@ -806,6 +831,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var casos = DATOS.casos;
     var cats = valoresDe(casos, function (c) { return c.categoria; });
     FILT = crearFiltrosTab("filtros-st", casos.map(function (c) { return c.fecha_creacion; }), [
+      { clave: "pst", nombre: "Problema ST", valores: valoresDe(casos, function (c) { return c.problema_st; }) },
       { clave: "problema", nombre: "Categoría", valores: ordenCategorias(valoresDe(casos, function (c) { return c._problema; })) },
       { clave: "tecnico", nombre: "Técnico", valores: valoresDe(casos, function (c) { return c._tecnico; }) },
       { clave: "estado", nombre: "Estado del caso", valores: valoresDe(casos, function (c) { return c.estado_caso; }) },
@@ -827,7 +853,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   }
   function filtrados() {
     return DATOS.casos.filter(function (c) {
-      return FILT.periodo(c.fecha_creacion) && FILT.pasa("problema", c._problema) && FILT.pasa("tecnico", c._tecnico) &&
+      return FILT.periodo(c.fecha_creacion) && FILT.pasa("pst", c.problema_st) && FILT.pasa("problema", c._problema) && FILT.pasa("tecnico", c._tecnico) &&
         FILT.pasa("estado", c.estado_caso) && (!FILT.tiene("cat") || FILT.pasa("cat", c.categoria));
     });
   }
@@ -1150,6 +1176,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         pasa: function (c) { return c._problema === p; } };
     })) + '<div class="bloque-nota">Barra naranja: reincidencias en la misma categoría.</div>';
 
+    pintarProblemaSt(f);
+
     var meses = Array.from(new Set(f.map(function (c) { return c._mes; }).filter(Boolean))).sort();
     $("prob-mes").innerHTML = matriz({ tab: "problemas", id: "pm", titulo: "Categoría", items: f, fila: function (c) { return c._problema; },
       col: function (c) { return c._mes; }, cols: meses, etiquetaCol: etiquetaMes, ordenFilas: ORDEN_CATEGORIAS });
@@ -1159,6 +1187,56 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
     pintarChip("problemas");
     tablaProb.mostrar(conSeleccion("problemas", f));
+  }
+
+  // Problema ST (custevent_3k_problema_st): barras, cobertura por mes y cruce con la categoria.
+  function pintarProblemaSt(f) {
+    var por = {};
+    f.forEach(function (c) { (por[c._pst] = por[c._pst] || []).push(c); });
+    var orden = Object.keys(por).sort(function (a, b) {
+      if ((a === SIN_PROBLEMA_ST) !== (b === SIN_PROBLEMA_ST)) return a === SIN_PROBLEMA_ST ? 1 : -1;
+      return por[b].length - por[a].length || a.localeCompare(b, "es");
+    });
+    $("prob-st").innerHTML = barrasH("problemas", orden.map(function (p) {
+      var l = por[p], serv = l.filter(function (c) { return c._cuenta; });
+      var rs = serv.filter(function (c) { return c._reincSt; }).length;
+      var cli = distintos(l.filter(function (c) { return c._cli; }), function (c) { return c._cli; });
+      return { clave: "pst:" + p, etiqueta: p, valor: l.length, alt: p === SIN_PROBLEMA_ST ? null : rs,
+        texto: fmtNum(l.length) + " · " + fmtPct(porc(l.length, f.length)),
+        sub: fmtNum(cli) + " clientes" + (p === SIN_PROBLEMA_ST || !serv.length ? "" : " · reincidencia con el mismo Problema ST " + fmtPct(porc(rs, serv.length))),
+        etqSel: "Problema ST: " + p, pasa: function (c) { return c._pst === p; } };
+    }));
+    // Cobertura del campo por mes (cuando empezo a cargarse).
+    var porMes = {};
+    f.forEach(function (c) { if (c._mes) { var m = porMes[c._mes] = porMes[c._mes] || { t: 0, c: 0 }; m.t++; if (c.problema_st) m.c++; } });
+    $("prob-st-linea").innerHTML = lineaPct(Object.keys(porMes).sort().map(function (m) { return [m, 100 * porMes[m].c / porMes[m].t]; }));
+    var cats = ORDEN_CATEGORIAS.filter(function (k) { return f.some(function (c) { return c._problema === k; }); });
+    $("prob-st-cat").innerHTML = matriz({ tab: "problemas", id: "pc", titulo: "Problema ST", items: f, fila: function (c) { return c._pst; },
+      col: function (c) { return c._problema; }, cols: cats,
+      ordenFilas: orden });
+  }
+  // Linea de porcentajes por mes (0 a 100).
+  function lineaPct(puntos) {
+    if (!puntos.length) return vacio();
+    var W = 560, H = 230, L = 34, R = 20, T = 22, B = 34;
+    var paso = puntos.length > 1 ? (W - L - R) / (puntos.length - 1) : 0;
+    function x(i) { return puntos.length > 1 ? L + i * paso : (L + W - R) / 2; }
+    function y(v) { return T + (H - T - B) * (1 - v / 100); }
+    var cada = Math.ceil(puntos.length / 12);
+    var svg = '<svg class="col-chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Problema ST cargado por mes">' +
+      '<line class="eje" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '"/>' +
+      '<line class="eje" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(100) + '" y2="' + y(100) + '" stroke-dasharray="3 3"/>' +
+      '<text class="eje-txt" x="' + (L - 6) + '" y="' + (y(100) + 4) + '" text-anchor="end">100%</text>' +
+      '<text class="eje-txt" x="' + (L - 6) + '" y="' + (y(0) + 4) + '" text-anchor="end">0%</text>' +
+      '<path fill="none" stroke="#1F3864" stroke-width="2.25" d="' + puntos.map(function (p, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1); }).join(" ") + '"/>';
+    puntos.forEach(function (p, i) {
+      svg += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p[1]).toFixed(1) + '" r="3.5" fill="#1F3864"><title>' + esc(etiquetaMes(p[0]) + ": " + fmtPct(p[1])) + "</title></circle>";
+      if (i % cada === 0 || (i === puntos.length - 1 && i % cada >= cada / 2)) {
+        svg += '<text class="tot" x="' + x(i).toFixed(1) + '" y="' + (y(p[1]) - 8).toFixed(1) + '" text-anchor="middle">' + esc(fmtPct(p[1])) + "</text>" +
+          '<text class="eje-txt" x="' + x(i).toFixed(1) + '" y="' + (H - B + 16) + '" text-anchor="middle">' + esc(etiquetaMes(p[0])) + "</text>";
+      }
+    });
+    return svg + "</svg>";
   }
 
   // =====================================================================
@@ -1193,6 +1271,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     { titulo: "Nro cuenta", valor: function (c) { return c.nro_cuenta || ""; }, orden: function (c) { return +c.nro_cuenta || 0; } },
     { titulo: "Cliente", valor: function (c) { return c.cliente || ""; } },
     { titulo: "Técnico", valor: function (c) { return c.tecnico || ""; } },
+    { titulo: "Problema ST", valor: function (c) { return c.problema_st || ""; } },
     { titulo: "Categoría", valor: function (c) { return c._problema; } },
     { titulo: "Comentario técnico", valor: function (c) { return c.problema || ""; }, clase: "comentario" },
     { titulo: "Clasificado por", valor: function (c) { return c._origen; } },
@@ -1203,7 +1282,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     { titulo: "Retorno", html: function (c) { return tag(txtRetorno(c), claseRetorno(c)); }, valor: txtRetorno },
     { titulo: "Título", valor: function (c) { return c.titulo || ""; }, clase: "texto-largo" },
   ];
-  function buscarCaso(c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c._problema, c.problema, c.estado_caso, c.titulo].join(" "); }
+  function buscarCaso(c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c.problema_st, c._problema, c.problema, c.estado_caso, c.titulo].join(" "); }
   function claseCaso(c) { return c._reincMismo ? "fila-reinc" : ""; }
   var tablaRes, tablaRec, tablaProb, tablaCli;
   function armarTablas() {
@@ -1261,7 +1340,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     mostrarCargando(true);
     try {
       DATOS.casos = await leerTodo("ind_servicio_tecnico_caso",
-        "caso_id,numero,titulo,fecha_creacion,fecha_cerrada,cliente_id,cliente,nro_cuenta,tecnico,problema,categoria_problema,categoria_origen,vuelta_planificada,estado_caso,categoria", ["caso_id"]);
+        "caso_id,numero,titulo,fecha_creacion,fecha_cerrada,cliente_id,cliente,nro_cuenta,tecnico,problema,problema_st,categoria_problema,categoria_origen,vuelta_planificada,estado_caso,categoria", ["caso_id"]);
       prepararDatos();
       armarFiltros();
       iniciado = true;

@@ -3,6 +3,7 @@
 #
 #   python probar_servicio_tecnico.py              (consulta NetSuite)
 #   python probar_servicio_tecnico.py --local      (reclasifica salida_prueba/servicio_tecnico_casos.json)
+#   python probar_servicio_tecnico.py --tipos      (casos por tipo de solicitud de servicio tecnico y asignado)
 #
 # Muestra el asignado encontrado, los casos por mes, las categorias de problema
 # (app/fuentes/clasificacion_st.py) con ejemplos de cada una y la recurrencia
@@ -16,6 +17,7 @@ import sys
 from collections import Counter, defaultdict
 from datetime import date
 
+from app import netsuite
 from app.areas import servicio_tecnico
 from app.fuentes import clasificacion_st as cs
 
@@ -31,7 +33,28 @@ def dias(a, b):
     return (date.fromisoformat(b) - date.fromisoformat(a)).days
 
 
+def tipos():
+    """Casos por tipo de caso (category) con "Servicio Tecnico" en el nombre y por asignado,
+    para ver a quien estan asignadas las solicitudes de Soporte y de Alarma Nueva."""
+    desde = servicio_tecnico._desde()
+    filas = netsuite.suiteql(f"""
+        SELECT sc.category AS tipo_id, BUILTIN.DF(sc.category) AS tipo,
+               sc.assigned AS asignado_id, BUILTIN.DF(sc.assigned) AS asignado, COUNT(*) AS casos
+        FROM supportcase sc
+        WHERE sc.datecreated >= TO_DATE('{desde}', 'YYYY-MM-DD')
+          AND UPPER(BUILTIN.DF(sc.category)) LIKE '%SERVICIO%'
+        GROUP BY sc.category, BUILTIN.DF(sc.category), sc.assigned, BUILTIN.DF(sc.assigned)
+        ORDER BY BUILTIN.DF(sc.category), COUNT(*) DESC
+    """)
+    print(f"Casos desde {desde} por tipo de solicitud y asignado:")
+    for f in filas:
+        print(f"  {f.get('casos'):>6}  {f.get('tipo')} (tipo {f.get('tipo_id')})  ->  {f.get('asignado') or '(sin asignar)'} ({f.get('asignado_id')})")
+
+
 if __name__ == "__main__":
+    if "--tipos" in sys.argv:
+        tipos()
+        sys.exit(0)
     if "--local" in sys.argv:
         with open(RUTA, encoding="utf-8") as f:
             casos = json.load(f)
