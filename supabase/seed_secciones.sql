@@ -14,6 +14,9 @@ insert into secciones (id, nombre, tipo) values
   ('indicadores-area',      'Indicadores por Área',           'mosaico'),
   ('indicadores-posventa',  'Indicadores - Posventa',         'general'),
   ('indicadores-instalaciones', 'Indicadores - Instalaciones', 'general'),
+  ('clientes-activos',      'Clientes activos',               'mosaico'),
+  ('clientes-segmentacion', 'Clientes activos - Segmentacion', 'general'),
+  ('clientes-bajas',        'Clientes activos - Analisis Bajas', 'general'),
   ('permisos-area',         'Permisos por Área',              'mosaico'),
   ('pizarra',               'Pizarra institucional',          'general')
 on conflict (id) do update set

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Segmentación de Clientes — SP Seguridad</title>
+<link rel="stylesheet" href="../../css/clientes-informe.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="report-header">
+    <div class="eyebrow">SP Seguridad Privada &middot; Clientes activos &middot; Segmentación</div>
+    <h1>Segmentación de Clientes</h1>
+    <div class="sub">Base completa de clientes de NetSuite (activos e inactivos) con sus establecimientos, para segmentar campañas de MKT</div>
+    <div class="upd-hero" id="upd-hero" hidden>
+      <span class="upd-hero-label">Última actualización</span>
+      <span class="upd-hero-fecha" id="upd-hero-fecha"></span>
+      <span class="upd-hero-det" id="upd-hero-det"></span>
+    </div>
+    <div class="upd-bar">
+      <button type="button" class="upd-btn" id="upd-btn" hidden>Actualizar ahora</button>
+      <button type="button" class="upd-menu-btn" id="upd-menu-btn" aria-expanded="false" aria-controls="upd-panel" hidden>Actualizaciones anteriores &#9662;</button>
+      <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
+    </div>
+    <div class="upd-panel" id="upd-panel" hidden>
+      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite la base completa de clientes y establecimientos. Lo que ya no viene no se borra: deja de mostrarse.</div>
+      <div class="upd-hist-scroll">
+        <table class="upd-hist">
+          <thead><tr><th>Actualizada el</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
+          <tbody id="upd-hist-body"><tr><td colspan="4">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </header>
+
+  <div class="cargando" id="cargando" role="status" aria-live="polite">
+    <span>Cargando clientes…</span><span class="cargando-barra" aria-hidden="true"></span>
+  </div>
+
+  <main id="main" class="main--cargando">
+    <div class="tab-panel active" id="panel-segmentacion">
+      <div class="filtros" id="filtros">
+        <span class="filtros-titulo">Filtros</span>
+        <input type="search" class="filtro-buscar" id="buscar" placeholder="Buscar nombre, ID, cuenta, teléfono, email…" aria-label="Buscar cliente">
+        <button type="button" class="chk-limpiar" id="limpiar" hidden>Quitar filtros</button>
+        <button type="button" class="xls-btn" id="xls">Descargar Excel</button>
+      </div>
+
+      <div class="kpi-row" id="kpis"></div>
+
+      <div class="grid-3">
+        <div class="bloque">
+          <h3>Clientes por condición</h3>
+          <div id="b-condicion"></div>
+          <div class="bloque-nota">Con servicio activo: al menos un establecimiento activo. Click en una barra para filtrar.</div>
+        </div>
+        <div class="bloque">
+          <h3>Establecimientos por estado de servicio</h3>
+          <div id="b-estado"></div>
+        </div>
+        <div class="bloque">
+          <h3>Clientes por localidad (10 principales)</h3>
+          <div id="b-localidad"></div>
+        </div>
+      </div>
+
+      <div class="explorer">
+        <div class="explorer-bar">
+          <span class="explorer-title">Clientes &mdash; click en una fila para ver el detalle</span>
+          <span class="explorer-count" id="cuenta"></span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="tabla"></table>
+        </div>
+        <div class="mas-wrap" id="mas-wrap" hidden><button type="button" class="mas-btn" id="mas">Mostrar más</button></div>
+      </div>
+    </div>
+  </main>
+  <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Segmentación de Clientes &middot; datos de NetSuite</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script src="/js/clientes-informe.js"></script>
+<script>
+(function () {
+  "use strict";
+  var CI = window.CI, $ = CI.$, esc = CI.esc, num = CI.num, pct = CI.pct;
+  var SECCION = "clientes-segmentacion";
+  var PAGINA = 200;
+
+  var COND_ACTIVO = "Con servicio activo", COND_INACTIVO = "Sin servicio activo", COND_SIN = "Sin establecimientos";
+  var DATOS = { clientes: [], est: [], porCliente: {} };
+  var F = {};             // filtros con casillas
+  var vista = [];         // clientes filtrados
+  var orden = { col: "nombre", asc: true };
+  var mostrados = PAGINA;
+  var abiertos = new Set();
+  var barra = null;
+  var ultimaActualizacion = null;
+
+  // ---------------------------------------------------------------
+  // Carga
+  // ---------------------------------------------------------------
+  async function cargarDatos() {
+    var r = await Promise.all([
+      CI.leerTodo("v_cli_cliente",
+        "ns_id,entity_id,nombre,es_persona,ghl_contact_id,telefono,telefono_movil,email,direccion,localidad,provincia,cp," +
+        "fecha_creacion,estado_ns,inactivo,establecimientos,establecimientos_activos,establecimientos_inactivos,cuentas,contacto_id",
+        "ns_id", [["eq", "vigente", true]]),
+      CI.leerTodo("cli_establecimiento",
+        "ns_id,cliente_ns_id,entity_id,nombre,nro_cuenta,id_bykom,fecha_activacion,tipo_monitoreo,tipo_cliente,estado_servicio,activo,fecha_suspension,motivo_baja," +
+        "telefono,email,direccion,localidad,fecha_creacion,inactivo",
+        "ns_id", [["eq", "vigente", true]]),
+    ]);
+    DATOS.clientes = r[0];
+    DATOS.est = r[1];
+    DATOS.porCliente = {};
+    DATOS.est.forEach(function (e) { (DATOS.porCliente[e.cliente_ns_id] = DATOS.porCliente[e.cliente_ns_id] || []).push(e); });
+    var hace12 = new Date(); hace12.setFullYear(hace12.getFullYear() - 1);
+    var desde12 = hace12.toISOString().slice(0, 10);
+    DATOS.clientes.forEach(function (c) {
+      var ests = DATOS.porCliente[c.ns_id] || [];
+      c._cond = !ests.length ? COND_SIN : ests.some(function (e) { return e.activo; }) ? COND_ACTIVO : COND_INACTIVO;
+      c._loc = c.localidad ? c.localidad.trim().toUpperCase() : "Sin localidad";
+      c._ghl = c.ghl_contact_id ? "Con ID GHL" : "Sin ID GHL";
+      c._tipo = c.es_persona ? "Persona" : "Empresa";
+      c._anio = c.fecha_creacion ? c.fecha_creacion.slice(0, 4) : "Sin fecha";
+      c._contactable = !!(c.telefono || c.telefono_movil || c.email);
+      c._nuevo = !!(c.fecha_creacion && c.fecha_creacion >= desde12);
+      c._estados = Array.from(new Set(ests.map(function (e) { return e.estado_servicio || "Sin estado"; })));
+      c._busqueda = [c.entity_id, c.nombre, c.telefono, c.telefono_movil, c.email, c.direccion, c.localidad, c.ghl_contact_id]
+        .concat(ests.map(function (e) { return [e.nro_cuenta, e.nombre, e.entity_id].join(" "); }))
+        .join(" ").toLowerCase();
+    });
+    armarFiltros();
+    pintar();
+  }
+
+  // ---------------------------------------------------------------
+  // Filtros
+  // ---------------------------------------------------------------
+  function armarFiltros() {
+    var cont = $("filtros");
+    cont.querySelectorAll(".chk-filtro").forEach(function (el) { el.remove(); });
+    var antes = $("limpiar");
+    var tmp = document.createElement("div");
+    var cs = DATOS.clientes;
+    var porCant = function (clave) {
+      var m = CI.contar(cs, clave);
+      return Object.keys(m).sort(function (a, b) { return m[b] - m[a]; }).map(function (k) { return { valor: k, etiqueta: k + " (" + num(m[k]) + ")" }; });
+    };
+    F.cond = CI.crearFiltro(tmp, "f-cond", "Condición", [COND_ACTIVO, COND_INACTIVO, COND_SIN].map(function (v) { return { valor: v, etiqueta: v }; }), cambio);
+    var porEstado = CI.contar(DATOS.est, function (e) { return e.estado_servicio || "Sin estado"; });
+    F.estado = CI.crearFiltro(tmp, "f-estado", "Estado de servicio", Object.keys(porEstado)
+      .sort(function (a, b) { return porEstado[b] - porEstado[a]; })
+      .map(function (k) { return { valor: k, etiqueta: k + " (" + num(porEstado[k]) + ")" }; }), cambio);
+    F.loc = CI.crearFiltro(tmp, "f-loc", "Localidad", porCant(function (c) { return c._loc; }), cambio);
+    F.ghl = CI.crearFiltro(tmp, "f-ghl", "GHL", [{ valor: "Con ID GHL", etiqueta: "Con ID GHL" }, { valor: "Sin ID GHL", etiqueta: "Sin ID GHL" }], cambio);
+    F.tipo = CI.crearFiltro(tmp, "f-tipo", "Tipo", [{ valor: "Persona", etiqueta: "Persona" }, { valor: "Empresa", etiqueta: "Empresa" }], cambio);
+    F.anio = CI.crearFiltro(tmp, "f-anio", "Año de alta", CI.opcionesDe(cs, function (c) { return c._anio; }, function (a, b) { return a < b ? 1 : -1; }), cambio);
+    Array.prototype.slice.call(tmp.children).forEach(function (el) { cont.insertBefore(el, antes); });
+  }
+
+  function pasa(c) {
+    var q = $("buscar").value.trim().toLowerCase();
+    return F.cond.pasa(c._cond) && F.loc.pasa(c._loc) && F.ghl.pasa(c._ghl) && F.tipo.pasa(c._tipo) && F.anio.pasa(c._anio) &&
+      (!F.estado.activo() || c._estados.some(function (e) { return F.estado.pasa(e); })) &&
+      (!q || c._busqueda.indexOf(q) >= 0);
+  }
+
+  function cambio() { mostrados = PAGINA; pintar(); }
+
+  // ---------------------------------------------------------------
+  // Pintado
+  // ---------------------------------------------------------------
+  function pintar() {
+    vista = DATOS.clientes.filter(pasa);
+    var hayFiltro = Object.keys(F).some(function (k) { return F[k].activo(); }) || $("buscar").value.trim();
+    $("limpiar").hidden = !hayFiltro;
+
+    var ids = new Set(vista.map(function (c) { return c.ns_id; }));
+    var est = DATOS.est.filter(function (e) { return ids.has(e.cliente_ns_id) && (!F.estado.activo() || F.estado.pasa(e.estado_servicio || "Sin estado")); });
+    var estAct = est.filter(function (e) { return e.activo; }).length;
+    var conActivo = vista.filter(function (c) { return c._cond === COND_ACTIVO; }).length;
+    var ghl = vista.filter(function (c) { return c.ghl_contact_id; }).length;
+    var contact = vista.filter(function (c) { return c._contactable; }).length;
+    var nuevos = vista.filter(function (c) { return c._nuevo; }).length;
+    $("kpis").innerHTML = CI.kpis([
+      { num: num(vista.length), label: "Clientes", det: hayFiltro ? "de " + num(DATOS.clientes.length) + " en la base" : "en la base" },
+      { num: num(conActivo), label: "Con servicio activo", det: pct(conActivo, vista.length, 1) + " de los clientes" },
+      { num: num(estAct), label: "Establecimientos activos", det: "de " + num(est.length) + " establecimientos" },
+      { num: num(est.length - estAct), label: "Establecimientos inactivos", det: pct(est.length - estAct, est.length, 1) },
+      { num: num(nuevos), label: "Altas últimos 12 meses", det: "por fecha de creación en NetSuite" },
+      { num: pct(ghl, vista.length), label: "Vinculados a GHL", det: num(ghl) + " con ID de contacto" },
+      { num: pct(contact, vista.length), label: "Contactables", det: num(contact) + " con teléfono o email" },
+    ]);
+
+    var cond = CI.contar(vista, function (c) { return c._cond; });
+    $("b-condicion").innerHTML = CI.barras([COND_ACTIVO, COND_INACTIVO, COND_SIN].filter(function (k) { return cond[k]; })
+      .map(function (k) { return [k, cond[k]]; }), vista.length, { clic: true });
+    $("b-estado").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(est, function (e) { return e.estado_servicio || "Sin estado"; })), est.length, { clic: true });
+    $("b-localidad").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(vista, function (c) { return c._loc; })).slice(0, 10), vista.length, { sec: true, clic: true });
+    pintarTabla();
+  }
+
+  var COLUMNAS = [
+    { id: "flecha", titulo: "", html: function () { return '<span class="flecha">&#9656;</span>'; }, sinOrden: true },
+    { id: "entity_id", titulo: "ID", valor: function (c) { return c.entity_id; }, clase: "nowrap" },
+    { id: "nombre", titulo: "Cliente", valor: function (c) { return c.nombre; } },
+    { id: "localidad", titulo: "Localidad", valor: function (c) { return c.localidad; } },
+    { id: "fecha_creacion", titulo: "Alta", valor: function (c) { return c.fecha_creacion; }, html: function (c) { return CI.fmtDia(c.fecha_creacion); }, clase: "nowrap" },
+    { id: "est", titulo: "Est. activos", valor: function (c) { return c.establecimientos_activos; }, html: function (c) { return num(c.establecimientos_activos) + " / " + num(c.establecimientos); }, clase: "num" },
+    { id: "cuentas", titulo: "Cuentas ByKom", valor: function (c) { return c.cuentas; } },
+    { id: "cond", titulo: "Condición", valor: function (c) { return c._cond; }, html: function (c) {
+      var cls = c._cond === COND_ACTIVO ? "tag--activo" : c._cond === COND_INACTIVO ? "tag--alerta" : "tag--inactivo";
+      return '<span class="tag ' + cls + '">' + esc(c._cond) + "</span>";
+    } },
+    { id: "ghl", titulo: "GHL", valor: function (c) { return c.ghl_contact_id ? 1 : 0; }, html: function (c) { return c.ghl_contact_id ? "Sí" : ""; } },
+  ];
+
+  function pintarTabla() {
+    var col = COLUMNAS.filter(function (c) { return c.id === orden.col; })[0];
+    var filas = vista.slice().sort(function (a, b) {
+      var x = col.valor(a), y = col.valor(b);
+      x = x === null || x === undefined ? "" : x; y = y === null || y === undefined ? "" : y;
+      if (typeof x === "string") return x.localeCompare(String(y), "es") * (orden.asc ? 1 : -1);
+      return (x < y ? -1 : x > y ? 1 : 0) * (orden.asc ? 1 : -1);
+    });
+    var visibles = filas.slice(0, mostrados);
+    $("tabla").innerHTML = "<thead><tr>" + COLUMNAS.map(function (c) {
+      var flecha = c.sinOrden ? "" : '<span class="sort-arrow">' + (orden.col === c.id ? (orden.asc ? "▲" : "▼") : "↕") + "</span>";
+      return '<th data-col="' + c.id + '">' + esc(c.titulo) + flecha + "</th>";
+    }).join("") + "</tr></thead><tbody>" + (visibles.length ? visibles.map(function (c) {
+      var abierto = abiertos.has(c.ns_id);
+      return '<tr class="fila-cliente' + (abierto ? " abierta" : "") + '" data-id="' + c.ns_id + '">' + COLUMNAS.map(function (k) {
+        return '<td class="' + (k.clase || "") + '">' + (k.html ? k.html(c) : esc(k.valor(c))) + "</td>";
+      }).join("") + "</tr>" + (abierto ? '<tr class="fila-detalle"><td colspan="' + COLUMNAS.length + '">' + detalle(c) + "</td></tr>" : "");
+    }).join("") : '<tr><td colspan="' + COLUMNAS.length + '" class="vacio">Sin resultados.</td></tr>') + "</tbody>";
+    $("cuenta").textContent = num(Math.min(mostrados, filas.length)) + " de " + num(filas.length) + " clientes";
+    $("mas-wrap").hidden = filas.length <= mostrados;
+  }
+
+  function dato(et, val) {
+    return '<div class="dato"><span class="dato-et">' + esc(et) + '</span><span class="dato-val">' + (val || "–") + "</span></div>";
+  }
+
+  function detalle(c) {
+    var ests = (DATOS.porCliente[c.ns_id] || []).slice().sort(function (a, b) { return (b.activo ? 1 : 0) - (a.activo ? 1 : 0); });
+    var dir = [c.direccion, c.localidad, c.provincia, c.cp ? "CP " + c.cp : null].filter(Boolean).join(", ");
+    var html = '<div class="detalle"><div class="detalle-grid">' +
+      dato("ID NetSuite", CI.linkNS(c.ns_id, c.entity_id)) +
+      dato("ID GHL", CI.linkGHL(c.ghl_contact_id, c.ghl_contact_id)) +
+      dato("En integración GHL", c.contacto_id ? "Sí" : (c.ghl_contact_id ? "No (sin contacto en el modelo)" : "")) +
+      dato("Fecha de alta", esc(CI.fmtDia(c.fecha_creacion))) +
+      dato("Teléfono", esc(c.telefono)) +
+      dato("Celular", esc(c.telefono_movil)) +
+      dato("Email", c.email ? '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a>" : "") +
+      dato("Dirección", esc(dir)) +
+      dato("Tipo", esc(c._tipo)) +
+      dato("Estado en NetSuite", esc(c.estado_ns) + (c.inactivo ? " (inactivo)" : "")) +
+      "</div><h4>Establecimientos (" + ests.length + ")</h4>";
+    if (!ests.length) return html + '<p class="vacio">Sin establecimientos con cuenta.</p></div>';
+    return html + '<div class="pivot-scroll"><table class="sub-table"><thead><tr><th>ID</th><th>Establecimiento</th><th>Cuenta ByKom</th>' +
+      "<th>Estado de servicio</th><th>Monitoreo</th><th>Activación ByKom</th><th>Suspensión</th><th>Motivo de baja</th><th>Dirección</th><th>Alta</th></tr></thead><tbody>" +
+      ests.map(function (e) {
+        return "<tr><td>" + CI.linkNS(e.ns_id, e.entity_id) + "</td><td>" + esc(e.nombre) + "</td><td>" + esc(e.nro_cuenta) + "</td>" +
+          '<td><span class="tag ' + (e.activo ? "tag--activo" : "tag--inactivo") + '">' + esc(e.estado_servicio || "Sin estado") + "</span></td>" +
+          "<td>" + esc(e.tipo_monitoreo) + "</td><td>" + esc(CI.fmtDia(e.fecha_activacion)) + "</td>" +
+          "<td>" + esc(CI.fmtDiaLocal(e.fecha_suspension)) + "</td><td>" + esc(e.motivo_baja) + "</td>" +
+          "<td>" + esc([e.direccion, e.localidad].filter(Boolean).join(", ")) + "</td><td>" + esc(CI.fmtDia(e.fecha_creacion)) + "</td></tr>";
+      }).join("") + "</tbody></table></div></div>";
+  }
+
+  // ---------------------------------------------------------------
+  // Excel: clientes filtrados + sus establecimientos
+  // ---------------------------------------------------------------
+  async function excel(ExcelJS) {
+    var wb = new ExcelJS.Workbook();
+    var sub = "Clientes: " + num(vista.length) + (vista.length !== DATOS.clientes.length ? " (filtrados de " + num(DATOS.clientes.length) + ")" : "") +
+      (ultimaActualizacion ? " · datos actualizados el " + CI.fmtFechaHora(ultimaActualizacion) : "");
+    CI.xlHoja(wb, "Clientes", "Segmentación de Clientes", sub, [
+      { titulo: "ID", ancho: 11 }, { titulo: "Cliente", ancho: 36 }, { titulo: "Tipo", ancho: 10 }, { titulo: "Condición", ancho: 20 },
+      { titulo: "Est. activos", ancho: 10 }, { titulo: "Establecimientos", ancho: 10 }, { titulo: "Cuentas ByKom", ancho: 18 },
+      { titulo: "Teléfono", ancho: 16 }, { titulo: "Celular", ancho: 16 }, { titulo: "Email", ancho: 30 },
+      { titulo: "Dirección", ancho: 30 }, { titulo: "Localidad", ancho: 18 }, { titulo: "Provincia", ancho: 16 }, { titulo: "CP", ancho: 8 },
+      { titulo: "Alta", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "ID GHL", ancho: 26 }, { titulo: "Estado NetSuite", ancho: 18 },
+    ], vista.map(function (c) {
+      return [CI.xlLink(c.entity_id, CI.URL_CLIENTE_NS + c.ns_id), c.nombre, c._tipo, c._cond, c.establecimientos_activos, c.establecimientos,
+        c.cuentas, c.telefono, c.telefono_movil, c.email, c.direccion, c.localidad, c.provincia, c.cp, CI.xlFecha(c.fecha_creacion),
+        CI.xlLink(c.ghl_contact_id, c.ghl_contact_id ? CI.URL_CONTACTO_GHL + c.ghl_contact_id : null), c.estado_ns];
+    }));
+    var ids = new Set(vista.map(function (c) { return c.ns_id; }));
+    var porId = {};
+    vista.forEach(function (c) { porId[c.ns_id] = c; });
+    var est = DATOS.est.filter(function (e) { return ids.has(e.cliente_ns_id); });
+    CI.xlHoja(wb, "Establecimientos", "Establecimientos de los clientes", num(est.length) + " establecimientos", [
+      { titulo: "ID cliente", ancho: 11 }, { titulo: "Cliente", ancho: 32 }, { titulo: "ID", ancho: 12 }, { titulo: "Establecimiento", ancho: 32 },
+      { titulo: "Cuenta ByKom", ancho: 12 }, { titulo: "Estado de servicio", ancho: 22 }, { titulo: "Activo", ancho: 8 },
+      { titulo: "Monitoreo", ancho: 10 }, { titulo: "Activación ByKom", ancho: 11, fmt: "dd/mm/yyyy" },
+      { titulo: "Suspensión", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "Motivo de baja", ancho: 24 },
+      { titulo: "Dirección", ancho: 30 }, { titulo: "Localidad", ancho: 18 }, { titulo: "Alta", ancho: 11, fmt: "dd/mm/yyyy" },
+    ], est.map(function (e) {
+      var c = porId[e.cliente_ns_id] || {};
+      return [c.entity_id, c.nombre, CI.xlLink(e.entity_id, CI.URL_CLIENTE_NS + e.ns_id), e.nombre, e.nro_cuenta, e.estado_servicio,
+        e.activo ? "Sí" : "No", e.tipo_monitoreo, CI.xlFecha(e.fecha_activacion), e.fecha_suspension ? CI.xlFecha(CI.fmtDiaLocal(e.fecha_suspension).split("/").reverse().join("-")) : null,
+        e.motivo_baja, e.direccion, e.localidad, CI.xlFecha(e.fecha_creacion)];
+    }));
+    await CI.descargarLibro(wb, "Segmentacion_Clientes_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+  }
+
+  // ---------------------------------------------------------------
+  // Ultima actualizacion e inicio
+  // ---------------------------------------------------------------
+  async function pintarUltima() {
+    var r = await CI.sb.from("cli_corrida").select("finalizado_en,origen,mensaje,stats")
+      .eq("informe", "segmentacion").eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
+    if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
+    var c = r.data[0];
+    ultimaActualizacion = c.finalizado_en;
+    $("upd-hero").hidden = false;
+    $("upd-hero-fecha").textContent = CI.fmtFechaHora(c.finalizado_en);
+    $("upd-hero-det").textContent = [c.origen === "automatica" ? "Automática" : "Manual", CI.hace(c.finalizado_en)].join(" · ");
+    $("report-footer").innerHTML = "SP Seguridad Privada &middot; Segmentación de Clientes &middot; datos de NetSuite, actualizados el " + esc(CI.fmtFechaHora(c.finalizado_en));
+  }
+
+  function eventos() {
+    $("buscar").addEventListener("input", function () { clearTimeout(eventos.t); eventos.t = setTimeout(cambio, 200); });
+    $("limpiar").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k].limpiar(); }); $("buscar").value = ""; cambio(); });
+    $("mas").addEventListener("click", function () { mostrados += PAGINA; pintarTabla(); });
+    $("xls").addEventListener("click", function () { CI.exportar($("xls"), excel, barra && barra.setEstado); });
+    $("tabla").addEventListener("click", function (e) {
+      var th = e.target.closest("th[data-col]");
+      if (th) {
+        var id = th.getAttribute("data-col");
+        if (id === "flecha") return;
+        orden.asc = orden.col === id ? !orden.asc : true;
+        orden.col = id;
+        pintarTabla();
+        return;
+      }
+      if (e.target.closest("a")) return;
+      var tr = e.target.closest("tr.fila-cliente");
+      if (!tr) return;
+      var id = +tr.getAttribute("data-id");
+      if (abiertos.has(id)) abiertos.delete(id); else abiertos.add(id);
+      pintarTabla();
+    });
+    // Click en una barra: filtra por ese valor.
+    [["b-condicion", "cond"], ["b-estado", "estado"], ["b-localidad", "loc"]].forEach(function (p) {
+      $(p[0]).addEventListener("click", function (e) {
+        var b = e.target.closest(".barra--clic");
+        if (b) F[p[1]].solo(b.getAttribute("data-valor"));
+      });
+    });
+  }
+
+  async function iniciar() {
+    var p = await CI.permisos(SECCION);
+    if (!p.sesion) { CI.sinAcceso("Iniciá sesión en la web interna para ver este informe."); return; }
+    if (!p.ver) { CI.sinAcceso("No tenés permiso para ver la Segmentación de Clientes. Pedile a un administrador que te lo habilite."); return; }
+    barra = CI.barraActualizacion({
+      informe: "segmentacion",
+      puedeEditar: p.editar,
+      detalleCorrida: function (c) {
+        var s = c.stats || {};
+        return s.clientes != null ? num(s.clientes) + " clientes · " + num(s.establecimientos) + " establecimientos (" + num(s.activos) + " activos)" : "";
+      },
+      alTerminar: async function () { await cargarDatos(); await pintarUltima(); },
+    });
+    eventos();
+    try {
+      await cargarDatos();
+    } catch (e) {
+      barra.setEstado("No se pudieron leer los datos: " + e.message, "error");
+    }
+    $("cargando").hidden = true;
+    $("main").classList.remove("main--cargando");
+    await pintarUltima();
+    if (!DATOS.clientes.length) barra.setEstado(p.editar ? "Todavía no hay datos cargados: apretá Actualizar ahora." : "Todavía no hay datos cargados.");
+    barra.seguirSiHayEnCurso();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+</script>
+</body>
+</html>

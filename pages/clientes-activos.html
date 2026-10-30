@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clientes activos — SP Seguridad</title>
+
+  <!-- Iconografía -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+  <!-- Estilos: tokens → base → componentes → página -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/indicadores-area.css">
+</head>
+<body>
+
+  <!-- HEADER compartido -->
+  <div id="site-header"
+    data-breadcrumb='[{"label":"Inicio","href":"/index.html"},{"label":"Clientes activos"}]'>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>window.SP_SECCION_ID = 'clientes-activos';</script>
+  <script src="/js/page-guard.js"></script>
+  <script src="/components/header/header.js"></script>
+
+  <main class="indicadores-wrap" role="main">
+
+    <!-- Pestañas: una por informe, solo las que el usuario puede ver (js/clientes-activos.js) -->
+    <nav class="section-tab-row" id="clientes-tabs" role="tablist" aria-label="Informes de clientes" hidden></nav>
+
+    <p class="indicadores-vacio" id="clientes-cargando">Cargando…</p>
+    <p class="indicadores-vacio" id="clientes-vacio" hidden>
+      Todavía no tenés habilitado ningún informe de clientes. Pedile a un administrador que te lo asigne.
+    </p>
+
+    <div class="indicadores-frame-wrap" id="clientes-frame-wrap" hidden>
+      <iframe id="clientes-frame" class="indicadores-frame" title="Informe de clientes"></iframe>
+    </div>
+
+    <footer class="site-footer" role="contentinfo">
+      <div>SP Seguridad Privada SA &nbsp;&middot;&nbsp; Av. 13 N 716, La Plata &nbsp;&middot;&nbsp; CUIT 30-64256032-4</div>
+      <div>
+        <a href="mailto:ventas@spseguridad.com.ar">ventas@spseguridad.com.ar</a>
+        &nbsp;&middot;&nbsp;
+        <a href="tel:08102224141">0810-222-4141</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../js/clientes-activos.js"></script>
+
+</body>
+</html>

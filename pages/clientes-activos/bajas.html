@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis de Bajas — SP Seguridad</title>
+<link rel="stylesheet" href="../../css/clientes-informe.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="report-header">
+    <div class="eyebrow">SP Seguridad Privada &middot; Clientes activos &middot; Análisis de Bajas</div>
+    <h1>Análisis de Bajas</h1>
+    <div class="sub">Establecimientos suspendidos por baja en el mes, según la Fecha de Suspensión Bykom de NetSuite</div>
+    <div class="upd-hero" id="upd-hero" hidden>
+      <span class="upd-hero-label" id="upd-hero-label">Foto del mes</span>
+      <span class="upd-hero-fecha" id="upd-hero-fecha"></span>
+      <span class="upd-hero-det" id="upd-hero-det"></span>
+    </div>
+    <div class="upd-bar">
+      <label for="mes-sel" class="upd-estado" style="color:var(--navy);font-weight:700">Mes</label>
+      <select class="mes-sel" id="mes-sel" aria-label="Mes del informe"></select>
+      <button type="button" class="upd-btn" id="upd-btn" hidden>Actualizar mes</button>
+      <button type="button" class="upd-menu-btn" id="upd-menu-btn" aria-expanded="false" aria-controls="upd-panel" hidden>Actualizaciones anteriores &#9662;</button>
+      <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
+    </div>
+    <div class="upd-panel" id="upd-panel" hidden>
+      <div class="upd-panel-ayuda">Cada actualización trae de NetSuite las bajas del mes elegido y las suma a la foto de ese mes. Las que dejaron de figurar en NetSuite (reactivadas, otra suspensión, cuenta reutilizada) no se borran: quedan marcadas.</div>
+      <div class="upd-hist-scroll">
+        <table class="upd-hist">
+          <thead><tr><th>Actualizada el</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
+          <tbody id="upd-hist-body"><tr><td colspan="4">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </header>
+
+  <div class="cargando" id="cargando" role="status" aria-live="polite">
+    <span>Cargando bajas…</span><span class="cargando-barra" aria-hidden="true"></span>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab-btn active" data-tab="resumen" role="tab" aria-selected="true">Resumen</button>
+    <button type="button" class="tab-btn" data-tab="plan" role="tab" aria-selected="false">Plan de acción</button>
+    <button type="button" class="tab-btn" data-tab="detalle" role="tab" aria-selected="false">Detalle</button>
+  </nav>
+
+  <main id="main" class="main--cargando">
+    <!-- Resumen -->
+    <div class="tab-panel active" id="panel-resumen">
+      <h2 id="titulo-resumen">Resumen</h2>
+      <div class="note-box note-box--aviso" id="aviso-no-vigentes" hidden></div>
+      <div class="kpi-row" id="kpis"></div>
+      <div class="grid-2">
+        <div class="bloque">
+          <h3>Ranking de motivos de baja</h3>
+          <div class="pivot-scroll"><table class="pivot" id="ranking"></table></div>
+          <div class="bloque-nota">Prioridad: Alta ≥ 20% del total, Media ≥ 5%, Baja &lt; 5%.</div>
+        </div>
+        <div>
+          <div class="bloque">
+            <h3>Estado de servicio</h3>
+            <div id="b-estado"></div>
+            <div class="bloque-nota">Estado al tomar la foto por primera vez.</div>
+          </div>
+          <div class="bloque">
+            <h3>Estado hoy</h3>
+            <div id="b-estado-hoy"></div>
+            <div class="bloque-nota">Estado en NetSuite en la última actualización: las suspensiones por baja pasan después a BAJA definitiva.</div>
+          </div>
+          <div class="bloque">
+            <h3>Evolución semanal (ISO)</h3>
+            <div id="b-semanas"></div>
+          </div>
+          <div class="bloque">
+            <h3>Bajas por localidad (10 principales)</h3>
+            <div id="b-localidad"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plan de accion -->
+    <div class="tab-panel" id="panel-plan">
+      <h2>Plan de acción</h2>
+      <p class="bloque-nota" style="margin:-6px 0 16px">Categoría según el motivo de baja; las de motivo “Otro” se clasifican por el comentario. Hasta tres comentarios de ejemplo por categoría.</p>
+      <div class="plan-grid" id="plan"></div>
+    </div>
+
+    <!-- Detalle -->
+    <div class="tab-panel" id="panel-detalle">
+      <h2>Detalle de bajas</h2>
+      <div class="filtros" id="filtros">
+        <span class="filtros-titulo">Filtros</span>
+        <input type="search" class="filtro-buscar" id="buscar" placeholder="Buscar cliente, cuenta, comentario…" aria-label="Buscar baja">
+        <button type="button" class="chk-limpiar" id="limpiar" hidden>Quitar filtros</button>
+        <button type="button" class="xls-btn" id="xls">Descargar Excel</button>
+      </div>
+      <div class="explorer">
+        <div class="explorer-bar">
+          <span class="explorer-title">Bajas del mes</span>
+          <span class="explorer-count" id="cuenta"></span>
+        </div>
+        <div class="table-scroll"><table class="data-table" id="tabla"></table></div>
+      </div>
+      <div class="bloque-nota">Filas marcadas en naranja: ya no figuran como baja en NetSuite (se muestra su estado actual).</div>
+    </div>
+  </main>
+  <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Análisis de Bajas &middot; datos de NetSuite</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script src="/js/clientes-informe.js"></script>
+<script>
+(function () {
+  "use strict";
+  var CI = window.CI, $ = CI.$, esc = CI.esc, num = CI.num, pct = CI.pct;
+  var SECCION = "clientes-bajas";
+  var MESES_ATRAS = 18;
+
+  // Prioridad y accion de cada categoria (la categoria la asigna el servicio: app/plan_accion.py)
+  var PLAN = [
+    ["Mudanza / relocalización", "Media", "Ofrecer traslado del servicio a la nueva dirección sin costo de instalación."],
+    ["Incomunicados", "Media", "Intentar recontacto por canales alternativos (email, WhatsApp) antes de confirmar baja definitiva."],
+    ["Revisión manual", "Media", "Revisar caso a caso; comentario no clasificado automáticamente."],
+    ["Baja económica", "Media", "Ofrecer plan de pago, revisión de abono o recategorización del plan antes de confirmar la baja."],
+    ["Competencia", "Media", "Relevar oferta de competencia y evaluar contraoferta comercial (descuento, bonificación)."],
+    ["Retención - insatisfacción", "Media", "Contacto del área de calidad para relevar el motivo puntual y ofrecer revisión técnica si corresponde."],
+    ["Baja definitiva (fallecimiento/cierre)", "Baja", "Confirmar baja administrativa; no requiere acción comercial."],
+    ["Recuperación por deuda", "Baja", "Casos derivados a gestión legal (abogado); no requiere acción comercial de retención."],
+  ];
+
+  var periodo = null;          // "AAAA-MM"
+  var corridasPorMes = {};     // "AAAA-MM" -> [corridas ok]
+  var BAJAS = [], PREVIAS = [], CLIENTES = {};
+  var F = {};
+  var orden = { col: "fecha_suspension", asc: true };
+  var barra = null;
+
+  function etiquetaMes(am) { var p = am.split("-"); return CI.MESES[+p[1] - 1] + " " + p[0]; }
+  function mesAnterior(am) { var p = am.split("-").map(Number); var d = new Date(Date.UTC(p[0], p[1] - 2, 1)); return d.toISOString().slice(0, 7); }
+  function prioridadRanking(n, total) { var r = total ? n / total : 0; return r >= 0.2 ? "Alta" : r >= 0.05 ? "Media" : "Baja"; }
+  function tagPrioridad(p) { return '<span class="tag tag--' + p.toLowerCase() + '">' + esc(p) + "</span>"; }
+  // Semana ISO de una fecha local (AAAA-MM-DD)
+  function semanaISO(iso) {
+    var d = new Date(CI.fmtDiaLocal(iso).split("/").reverse().join("-") + "T12:00:00Z");
+    var dia = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - dia + 3);
+    var primerJueves = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    return 1 + Math.round(((d - primerJueves) / 86400000 - 3 + ((primerJueves.getUTCDay() + 6) % 7)) / 7);
+  }
+
+  // ---------------------------------------------------------------
+  // Meses
+  // ---------------------------------------------------------------
+  async function cargarMeses() {
+    var r = await CI.sb.from("cli_corrida").select("periodo,finalizado_en,origen")
+      .eq("informe", "bajas").eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(500);
+    corridasPorMes = {};
+    (r.data || []).forEach(function (c) { if (c.periodo) (corridasPorMes[c.periodo.slice(0, 7)] = corridasPorMes[c.periodo.slice(0, 7)] || []).push(c); });
+    var hoy = new Date().toISOString().slice(0, 7), meses = [];
+    for (var m = hoy, i = 0; i < MESES_ATRAS; i++, m = mesAnterior(m)) meses.push(m);
+    Object.keys(corridasPorMes).forEach(function (m) { if (meses.indexOf(m) < 0) meses.push(m); });
+    meses.sort().reverse();
+    var conDatos = meses.filter(function (m) { return corridasPorMes[m]; });
+    var pedido = new URLSearchParams(location.search).get("periodo");
+    if (!periodo) periodo = (pedido && meses.indexOf(pedido) >= 0) ? pedido : conDatos[0] || mesAnterior(hoy);
+    $("mes-sel").innerHTML = meses.map(function (m) {
+      return '<option value="' + m + '"' + (m === periodo ? " selected" : "") + ">" + etiquetaMes(m) + (corridasPorMes[m] ? "" : " — sin datos") + "</option>";
+    }).join("");
+  }
+
+  // ---------------------------------------------------------------
+  // Datos del mes
+  // ---------------------------------------------------------------
+  var SELECT = "establecimiento_ns_id,fecha_suspension,periodo,cliente_ns_id,entity_id,nombre,nombre_establecimiento,nro_cuenta," +
+    "direccion,localidad,tipo_cliente,estado_servicio,estado_actual,motivo_baja,comentarios_motivo,comentarios,dias_suspendido,telefono,email," +
+    "categoria,vigente,primera_captura_en,ultima_captura_en";
+
+  async function cargarMes() {
+    $("main").classList.add("main--cargando");
+    $("cargando").hidden = false;
+    var r = await Promise.all([
+      CI.leerTodo("cli_baja", SELECT, "fecha_suspension", [["eq", "periodo", periodo + "-01"]]),
+      CI.leerTodo("cli_baja", "establecimiento_ns_id,motivo_baja,vigente", "fecha_suspension", [["eq", "periodo", mesAnterior(periodo) + "-01"]]),
+    ]);
+    BAJAS = r[0]; PREVIAS = r[1];
+    await cargarClientes();
+    BAJAS.forEach(function (b) {
+      var c = CLIENTES[b.cliente_ns_id] || {};
+      b._ghl = c.ghl_contact_id || null;
+      b._tel = b.telefono || c.telefono || c.telefono_movil || null;
+      b._email = b.email || c.email || null;
+      b._vig = b.vigente ? "Figura como baja" : "Ya no figura como baja";
+      b._busqueda = [b.entity_id, b.nombre, b.nro_cuenta, b.direccion, b.localidad, b.motivo_baja, b.comentarios_motivo, b.comentarios, b._tel, b._email].join(" ").toLowerCase();
+    });
+    armarFiltros();
+    pintarTodo();
+    $("cargando").hidden = true;
+    $("main").classList.remove("main--cargando");
+    history.replaceState(null, "", "?periodo=" + periodo);
+  }
+
+  // ID de GHL y telefono del cliente principal (si la Segmentacion ya se cargo).
+  async function cargarClientes() {
+    CLIENTES = {};
+    var ids = Array.from(new Set(BAJAS.map(function (b) { return b.cliente_ns_id; }).filter(Boolean)));
+    for (var i = 0; i < ids.length; i += 150) {
+      var r = await CI.sb.from("cli_cliente").select("ns_id,ghl_contact_id,telefono,telefono_movil,email").in("ns_id", ids.slice(i, i + 150));
+      (r.data || []).forEach(function (c) { CLIENTES[c.ns_id] = c; });
+    }
+  }
+
+  function incluidas() { return BAJAS; }
+
+  // ---------------------------------------------------------------
+  // Resumen
+  // ---------------------------------------------------------------
+  function pintarTodo() {
+    var lista = incluidas();
+    var total = lista.length;
+    var corr = corridasPorMes[periodo] || [];
+    $("titulo-resumen").textContent = "Resumen — " + etiquetaMes(periodo);
+    if (corr.length) {
+      $("upd-hero").hidden = false;
+      $("upd-hero-label").textContent = "Foto de " + etiquetaMes(periodo);
+      $("upd-hero-fecha").textContent = "Actualizada el " + CI.fmtFechaHora(corr[0].finalizado_en);
+      $("upd-hero-det").textContent = CI.hace(corr[0].finalizado_en) + " · " + corr.length + (corr.length === 1 ? " actualización" : " actualizaciones del mes");
+      $("report-footer").innerHTML = "SP Seguridad Privada &middot; Análisis de Bajas &middot; " + esc(etiquetaMes(periodo)) + " &middot; datos de NetSuite al " + esc(CI.fmtFechaHora(corr[0].finalizado_en));
+    } else {
+      $("upd-hero").hidden = true;
+    }
+    if (barra) barra.textoBoton("Actualizar " + etiquetaMes(periodo));
+
+    var noVig = lista.filter(function (b) { return !b.vigente; });
+    $("aviso-no-vigentes").hidden = !noVig.length;
+    $("aviso-no-vigentes").innerHTML = noVig.length ? "<strong>" + num(noVig.length) + (noVig.length === 1 ? " baja ya no figura" : " bajas ya no figuran") +
+      "</strong> como baja en NetSuite (reactivadas o con otra fecha de suspensión). Se cuentan igual porque la foto es del mes; el detalle muestra su estado actual." : "";
+
+    if (!total) {
+      $("kpis").innerHTML = '<p class="vacio">No hay bajas cargadas para ' + esc(etiquetaMes(periodo)) + (barra && !$("upd-btn").hidden ? ". Apretá “Actualizar " + esc(etiquetaMes(periodo)) + "”." : ".") + "</p>";
+      $("ranking").innerHTML = ""; ["b-estado", "b-estado-hoy", "b-semanas", "b-localidad"].forEach(function (id) { $(id).innerHTML = ""; }); $("plan").innerHTML = '<p class="vacio">Sin datos.</p>';
+      pintarTabla();
+      return;
+    }
+    var motivos = CI.paresOrdenados(CI.contar(lista, function (b) { return b.motivo_baja || "Sin motivo"; }));
+    var dias = lista.map(function (b) { return b.dias_suspendido; }).filter(function (d) { return d !== null && d !== undefined; });
+    var prom = dias.length ? dias.reduce(function (a, b) { return a + b; }, 0) / dias.length : null;
+    var delta = "";
+    if (PREVIAS.length) {
+      var dif = total - PREVIAS.length;
+      delta = ' <span class="kpi-delta ' + (dif > 0 ? "kpi-delta--sube" : "kpi-delta--baja") + '">' + (dif > 0 ? "▲ " : dif < 0 ? "▼ " : "= ") + num(Math.abs(dif)) + "</span>";
+    }
+    var ultima = lista.reduce(function (m, b) { return b.ultima_captura_en > m ? b.ultima_captura_en : m; }, "");
+    $("kpis").innerHTML = CI.kpis([
+      { num: num(total) + delta, label: "Total de bajas", det: PREVIAS.length ? "vs " + num(PREVIAS.length) + " en " + etiquetaMes(mesAnterior(periodo)) : "establecimientos" },
+      { num: esc(motivos[0][0]), label: "Motivo principal", det: num(motivos[0][1]) + " casos (" + pct(motivos[0][1], total, 1) + ")" },
+      { num: prom === null ? "–" : num(prom, 1), label: "Días suspendido promedio", det: dias.length ? "rango " + Math.min.apply(null, dias) + "–" + Math.max.apply(null, dias) + " días, al " + CI.fmtDiaLocal(ultima) : "" },
+      { num: num(motivos.length), label: "Motivos distintos", det: "categorías registradas" },
+      { num: num(noVig.length), label: "Ya no figuran como baja", det: "reactivadas u otra suspensión hoy" },
+    ]);
+
+    $("ranking").innerHTML = '<thead><tr><th>#</th><th class="pv-fila">Motivo de baja</th><th>Cantidad</th><th>% del total</th><th>Prioridad</th></tr></thead><tbody>' +
+      motivos.map(function (m, i) {
+        return "<tr><td>" + (i + 1) + '</td><td class="pv-fila">' + esc(m[0]) + "</td><td>" + num(m[1]) + "</td><td>" + pct(m[1], total, 1) + "</td><td>" + tagPrioridad(prioridadRanking(m[1], total)) + "</td></tr>";
+      }).join("") + '</tbody><tfoot><tr><td></td><td class="pv-fila">Total</td><td>' + num(total) + "</td><td>100%</td><td></td></tr></tfoot>";
+
+    $("b-estado").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b.estado_servicio || "Sin estado"; })), total);
+    $("b-estado-hoy").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b.estado_actual || "Sin estado"; })), total);
+    $("b-localidad").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(lista, function (b) { return b.localidad ? b.localidad.toUpperCase() : "Sin localidad"; })).slice(0, 10), total, { sec: true });
+    var sem = CI.contar(lista, function (b) { return semanaISO(b.fecha_suspension); });
+    $("b-semanas").innerHTML = CI.barras(Object.keys(sem).map(Number).sort(function (a, b) { return a - b; })
+      .map(function (s) { return ["Semana " + s, sem[s]]; }), total, { sec: true });
+
+    pintarPlan(lista);
+    pintarTabla();
+  }
+
+  function pintarPlan(lista) {
+    var total = lista.length;
+    var porCat = {};
+    lista.forEach(function (b) { (porCat[b.categoria || "Revisión manual"] = porCat[b.categoria || "Revisión manual"] || []).push(b); });
+    var filas = PLAN.filter(function (p) { return porCat[p[0]]; })
+      .concat(Object.keys(porCat).filter(function (c) { return !PLAN.some(function (p) { return p[0] === c; }); })
+        .map(function (c) { return [c, "Media", "Revisar caso a caso."]; }));
+    filas.sort(function (a, b) { return (a[1] === "Baja") - (b[1] === "Baja") || porCat[b[0]].length - porCat[a[0]].length; });
+    $("plan").innerHTML = filas.map(function (p) {
+      var bs = porCat[p[0]];
+      var ej = bs.map(function (b) { return b.comentarios_motivo; }).filter(Boolean).slice(0, 3);
+      return '<div class="plan-card' + (p[1] === "Baja" ? " plan-card--baja" : "") + '">' +
+        '<div class="plan-cab"><span class="plan-titulo">' + esc(p[0]) + "</span>" + tagPrioridad(p[1]) + "</div>" +
+        '<div class="plan-n">' + num(bs.length) + (bs.length === 1 ? " caso · " : " casos · ") + pct(bs.length, total, 1) + " del total</div>" +
+        '<p class="plan-accion">' + esc(p[2]) + "</p>" +
+        (ej.length ? '<ul class="plan-ej">' + ej.map(function (t) { return "<li>“" + esc(t.length > 160 ? t.slice(0, 160) + "…" : t) + "”</li>"; }).join("") + "</ul>" : "") +
+        "</div>";
+    }).join("");
+  }
+
+  // ---------------------------------------------------------------
+  // Detalle
+  // ---------------------------------------------------------------
+  function armarFiltros() {
+    var cont = $("filtros");
+    cont.querySelectorAll(".chk-filtro").forEach(function (el) { el.remove(); });
+    var tmp = document.createElement("div");
+    F.motivo = CI.crearFiltro(tmp, "f-motivo", "Motivo", CI.opcionesDe(BAJAS, function (b) { return b.motivo_baja || "Sin motivo"; }), pintarTabla);
+    F.cat = CI.crearFiltro(tmp, "f-cat", "Categoría", CI.opcionesDe(BAJAS, function (b) { return b.categoria || "Revisión manual"; }), pintarTabla);
+    F.estado = CI.crearFiltro(tmp, "f-estado", "Estado actual", CI.opcionesDe(BAJAS, function (b) { return b.estado_actual || "Sin estado"; }), pintarTabla);
+    F.vig = CI.crearFiltro(tmp, "f-vig", "En NetSuite", CI.opcionesDe(BAJAS, function (b) { return b._vig; }), pintarTabla);
+    Array.prototype.slice.call(tmp.children).forEach(function (el) { cont.insertBefore(el, $("limpiar")); });
+  }
+
+  function filtradas() {
+    var q = $("buscar").value.trim().toLowerCase();
+    return BAJAS.filter(function (b) {
+      return F.motivo.pasa(b.motivo_baja || "Sin motivo") && F.cat.pasa(b.categoria || "Revisión manual") &&
+        F.estado.pasa(b.estado_actual || "Sin estado") && F.vig.pasa(b._vig) && (!q || b._busqueda.indexOf(q) >= 0);
+    });
+  }
+
+  var COLUMNAS = [
+    { id: "entity_id", titulo: "ID", valor: function (b) { return b.entity_id; }, html: function (b) { return CI.linkNS(b.establecimiento_ns_id, b.entity_id); }, clase: "nowrap" },
+    { id: "nombre", titulo: "Cliente / establecimiento", valor: function (b) { return b.nombre; } },
+    { id: "nro_cuenta", titulo: "Cuenta", valor: function (b) { return b.nro_cuenta; }, clase: "nowrap" },
+    { id: "localidad", titulo: "Localidad", valor: function (b) { return b.localidad; } },
+    { id: "fecha_suspension", titulo: "Suspensión", valor: function (b) { return b.fecha_suspension; }, html: function (b) { return esc(CI.fmtDiaLocal(b.fecha_suspension)); }, clase: "nowrap" },
+    { id: "dias", titulo: "Días", valor: function (b) { return b.dias_suspendido; }, clase: "num" },
+    { id: "motivo", titulo: "Motivo", valor: function (b) { return b.motivo_baja; } },
+    { id: "categoria", titulo: "Categoría", valor: function (b) { return b.categoria; } },
+    { id: "com_motivo", titulo: "Comentario del motivo", valor: function (b) { return b.comentarios_motivo; }, clase: "texto-largo" },
+    { id: "estado", titulo: "Estado", valor: function (b) { return b.estado_actual; }, html: function (b) {
+      return esc(b.estado_actual || "") + (b.estado_servicio && b.estado_servicio !== b.estado_actual ? '<br><span class="kpi-det">antes: ' + esc(b.estado_servicio) + "</span>" : "");
+    } },
+    { id: "tel", titulo: "Teléfono", valor: function (b) { return b._tel; }, clase: "nowrap" },
+    { id: "email", titulo: "Email", valor: function (b) { return b._email; } },
+    { id: "ghl", titulo: "GHL", valor: function (b) { return b._ghl ? 1 : 0; }, html: function (b) { return CI.linkGHL(b._ghl, "Ver"); } },
+  ];
+
+  function pintarTabla() {
+    var lista = filtradas();
+    var hayFiltro = Object.keys(F).some(function (k) { return F[k].activo(); }) || $("buscar").value.trim();
+    $("limpiar").hidden = !hayFiltro;
+    var col = COLUMNAS.filter(function (c) { return c.id === orden.col; })[0];
+    lista.sort(function (a, b) {
+      var x = col.valor(a), y = col.valor(b);
+      x = x === null || x === undefined ? "" : x; y = y === null || y === undefined ? "" : y;
+      if (typeof x === "string") return x.localeCompare(String(y), "es") * (orden.asc ? 1 : -1);
+      return (x < y ? -1 : x > y ? 1 : 0) * (orden.asc ? 1 : -1);
+    });
+    $("tabla").innerHTML = "<thead><tr>" + COLUMNAS.map(function (c) {
+      return '<th data-col="' + c.id + '">' + esc(c.titulo) + '<span class="sort-arrow">' + (orden.col === c.id ? (orden.asc ? "▲" : "▼") : "↕") + "</span></th>";
+    }).join("") + "</tr></thead><tbody>" + (lista.length ? lista.map(function (b) {
+      return "<tr" + (b.vigente ? "" : ' class="fila-no-vigente"') + ">" + COLUMNAS.map(function (c) {
+        return '<td class="' + (c.clase || "") + '">' + (c.html ? c.html(b) : esc(c.valor(b))) + "</td>";
+      }).join("") + "</tr>";
+    }).join("") : '<tr><td colspan="' + COLUMNAS.length + '" class="vacio">Sin resultados.</td></tr>') + "</tbody>";
+    $("cuenta").textContent = num(lista.length) + " de " + num(BAJAS.length);
+  }
+
+  async function excel(ExcelJS) {
+    var wb = new ExcelJS.Workbook();
+    var lista = filtradas(), total = BAJAS.length;
+    var sub = etiquetaMes(periodo) + " · " + num(total) + " bajas";
+    var motivos = CI.paresOrdenados(CI.contar(BAJAS, function (b) { return b.motivo_baja || "Sin motivo"; }));
+    CI.xlHoja(wb, "Ranking de motivos", "Análisis de Bajas — Ranking de motivos", sub, [
+      { titulo: "#", ancho: 5 }, { titulo: "Motivo de baja", ancho: 38 }, { titulo: "Cantidad", ancho: 10 },
+      { titulo: "% del total", ancho: 11, fmt: "0.0%" }, { titulo: "Prioridad", ancho: 10 },
+    ], motivos.map(function (m, i) { return [i + 1, m[0], m[1], m[1] / total, prioridadRanking(m[1], total)]; }));
+    var porCat = CI.contar(BAJAS, function (b) { return b.categoria || "Revisión manual"; });
+    CI.xlHoja(wb, "Plan de acción", "Análisis de Bajas — Plan de acción", sub, [
+      { titulo: "Categoría", ancho: 36 }, { titulo: "Cantidad", ancho: 10 }, { titulo: "% del total", ancho: 11, fmt: "0.0%" },
+      { titulo: "Prioridad", ancho: 10 }, { titulo: "Acción recomendada", ancho: 70, ajustar: true },
+    ], PLAN.filter(function (p) { return porCat[p[0]]; }).map(function (p) { return [p[0], porCat[p[0]], porCat[p[0]] / total, p[1], p[2]]; }));
+    CI.xlHoja(wb, "Detalle", "Análisis de Bajas — Detalle", sub + (lista.length !== total ? " (filtradas: " + num(lista.length) + ")" : ""), [
+      { titulo: "ID", ancho: 12 }, { titulo: "Cliente / establecimiento", ancho: 40 }, { titulo: "Cuenta", ancho: 10 },
+      { titulo: "Dirección", ancho: 26 }, { titulo: "Localidad", ancho: 16 },
+      { titulo: "Suspensión", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "Días", ancho: 7 }, { titulo: "Motivo", ancho: 26 },
+      { titulo: "Categoría", ancho: 26 }, { titulo: "Comentario del motivo", ancho: 50, ajustar: true }, { titulo: "Comentarios", ancho: 50, ajustar: true },
+      { titulo: "Estado (primera foto)", ancho: 22 }, { titulo: "Estado actual", ancho: 22 }, { titulo: "Figura como baja", ancho: 10 },
+      { titulo: "Teléfono", ancho: 16 }, { titulo: "Email", ancho: 28 }, { titulo: "ID GHL", ancho: 26 },
+    ], lista.map(function (b) {
+      return [CI.xlLink(b.entity_id, CI.URL_CLIENTE_NS + b.establecimiento_ns_id), b.nombre, b.nro_cuenta, b.direccion, b.localidad,
+        CI.xlFecha(CI.fmtDiaLocal(b.fecha_suspension).split("/").reverse().join("-")), b.dias_suspendido, b.motivo_baja, b.categoria,
+        b.comentarios_motivo, b.comentarios, b.estado_servicio, b.estado_actual, b.vigente ? "Sí" : "No", b._tel, b._email,
+        CI.xlLink(b._ghl, b._ghl ? CI.URL_CONTACTO_GHL + b._ghl : null)];
+    }));
+    await CI.descargarLibro(wb, "Analisis_Bajas_" + periodo + ".xlsx");
+  }
+
+  // ---------------------------------------------------------------
+  // Inicio
+  // ---------------------------------------------------------------
+  function eventos() {
+    CI.iniciarPestanas();
+    $("mes-sel").addEventListener("change", function () { periodo = $("mes-sel").value; cargarMes().catch(errorCarga); });
+    $("buscar").addEventListener("input", pintarTabla);
+    $("limpiar").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k].limpiar(); }); $("buscar").value = ""; pintarTabla(); });
+    $("xls").addEventListener("click", function () { CI.exportar($("xls"), excel, barra && barra.setEstado); });
+    $("tabla").addEventListener("click", function (e) {
+      var th = e.target.closest("th[data-col]");
+      if (!th) return;
+      var id = th.getAttribute("data-col");
+      orden.asc = orden.col === id ? !orden.asc : true;
+      orden.col = id;
+      pintarTabla();
+    });
+  }
+
+  function errorCarga(e) {
+    $("cargando").hidden = true;
+    $("main").classList.remove("main--cargando");
+    if (barra) barra.setEstado("No se pudieron leer las bajas: " + e.message, "error");
+  }
+
+  async function iniciar() {
+    var p = await CI.permisos(SECCION);
+    if (!p.sesion) { CI.sinAcceso("Iniciá sesión en la web interna para ver este informe."); return; }
+    if (!p.ver) { CI.sinAcceso("No tenés permiso para ver el Análisis de Bajas. Pedile a un administrador que te lo habilite."); return; }
+    barra = CI.barraActualizacion({
+      informe: "bajas",
+      puedeEditar: p.editar,
+      periodo: function () { return periodo; },
+      detalleCorrida: function (c) {
+        var s = c.stats || {};
+        return (c.periodo ? etiquetaMes(c.periodo.slice(0, 7)) + ": " : "") +
+          (s.bajas != null ? num(s.bajas) + " bajas (" + num(s.nuevas) + " nuevas" + (s.ya_no_aparecen ? ", " + num(s.ya_no_aparecen) + " ya no figuran" : "") + ")" : "");
+      },
+      alTerminar: async function () { await cargarMeses(); await cargarMes(); },
+    });
+    eventos();
+    try {
+      await cargarMeses();
+      await cargarMes();
+    } catch (e) { errorCarga(e); }
+    barra.seguirSiHayEnCurso();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+</script>
+</body>
+</html>
