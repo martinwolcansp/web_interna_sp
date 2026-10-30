@@ -107,7 +107,6 @@
   // Compras de la Segmentacion: solo instalaciones nuevas (alcance "nuevas" de cli_compra, filtro fijo).
   var ALCANCE_COMPRAS = "nuevas";
   var RECENCIAS = [REC_12, REC_24, REC_48, REC_MAS, REC_SIN];
-  function unidadCorta(u) { return u ? String(u).split(" : ").pop() : "Sin unidad"; }
   function mesesDesde(fecha) {
     var p = String(fecha).slice(0, 10).split("-").map(Number), h = new Date();
     return (h.getFullYear() - p[0]) * 12 + (h.getMonth() + 1 - p[1]);
@@ -136,14 +135,14 @@
       CI.leerTodo("v_cli_cliente",
         "ns_id,entity_id,nombre,es_persona,ghl_contact_id,telefono,telefono_movil,email,direccion,localidad,provincia,cp," +
         "fecha_creacion,estado_ns,inactivo,establecimientos,establecimientos_activos,establecimientos_inactivos,cuentas,contacto_id," +
-        "compras,compras_comodato,ultima_compra,ultima_unidad_negocio,ultima_unidad_comercial,ultima_es_comodato,monto_total",
+        "compras,compras_comodato,ultima_compra,ultima_es_comodato,monto_total",
         "ns_id", [["eq", "vigente", true]]),
       CI.leerTodo("cli_establecimiento",
         "ns_id,cliente_ns_id,entity_id,nombre,nro_cuenta,id_bykom,fecha_activacion,tipo_monitoreo,tipo_cliente,estado_servicio,activo,fecha_suspension,motivo_baja," +
         "telefono,email,direccion,localidad,fecha_creacion,inactivo",
         "ns_id", [["eq", "vigente", true]]),
       CI.leerTodo("cli_compra",
-        "ov_id,numero,fecha,cliente_ns_id,establecimiento_ns_id,unidad_negocio,unidad_comercial,unidad_comercial_origen,es_comodato,total",
+        "ov_id,numero,fecha,cliente_ns_id,establecimiento_ns_id,es_comodato,total",
         "ov_id", [["eq", "vigente", true], ["eq", "alcance", ALCANCE_COMPRAS]]),
     ]);
     DATOS.clientes = r[0];
@@ -264,7 +263,7 @@
     { id: "cuentas", titulo: "Cuentas ByKom", valor: function (c) { return c.cuentas; } },
     { id: "compras", titulo: "Compras", valor: function (c) { return c.compras; }, html: function (c) { return c.compras ? num(c.compras) : ""; }, clase: "num" },
     { id: "ultima_compra", titulo: "Última compra", valor: function (c) { return c.ultima_compra; }, html: function (c) {
-      return c.ultima_compra ? esc(CI.fmtDia(c.ultima_compra)) + '<br><span class="kpi-det">' + esc(unidadCorta(c.ultima_unidad_negocio)) + (c.ultima_es_comodato ? " · comodato" : "") + "</span>" : "";
+      return c.ultima_compra ? esc(CI.fmtDia(c.ultima_compra)) + '<br><span class="kpi-det">' + (c.ultima_es_comodato ? "Comodato" : "Venta") + "</span>" : "";
     }, clase: "nowrap" },
     { id: "cond", titulo: "Condición", valor: function (c) { return c._cond; }, html: function (c) {
       var cls = c._cond === COND_ACTIVO ? "tag--activo" : c._cond === COND_INACTIVO ? "tag--alerta" : "tag--inactivo";
@@ -318,12 +317,11 @@
     var porEst = {};
     ests.forEach(function (e) { porEst[e.ns_id] = e; });
     var htmlCompras = "<h4>Instalaciones nuevas desde 2022 (" + cps.length + (c.monto_total ? " · " + esc(pesos(c.monto_total)) : "") + ")</h4>" + (cps.length
-      ? '<div class="pivot-scroll"><table class="sub-table"><thead><tr><th>Fecha</th><th>OV</th><th>Unidad de negocio</th><th>Unidad comercial</th>' +
+      ? '<div class="pivot-scroll"><table class="sub-table"><thead><tr><th>Fecha</th><th>OV</th>' +
         "<th>Modalidad</th><th>Establecimiento</th><th>Monto</th></tr></thead><tbody>" +
         cps.map(function (k) {
           var e = porEst[k.establecimiento_ns_id];
           return "<tr><td>" + esc(CI.fmtDia(k.fecha)) + '</td><td><a href="' + URL_OV + encodeURIComponent(k.ov_id) + '" target="_blank" rel="noopener">' + esc(k.numero || k.ov_id) + "</a></td>" +
-            "<td>" + esc(k.unidad_negocio) + "</td><td>" + esc(k.unidad_comercial) + "</td>" +
             '<td><span class="tag ' + (k.es_comodato ? "tag--alerta" : "tag--activo") + '">' + (k.es_comodato ? "Comodato" : "Venta") + "</span></td>" +
             "<td>" + esc(e ? e.nro_cuenta || e.entity_id : "") + '</td><td class="num">' + esc(pesos(k.total)) + "</td></tr>";
         }).join("") + "</tbody></table></div>"
@@ -354,12 +352,12 @@
       { titulo: "Dirección", ancho: 30 }, { titulo: "Localidad", ancho: 18 }, { titulo: "Provincia", ancho: 16 }, { titulo: "CP", ancho: 8 },
       { titulo: "Alta", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "ID GHL", ancho: 26 }, { titulo: "Estado NetSuite", ancho: 18 },
       { titulo: "Compras", ancho: 9 }, { titulo: "En comodato", ancho: 9 }, { titulo: "Última compra", ancho: 11, fmt: "dd/mm/yyyy" },
-      { titulo: "Unidad última compra", ancho: 22 }, { titulo: "Monto total", ancho: 14, fmt: "#,##0" },
+      { titulo: "Modalidad última compra", ancho: 14 }, { titulo: "Monto total", ancho: 14, fmt: "#,##0" },
     ], vista.map(function (c) {
       return [CI.xlLink(c.entity_id, CI.URL_CLIENTE_NS + c.ns_id), c.nombre, c._tipo, c._cond, c.establecimientos_activos, c.establecimientos,
         c.cuentas, c.telefono, c.telefono_movil, c.email, c.direccion, c.localidad, c.provincia, c.cp, CI.xlFecha(c.fecha_creacion),
         CI.xlLink(c.ghl_contact_id, c.ghl_contact_id ? CI.URL_CONTACTO_GHL + c.ghl_contact_id : null), c.estado_ns,
-        c.compras || 0, c.compras_comodato || 0, CI.xlFecha(c.ultima_compra), c.ultima_unidad_negocio, c.monto_total];
+        c.compras || 0, c.compras_comodato || 0, CI.xlFecha(c.ultima_compra), c.ultima_compra ? (c.ultima_es_comodato ? "Comodato" : "Venta") : null, c.monto_total];
     }));
     var ids = new Set(vista.map(function (c) { return c.ns_id; }));
     var porId = {};
@@ -380,12 +378,11 @@
     var cps = DATOS.compras.filter(function (k) { return ids.has(k.cliente_ns_id); });
     CI.xlHoja(wb, "Compras", "Compras de los clientes (OV de instalaciones nuevas desde 2022)", num(cps.length) + " órdenes de venta", [
       { titulo: "ID cliente", ancho: 11 }, { titulo: "Cliente", ancho: 32 }, { titulo: "OV", ancho: 14 }, { titulo: "Fecha", ancho: 11, fmt: "dd/mm/yyyy" },
-      { titulo: "Unidad de negocio", ancho: 28 }, { titulo: "Unidad comercial", ancho: 16 }, { titulo: "Origen unidad comercial", ancho: 14 },
       { titulo: "Modalidad", ancho: 11 }, { titulo: "Monto", ancho: 14, fmt: "#,##0" },
     ], cps.map(function (k) {
       var c = porId[k.cliente_ns_id] || {};
-      return [c.entity_id, c.nombre, CI.xlLink(k.numero || String(k.ov_id), URL_OV + k.ov_id), CI.xlFecha(k.fecha), k.unidad_negocio,
-        k.unidad_comercial, k.unidad_comercial_origen, k.es_comodato ? "Comodato" : "Venta", k.total];
+      return [c.entity_id, c.nombre, CI.xlLink(k.numero || String(k.ov_id), URL_OV + k.ov_id), CI.xlFecha(k.fecha),
+        k.es_comodato ? "Comodato" : "Venta", k.total];
     }));
     await CI.descargarLibro(wb, "Segmentacion_Clientes_" + new Date().toISOString().slice(0, 10) + ".xlsx");
   }

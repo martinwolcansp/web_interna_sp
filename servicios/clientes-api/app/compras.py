@@ -12,12 +12,10 @@
 #   - Las OV en comodato cuentan como compra, marcadas (es_comodato).
 #   - Se descartan las OV anuladas o canceladas.
 #
-# Tipo de compra:
-#   unidad_negocio    clase de la OV (ej. "Alarmas : Comunicaciones"): esta siempre.
-#   unidad_comercial  Hogar / Comercio / Obra... (custbody_mw_sp_unidad_comercial):
-#                     de la OV; si no, del presupuesto de origen; si no, de la
-#                     oportunidad. Cargado en oportunidades desde mar-2026 y en
-#                     presupuestos desde sep-2026: las compras viejas no lo tienen.
+# La unidad de negocio y la unidad comercial (solo la de la OV) se guardan pero
+# el informe no las muestra: todas las compras son instalaciones nuevas. No se
+# consulta la unidad comercial de presupuestos ni oportunidades (ahi aparecian
+# Ampliaciones y Servicio Tecnico); se saco el 30/10/2026.
 #
 # Cada OV se asigna al cliente principal de su entidad (la OV puede estar a
 # nombre del establecimiento o del cliente). Las OV de entidades que no estan
@@ -27,9 +25,6 @@ from datetime import date
 
 from app import config, netsuite
 from app.comun import entero, numero, texto
-
-LOTE_IDS = 900
-
 
 # Variantes de la consulta, de la mas completa a la mas simple. La unidad de
 # negocio (class) NO esta en transaction: esta en la linea principal
@@ -82,29 +77,6 @@ def _consulta(desde, hasta, clase_completa=True, con_extra=True):
     """
 
 
-def _unidad_comercial_origen(ovs, log):
-    """Unidad comercial de presupuestos y oportunidades (para las OV sin ella).
-    Devuelve {id transaccion: {"uc": ..., "oportunidad_id": ...}}."""
-    pres = {entero(o.get("presupuesto_id")) for o in ovs if not texto(o.get("uc_ov"))} - {None}
-    datos = {}
-
-    def leer(ids):
-        ids = sorted(ids - set(datos))
-        consultas = [f"""SELECT e.id AS id, BUILTIN.DF(e.custbody_mw_sp_unidad_comercial) AS uc,
-                                e.opportunity AS oportunidad_id
-                         FROM transaction e WHERE e.id IN ({', '.join(str(i) for i in ids[k:k + LOTE_IDS])})
-                         ORDER BY e.id""" for k in range(0, len(ids), LOTE_IDS)]
-        for f in netsuite.suiteql_unidas(consultas):
-            datos[int(f["id"])] = f
-
-    leer(pres)
-    opps = {entero(o.get("oportunidad_id")) for o in ovs if not texto(o.get("uc_ov"))}
-    opps |= {entero(d.get("oportunidad_id")) for d in datos.values()}
-    leer(opps - {None})
-    log(f"Unidad comercial: {len(pres)} presupuestos y {len(opps - {None})} oportunidades consultados")
-    return datos
-
-
 def traer(por_id, raiz, corrida_id, ts, log):
     """OV de productos -> (filas cli_compra, avisos). por_id/raiz: de segmentacion."""
     avisos = []
@@ -135,8 +107,6 @@ def traer(por_id, raiz, corrida_id, ts, log):
 
     anuladas = [o for o in ovs if any(p in str(o.get("estado") or "").upper() for p in ("ANULAD", "CANCEL"))]
     ovs = [o for o in ovs if o not in anuladas]
-    origen = _unidad_comercial_origen(ovs, log)
-
     filas, sin_cliente = [], 0
     for o in ovs:
         ent = entero(o.get("entidad_id"))
@@ -144,16 +114,7 @@ def traer(por_id, raiz, corrida_id, ts, log):
             sin_cliente += 1
             continue
         cliente = raiz[ent]
-        uc, uc_origen = texto(o.get("uc_ov")), "ov" if texto(o.get("uc_ov")) else None
-        if not uc:
-            p = origen.get(entero(o.get("presupuesto_id")) or -1)
-            if p and texto(p.get("uc")):
-                uc, uc_origen = texto(p["uc"]), "presupuesto"
-        if not uc:
-            op = entero(o.get("oportunidad_id")) or entero((origen.get(entero(o.get("presupuesto_id")) or -1) or {}).get("oportunidad_id"))
-            d = origen.get(op or -1)
-            if d and texto(d.get("uc")):
-                uc, uc_origen = texto(d["uc"]), "oportunidad"
+        uc = texto(o.get("uc_ov"))
         filas.append({
             "ov_id": int(o["ov_id"]),
             "alcance": config.COMPRAS_ALCANCE,
@@ -164,7 +125,7 @@ def traer(por_id, raiz, corrida_id, ts, log):
             "establecimiento_ns_id": ent if ent != cliente or texto(por_id[ent].get("nro_cuenta")) else None,
             "unidad_negocio": texto(o.get("unidad_negocio")),
             "unidad_comercial": uc,
-            "unidad_comercial_origen": uc_origen,
+            "unidad_comercial_origen": "ov" if uc else None,
             "es_comodato": str(o.get("comodato") or "").upper() == "T",
             "total": numero(o.get("total")),
             "estado": texto(o.get("estado")),
