@@ -14,7 +14,7 @@
 #
 # Lo que no viene en una corrida no se borra: queda vigente = false.
 
-from app import config, consulta
+from app import compras, config, consulta
 from app import supabase_rest as sb
 from app.comun import ahora, booleano, entero, es_activo, fecha_hora, texto
 
@@ -22,6 +22,7 @@ SECCION = "clientes-segmentacion"
 USA_PERIODO = False
 
 T_CLIENTE = "cli_cliente"
+T_COMPRA = "cli_compra"
 T_ESTABLECIMIENTO = "cli_establecimiento"
 NIVELES_PADRE = 3
 
@@ -104,8 +105,8 @@ def fila_establecimiento(f, cliente_ns_id, corrida_id, ts):
     }, **_direccion(f))
 
 
-def separar(por_id, corrida_id, ts):
-    """Registros de NetSuite (por id) -> (filas cli_cliente, filas cli_establecimiento)."""
+def raices(por_id):
+    """id de cada registro -> id de su cliente principal (registro raiz)."""
     def raiz(i):
         vistos = set()
         while True:
@@ -114,10 +115,15 @@ def separar(por_id, corrida_id, ts):
                 return i
             vistos.add(i)
             i = p
+    return {i: raiz(i) for i in por_id}
 
+
+def separar(por_id, corrida_id, ts):
+    """Registros de NetSuite (por id) -> (filas cli_cliente, filas cli_establecimiento)."""
+    raiz = raices(por_id)
     clientes, establecimientos = [], []
     for i, f in por_id.items():
-        r = raiz(i)
+        r = raiz[i]
         if r == i:
             clientes.append(fila_cliente(f, corrida_id, ts))
             if texto(f.get("nro_cuenta")):
@@ -168,7 +174,14 @@ def actualizar(token, corrida_id, log, paso, periodo=None):
     sb.upsert(token, T_CLIENTE, clientes, "ns_id")
     paso("Guardando establecimientos")
     sb.upsert(token, T_ESTABLECIMIENTO, establecimientos, "ns_id")
+    paso("Consultando compras (OV de productos) en NetSuite")
+    filas_compra, avisos_compra = compras.traer(por_id, raices(por_id), corrida_id, ts, log)
+    avisos += avisos_compra
+    paso("Guardando compras")
+    sb.upsert(token, T_COMPRA, filas_compra, "ov_id")
+
     paso("Marcando registros que ya no vienen")
+    sb.marcar_no_vistos(token, T_COMPRA, corrida_id)
     sb.marcar_no_vistos(token, T_ESTABLECIMIENTO, corrida_id)
     sb.marcar_no_vistos(token, T_CLIENTE, corrida_id)
 
@@ -182,5 +195,7 @@ def actualizar(token, corrida_id, log, paso, periodo=None):
         "activos": activos,
         "inactivos": len(establecimientos) - activos - sin_estado,
         "sin_estado": sin_estado,
+        "compras": len(filas_compra),
+        "clientes_con_compras": len({c["cliente_ns_id"] for c in filas_compra}),
     }
     return stats, avisos

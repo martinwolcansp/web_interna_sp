@@ -14,6 +14,7 @@ Las páginas (`pages/clientes-activos/segmentacion.html` y `bajas.html`) leen la
 - **`cli_cliente`**: un registro por cliente principal de NetSuite (sin parent, ej. `C00404`). Es la tabla maestra: lo que se sume más adelante va en tablas hijas `cli_<tema>` con FK a `cli_cliente.ns_id` (como `cli_establecimiento`), o en `datos` (jsonb) si es un atributo suelto.
 - **`cli_establecimiento`**: subclientes (`C00404-1`), uno por cuenta ByKom, con estado de servicio y si cuenta como activo.
 - **`v_cli_cliente`**: vista con totales de establecimientos activos/inactivos y el `contacto.id` de la integración NetSuite ↔ GHL (enlace por `ghl_contact_id`, sin FK dura).
+- **`cli_compra`** (`migracion_43_clientes_compras.sql`): compras de cada cliente, una fila por OV de productos (tipo de orden de venta 1) desde 2022, cargada en la actualización de Segmentación (`app/compras.py`). El comodato cuenta como compra, marcado. Unidad comercial: de la OV, si no del presupuesto, si no de la oportunidad (solo cargada desde 2026; las compras viejas tienen solo unidad de negocio). La vista `v_cli_cliente` suma cantidad, última compra y monto.
 - **`cli_baja`**: foto de las bajas, una fila por establecimiento y fecha de suspensión.
 
 Nada se borra: lo que deja de venir de NetSuite queda con `vigente = false`.

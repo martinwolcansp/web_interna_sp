@@ -22,6 +22,12 @@ NETSUITE_PRIVATE_KEY = os.getenv("NETSUITE_PRIVATE_KEY", "").replace("\\n", "\n"
 NETSUITE_PRIVATE_KEY_PATH = os.getenv("NETSUITE_PRIVATE_KEY_PATH")
 NETSUITE_CONCURRENCIA = int(os.getenv("NETSUITE_CONCURRENCIA", "3"))
 
+# ---------- GHL ----------
+# Todavia no se usan: quedan cargadas para sumar datos de GHL a los informes
+# (mismo Private Integration Token que indicadores-api / informe-mkt-api).
+GHL_API_TOKEN = os.getenv("GHL_API_TOKEN")
+GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID")
+
 # ---------- Supabase (web interna) ----------
 # Anon key + access token del usuario que aprieta el boton: decide RLS.
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
@@ -55,6 +61,9 @@ CRITERIO_CLIENTES = os.getenv("CRITERIO_CLIENTES", "c.searchstage = 'Cliente'")
 # distinguir mayusculas). Estados al 30/10/2026: ACTIVO, BAJA, SUSPENSION POR
 # BAJA, SUSPENSION POR DEUDA, SUSPENSION POR SOLICITUD, NO SINCRONIZADO.
 ESTADOS_ACTIVOS = [e.upper() for e in _lista("ESTADOS_ACTIVOS", "ACTIVO")]
+
+# Compras: OV de productos (tipo 1) desde esta fecha (migracion a ByKom).
+COMPRAS_DESDE = os.getenv("COMPRAS_DESDE", "2022-01-01")
 
 # ---------- Bajas ----------
 # Condicion SuiteQL de la busqueda de bajas, ademas de la fecha de suspension

@@ -13,6 +13,7 @@ import sys
 from datetime import date
 
 from app.comun import ahora
+from app import compras
 from app.informes import bajas, segmentacion
 
 
@@ -42,6 +43,13 @@ def main():
         print("Con ID GHL:", sum(1 for c in clientes if c["ghl_contact_id"]))
         guardar("cli_cliente", clientes)
         guardar("cli_establecimiento", est)
+        compras_, avisos_c = compras.traer(por_id, segmentacion.raices(por_id), None, ahora().isoformat(), log)
+        print(f"\nCompras: {len(compras_)} de {len({c['cliente_ns_id'] for c in compras_})} clientes  Avisos: {avisos_c}")
+        print("Por anio:", sorted(collections.Counter(c["fecha"][:4] for c in compras_ if c["fecha"]).items()))
+        print("Unidad de negocio:", collections.Counter(c["unidad_negocio"] for c in compras_).most_common(12))
+        print("Unidad comercial:", collections.Counter((c["unidad_comercial"], c["unidad_comercial_origen"]) for c in compras_).most_common(12))
+        print("Comodato:", collections.Counter(c["es_comodato"] for c in compras_))
+        guardar("cli_compra", compras_)
     elif que == "bajas":
         anio, mes = (int(x) for x in sys.argv[2].split("-"))
         periodo = date(anio, mes, 1)

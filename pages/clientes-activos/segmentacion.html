@@ -64,6 +64,19 @@
         </div>
       </div>
 
+      <div class="grid-2">
+        <div class="bloque">
+          <h3>Clientes por última compra</h3>
+          <div id="b-recencia"></div>
+          <div class="bloque-nota">Compras: órdenes de venta de productos desde 2022 (comodato incluido). Click en una barra para filtrar.</div>
+        </div>
+        <div class="bloque">
+          <h3>Compras por unidad de negocio</h3>
+          <div id="b-unidad"></div>
+          <div class="bloque-nota">Cantidad de órdenes de venta de los clientes filtrados.</div>
+        </div>
+      </div>
+
       <div class="explorer">
         <div class="explorer-bar">
           <span class="explorer-title">Clientes &mdash; click en una fila para ver el detalle</span>
@@ -89,8 +102,22 @@
   var SECCION = "clientes-segmentacion";
   var PAGINA = 200;
 
+  var URL_OV = "https://7138551.app.netsuite.com/app/accounting/transactions/salesord.nl?id=";
+  var REC_12 = "Últimos 12 meses", REC_24 = "1 a 2 años", REC_48 = "2 a 4 años", REC_MAS = "Más de 4 años", REC_SIN = "Sin compras desde 2022";
+  var RECENCIAS = [REC_12, REC_24, REC_48, REC_MAS, REC_SIN];
+  function unidadCorta(u) { return u ? String(u).split(" : ").pop() : "Sin unidad"; }
+  function mesesDesde(fecha) {
+    var p = String(fecha).slice(0, 10).split("-").map(Number), h = new Date();
+    return (h.getFullYear() - p[0]) * 12 + (h.getMonth() + 1 - p[1]);
+  }
+  function recencia(fecha) {
+    if (!fecha) return REC_SIN;
+    var m = mesesDesde(fecha);
+    return m < 12 ? REC_12 : m < 24 ? REC_24 : m < 48 ? REC_48 : REC_MAS;
+  }
+  function pesos(n) { return n === null || n === undefined ? "" : "$ " + num(n); }
   var COND_ACTIVO = "Con servicio activo", COND_INACTIVO = "Sin servicio activo", COND_SIN = "Sin establecimientos";
-  var DATOS = { clientes: [], est: [], porCliente: {} };
+  var DATOS = { clientes: [], est: [], porCliente: {}, compras: [], comprasPorCliente: {} };
   var F = {};             // filtros con casillas
   var vista = [];         // clientes filtrados
   var orden = { col: "nombre", asc: true };
@@ -106,15 +133,22 @@
     var r = await Promise.all([
       CI.leerTodo("v_cli_cliente",
         "ns_id,entity_id,nombre,es_persona,ghl_contact_id,telefono,telefono_movil,email,direccion,localidad,provincia,cp," +
-        "fecha_creacion,estado_ns,inactivo,establecimientos,establecimientos_activos,establecimientos_inactivos,cuentas,contacto_id",
+        "fecha_creacion,estado_ns,inactivo,establecimientos,establecimientos_activos,establecimientos_inactivos,cuentas,contacto_id," +
+        "compras,compras_comodato,ultima_compra,ultima_unidad_negocio,ultima_unidad_comercial,ultima_es_comodato,monto_total",
         "ns_id", [["eq", "vigente", true]]),
       CI.leerTodo("cli_establecimiento",
         "ns_id,cliente_ns_id,entity_id,nombre,nro_cuenta,id_bykom,fecha_activacion,tipo_monitoreo,tipo_cliente,estado_servicio,activo,fecha_suspension,motivo_baja," +
         "telefono,email,direccion,localidad,fecha_creacion,inactivo",
         "ns_id", [["eq", "vigente", true]]),
+      CI.leerTodo("cli_compra",
+        "ov_id,numero,fecha,cliente_ns_id,establecimiento_ns_id,unidad_negocio,unidad_comercial,unidad_comercial_origen,es_comodato,total",
+        "ov_id", [["eq", "vigente", true]]),
     ]);
     DATOS.clientes = r[0];
     DATOS.est = r[1];
+    DATOS.compras = r[2];
+    DATOS.comprasPorCliente = {};
+    DATOS.compras.forEach(function (k) { (DATOS.comprasPorCliente[k.cliente_ns_id] = DATOS.comprasPorCliente[k.cliente_ns_id] || []).push(k); });
     DATOS.porCliente = {};
     DATOS.est.forEach(function (e) { (DATOS.porCliente[e.cliente_ns_id] = DATOS.porCliente[e.cliente_ns_id] || []).push(e); });
     var hace12 = new Date(); hace12.setFullYear(hace12.getFullYear() - 1);
@@ -129,6 +163,10 @@
       c._contactable = !!(c.telefono || c.telefono_movil || c.email);
       c._nuevo = !!(c.fecha_creacion && c.fecha_creacion >= desde12);
       c._estados = Array.from(new Set(ests.map(function (e) { return e.estado_servicio || "Sin estado"; })));
+      var cps = DATOS.comprasPorCliente[c.ns_id] || [];
+      c._recencia = recencia(c.ultima_compra);
+      c._unidades = Array.from(new Set(cps.map(function (k) { return unidadCorta(k.unidad_negocio); })));
+      c._modalidad = !cps.length ? ["Sin compras"] : Array.from(new Set(cps.map(function (k) { return k.es_comodato ? "Comodato" : "Venta"; })));
       c._busqueda = [c.entity_id, c.nombre, c.telefono, c.telefono_movil, c.email, c.direccion, c.localidad, c.ghl_contact_id]
         .concat(ests.map(function (e) { return [e.nro_cuenta, e.nombre, e.entity_id].join(" "); }))
         .join(" ").toLowerCase();
@@ -158,6 +196,12 @@
     F.loc = CI.crearFiltro(tmp, "f-loc", "Localidad", porCant(function (c) { return c._loc; }), cambio);
     F.ghl = CI.crearFiltro(tmp, "f-ghl", "GHL", [{ valor: "Con ID GHL", etiqueta: "Con ID GHL" }, { valor: "Sin ID GHL", etiqueta: "Sin ID GHL" }], cambio);
     F.tipo = CI.crearFiltro(tmp, "f-tipo", "Tipo", [{ valor: "Persona", etiqueta: "Persona" }, { valor: "Empresa", etiqueta: "Empresa" }], cambio);
+    F.rec = CI.crearFiltro(tmp, "f-rec", "Última compra", RECENCIAS.map(function (v) { return { valor: v, etiqueta: v }; }), cambio);
+    var porUnidad = CI.contar(DATOS.compras, function (k) { return unidadCorta(k.unidad_negocio); });
+    F.unidad = CI.crearFiltro(tmp, "f-unidad", "Compró unidad", Object.keys(porUnidad)
+      .sort(function (a, b) { return porUnidad[b] - porUnidad[a]; })
+      .map(function (k) { return { valor: k, etiqueta: k }; }), cambio);
+    F.modal = CI.crearFiltro(tmp, "f-modal", "Modalidad", ["Venta", "Comodato", "Sin compras"].map(function (v) { return { valor: v, etiqueta: v }; }), cambio);
     F.anio = CI.crearFiltro(tmp, "f-anio", "Año de alta", CI.opcionesDe(cs, function (c) { return c._anio; }, function (a, b) { return a < b ? 1 : -1; }), cambio);
     Array.prototype.slice.call(tmp.children).forEach(function (el) { cont.insertBefore(el, antes); });
   }
@@ -166,6 +210,9 @@
     var q = $("buscar").value.trim().toLowerCase();
     return F.cond.pasa(c._cond) && F.loc.pasa(c._loc) && F.ghl.pasa(c._ghl) && F.tipo.pasa(c._tipo) && F.anio.pasa(c._anio) &&
       (!F.estado.activo() || c._estados.some(function (e) { return F.estado.pasa(e); })) &&
+      F.rec.pasa(c._recencia) &&
+      (!F.unidad.activo() || c._unidades.some(function (u) { return F.unidad.pasa(u); })) &&
+      (!F.modal.activo() || c._modalidad.some(function (m) { return F.modal.pasa(m); })) &&
       (!q || c._busqueda.indexOf(q) >= 0);
   }
 
@@ -186,12 +233,14 @@
     var ghl = vista.filter(function (c) { return c.ghl_contact_id; }).length;
     var contact = vista.filter(function (c) { return c._contactable; }).length;
     var nuevos = vista.filter(function (c) { return c._nuevo; }).length;
+    var compraron12 = vista.filter(function (c) { return c._recencia === REC_12; }).length;
     $("kpis").innerHTML = CI.kpis([
       { num: num(vista.length), label: "Clientes", det: hayFiltro ? "de " + num(DATOS.clientes.length) + " en la base" : "en la base" },
       { num: num(conActivo), label: "Con servicio activo", det: pct(conActivo, vista.length, 1) + " de los clientes" },
       { num: num(estAct), label: "Establecimientos activos", det: "de " + num(est.length) + " establecimientos" },
       { num: num(est.length - estAct), label: "Establecimientos inactivos", det: pct(est.length - estAct, est.length, 1) },
       { num: num(nuevos), label: "Altas últimos 12 meses", det: "por fecha de creación en NetSuite" },
+      { num: num(compraron12), label: "Compraron en 12 meses", det: pct(compraron12, vista.length, 1) + " de los clientes" },
       { num: pct(ghl, vista.length), label: "Vinculados a GHL", det: num(ghl) + " con ID de contacto" },
       { num: pct(contact, vista.length), label: "Contactables", det: num(contact) + " con teléfono o email" },
     ]);
@@ -201,6 +250,10 @@
       .map(function (k) { return [k, cond[k]]; }), vista.length, { clic: true });
     $("b-estado").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(est, function (e) { return e.estado_servicio || "Sin estado"; })), est.length, { clic: true });
     $("b-localidad").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(vista, function (c) { return c._loc; })).slice(0, 10), vista.length, { sec: true, clic: true });
+    var rec = CI.contar(vista, function (c) { return c._recencia; });
+    $("b-recencia").innerHTML = CI.barras(RECENCIAS.filter(function (k) { return rec[k]; }).map(function (k) { return [k, rec[k]]; }), vista.length, { clic: true });
+    var cps = DATOS.compras.filter(function (k) { return ids.has(k.cliente_ns_id); });
+    $("b-unidad").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(cps, function (k) { return unidadCorta(k.unidad_negocio); })).slice(0, 10), cps.length, { sec: true, clic: true });
     pintarTabla();
   }
 
@@ -212,6 +265,10 @@
     { id: "fecha_creacion", titulo: "Alta", valor: function (c) { return c.fecha_creacion; }, html: function (c) { return CI.fmtDia(c.fecha_creacion); }, clase: "nowrap" },
     { id: "est", titulo: "Est. activos", valor: function (c) { return c.establecimientos_activos; }, html: function (c) { return num(c.establecimientos_activos) + " / " + num(c.establecimientos); }, clase: "num" },
     { id: "cuentas", titulo: "Cuentas ByKom", valor: function (c) { return c.cuentas; } },
+    { id: "compras", titulo: "Compras", valor: function (c) { return c.compras; }, html: function (c) { return c.compras ? num(c.compras) : ""; }, clase: "num" },
+    { id: "ultima_compra", titulo: "Última compra", valor: function (c) { return c.ultima_compra; }, html: function (c) {
+      return c.ultima_compra ? esc(CI.fmtDia(c.ultima_compra)) + '<br><span class="kpi-det">' + esc(unidadCorta(c.ultima_unidad_negocio)) + (c.ultima_es_comodato ? " · comodato" : "") + "</span>" : "";
+    }, clase: "nowrap" },
     { id: "cond", titulo: "Condición", valor: function (c) { return c._cond; }, html: function (c) {
       var cls = c._cond === COND_ACTIVO ? "tag--activo" : c._cond === COND_INACTIVO ? "tag--alerta" : "tag--inactivo";
       return '<span class="tag ' + cls + '">' + esc(c._cond) + "</span>";
@@ -260,7 +317,21 @@
       dato("Tipo", esc(c._tipo)) +
       dato("Estado en NetSuite", esc(c.estado_ns) + (c.inactivo ? " (inactivo)" : "")) +
       "</div><h4>Establecimientos (" + ests.length + ")</h4>";
-    if (!ests.length) return html + '<p class="vacio">Sin establecimientos con cuenta.</p></div>';
+    var cps = (DATOS.comprasPorCliente[c.ns_id] || []).slice().sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; });
+    var porEst = {};
+    ests.forEach(function (e) { porEst[e.ns_id] = e; });
+    var htmlCompras = "<h4>Compras desde 2022 (" + cps.length + (c.monto_total ? " · " + esc(pesos(c.monto_total)) : "") + ")</h4>" + (cps.length
+      ? '<div class="pivot-scroll"><table class="sub-table"><thead><tr><th>Fecha</th><th>OV</th><th>Unidad de negocio</th><th>Unidad comercial</th>' +
+        "<th>Modalidad</th><th>Establecimiento</th><th>Monto</th></tr></thead><tbody>" +
+        cps.map(function (k) {
+          var e = porEst[k.establecimiento_ns_id];
+          return "<tr><td>" + esc(CI.fmtDia(k.fecha)) + '</td><td><a href="' + URL_OV + encodeURIComponent(k.ov_id) + '" target="_blank" rel="noopener">' + esc(k.numero || k.ov_id) + "</a></td>" +
+            "<td>" + esc(k.unidad_negocio) + "</td><td>" + esc(k.unidad_comercial) + "</td>" +
+            '<td><span class="tag ' + (k.es_comodato ? "tag--alerta" : "tag--activo") + '">' + (k.es_comodato ? "Comodato" : "Venta") + "</span></td>" +
+            "<td>" + esc(e ? e.nro_cuenta || e.entity_id : "") + '</td><td class="num">' + esc(pesos(k.total)) + "</td></tr>";
+        }).join("") + "</tbody></table></div>"
+      : '<p class="vacio">Sin órdenes de venta de productos desde 2022.</p>');
+    if (!ests.length) return html + '<p class="vacio">Sin establecimientos con cuenta.</p>' + htmlCompras + "</div>";
     return html + '<div class="pivot-scroll"><table class="sub-table"><thead><tr><th>ID</th><th>Establecimiento</th><th>Cuenta ByKom</th>' +
       "<th>Estado de servicio</th><th>Monitoreo</th><th>Activación ByKom</th><th>Suspensión</th><th>Motivo de baja</th><th>Dirección</th><th>Alta</th></tr></thead><tbody>" +
       ests.map(function (e) {
@@ -269,7 +340,7 @@
           "<td>" + esc(e.tipo_monitoreo) + "</td><td>" + esc(CI.fmtDia(e.fecha_activacion)) + "</td>" +
           "<td>" + esc(CI.fmtDiaLocal(e.fecha_suspension)) + "</td><td>" + esc(e.motivo_baja) + "</td>" +
           "<td>" + esc([e.direccion, e.localidad].filter(Boolean).join(", ")) + "</td><td>" + esc(CI.fmtDia(e.fecha_creacion)) + "</td></tr>";
-      }).join("") + "</tbody></table></div></div>";
+      }).join("") + "</tbody></table></div>" + htmlCompras + "</div>";
   }
 
   // ---------------------------------------------------------------
@@ -285,10 +356,13 @@
       { titulo: "Teléfono", ancho: 16 }, { titulo: "Celular", ancho: 16 }, { titulo: "Email", ancho: 30 },
       { titulo: "Dirección", ancho: 30 }, { titulo: "Localidad", ancho: 18 }, { titulo: "Provincia", ancho: 16 }, { titulo: "CP", ancho: 8 },
       { titulo: "Alta", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "ID GHL", ancho: 26 }, { titulo: "Estado NetSuite", ancho: 18 },
+      { titulo: "Compras", ancho: 9 }, { titulo: "En comodato", ancho: 9 }, { titulo: "Última compra", ancho: 11, fmt: "dd/mm/yyyy" },
+      { titulo: "Unidad última compra", ancho: 22 }, { titulo: "Monto total", ancho: 14, fmt: "#,##0" },
     ], vista.map(function (c) {
       return [CI.xlLink(c.entity_id, CI.URL_CLIENTE_NS + c.ns_id), c.nombre, c._tipo, c._cond, c.establecimientos_activos, c.establecimientos,
         c.cuentas, c.telefono, c.telefono_movil, c.email, c.direccion, c.localidad, c.provincia, c.cp, CI.xlFecha(c.fecha_creacion),
-        CI.xlLink(c.ghl_contact_id, c.ghl_contact_id ? CI.URL_CONTACTO_GHL + c.ghl_contact_id : null), c.estado_ns];
+        CI.xlLink(c.ghl_contact_id, c.ghl_contact_id ? CI.URL_CONTACTO_GHL + c.ghl_contact_id : null), c.estado_ns,
+        c.compras || 0, c.compras_comodato || 0, CI.xlFecha(c.ultima_compra), c.ultima_unidad_negocio, c.monto_total];
     }));
     var ids = new Set(vista.map(function (c) { return c.ns_id; }));
     var porId = {};
@@ -305,6 +379,16 @@
       return [c.entity_id, c.nombre, CI.xlLink(e.entity_id, CI.URL_CLIENTE_NS + e.ns_id), e.nombre, e.nro_cuenta, e.estado_servicio,
         e.activo ? "Sí" : "No", e.tipo_monitoreo, CI.xlFecha(e.fecha_activacion), e.fecha_suspension ? CI.xlFecha(CI.fmtDiaLocal(e.fecha_suspension).split("/").reverse().join("-")) : null,
         e.motivo_baja, e.direccion, e.localidad, CI.xlFecha(e.fecha_creacion)];
+    }));
+    var cps = DATOS.compras.filter(function (k) { return ids.has(k.cliente_ns_id); });
+    CI.xlHoja(wb, "Compras", "Compras de los clientes (OV de productos desde 2022)", num(cps.length) + " órdenes de venta", [
+      { titulo: "ID cliente", ancho: 11 }, { titulo: "Cliente", ancho: 32 }, { titulo: "OV", ancho: 14 }, { titulo: "Fecha", ancho: 11, fmt: "dd/mm/yyyy" },
+      { titulo: "Unidad de negocio", ancho: 28 }, { titulo: "Unidad comercial", ancho: 16 }, { titulo: "Origen unidad comercial", ancho: 14 },
+      { titulo: "Modalidad", ancho: 11 }, { titulo: "Monto", ancho: 14, fmt: "#,##0" },
+    ], cps.map(function (k) {
+      var c = porId[k.cliente_ns_id] || {};
+      return [c.entity_id, c.nombre, CI.xlLink(k.numero || String(k.ov_id), URL_OV + k.ov_id), CI.xlFecha(k.fecha), k.unidad_negocio,
+        k.unidad_comercial, k.unidad_comercial_origen, k.es_comodato ? "Comodato" : "Venta", k.total];
     }));
     await CI.descargarLibro(wb, "Segmentacion_Clientes_" + new Date().toISOString().slice(0, 10) + ".xlsx");
   }
@@ -347,7 +431,7 @@
       pintarTabla();
     });
     // Click en una barra: filtra por ese valor.
-    [["b-condicion", "cond"], ["b-estado", "estado"], ["b-localidad", "loc"]].forEach(function (p) {
+    [["b-condicion", "cond"], ["b-estado", "estado"], ["b-localidad", "loc"], ["b-recencia", "rec"], ["b-unidad", "unidad"]].forEach(function (p) {
       $(p[0]).addEventListener("click", function (e) {
         var b = e.target.closest(".barra--clic");
         if (b) F[p[1]].solo(b.getAttribute("data-valor"));
@@ -364,7 +448,8 @@
       puedeEditar: p.editar,
       detalleCorrida: function (c) {
         var s = c.stats || {};
-        return s.clientes != null ? num(s.clientes) + " clientes · " + num(s.establecimientos) + " establecimientos (" + num(s.activos) + " activos)" : "";
+        return s.clientes != null ? num(s.clientes) + " clientes · " + num(s.establecimientos) + " establecimientos (" + num(s.activos) + " activos)" +
+          (s.compras != null ? " · " + num(s.compras) + " compras" : "") : "";
       },
       alTerminar: async function () { await cargarDatos(); await pintarUltima(); },
     });
