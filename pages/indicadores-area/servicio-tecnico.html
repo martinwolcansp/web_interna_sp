@@ -404,17 +404,14 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Clasificación de servicios técnicos por categoría de problema</h2>
       <div class="kpi-row" id="kpi-prob"></div>
       <div class="note-box">El comentario técnico es texto libre con el trabajo realizado. Cada caso se clasifica en una categoría por palabras clave del comentario (si no alcanza, del título del caso); cuando el técnico cargue el formulario estructurado, se usa la categoría del formulario. La columna <strong>Clasificado por</strong> del detalle indica el origen.</div>
-      <div class="grid-2b">
-        <div class="bloque">
-          <h3>Servicios por Problema ST</h3>
-          <div id="prob-st"></div>
-          <div class="bloque-nota">Campo Problema ST del caso (custevent_3k_problema_st), tal como está cargado en NetSuite. Barra naranja: reincidencias con el mismo Problema ST dentro de la ventana.</div>
-        </div>
-        <div class="bloque">
-          <h3>Problema ST por mes</h3>
-          <div id="prob-st-linea"></div>
-          <div class="bloque-nota">Porcentaje de casos del mes con Problema ST cargado.</div>
-        </div>
+      <div class="bloque">
+        <h3>Servicios por Problema ST</h3>
+        <div id="prob-st"></div>
+        <div class="bloque-nota">Campo Problema ST del caso (custevent_3k_problema_st), tal como está cargado en NetSuite. Barra naranja: reincidencias con el mismo Problema ST dentro de la ventana.<span id="prob-st-sin"></span></div>
+      </div>
+      <div class="bloque">
+        <h3>Problema ST por mes</h3>
+        <div id="prob-st-mes"></div>
       </div>
       <div class="bloque">
         <h3>Problema ST por categoría (según el comentario técnico)</h3>
@@ -1252,7 +1249,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       if ((a === SIN_PROBLEMA_ST) !== (b === SIN_PROBLEMA_ST)) return a === SIN_PROBLEMA_ST ? 1 : -1;
       return por[b].length - por[a].length || a.localeCompare(b, "es");
     });
-    $("prob-st").innerHTML = barrasH("problemas", orden.map(function (p) {
+    $("prob-st").innerHTML = barrasH("problemas", orden.filter(function (p) { return p !== SIN_PROBLEMA_ST; }).map(function (p) {
       var l = por[p], serv = l.filter(function (c) { return c._cuenta; });
       var rs = serv.filter(function (c) { return c._reincSt; }).length;
       var cli = distintos(l.filter(function (c) { return c._cli; }), function (c) { return c._cli; });
@@ -1261,39 +1258,16 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         sub: fmtNum(cli) + " clientes" + (p === SIN_PROBLEMA_ST || !serv.length ? "" : " · reincidencia con el mismo Problema ST " + fmtPct(porc(rs, serv.length))),
         etqSel: "Problema ST: " + p, pasa: function (c) { return c._pst === p; } };
     }));
-    // Cobertura del campo por mes (cuando empezo a cargarse).
-    var porMes = {};
-    f.forEach(function (c) { if (c._mes) { var m = porMes[c._mes] = porMes[c._mes] || { t: 0, c: 0 }; m.t++; if (c.problema_st) m.c++; } });
-    $("prob-st-linea").innerHTML = lineaPct(Object.keys(porMes).sort().map(function (m) { return [m, 100 * porMes[m].c / porMes[m].t]; }));
+    var sin = por[SIN_PROBLEMA_ST] ? por[SIN_PROBLEMA_ST].length : 0;
+    $("prob-st-sin").textContent = sin ? " " + fmtNum(sin) + " casos (" + fmtPct(porc(sin, f.length)) + ") no tienen Problema ST cargado." : "";
+    var meses = Array.from(new Set(f.map(function (c) { return c._mes; }).filter(Boolean))).sort();
+    $("prob-st-mes").innerHTML = matriz({ tab: "problemas", id: "psm", titulo: "Problema ST", items: f, fila: function (c) { return c._pst; },
+      col: function (c) { return c._mes; }, cols: meses, etiquetaCol: etiquetaMes, ordenFilas: orden });
     var cats = ORDEN_CATEGORIAS.filter(function (k) { return f.some(function (c) { return c._problema === k; }); });
     $("prob-st-cat").innerHTML = matriz({ tab: "problemas", id: "pc", titulo: "Problema ST", items: f, fila: function (c) { return c._pst; },
       col: function (c) { return c._problema; }, cols: cats,
       ordenFilas: orden });
   }
-  // Linea de porcentajes por mes (0 a 100).
-  function lineaPct(puntos) {
-    if (!puntos.length) return vacio();
-    var W = 560, H = 230, L = 34, R = 20, T = 22, B = 34;
-    var paso = puntos.length > 1 ? (W - L - R) / (puntos.length - 1) : 0;
-    function x(i) { return puntos.length > 1 ? L + i * paso : (L + W - R) / 2; }
-    function y(v) { return T + (H - T - B) * (1 - v / 100); }
-    var cada = Math.ceil(puntos.length / 12);
-    var svg = '<svg class="col-chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Problema ST cargado por mes">' +
-      '<line class="eje" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '"/>' +
-      '<line class="eje" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(100) + '" y2="' + y(100) + '" stroke-dasharray="3 3"/>' +
-      '<text class="eje-txt" x="' + (L - 6) + '" y="' + (y(100) + 4) + '" text-anchor="end">100%</text>' +
-      '<text class="eje-txt" x="' + (L - 6) + '" y="' + (y(0) + 4) + '" text-anchor="end">0%</text>' +
-      '<path fill="none" stroke="#1F3864" stroke-width="2.25" d="' + puntos.map(function (p, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1); }).join(" ") + '"/>';
-    puntos.forEach(function (p, i) {
-      svg += '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p[1]).toFixed(1) + '" r="3.5" fill="#1F3864"><title>' + esc(etiquetaMes(p[0]) + ": " + fmtPct(p[1])) + "</title></circle>";
-      if (i % cada === 0 || (i === puntos.length - 1 && i % cada >= cada / 2)) {
-        svg += '<text class="tot" x="' + x(i).toFixed(1) + '" y="' + (y(p[1]) - 8).toFixed(1) + '" text-anchor="middle">' + esc(fmtPct(p[1])) + "</text>" +
-          '<text class="eje-txt" x="' + x(i).toFixed(1) + '" y="' + (H - B + 16) + '" text-anchor="middle">' + esc(etiquetaMes(p[0])) + "</text>";
-      }
-    });
-    return svg + "</svg>";
-  }
-
   // =====================================================================
   // Tablas de detalle
   // =====================================================================
