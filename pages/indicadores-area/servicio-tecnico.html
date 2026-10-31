@@ -325,6 +325,17 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           <div id="res-problemas"></div>
         </div>
       </div>
+      <div class="grid-2">
+        <div class="bloque">
+          <h3>Servicios por mes y tipo de solicitud</h3>
+          <div id="res-tipo-mes"></div>
+        </div>
+        <div class="bloque">
+          <h3>Tipo de solicitud</h3>
+          <div id="res-tipo"></div>
+          <div class="bloque-nota">Tipo de caso de NetSuite. Barra naranja: reincidencias dentro de la ventana.</div>
+        </div>
+      </div>
       <div class="bloque">
         <h3>Detalle de casos</h3>
         <div class="sel-chip" id="sel-resumen" hidden></div>
@@ -717,6 +728,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       c._noServicio = NO_SERVICIO.has(c._problema);
       c._origen = ORIGENES[c.categoria_origen] || "Sin clasificar";
       c._pst = c.problema_st || SIN_PROBLEMA_ST;
+      // "Solicitud de Servicio Tecnico - Soporte" -> "Soporte".
+      c._tipoSol = c.categoria ? String(c.categoria).replace(/^solicitud de servicio t[eé]cnico\s*-\s*/i, "").trim() || c.categoria : "(Sin tipo)";
       c._tecnico = c.tecnico || "(Sin técnico)";
       c._estado = c.estado_caso || "(Sin estado)";
       c._cerrado = !!c.fecha_cerrada || /cerrad|closed/i.test(c.estado_caso || "");
@@ -829,13 +842,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   var FILT = null;
   function armarFiltros() {
     var casos = DATOS.casos;
-    var cats = valoresDe(casos, function (c) { return c.categoria; });
     FILT = crearFiltrosTab("filtros-st", casos.map(function (c) { return c.fecha_creacion; }), [
       { clave: "pst", nombre: "Problema ST", valores: valoresDe(casos, function (c) { return c.problema_st; }) },
       { clave: "problema", nombre: "Categoría", valores: ordenCategorias(valoresDe(casos, function (c) { return c._problema; })) },
       { clave: "tecnico", nombre: "Técnico", valores: valoresDe(casos, function (c) { return c._tecnico; }) },
       { clave: "estado", nombre: "Estado del caso", valores: valoresDe(casos, function (c) { return c.estado_caso; }) },
-      cats.length > 1 ? { clave: "cat", nombre: "Tipo de caso", valores: cats } : null,
+      { clave: "cat", nombre: "Tipo de solicitud", valores: valoresDe(casos, function (c) { return c._tipoSol; }) },
     ], function () { repintar(); });
     // La ventana y las opciones van al final de la barra.
     $("filtros-st").appendChild($("ventana-bar"));
@@ -854,7 +866,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function filtrados() {
     return DATOS.casos.filter(function (c) {
       return FILT.periodo(c.fecha_creacion) && FILT.pasa("pst", c.problema_st) && FILT.pasa("problema", c._problema) && FILT.pasa("tecnico", c._tecnico) &&
-        FILT.pasa("estado", c.estado_caso) && (!FILT.tiene("cat") || FILT.pasa("cat", c.categoria));
+        FILT.pasa("estado", c.estado_caso) && FILT.pasa("cat", c._tipoSol);
     });
   }
   function armarVentana() {
@@ -1020,7 +1032,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var abiertos = f.filter(function (c) { return !c._cerrado; }).length;
     var resol = prom(serv, function (c) { return c._resol; });
     kpis("kpi-res", [
-      { num: fmtNum(f.length), label: "Casos de servicio técnico", sub: INCLUIR_NO_SERVICIO ? "creados en el período" : fmtNum(noServ) + " visitas no realizadas o bajas" },
+      { num: fmtNum(f.length), label: "Casos de servicio técnico", sub: tiposTexto(f) + (INCLUIR_NO_SERVICIO ? "" : " · " + fmtNum(noServ) + " visitas no realizadas o bajas") },
       { num: fmtNum(clientes), label: "Clientes atendidos", sub: clientes ? fmtNum(serv.length / clientes, 2) + " servicios por cliente" : "" },
       { num: fmtPct(porc(reinc.length, serv.length)), label: "Reincidencia en " + VENTANA + " días", sub: fmtNum(reinc.length) + " servicios con uno previo del cliente", destacada: true },
       { num: fmtPct(porc(mismo.length, serv.length)), label: "Reincidencia en la misma categoría", sub: fmtNum(mismo.length) + " servicios" },
@@ -1062,8 +1074,51 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         pasa: function (c) { return c._problema === p; } };
     })) + '<div class="bloque-nota">Barra naranja: reincidencias en la misma categoría.</div>';
 
+    pintarTipos(f);
+
     pintarChip("resumen");
     tablaRes.mostrar(conSeleccion("resumen", f));
+  }
+
+  // Tipo de solicitud (Soporte / Alarma Nueva): conteo por tipo.
+  function porTipo(f) {
+    var por = {};
+    f.forEach(function (c) { (por[c._tipoSol] = por[c._tipoSol] || []).push(c); });
+    return por;
+  }
+  function tiposOrden(por) {
+    return Object.keys(por).sort(function (a, b) {
+      if ((a === "(Sin tipo)") !== (b === "(Sin tipo)")) return a === "(Sin tipo)" ? 1 : -1;
+      return por[b].length - por[a].length;
+    });
+  }
+  function tiposTexto(f) {
+    var por = porTipo(f);
+    return tiposOrden(por).filter(function (t) { return t !== "(Sin tipo)"; }).map(function (t) { return fmtNum(por[t].length) + " " + t; }).join(" · ");
+  }
+  var COLORES_TIPO = ["#1F3864", "#2a9d5c", "#8e6bb0", "#c9a227", "#9AA0A6"];
+  function pintarTipos(f) {
+    var por = porTipo(f), tipos = tiposOrden(por);
+    $("res-tipo").innerHTML = barrasH("resumen", tipos.map(function (t) {
+      var l = por[t], serv = l.filter(function (c) { return c._cuenta; });
+      var r = serv.filter(function (c) { return c._reinc; }).length, res = prom(l, function (c) { return c._resol; });
+      var cli = distintos(l.filter(function (c) { return c._cli; }), function (c) { return c._cli; });
+      return { clave: "tipo:" + t, etiqueta: t, valor: l.length, alt: r, texto: fmtNum(l.length) + " · " + fmtPct(porc(l.length, f.length)),
+        sub: fmtNum(cli) + " clientes · reincidencia " + fmtPct(porc(r, serv.length)) + (res === null ? "" : " · resolución " + fmtDias(res) + " días"),
+        etqSel: "Tipo de solicitud: " + t, pasa: function (c) { return c._tipoSol === t; } };
+    }));
+    var color = {};
+    tipos.forEach(function (t, i) { color[t] = COLORES_TIPO[Math.min(i, COLORES_TIPO.length - 1)]; });
+    var porMes = {};
+    f.forEach(function (c) { if (c._mes) { var m = porMes[c._mes] = porMes[c._mes] || {}; m[c._tipoSol] = (m[c._tipoSol] || 0) + 1; } });
+    $("res-tipo-mes").innerHTML = '<div class="leyenda-col">' + tipos.map(function (t) {
+      return '<span><span class="swatch" style="background:' + color[t] + '"></span>' + esc(t) + "</span>";
+    }).join("") + "</div>" + columnasMes("resumen", Object.keys(porMes).sort().map(function (m) {
+      return { mes: m, partes: tipos.map(function (t) {
+        return { clave: "tmes:" + t + ":" + m, etiqueta: etiquetaMes(m) + " · " + t, valor: porMes[m][t] || 0, color: color[t],
+          pasa: function (c) { return c._mes === m && c._tipoSol === t; } };
+      }) };
+    }));
   }
 
   // =====================================================================
@@ -1271,6 +1326,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     { titulo: "Nro cuenta", valor: function (c) { return c.nro_cuenta || ""; }, orden: function (c) { return +c.nro_cuenta || 0; } },
     { titulo: "Cliente", valor: function (c) { return c.cliente || ""; } },
     { titulo: "Técnico", valor: function (c) { return c.tecnico || ""; } },
+    { titulo: "Tipo de solicitud", valor: function (c) { return c._tipoSol; } },
     { titulo: "Problema ST", valor: function (c) { return c.problema_st || ""; } },
     { titulo: "Categoría", valor: function (c) { return c._problema; } },
     { titulo: "Comentario técnico", valor: function (c) { return c.problema || ""; }, clase: "comentario" },
@@ -1282,7 +1338,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     { titulo: "Retorno", html: function (c) { return tag(txtRetorno(c), claseRetorno(c)); }, valor: txtRetorno },
     { titulo: "Título", valor: function (c) { return c.titulo || ""; }, clase: "texto-largo" },
   ];
-  function buscarCaso(c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c.problema_st, c._problema, c.problema, c.estado_caso, c.titulo].join(" "); }
+  function buscarCaso(c) { return [c.numero, c.nro_cuenta, c.cliente, c.tecnico, c._tipoSol, c.problema_st, c._problema, c.problema, c.estado_caso, c.titulo].join(" "); }
   function claseCaso(c) { return c._reincMismo ? "fila-reinc" : ""; }
   var tablaRes, tablaRec, tablaProb, tablaCli;
   function armarTablas() {

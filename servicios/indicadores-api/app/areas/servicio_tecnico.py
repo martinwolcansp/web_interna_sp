@@ -81,10 +81,18 @@ def _campo_formulario():
     return f",\n            BUILTIN.DF(sc.{campo})                              AS categoria_formulario"
 
 
+# Codigo de sector en el nombre del tecnico: 3 mayusculas que empiezan con D
+# (DST, DAA, DPE, DAI...), al principio ("DST Campioni C.") o al final ("Fabian Marcelo - DCA").
+_PREFIJO_SECTOR = re.compile(r"^D[A-Z]{2}\s+")
+_SUFIJO_SECTOR = re.compile(r"\s*-\s*D[A-Z]{2}$")
+
+
 def sin_prefijo(tecnico):
-    """'DST Campioni C.' -> 'Campioni C.' (y 'DAI ...' como en Instalaciones)."""
+    """'DST Campioni C.' -> 'Campioni C.'; 'Fabian Marcelo - DCA' -> 'Fabian Marcelo'."""
     t = sin_prefijo_dai(tecnico)
-    return t[4:] if t and t.startswith("DST ") else t
+    if not t:
+        return t
+    return _SUFIJO_SECTOR.sub("", _PREFIJO_SECTOR.sub("", t)).strip() or t
 
 
 def consulta(ids):
