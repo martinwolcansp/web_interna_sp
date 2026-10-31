@@ -325,17 +325,6 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           <div id="res-problemas"></div>
         </div>
       </div>
-      <div class="grid-2">
-        <div class="bloque">
-          <h3>Servicios por mes y tipo de solicitud</h3>
-          <div id="res-tipo-mes"></div>
-        </div>
-        <div class="bloque">
-          <h3>Tipo de solicitud</h3>
-          <div id="res-tipo"></div>
-          <div class="bloque-nota">Tipo de caso de NetSuite. Barra naranja: reincidencias dentro de la ventana.</div>
-        </div>
-      </div>
       <div class="bloque">
         <h3>Detalle de casos</h3>
         <div class="sel-chip" id="sel-resumen" hidden></div>
@@ -408,10 +397,6 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         <h3>Servicios por Problema ST</h3>
         <div id="prob-st"></div>
         <div class="bloque-nota">Campo Problema ST del caso (custevent_3k_problema_st), tal como está cargado en NetSuite. Barra naranja: reincidencias con el mismo Problema ST dentro de la ventana.<span id="prob-st-sin"></span></div>
-      </div>
-      <div class="bloque">
-        <h3>Problema ST por mes</h3>
-        <div id="prob-st-mes"></div>
       </div>
       <div class="bloque">
         <h3>Problema ST por categoría (según el comentario técnico)</h3>
@@ -1071,8 +1056,6 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         pasa: function (c) { return c._problema === p; } };
     })) + '<div class="bloque-nota">Barra naranja: reincidencias en la misma categoría.</div>';
 
-    pintarTipos(f);
-
     pintarChip("resumen");
     tablaRes.mostrar(conSeleccion("resumen", f));
   }
@@ -1092,30 +1075,6 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function tiposTexto(f) {
     var por = porTipo(f);
     return tiposOrden(por).filter(function (t) { return t !== "(Sin tipo)"; }).map(function (t) { return fmtNum(por[t].length) + " " + t; }).join(" · ");
-  }
-  var COLORES_TIPO = ["#1F3864", "#2a9d5c", "#8e6bb0", "#c9a227", "#9AA0A6"];
-  function pintarTipos(f) {
-    var por = porTipo(f), tipos = tiposOrden(por);
-    $("res-tipo").innerHTML = barrasH("resumen", tipos.map(function (t) {
-      var l = por[t], serv = l.filter(function (c) { return c._cuenta; });
-      var r = serv.filter(function (c) { return c._reinc; }).length, res = prom(l, function (c) { return c._resol; });
-      var cli = distintos(l.filter(function (c) { return c._cli; }), function (c) { return c._cli; });
-      return { clave: "tipo:" + t, etiqueta: t, valor: l.length, alt: r, texto: fmtNum(l.length) + " · " + fmtPct(porc(l.length, f.length)),
-        sub: fmtNum(cli) + " clientes · reincidencia " + fmtPct(porc(r, serv.length)) + (res === null ? "" : " · resolución " + fmtDias(res) + " días"),
-        etqSel: "Tipo de solicitud: " + t, pasa: function (c) { return c._tipoSol === t; } };
-    }));
-    var color = {};
-    tipos.forEach(function (t, i) { color[t] = COLORES_TIPO[Math.min(i, COLORES_TIPO.length - 1)]; });
-    var porMes = {};
-    f.forEach(function (c) { if (c._mes) { var m = porMes[c._mes] = porMes[c._mes] || {}; m[c._tipoSol] = (m[c._tipoSol] || 0) + 1; } });
-    $("res-tipo-mes").innerHTML = '<div class="leyenda-col">' + tipos.map(function (t) {
-      return '<span><span class="swatch" style="background:' + color[t] + '"></span>' + esc(t) + "</span>";
-    }).join("") + "</div>" + columnasMes("resumen", Object.keys(porMes).sort().map(function (m) {
-      return { mes: m, partes: tipos.map(function (t) {
-        return { clave: "tmes:" + t + ":" + m, etiqueta: etiquetaMes(m) + " · " + t, valor: porMes[m][t] || 0, color: color[t],
-          pasa: function (c) { return c._mes === m && c._tipoSol === t; } };
-      }) };
-    }));
   }
 
   // =====================================================================
@@ -1260,9 +1219,6 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     }));
     var sin = por[SIN_PROBLEMA_ST] ? por[SIN_PROBLEMA_ST].length : 0;
     $("prob-st-sin").textContent = sin ? " " + fmtNum(sin) + " casos (" + fmtPct(porc(sin, f.length)) + ") no tienen Problema ST cargado." : "";
-    var meses = Array.from(new Set(f.map(function (c) { return c._mes; }).filter(Boolean))).sort();
-    $("prob-st-mes").innerHTML = matriz({ tab: "problemas", id: "psm", titulo: "Problema ST", items: f, fila: function (c) { return c._pst; },
-      col: function (c) { return c._mes; }, cols: meses, etiquetaCol: etiquetaMes, ordenFilas: orden });
     var cats = ORDEN_CATEGORIAS.filter(function (k) { return f.some(function (c) { return c._problema === k; }); });
     $("prob-st-cat").innerHTML = matriz({ tab: "problemas", id: "pc", titulo: "Problema ST", items: f, fila: function (c) { return c._pst; },
       col: function (c) { return c._problema; }, cols: cats,
