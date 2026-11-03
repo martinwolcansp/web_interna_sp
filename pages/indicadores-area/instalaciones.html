@@ -103,6 +103,11 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .chk-limpiar { appearance: none; border: 1px solid var(--rule); background: #fff; color: var(--second); font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
 .chk-limpiar:hover { background: var(--surface); border-color: var(--navy); color: var(--navy); }
 .chk-limpiar[hidden] { display: none; }
+/* Descarga a Excel (queda a la derecha de la barra de filtros) */
+.xls-btn { order: 99; margin-left: auto; appearance: none; border: 1px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 14px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.xls-btn:hover { background: var(--navy); color: #fff; }
+.xls-btn:disabled { opacity: .6; cursor: progress; }
+.xls-btn svg { width: 15px; height: 15px; }
 
 /* Detalle */
 .explorer { margin: 4px 0 8px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
@@ -271,6 +276,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
       <div class="filtros" id="filtros-inst">
         <span class="filtros-titulo">Filtros</span>
+        <button type="button" class="xls-btn" id="xls-inst" title="Descarga las tablas y el detalle de esta pestaña con los filtros elegidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg> Descargar Excel</button>
       </div>
 
       <div class="bloque">
@@ -308,6 +314,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Demoras y variaciones de mano de obra</h2>
       <div class="filtros" id="filtros-dem">
         <span class="filtros-titulo">Filtros</span>
+        <button type="button" class="xls-btn" id="xls-dem" title="Descarga las tablas y el detalle de esta pestaña con los filtros elegidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg> Descargar Excel</button>
       </div>
       <div class="grid-2b">
         <div class="bloque">
@@ -347,6 +354,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Facturación de instalaciones por fecha de finalización</h2>
       <div class="filtros" id="filtros-fact">
         <span class="filtros-titulo">Filtros</span>
+        <button type="button" class="xls-btn" id="xls-fact" title="Descarga las tablas y el detalle de esta pestaña con los filtros elegidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg> Descargar Excel</button>
       </div>
       <div class="kpi-row" id="kpi-fact"></div>
       <div class="bloque">
@@ -381,6 +389,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Casos y elementos instalados</h2>
       <div class="filtros" id="filtros-casos">
         <span class="filtros-titulo">Filtros</span>
+        <button type="button" class="xls-btn" id="xls-casos" title="Descarga las tablas y el detalle de esta pestaña con los filtros elegidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg> Descargar Excel</button>
       </div>
 
       <div class="bloque">
@@ -434,6 +443,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <h2>Elementos instalados</h2>
       <div class="filtros" id="filtros-elem">
         <span class="filtros-titulo">Filtros</span>
+        <button type="button" class="xls-btn" id="xls-elem" title="Descarga las tablas y el detalle de esta pestaña con los filtros elegidos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg> Descargar Excel</button>
       </div>
       <div class="kpi-row" id="kpi-elem"></div>
       <div class="donut-row" id="donuts-elem"></div>
@@ -590,6 +600,17 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     return {
       pasa: function (valor) { return estado.elegidos.size === 0 || estado.elegidos.has(String(valor)); },
       activo: function () { return estado.elegidos.size > 0; },
+      // Etiquetas / valores elegidos; null = todos.
+      etiquetas: function () {
+        if (!estado.elegidos.size) return null;
+        var m = casillas.filter(function (c) { return c.checked; }).map(function (c) { return c.parentNode.textContent.trim(); });
+        return m.length ? m : ["ninguno"];
+      },
+      valores: function () {
+        if (!estado.elegidos.size) return null;
+        var m = casillas.filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+        return m.length ? m : ["ninguno"];
+      },
       limpiar: function () { casillas.forEach(function (c) { c.checked = true; }); estado.elegidos = new Set(); pintarBoton(); },
     };
   }
@@ -746,6 +767,23 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         return filtros.anio.pasa(fecha.slice(0, 4)) && filtros.mes.pasa(fecha.slice(5, 7));
       },
       pasa: function (clave, valor) { return filtros[clave].pasa(valor === null || valor === undefined || valor === "" ? "(Sin dato)" : valor); },
+      // Texto de los filtros elegidos (para el Excel).
+      descripcion: function () {
+        var a = filtros.anio.etiquetas(), m = filtros.mes.etiquetas();
+        var partes = [a ? "Año " + a.join(", ") : "Todos los años", m ? "Mes " + m.join(", ") : "Todos los meses"];
+        (extras || []).forEach(function (x) {
+          var e = filtros[x.clave].etiquetas();
+          if (e) partes.push(x.nombre + ": " + e.join(", "));
+        });
+        return partes.join(" · ");
+      },
+      // Para el nombre del archivo: 2026, 2026_09-10, todos_09 o completo (+ _filtrado si hay otros filtros).
+      sufijo: function () {
+        var a = filtros.anio.valores(), m = filtros.mes.valores();
+        var base = !a && !m ? "completo" : [(a || ["todos"]).join("-"), m ? m.join("-") : null].filter(Boolean).join("_");
+        var otros = (extras || []).some(function (x) { return filtros[x.clave].activo(); });
+        return base + (otros ? "_filtrado" : "");
+      },
     };
   }
 
@@ -1245,12 +1283,15 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // =====================================================================
   // Pestaña 3: Facturacion
   // =====================================================================
-  function pintarFacturacion() {
-    var ovs = DATOS.ovs.filter(function (o) {
+  function ovsFact() {
+    return DATOS.ovs.filter(function (o) {
       var c = CASO_POR_ID[o.caso_id];
       return c && fFact.periodo(c.fecha_fin_inst) && fFact.pasa("trabajo", c._trabajo) && fFact.pasa("estadoOv", o.estado_ov) &&
         fFact.pasa("vc", ventaComodato(o)) && fFact.pasa("uc", o.unidad_comercial);
     }).map(function (o) { return { ov: o, caso: CASO_POR_ID[o.caso_id] }; });
+  }
+  function pintarFacturacion() {
+    var ovs = ovsFact();
     var total = suma(ovs, function (x) { return +x.ov.monto; });
     var inst = distintos(ovs, function (x) { return x.caso.id_inst; });
     var deTipo = function (t) { return ovs.filter(function (x) { return ventaComodato(x.ov) === t; }); };
@@ -1281,8 +1322,11 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // =====================================================================
   // Pestaña 4: Demoras y variaciones
   // =====================================================================
+  function casosDem() {
+    return DATOS.casos.filter(function (c) { return c._finalizada && fDem.periodo(c.fecha_fin_inst) && fDem.pasa("estado", c.estado_caso) && fDem.pasa("trabajo", c._trabajo); });
+  }
   function pintarDemoras() {
-    var casos = DATOS.casos.filter(function (c) { return c._finalizada && fDem.periodo(c.fecha_fin_inst) && fDem.pasa("estado", c.estado_caso) && fDem.pasa("trabajo", c._trabajo); });
+    var casos = casosDem();
     var fecha = function (c) { return c.fecha_fin_inst; };
     var dem = casos.filter(demoraValida), vari = casos.filter(variacionValida);
     $("dem-linea").innerHTML = lineaMeses(serieMensual(dem, fecha, function (c) { return c._demora; }, "promedio"));
@@ -1295,12 +1339,16 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // =====================================================================
   // Pestaña 5: Elementos
   // =====================================================================
-  function pintarElementos() {
+  function elemsElem() {
     var elems = [];
     DATOS.casos.forEach(function (c) {
       if (!fElem.periodo(c.fecha_fin_inst) || !fElem.pasa("trabajo", c._trabajo)) return;
       (ELEM_POR_CASO[c.caso_id] || []).forEach(function (l) { elems.push({ caso: c, linea: l }); });
     });
+    return elems;
+  }
+  function pintarElementos() {
+    var elems = elemsElem();
     var cant = function (e) { return +e.linea.cantidad || 0; };
     kpis("kpi-elem", DESTACADAS.map(function (d) {
       return { num: fmtNum(suma(elems.filter(function (e) { return e.linea.subcategoria === d[0]; }), cant)), label: d[1] };
@@ -1318,6 +1366,535 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     $("elem-sub-mes").innerHTML = tablaCruzada({ titulo: "Subcategoría", items: elems.filter(function (e) { return e.caso.fecha_fin_inst; }),
       fila: function (e) { return e.linea.subcategoria || "(Sin subcategoría)"; }, col: function (e) { return anioMes(e.caso.fecha_fin_inst); },
       cols: "mes", medida: "suma", valor: cant });
+  }
+
+  // =====================================================================
+  // Descarga a Excel (un libro por pestaña, con todos los filtros de la pestaña)
+  // =====================================================================
+  // No toman el número elegido en las tablas, la búsqueda ni los botones de estado del detalle.
+  var INFORME_XLS = "Instalaciones";
+  var EXCELJS_URL = "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js";
+  var XL_NAVY = "FF1F3864", XL_TOTAL = "FFDFE6F2", XL_GRUPO = "FFEEF1F6", XL_GRIS = "FF52514E", XL_LINK = "FF2A78D6";
+  var XL_PCT = "0%", XL_DIA = "dd/mm/yyyy", XL_ENT = "#,##0", XL_DEC = "#,##0.0", XL_PESOS = '"$ "#,##0';
+  var ultimaActualizacion = null;
+
+  // La libreria se carga recien al primer click (no demora la apertura del informe).
+  function cargarExcelJS() {
+    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+    if (!window.__exceljsCarga) {
+      window.__exceljsCarga = new Promise(function (ok, mal) {
+        var s = document.createElement("script");
+        s.src = EXCELJS_URL;
+        s.onload = function () { ok(window.ExcelJS); };
+        s.onerror = function () { window.__exceljsCarga = null; mal(new Error("no se pudo cargar la librería de Excel")); };
+        document.head.appendChild(s);
+      });
+    }
+    return window.__exceljsCarga;
+  }
+
+  function xlFecha(s) {
+    if (!s) return null;
+    var p = String(s).slice(0, 10).split("-");
+    return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+  }
+  function xlLink(texto, url) { return texto && url ? { text: String(texto), hyperlink: url } : (texto || null); }
+  function xlCaso(c) { return xlLink(c.numero || c.caso_id, URL_CASO + encodeURIComponent(c.caso_id)); }
+  function xlRatio(a, b) { return b ? a / b : null; }
+  function xlNumero(s) { return s && /^\d+$/.test(String(s)) ? +s : (s || null); }
+  function xlNum(v) { return v === null || v === undefined || v === "" || isNaN(v) ? null : +v; }
+  function xlProm(nums) { nums = nums.filter(function (v) { return v !== null && v !== undefined && !isNaN(v); }); return nums.length ? nums.reduce(function (a, b) { return a + b; }, 0) / nums.length : null; }
+  function xlSiNo(v) { return v === null ? null : v ? "Sí" : "No"; }
+  function ordenarMeses(lista) {
+    return Array.from(new Set(lista)).sort(function (a, b) { return a === null ? 1 : b === null ? -1 : a < b ? -1 : 1; });
+  }
+  function porFechaDesc(campo) {
+    return function (a, b) { return String(campo(b) || "").localeCompare(String(campo(a) || "")); };
+  }
+
+  function xlLibro(ExcelJS) { var wb = new ExcelJS.Workbook(); wb.creator = "Web interna SP"; return wb; }
+
+  // Hoja con titulo, filtros y fecha de exportacion en las filas 1 a 3; las tablas van desde la fila 5.
+  function xlHoja(wb, nombre, titulo, periodo) {
+    var ws = wb.addWorksheet(nombre);
+    ws.getCell("A1").value = titulo;
+    ws.getCell("A1").font = { bold: true, size: 14, color: { argb: XL_NAVY } };
+    ws.getCell("A2").value = "Filtros: " + periodo;
+    ws.getCell("A3").value = "Exportado el " + fmtFechaHora(new Date().toISOString()) +
+      (ultimaActualizacion ? " · datos actualizados el " + fmtFechaHora(ultimaActualizacion) : "");
+    ["A2", "A3"].forEach(function (c) { ws.getCell(c).font = { size: 10, color: { argb: XL_GRIS } }; });
+    return ws;
+  }
+  // Titulo de una tabla dentro de una hoja con varias. Devuelve la fila siguiente.
+  function xlSubtitulo(ws, fila, texto) {
+    var c = ws.getCell("A" + fila);
+    c.value = texto;
+    c.font = { bold: true, size: 12, color: { argb: XL_NAVY } };
+    return fila + 1;
+  }
+  // Notas al pie de una tabla. Devuelve la siguiente fila libre.
+  function xlNotas(ws, desde, notas) {
+    notas.forEach(function (t, i) {
+      var c = ws.getCell("A" + (desde + i));
+      c.value = t;
+      c.font = { italic: true, size: 10, color: { argb: XL_GRIS } };
+    });
+    return desde + notas.length + 1;
+  }
+
+  // Tabla desde la fila 'desde'. columnas: [{titulo, ancho, fmt, ajustar}]; filas: arrays de
+  // valores ({text, hyperlink} = link). opciones: totales (arrays), filtro (autofiltro),
+  // fijar / fijarCol (inmoviliza encabezado y columnas), estiloFila(i) -> {fill, bold, indent}.
+  // Devuelve la primera fila libre despues de la tabla (dejando una en blanco).
+  function xlTabla(ws, desde, columnas, filas, opciones) {
+    opciones = opciones || {};
+    var enc = ws.getRow(desde);
+    enc.height = 32;
+    columnas.forEach(function (c, i) {
+      var col = ws.getColumn(i + 1);
+      col.width = Math.max(col.width || 0, c.ancho || 12);
+      var cel = enc.getCell(i + 1);
+      cel.value = c.titulo;
+      cel.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cel.fill = { type: "pattern", pattern: "solid", fgColor: { argb: XL_NAVY } };
+      cel.alignment = { vertical: "middle", horizontal: i ? "center" : "left", wrapText: true };
+    });
+    function escribir(nro, valores, estilo) {
+      estilo = estilo || {};
+      var row = ws.getRow(nro);
+      valores.forEach(function (v, i) {
+        var cel = row.getCell(i + 1), c = columnas[i] || {};
+        cel.value = v === undefined || v === "" ? null : v;
+        if (c.fmt) cel.numFmt = c.fmt;
+        var al = { vertical: "top" };
+        if (c.ajustar) al.wrapText = true;
+        if (i === 0 && estilo.indent) al.indent = estilo.indent;
+        cel.alignment = al;
+        if (v && typeof v === "object" && v.hyperlink) cel.font = { color: { argb: XL_LINK }, underline: true };
+        if (estilo.fill) cel.fill = { type: "pattern", pattern: "solid", fgColor: { argb: estilo.fill } };
+        if (estilo.bold) cel.font = { bold: true, color: { argb: XL_NAVY } };
+      });
+    }
+    filas.forEach(function (f, i) { escribir(desde + 1 + i, f, opciones.estiloFila ? opciones.estiloFila(i) : null); });
+    var sig = desde + 1 + filas.length;
+    if (!filas.length) {
+      ws.getCell("A" + sig).value = "Sin datos para los filtros elegidos.";
+      ws.getCell("A" + sig).font = { italic: true, color: { argb: XL_GRIS } };
+      sig++;
+    }
+    if (filas.length) (opciones.totales || []).forEach(function (t) { escribir(sig++, t, { bold: true, fill: XL_TOTAL }); });
+    if (opciones.filtro && filas.length) ws.autoFilter = { from: { row: desde, column: 1 }, to: { row: desde, column: columnas.length } };
+    if (opciones.fijar) ws.views = [{ state: "frozen", ySplit: desde, xSplit: opciones.fijarCol || 0 }];
+    return sig + 1;
+  }
+
+  // Misma cuenta que tablaCruzada (totales recalculados, no sumados) devuelta como datos.
+  function datosCruzada(o) {
+    var celdas = {}, porFila = {}, porCol = {}, validos = [];
+    o.items.forEach(function (x) {
+      var f = o.fila(x), c = o.col(x);
+      if (f === null || f === undefined || c === null || c === undefined) return;
+      validos.push(x);
+      (celdas[f + "\u0001" + c] = celdas[f + "\u0001" + c] || []).push(x);
+      (porFila[f] = porFila[f] || []).push(x);
+      (porCol[c] = porCol[c] || []).push(x);
+    });
+    var filas = Object.keys(porFila), cols = Object.keys(porCol);
+    if (Array.isArray(o.cols)) cols = o.cols.filter(function (c) { return porCol[c]; });
+    else cols.sort(function (a, b) { return a.localeCompare(b, "es"); });
+    var totFila = {};
+    filas.forEach(function (f) { totFila[f] = agregar(porFila[f], o); });
+    filas.sort(o.ordenFilas === "alfa"
+      ? function (a, b) { return a.localeCompare(b, "es"); }
+      : function (a, b) { return (totFila[b] || 0) - (totFila[a] || 0) || a.localeCompare(b, "es"); });
+    var etq = o.etiquetaCol || (o.cols === "mes" ? etiquetaMes : function (c) { return c; });
+    return {
+      titulos: [o.titulo].concat(cols.map(etq), ["Total"]),
+      filas: filas.map(function (f) {
+        return { vals: [f].concat(cols.map(function (c) { return agregar(celdas[f + "\u0001" + c], o); }), [totFila[f]]) };
+      }),
+      total: ["Total"].concat(cols.map(function (c) { return agregar(porCol[c], o); }), [agregar(validos, o)]),
+    };
+  }
+  // Misma cuenta y orden que tablaJerarquica (grupo + subgrupos x mes), como datos.
+  function datosJerarquica(o) {
+    var items = o.items.filter(function (x) { return o.col(x); });
+    var cols = Array.from(new Set(items.map(o.col))).sort();
+    var med = { medida: o.medida || "suma", valor: o.valor };
+    function vals(nombre, lista) {
+      return [nombre].concat(cols.map(function (c) { return agregar(lista.filter(function (x) { return o.col(x) === c; }), med); }), [agregar(lista, med)]);
+    }
+    var grupos = Array.from(new Set(items.map(o.grupo))), totG = {};
+    grupos.forEach(function (g) { totG[g] = agregar(items.filter(function (x) { return o.grupo(x) === g; }), med) || 0; });
+    grupos.sort(function (a, b) {
+      if (o.grupos) { var ia = o.grupos.indexOf(a), ib = o.grupos.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "es"); }
+      var ua = /^Sin /.test(a), ub = /^Sin /.test(b);
+      return ua !== ub ? (ua ? 1 : -1) : totG[b] - totG[a] || a.localeCompare(b, "es");
+    });
+    var filas = [];
+    grupos.forEach(function (g) {
+      var deG = items.filter(function (x) { return o.grupo(x) === g; });
+      var subs = Array.from(new Set(deG.map(o.sub)));
+      subs.sort(function (a, b) {
+        var ua = /^Sin /.test(a), ub = /^Sin /.test(b);
+        if (ua !== ub) return ua ? 1 : -1;
+        return (agregar(deG.filter(function (x) { return o.sub(x) === b; }), med) || 0) - (agregar(deG.filter(function (x) { return o.sub(x) === a; }), med) || 0);
+      });
+      filas.push({ vals: vals(g, deG), grupo: true });
+      subs.forEach(function (s) { filas.push({ vals: vals(s, deG.filter(function (x) { return o.sub(x) === s; })), sub: true }); });
+    });
+    return { titulos: [o.titulo].concat(cols.map(etiquetaMes), ["Total"]), filas: filas, total: vals("Total", items) };
+  }
+  // Unidad comercial > Categoria x mes de fin (como tablaClasif).
+  function datosClasif(items, caso, medida, valor) {
+    return datosJerarquica({ titulo: "Unidad comercial / Categoría", items: items, grupo: function (x) { return caso(x)._uc; },
+      sub: function (x) { return caso(x)._cat; }, col: function (x) { return anioMes(caso(x).fecha_fin_inst); }, medida: medida, valor: valor });
+  }
+  function xlPivot(ws, desde, d, fmt, opciones) {
+    opciones = opciones || {};
+    var cols = d.titulos.map(function (t, i) { return { titulo: t, ancho: i ? 12 : (opciones.ancho || 36), fmt: i ? fmt : null }; });
+    return xlTabla(ws, desde, cols, d.filas.map(function (f) { return f.vals; }), {
+      totales: [d.total], fijar: opciones.fijar !== false, fijarCol: 1,
+      estiloFila: function (i) { var f = d.filas[i]; return f.grupo ? { bold: true, fill: XL_GRUPO } : f.sub ? { indent: 2 } : null; },
+    });
+  }
+  // Hoja con una sola tabla cruzada y sus notas.
+  function xlHojaPivot(wb, nombre, titulo, periodo, d, fmt, notas) {
+    var ws = xlHoja(wb, nombre, titulo, periodo);
+    xlNotas(ws, xlPivot(ws, 5, d, fmt), notas || []);
+  }
+
+  // Resumen por mes: una fila por mes y una de totales (el total se recalcula sobre todo, no se suma).
+  // columnas: [{titulo, ancho, fmt}] sin la de Mes; calc(lista) -> valores.
+  function xlResumenMes(ws, desde, items, mesDe, columnas, calc, opciones) {
+    var meses = ordenarMeses(items.map(function (x) { return anioMes(mesDe(x)); }));
+    return xlTabla(ws, desde, [{ titulo: "Mes", ancho: 12 }].concat(columnas), meses.map(function (m) {
+      return [etiquetaMes(m)].concat(calc(items.filter(function (x) { return anioMes(mesDe(x)) === m; })));
+    }), { totales: [["Total"].concat(calc(items))], fijar: !(opciones && opciones.fijar === false), fijarCol: 1 });
+  }
+
+  // Columnas comunes de los detalles por caso.
+  var XL_COLS_CASO = [
+    { titulo: "Número", ancho: 14 }, { titulo: "Nro cuenta", ancho: 11 }, { titulo: "Cliente", ancho: 32 },
+    { titulo: "Creación", ancho: 11, fmt: XL_DIA }, { titulo: "Inicio", ancho: 11, fmt: XL_DIA }, { titulo: "Fin", ancho: 11, fmt: XL_DIA },
+    { titulo: "Técnico", ancho: 24 }, { titulo: "Tipo de trabajo", ancho: 22 }, { titulo: "Unidad comercial", ancho: 20 }, { titulo: "Categoría", ancho: 22 },
+  ];
+  function xlFilaCaso(c) {
+    return [xlCaso(c), xlNumero(c.nro_cuenta), c.cliente, xlFecha(c.fecha_creacion), xlFecha(c.fecha_inicio_inst), xlFecha(c.fecha_fin_inst),
+      c.tecnico, c.tipo_trabajo, c.unidad_comercial, c.categoria];
+  }
+  function ordenarCasos(casos) {
+    return casos.slice().sort(function (a, b) {
+      return String(b.fecha_fin_inst || "9999").localeCompare(String(a.fecha_fin_inst || "9999")) || String(b.fecha_creacion || "").localeCompare(String(a.fecha_creacion || ""));
+    });
+  }
+  // Instalaciones (id_inst) de una lista de casos, con la primera creación y el último fin.
+  function agruparInst(casos) {
+    var m = {};
+    casos.forEach(function (c) {
+      var i = m[c.id_inst] = m[c.id_inst] || { id: c.id_inst, creacion: null, fin: null };
+      if (c.fecha_creacion && (!i.creacion || c.fecha_creacion < i.creacion)) i.creacion = c.fecha_creacion;
+      if (c.fecha_fin_inst && (!i.fin || c.fecha_fin_inst > i.fin)) i.fin = c.fecha_fin_inst;
+    });
+    return Object.keys(m).map(function (k) { return m[k]; });
+  }
+  var porInstXl = function (c) { return c.id_inst; };
+
+  async function descargarLibro(wb, nombre) {
+    var buf = await wb.xlsx.writeBuffer();
+    var url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    var a = document.createElement("a");
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  // ---------- Pestaña Instalaciones ----------
+  async function excelInstalaciones() {
+    var wb = xlLibro(await cargarExcelJS()), periodo = fInst.descripcion();
+    var fin = casosInst().filter(function (c) { return c._finalizada; });
+
+    // Resumen: tarjetas + por mes + detalle por estado
+    var ws = xlHoja(wb, "Resumen", "Instalaciones — resumen", periodo);
+    var d = demoraEstimada(), mesActual = hoyAR().slice(0, 7);
+    var fila = xlSubtitulo(ws, 5, "Indicadores generales (como las tarjetas: no dependen de los filtros)");
+    fila = xlTabla(ws, fila, [{ titulo: "Indicador", ancho: 44 }, { titulo: "Valor", ancho: 14 }], [
+      ["Finalizadas en " + etiquetaMes(mesActual), distintos(DATOS.casos.filter(function (c) { return anioMes(c.fecha_fin_inst) === mesActual; }), porInstXl)],
+      ["En curso", distintos(DATOS.casos.filter(function (c) { return c.estado_caso === "En curso"; }), porInstXl)],
+      ["Pendientes de iniciar (No iniciadas)", d.pendientes],
+      ["Escaladas sin iniciar (no cuentan como pendientes)", d.escaladas],
+      ["Demora estimada (días hábiles)", d.dias],
+      ["Ritmo (instalaciones finalizadas por mes)", Math.round(d.porMes * 10) / 10],
+      ["Período del ritmo", etiquetaMes(d.desde.slice(0, 7)) + " a " + etiquetaMes(d.hasta.slice(0, 7))],
+      ["Instalaciones finalizadas en ese período", d.finalizadas],
+    ]);
+    fila = xlSubtitulo(ws, fila, "Instalaciones finalizadas por mes de fin (con los filtros de la pestaña)");
+    fila = xlResumenMes(ws, fila, fin, function (c) { return c.fecha_fin_inst; }, [
+      { titulo: "Instalaciones finalizadas", ancho: 14, fmt: XL_ENT }, { titulo: "Casos finalizados", ancho: 12, fmt: XL_ENT },
+      { titulo: "Casos por instalación", ancho: 12, fmt: "0.00" }, { titulo: "Técnicos", ancho: 10, fmt: XL_ENT },
+      { titulo: "Promedio días hábiles creación a fin", ancho: 16, fmt: XL_DEC }, { titulo: "Promedio demora por agenda (días)", ancho: 16, fmt: XL_DEC },
+      { titulo: "Monto OV de productos", ancho: 18, fmt: XL_PESOS }, { titulo: "Monto promedio por instalación", ancho: 18, fmt: XL_PESOS },
+      { titulo: "% sin unidad comercial", ancho: 13, fmt: XL_PCT },
+    ], function (cs) {
+      var insts = agruparInst(cs), monto = suma(cs, function (c) { return c._monto; });
+      return [insts.length, cs.length, xlRatio(cs.length, insts.length), distintos(cs.filter(function (c) { return c.tecnico; }), function (c) { return c.tecnico; }),
+        xlProm(insts.map(function (i) { return i.creacion && i.fin ? diasHabiles(i.creacion, i.fin) : null; })),
+        xlProm(cs.filter(demoraValida).map(function (c) { return c._demora; })),
+        monto, xlRatio(monto, distintos(cs.filter(function (c) { return c._monto !== null; }), porInstXl)),
+        xlRatio(distintos(cs.filter(function (c) { return !c.unidad_comercial; }), porInstXl), insts.length)];
+    }, { fijar: false });
+    fila = xlNotas(ws, fila, [
+      "Una instalación agrupa los casos del mismo cliente con las mismas fechas (por ejemplo alarma y cámaras); el total cuenta cada instalación una vez.",
+      "Días hábiles: desde la primera creación hasta el último fin de la instalación. Demora por agenda: días corridos entre la creación del caso y el inicio, sin los de " + TOPE_DIAS + " días o más.",
+      "Monto promedio: sobre las instalaciones con OV de productos. No se incluyen los tipos de proyecto " + TIPOS_EXCLUIDOS.join(", ") + " ni los casos sin tipo de proyecto.",
+    ]);
+    var sel = SEL_INST, det;
+    SEL_INST = null;
+    try { det = instalacionesDetalle(); } finally { SEL_INST = sel; }
+    fila = xlSubtitulo(ws, fila, "Detalle de instalaciones por estado (con los filtros de la pestaña)");
+    var porGrupo = {};
+    det.forEach(function (i) { porGrupo[i.grupo] = (porGrupo[i.grupo] || 0) + 1; });
+    fila = xlTabla(ws, fila, [{ titulo: "Estado", ancho: 44 }, { titulo: "Instalaciones", ancho: 14, fmt: XL_ENT }],
+      GRUPOS_SEG.filter(function (g) { return g[0] !== "todas" && porGrupo[g[0]]; }).map(function (g) { return [g[1], porGrupo[g[0]]]; }),
+      { totales: [["Total", det.length]] });
+
+    // Tablas
+    var orig = {};
+    fin.forEach(function (c) { var k = c.clasificacion_origen || "sin dato"; orig[k] = (orig[k] || 0) + 1; });
+    xlHojaPivot(wb, "Clasificación comercial", "Instalaciones finalizadas por mes y clasificación comercial", periodo,
+      datosClasif(fin, yo, "distintos", porInstXl), XL_ENT, [
+        "Instalaciones distintas por mes de fin de instalación.",
+        fin.length ? "Origen de la clasificación (casos): " + ["presupuesto", "oportunidad", "equivalencia", "sin dato"].filter(function (k) { return orig[k]; })
+          .map(function (k) { return k + " " + pct(orig[k], fin.length); }).join(" · ") : "",
+      ]);
+    xlHojaPivot(wb, "Tipo de trabajo", "Instalaciones finalizadas por mes y tipo de trabajo", periodo,
+      datosCruzada({ titulo: "Tipo de trabajo", items: fin, fila: function (c) { return c._trabajo; }, col: function (c) { return anioMes(c.fecha_fin_inst); },
+        cols: "mes", medida: "distintos", valor: porInstXl }), XL_ENT);
+    xlHojaPivot(wb, "Técnico y unidad comercial", "Instalaciones finalizadas por técnico y unidad comercial", periodo,
+      datosCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; }, col: function (c) { return c._uc; }, medida: "distintos", valor: porInstXl }), XL_ENT);
+
+    // Detalle de instalaciones (una fila por instalación) y sus casos
+    det.sort(function (a, b) { return RANGO_GRUPO[a.grupo] - RANGO_GRUPO[b.grupo] || (b.dias === null ? -1 : b.dias) - (a.dias === null ? -1 : a.dias); });
+    ws = xlHoja(wb, "Detalle instalaciones", "Detalle de instalaciones", periodo);
+    fila = xlTabla(ws, 5, [
+      { titulo: "Caso(s)", ancho: 22 }, { titulo: "Cantidad de casos", ancho: 10, fmt: XL_ENT }, { titulo: "Cliente", ancho: 32 }, { titulo: "Nro cuenta", ancho: 11 },
+      { titulo: "Estado", ancho: 18 }, { titulo: "Tipo de trabajo", ancho: 24 }, { titulo: "Clasificación", ancho: 30 }, { titulo: "Técnico", ancho: 24 },
+      { titulo: "Creación", ancho: 11, fmt: XL_DIA }, { titulo: "Inicio", ancho: 11, fmt: XL_DIA }, { titulo: "Fin", ancho: 11, fmt: XL_DIA },
+      { titulo: "Días hábiles", ancho: 10, fmt: XL_ENT },
+    ], det.map(function (i) {
+      return [i.casos.length === 1 ? xlCaso(i.casos[0]) : i.casos.map(function (c) { return c.numero || c.caso_id; }).join(", "), i.casos.length,
+        i.cliente, xlNumero(i.nro_cuenta), i.estado, i.tipos, i.clasif, i.tecnicos, xlFecha(i.creacion), xlFecha(i.inicio), xlFecha(i.fin), i.dias];
+    }), { filtro: true, fijar: true });
+    xlNotas(ws, fila, [
+      "Días hábiles: en curso, desde el inicio hasta hoy; pendientes y escaladas sin iniciar, desde la creación hasta hoy; finalizadas, desde la creación hasta el fin.",
+      "Año y Mes: por fecha de fin en las finalizadas y por fecha de creación en las demás. Los casos de cada instalación están en la hoja Casos de las instalaciones.",
+    ]);
+    ws = xlHoja(wb, "Casos de las instalaciones", "Casos de las instalaciones del detalle", periodo);
+    var filasCasos = [];
+    det.forEach(function (i) {
+      i.casos.forEach(function (c) {
+        filasCasos.push([xlCaso(c), i.cliente, i.estado, c.tipo_trabajo, [c.unidad_comercial, c.categoria].filter(Boolean).join(" › "), c.estado_caso, c.estado_instalacion,
+          c.tecnico, c.tipo_posventa, xlFecha(c.fecha_creacion), xlFecha(c.fecha_inicio_inst), xlFecha(c.fecha_fin_inst)]);
+      });
+    });
+    xlTabla(ws, 5, [
+      { titulo: "Caso", ancho: 14 }, { titulo: "Cliente", ancho: 32 }, { titulo: "Estado de la instalación (detalle)", ancho: 18 }, { titulo: "Tipo de trabajo", ancho: 22 },
+      { titulo: "Clasificación", ancho: 30 }, { titulo: "Estado del caso", ancho: 14 }, { titulo: "Estado de la instalación (NetSuite)", ancho: 18 }, { titulo: "Técnico", ancho: 24 },
+      { titulo: "Tipo de posventa", ancho: 14 }, { titulo: "Creación", ancho: 11, fmt: XL_DIA }, { titulo: "Inicio", ancho: 11, fmt: XL_DIA }, { titulo: "Fin", ancho: 11, fmt: XL_DIA },
+    ], filasCasos, { filtro: true, fijar: true });
+
+    await descargarLibro(wb, INFORME_XLS + "_Instalaciones_" + fInst.sufijo() + ".xlsx");
+  }
+
+  // ---------- Pestaña Demoras y variaciones ----------
+  async function excelDemoras() {
+    var wb = xlLibro(await cargarExcelJS()), periodo = fDem.descripcion();
+    var casos = casosDem(), dem = casos.filter(demoraValida), vari = casos.filter(variacionValida);
+    var ws = xlHoja(wb, "Resumen", "Demoras y variaciones de mano de obra — resumen por mes", periodo);
+    var fila = xlResumenMes(ws, 5, casos, function (c) { return c.fecha_fin_inst; }, [
+      { titulo: "Casos finalizados", ancho: 12, fmt: XL_ENT }, { titulo: "Casos con demora válida", ancho: 13, fmt: XL_ENT },
+      { titulo: "Promedio demora por agenda (días)", ancho: 15, fmt: XL_DEC }, { titulo: "Demora máxima (días)", ancho: 12, fmt: XL_ENT },
+      { titulo: "Casos con variación de MO", ancho: 13, fmt: XL_ENT }, { titulo: "Promedio variación (días)", ancho: 13, fmt: XL_DEC },
+      { titulo: "Suma variación (días)", ancho: 13, fmt: XL_DEC }, { titulo: "Días presupuestados", ancho: 13, fmt: XL_DEC },
+      { titulo: "Días reales", ancho: 12, fmt: XL_DEC }, { titulo: "Casos con más días que lo presupuestado", ancho: 15, fmt: XL_ENT },
+    ], function (cs) {
+      var d = cs.filter(demoraValida), v = cs.filter(variacionValida);
+      return [cs.length, d.length, xlProm(d.map(function (c) { return c._demora; })),
+        d.length ? Math.max.apply(null, d.map(function (c) { return c._demora; })) : null,
+        v.length, xlProm(v.map(function (c) { return c._variacion; })), v.length ? suma(v, function (c) { return c._variacion; }) : null,
+        v.length ? suma(v, function (c) { return c._mo_presup; }) : null, v.length ? suma(v, function (c) { return c._mo_reales; }) : null,
+        v.filter(function (c) { return c._variacion > 0; }).length];
+    });
+    xlNotas(ws, fila, [
+      "Por mes de fin de instalación. Demora por agenda: días corridos entre la creación del caso y el inicio de la instalación, sin los casos de " + TOPE_DIAS + " días o más.",
+      "Variación de mano de obra: días reales − días presupuestados (líneas de MO de la OV). Positivo: se trabajaron más días. Sin los de " + TOPE_DIAS + " días o más de diferencia.",
+    ]);
+    xlHojaPivot(wb, "Demora por clasificación", "Promedio de demora por agenda por clasificación comercial (días)", periodo,
+      datosClasif(dem, yo, "promedio", function (c) { return c._demora; }), XL_DEC, ["Promedio de días corridos entre la creación del caso y el inicio de la instalación. Sin los casos de " + TOPE_DIAS + " días o más."]);
+    xlHojaPivot(wb, "Variación por clasificación", "Suma de variaciones de mano de obra por clasificación comercial (días reales − presupuestados)", periodo,
+      datosClasif(vari, yo, "suma", function (c) { return c._variacion; }), XL_DEC, ["Solo casos con mano de obra en la OV y días reales cargados; sin los de " + TOPE_DIAS + " días o más de diferencia."]);
+    ws = xlHoja(wb, "Detalle", "Demoras y mano de obra por caso", periodo);
+    xlTabla(ws, 5, XL_COLS_CASO.concat([
+      { titulo: "Demora agenda (días)", ancho: 11, fmt: XL_ENT }, { titulo: "Cuenta en la demora", ancho: 10 },
+      { titulo: "Días reales", ancho: 10, fmt: XL_DEC }, { titulo: "Días presup.", ancho: 10, fmt: XL_DEC },
+      { titulo: "Variación", ancho: 10, fmt: XL_DEC }, { titulo: "Cuenta en la variación", ancho: 11 },
+    ]), ordenarCasos(casos).map(function (c) {
+      return xlFilaCaso(c).concat([c._demora, c._demora === null ? null : xlSiNo(demoraValida(c)), c._mo_reales, c._mo_presup,
+        c._variacion, c._variacion === null ? null : xlSiNo(variacionValida(c))]);
+    }), { filtro: true, fijar: true });
+    await descargarLibro(wb, INFORME_XLS + "_Demoras_" + fDem.sufijo() + ".xlsx");
+  }
+
+  // ---------- Pestaña Facturación ----------
+  async function excelFacturacion() {
+    var wb = xlLibro(await cargarExcelJS()), periodo = fFact.descripcion();
+    var ovs = ovsFact(), monto = function (x) { return +x.ov.monto; }, ovId = function (x) { return x.ov.ov_id; };
+    var ws = xlHoja(wb, "Resumen", "Facturación de instalaciones — resumen por mes", periodo);
+    var fila = xlResumenMes(ws, 5, ovs, function (x) { return x.caso.fecha_fin_inst; }, [
+      { titulo: "Monto de las OV de productos", ancho: 18, fmt: XL_PESOS }, { titulo: "OV", ancho: 9, fmt: XL_ENT },
+      { titulo: "Venta: monto", ancho: 17, fmt: XL_PESOS }, { titulo: "Venta: OV", ancho: 9, fmt: XL_ENT },
+      { titulo: "Comodato: monto", ancho: 17, fmt: XL_PESOS }, { titulo: "Comodato: OV", ancho: 10, fmt: XL_ENT },
+      { titulo: "% venta (monto)", ancho: 10, fmt: XL_PCT }, { titulo: "Instalaciones con OV", ancho: 12, fmt: XL_ENT },
+      { titulo: "Promedio por instalación", ancho: 17, fmt: XL_PESOS }, { titulo: "Promedio por OV", ancho: 16, fmt: XL_PESOS },
+    ], function (xs) {
+      var tot = suma(xs, monto), v = xs.filter(function (x) { return ventaComodato(x.ov) === "Venta"; }), co = xs.filter(function (x) { return ventaComodato(x.ov) === "Comodato"; });
+      var inst = distintos(xs, function (x) { return x.caso.id_inst; }), n = distintos(xs, ovId);
+      return [tot, n, suma(v, monto), distintos(v, ovId), suma(co, monto), distintos(co, ovId), xlRatio(suma(v, monto), tot), inst, xlRatio(tot, inst), xlRatio(tot, n)];
+    });
+    xlNotas(ws, fila, ["Por mes de fin de la instalación del caso de cada OV (Sin fecha: instalaciones sin terminar, solo cuando no se filtra por Año o Mes).",
+      "Venta o comodato según el campo Comodato de la OV."]);
+    var conFin = ovs.filter(function (x) { return x.caso.fecha_fin_inst; });
+    xlHojaPivot(wb, "Venta-Comodato por unidad", "Facturación por Venta / Comodato y unidad comercial", periodo,
+      datosJerarquica({ titulo: "Venta / Comodato", items: conFin, grupo: function (x) { return ventaComodato(x.ov); },
+        sub: function (x) { return x.ov.unidad_comercial || "Sin unidad comercial"; }, grupos: ["Venta", "Comodato"],
+        col: function (x) { return anioMes(x.caso.fecha_fin_inst); }, valor: monto }), XL_PESOS,
+      ["Unidad comercial: la de la OV; si no la tiene, la del presupuesto de origen; si no, la de la oportunidad. El campo es reciente, por eso muchas OV anteriores figuran \"Sin unidad comercial\"."]);
+    xlHojaPivot(wb, "Monto por clasificación", "Monto de las OV de productos por clasificación comercial y mes", periodo,
+      datosClasif(conFin, function (x) { return x.caso; }, "suma", monto), XL_PESOS,
+      ["Total de las órdenes de venta de productos vinculadas a cada caso, por mes de fin de la instalación."]);
+    ws = xlHoja(wb, "OV por estado", "OV por estado", periodo);
+    var porEstado = {}, total = suma(ovs, monto);
+    ovs.forEach(function (x) { var k = x.ov.estado_ov || "(Sin estado)"; (porEstado[k] = porEstado[k] || []).push(x); });
+    xlTabla(ws, 5, [{ titulo: "Estado de la OV", ancho: 30 }, { titulo: "Cantidad de OV", ancho: 12, fmt: XL_ENT }, { titulo: "Monto", ancho: 18, fmt: XL_PESOS }, { titulo: "% del monto", ancho: 11, fmt: XL_PCT }],
+      Object.keys(porEstado).sort(function (a, b) { return suma(porEstado[b], monto) - suma(porEstado[a], monto); }).map(function (k) {
+        var m = suma(porEstado[k], monto);
+        return [k, distintos(porEstado[k], ovId), m, xlRatio(m, total)];
+      }), { totales: [["Total", distintos(ovs, ovId), total, total ? 1 : null]] });
+    ws = xlHoja(wb, "Detalle OV", "Órdenes de venta de productos", periodo);
+    xlTabla(ws, 5, [
+      { titulo: "OV", ancho: 14 }, { titulo: "Fecha OV", ancho: 11, fmt: XL_DIA }, { titulo: "Estado OV", ancho: 24 }, { titulo: "Venta / Comodato", ancho: 11 },
+      { titulo: "Unidad comercial", ancho: 20 }, { titulo: "Monto", ancho: 16, fmt: XL_PESOS }, { titulo: "Caso", ancho: 14 }, { titulo: "Cliente", ancho: 32 },
+      { titulo: "Nro cuenta", ancho: 11 }, { titulo: "Tipo de trabajo", ancho: 22 }, { titulo: "Clasificación del caso", ancho: 30 },
+      { titulo: "Fin instalación", ancho: 11, fmt: XL_DIA }, { titulo: "Presupuesto", ancho: 14 }, { titulo: "Oportunidad", ancho: 14 },
+    ], ovs.slice().sort(porFechaDesc(function (x) { return x.caso.fecha_fin_inst; })).map(function (x) {
+      return [xlLink(x.ov.ov_numero || x.ov.ov_id, URL_OV + encodeURIComponent(x.ov.ov_id)), xlFecha(x.ov.fecha_ov), x.ov.estado_ov, ventaComodato(x.ov),
+        x.ov.unidad_comercial, xlNum(x.ov.monto), xlCaso(x.caso), x.caso.cliente, xlNumero(x.caso.nro_cuenta), x.caso.tipo_trabajo,
+        [x.caso.unidad_comercial, x.caso.categoria].filter(Boolean).join(" › "), xlFecha(x.caso.fecha_fin_inst), x.ov.presupuesto, x.ov.oportunidad];
+    }), { filtro: true, fijar: true });
+    await descargarLibro(wb, INFORME_XLS + "_Facturacion_" + fFact.sufijo() + ".xlsx");
+  }
+
+  // ---------- Pestaña Casos y elementos instalados ----------
+  async function excelCasos() {
+    var wb = xlLibro(await cargarExcelJS()), periodo = fCasos.descripcion();
+    var casos = casosCasos(), fin = casos.filter(function (c) { return c._finalizada; });
+    var elemFin = elementosDe(fin), cant = function (e) { return +e.linea.cantidad || 0; };
+    var ws = xlHoja(wb, "Resumen", "Casos y elementos instalados — resumen por mes", periodo);
+    var fila = xlResumenMes(ws, 5, fin, function (c) { return c.fecha_fin_inst; }, [
+      { titulo: "Instalaciones finalizadas", ancho: 14, fmt: XL_ENT }, { titulo: "Casos finalizados", ancho: 12, fmt: XL_ENT },
+      { titulo: "Elementos instalados", ancho: 12, fmt: XL_ENT }, { titulo: "Elementos por instalación", ancho: 13, fmt: XL_DEC },
+      { titulo: "Técnicos", ancho: 10, fmt: XL_ENT }, { titulo: "Instalaciones por técnico", ancho: 13, fmt: XL_DEC },
+      { titulo: "Posventa presencial (instalaciones)", ancho: 15, fmt: XL_ENT }, { titulo: "Posventa remota (instalaciones)", ancho: 15, fmt: XL_ENT },
+    ], function (cs) {
+      var inst = distintos(cs, porInstXl), tec = distintos(cs.filter(function (c) { return c.tecnico; }), function (c) { return c.tecnico; });
+      var el = suma(elementosDe(cs), cant);
+      var tp = function (t) { return distintos(cs.filter(function (c) { return c.tipo_posventa === t; }), porInstXl); };
+      return [inst, cs.length, el, xlRatio(el, inst), tec, xlRatio(inst, tec), tp("Presencial"), tp("Remoto")];
+    });
+    xlNotas(ws, fila, ["Por mes de fin de instalación. Elementos = equipos instalados según los artículos de la OV de productos (con el filtro Elementos); no cuentan IVA, descuentos, mano de obra, cable ni artículos administrativos o internos."]);
+    xlHojaPivot(wb, "Clasificación comercial", "Instalaciones finalizadas por mes y clasificación comercial", periodo, datosClasif(fin, yo, "distintos", porInstXl), XL_ENT);
+    xlHojaPivot(wb, "Técnico y unidad comercial", "Instalaciones finalizadas por técnico y unidad comercial", periodo,
+      datosCruzada({ titulo: "Técnico", items: fin, fila: function (c) { return c._tecnico; }, col: function (c) { return c._uc; }, medida: "distintos", valor: porInstXl }), XL_ENT);
+    xlHojaPivot(wb, "Elementos técnico y unidad", "Elementos instalados por técnico y unidad comercial", periodo,
+      datosCruzada({ titulo: "Técnico", items: elemFin, fila: function (e) { return e.caso._tecnico; }, col: function (e) { return e.caso._uc; }, medida: "suma", valor: cant }), XL_ENT);
+    xlHojaPivot(wb, "Elementos técnico y mes", "Elementos instalados por técnico y mes", periodo,
+      datosCruzada({ titulo: "Técnico", items: elemFin, fila: function (e) { return e.caso._tecnico; }, col: function (e) { return anioMes(e.caso.fecha_fin_inst); },
+        cols: "mes", medida: "suma", valor: cant }), XL_ENT);
+    xlHojaPivot(wb, "Técnico y tipo de posventa", "Instalaciones por técnico y tipo de posventa", periodo,
+      datosCruzada({ titulo: "Técnico", items: fin.filter(function (c) { return c.tipo_posventa === "Presencial" || c.tipo_posventa === "Remoto"; }),
+        fila: function (c) { return c._tecnico; }, col: function (c) { return c.tipo_posventa; }, cols: ["Presencial", "Remoto"], medida: "distintos", valor: porInstXl }), XL_ENT);
+    ws = xlHoja(wb, "Detalle casos", "Casos de instalación", periodo);
+    xlTabla(ws, 5, XL_COLS_CASO.concat([
+      { titulo: "Estado del caso", ancho: 14 }, { titulo: "Estado de la instalación", ancho: 18 }, { titulo: "Tipo de posventa", ancho: 13 },
+      { titulo: "Días MO presup.", ancho: 10, fmt: XL_DEC }, { titulo: "Días hábiles en curso", ancho: 11, fmt: XL_ENT },
+      { titulo: "Elementos", ancho: 10, fmt: XL_ENT }, { titulo: "Monto OV", ancho: 16, fmt: XL_PESOS },
+    ]), ordenarCasos(casos).map(function (c) {
+      return xlFilaCaso(c).concat([c.estado_caso, c.estado_instalacion, c.tipo_posventa, c._mo_presup, c._dias_hoy, c._elementos || null, c._monto]);
+    }), { filtro: true, fijar: true });
+    var porArt = {};
+    elementosDe(casos).forEach(function (e) {
+      var k = e.linea.articulo || "(Sin artículo)";
+      porArt[k] = porArt[k] || { articulo: k, subcategoria: e.linea.subcategoria, cantidad: 0, casos: new Set(), inst: new Set() };
+      porArt[k].cantidad += cant(e);
+      porArt[k].casos.add(e.caso.caso_id);
+      porArt[k].inst.add(e.caso.id_inst);
+    });
+    ws = xlHoja(wb, "Artículos instalados", "Artículos instalados de los casos filtrados", periodo);
+    var arts = Object.keys(porArt).map(function (k) { return porArt[k]; }).sort(function (a, b) { return b.cantidad - a.cantidad; });
+    xlNotas(ws, xlTabla(ws, 5, [{ titulo: "Artículo", ancho: 50 }, { titulo: "Subcategoría", ancho: 24 }, { titulo: "Cantidad", ancho: 11, fmt: XL_ENT },
+      { titulo: "Casos", ancho: 9, fmt: XL_ENT }, { titulo: "Instalaciones", ancho: 12, fmt: XL_ENT }],
+      arts.map(function (a) { return [a.articulo, a.subcategoria, a.cantidad, a.casos.size, a.inst.size]; }),
+      { filtro: true, fijar: true, totales: [["Total", null, suma(arts, function (a) { return a.cantidad; }), null, null]] }),
+      ["Incluye los casos filtrados, terminados o no."]);
+    await descargarLibro(wb, INFORME_XLS + "_Casos_y_elementos_" + fCasos.sufijo() + ".xlsx");
+  }
+
+  // ---------- Pestaña Elementos ----------
+  async function excelElementos() {
+    var wb = xlLibro(await cargarExcelJS()), periodo = fElem.descripcion();
+    var elems = elemsElem(), cant = function (e) { return +e.linea.cantidad || 0; };
+    var ws = xlHoja(wb, "Resumen", "Elementos instalados — resumen por mes", periodo);
+    var fila = xlResumenMes(ws, 5, elems, function (e) { return e.caso.fecha_fin_inst; }, DESTACADAS.map(function (d) {
+      return { titulo: d[1], ancho: 14, fmt: XL_ENT };
+    }).concat([{ titulo: "Elementos instalados en total", ancho: 14, fmt: XL_ENT }, { titulo: "Instalaciones con elementos", ancho: 14, fmt: XL_ENT },
+      { titulo: "Elementos por instalación", ancho: 13, fmt: XL_DEC }]), function (es) {
+      var tot = suma(es, cant), inst = distintos(es, function (e) { return e.caso.id_inst; });
+      return DESTACADAS.map(function (d) { return suma(es.filter(function (e) { return e.linea.subcategoria === d[0]; }), cant); }).concat([tot, inst, xlRatio(tot, inst)]);
+    });
+    xlNotas(ws, fila, ["Por mes de fin de instalación (Sin fecha: instalaciones sin terminar, solo cuando no se filtra por Año o Mes). Sin cable, mano de obra ni artículos internos."]);
+    xlHojaPivot(wb, "Subcategoría por mes", "Elementos por subcategoría y mes", periodo,
+      datosCruzada({ titulo: "Subcategoría", items: elems.filter(function (e) { return e.caso.fecha_fin_inst; }),
+        fila: function (e) { return e.linea.subcategoria || "(Sin subcategoría)"; }, col: function (e) { return anioMes(e.caso.fecha_fin_inst); },
+        cols: "mes", medida: "suma", valor: cant }), XL_ENT);
+    var porArt = {};
+    elems.forEach(function (e) {
+      var sub = e.linea.subcategoria || "(Sin subcategoría)", k = sub + "\u0001" + (e.linea.articulo || "(Sin artículo)");
+      porArt[k] = porArt[k] || { sub: sub, articulo: e.linea.articulo || "(Sin artículo)", cantidad: 0, casos: new Set(), inst: new Set() };
+      porArt[k].cantidad += cant(e);
+      porArt[k].casos.add(e.caso.caso_id);
+      porArt[k].inst.add(e.caso.id_inst);
+    });
+    var totSub = {};
+    Object.keys(porArt).forEach(function (k) { var a = porArt[k]; totSub[a.sub] = (totSub[a.sub] || 0) + a.cantidad; });
+    var arts = Object.keys(porArt).map(function (k) { return porArt[k]; }).sort(function (a, b) {
+      return totSub[b.sub] - totSub[a.sub] || a.sub.localeCompare(b.sub, "es") || b.cantidad - a.cantidad;
+    });
+    ws = xlHoja(wb, "Artículos", "Elementos por subcategoría y artículo", periodo);
+    xlTabla(ws, 5, [{ titulo: "Subcategoría", ancho: 26 }, { titulo: "Artículo", ancho: 50 }, { titulo: "Cantidad", ancho: 11, fmt: XL_ENT },
+      { titulo: "% de la subcategoría", ancho: 12, fmt: XL_PCT }, { titulo: "Casos", ancho: 9, fmt: XL_ENT }, { titulo: "Instalaciones", ancho: 12, fmt: XL_ENT }],
+      arts.map(function (a) { return [a.sub, a.articulo, a.cantidad, xlRatio(a.cantidad, totSub[a.sub]), a.casos.size, a.inst.size]; }),
+      { filtro: true, fijar: true, totales: [["Total", null, suma(arts, function (a) { return a.cantidad; }), null, null, null]] });
+    await descargarLibro(wb, INFORME_XLS + "_Elementos_" + fElem.sufijo() + ".xlsx");
+  }
+
+  async function exportar(btn, generar) {
+    if (btn.disabled) return;
+    var html = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = "Generando…";
+    try { await generar(); }
+    catch (e) { setEstado("No se pudo generar el Excel: " + e.message, "error"); }
+    finally { btn.disabled = false; btn.innerHTML = html; }
   }
 
   // =====================================================================
@@ -1519,6 +2096,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       .eq("area", AREA).eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
     if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
     var c = r.data[0];
+    ultimaActualizacion = c.finalizado_en;
     // Sin actualizacion automatica por ahora: no se marca como atrasada.
     $("upd-hero").hidden = false;
     $("upd-hero-fecha").textContent = fmtFechaHora(c.finalizado_en);
@@ -1643,6 +2221,10 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // =====================================================================
   function iniciarPestanas() {
     $("panel-instalaciones").addEventListener("click", clicTablaInst);
+    [["xls-inst", excelInstalaciones], ["xls-dem", excelDemoras], ["xls-fact", excelFacturacion],
+     ["xls-casos", excelCasos], ["xls-elem", excelElementos]].forEach(function (b) {
+      $(b[0]).addEventListener("click", function () { exportar($(b[0]), b[1]); });
+    });
     document.querySelectorAll(".tab-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var id = btn.getAttribute("data-tab");
