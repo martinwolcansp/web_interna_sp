@@ -28,7 +28,7 @@
 
 // Servicio FastAPI de la integración (Etapa 2 — Oportunidad) en el
 // servidor local (Coolify). Si cambia el dominio, actualizar acá.
-const SYNC_API_BASE_URL = 'https://ghl-ns-opportunities.200.5.196.50.sslip.io';
+const SYNC_API_BASE_URL = 'https://ghl-ns-opportunities.blogdns.com';
 
 const IG_PAGE_SIZE = 50;
 // Máximo de contactos cuyo nombre coincide con la búsqueda que se usan
