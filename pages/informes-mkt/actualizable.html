@@ -185,6 +185,7 @@ nav.tabs.reportes { margin: 10px 0 4px; }
 .upd-hist th { position: sticky; top: 0; background: var(--light-fill); color: var(--navy); text-align: left; font-weight: 600; padding: 7px 10px; }
 .upd-hist td { padding: 7px 10px; border-top: 1px solid var(--rule); vertical-align: top; }
 .upd-hist tr.is-actual td { background: var(--light-fill); font-weight: 600; }
+.upd-hist .upd-dur { white-space: nowrap; }
 .upd-hist .upd-det { color: var(--second); max-width: 360px; }
 .upd-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; color: #fff; }
 .upd-tag--ok { background: #2a9d5c; } .upd-tag--error { background: #c0392b; } .upd-tag--en_curso { background: #eb6834; }
@@ -330,8 +331,8 @@ a.com-ns:hover { border-bottom-style: solid; }
         <div class="upd-panel-ayuda">Además del botón, el informe se actualiza solo de lunes a viernes a las 16 hs (del 1 del mes a hoy). Se conservan las últimas 40. Cada actualización suma sus datos a la base: con <strong>Período del informe</strong> se puede ver cualquier rango ya cargado. Con <strong>Ver</strong> se abre el informe tal como quedó en esa actualización.</div>
         <div class="upd-hist-scroll">
           <table class="upd-hist">
-            <thead><tr><th>Actualizada el</th><th>Rango</th><th>Tipo</th><th>Estado</th><th>Detalle</th><th></th></tr></thead>
-            <tbody id="upd-hist-body"><tr><td colspan="6">Cargando…</td></tr></tbody>
+            <thead><tr><th>Actualizada el</th><th>Rango</th><th>Tipo</th><th>Estado</th><th>Duración</th><th>Usuario</th><th>Detalle</th><th></th></tr></thead>
+            <tbody id="upd-hist-body"><tr><td colspan="8">Cargando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1799,6 +1800,14 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   function hoyAR() { return new Date().toLocaleDateString("en-CA", { timeZone: TZ }); }
   function primeroDelMesAR() { return hoyAR().slice(0, 8) + "01"; }
   function fmtDia(s) { var p = String(s).split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
+  function fmtDuracion(ini, fin) {
+    // Duracion de una corrida en min y s; si sigue en curso, lo que lleva.
+    if (!ini) return "—";
+    var ms = (fin ? new Date(fin) : new Date()) - new Date(ini);
+    if (!(ms >= 0)) return "—";
+    var t = Math.round(ms / 1000), m = Math.floor(t / 60), s = t % 60;
+    return m ? m + " min " + (s < 10 ? "0" : "") + s + " s" : s + " s";
+  }
   function fmtFechaHora(iso) {
     if (!iso) return "";
     var d = new Date(iso);
@@ -1991,12 +2000,12 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
   // ---- Historial (solo editores) ----
   async function cargarHistorial() {
     var r = await sb.from("informe_mkt_corrida")
-      .select("id,estado,origen,desde,hasta,iniciado_en,finalizado_en,mensaje,paso")
+      .select("id,estado,origen,desde,hasta,iniciado_en,finalizado_en,iniciado_por_nombre,mensaje,paso")
       .order("iniciado_en", { ascending: false })
       .limit(HISTORIAL);
     var body = $("upd-hist-body");
-    if (r.error) { body.innerHTML = '<tr><td colspan="6">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
-    if (!r.data.length) { body.innerHTML = '<tr><td colspan="6">Todavía no hay actualizaciones.</td></tr>'; return; }
+    if (r.error) { body.innerHTML = '<tr><td colspan="8">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
+    if (!r.data.length) { body.innerHTML = '<tr><td colspan="8">Todavía no hay actualizaciones.</td></tr>'; return; }
     var etiquetas = { ok: "OK", error: "Error", en_curso: "En curso" };
     body.innerHTML = r.data.map(function (c) {
       var detalle = c.estado === "en_curso" ? (c.paso || "") : (c.mensaje || "");
@@ -2009,6 +2018,8 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
         "<td>" + esc(fmtDia(c.desde)) + " al " + esc(fmtDia(c.hasta)) + "</td>" +
         "<td>" + (c.origen === "automatica" ? "Automática" : c.origen === "auditoria" ? "Auditoría" : "Manual") + "</td>" +
         '<td><span class="upd-tag upd-tag--' + esc(c.estado) + '">' + esc(etiquetas[c.estado] || c.estado) + "</span></td>" +
+        '<td class="upd-dur">' + esc(fmtDuracion(c.iniciado_en, c.finalizado_en)) + "</td>" +
+        "<td>" + esc(c.iniciado_por_nombre || "—") + "</td>" +
         '<td class="upd-det">' + esc(detalle) + "</td>" +
         "<td>" + accion + "</td></tr>";
     }).join("");

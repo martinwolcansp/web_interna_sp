@@ -180,6 +180,7 @@ tr.abierta .flecha { transform: rotate(90deg); }
 .upd-hist { width: 100%; border-collapse: collapse; font-size: 13px; }
 .upd-hist th { position: sticky; top: 0; background: var(--light-fill); color: var(--navy); text-align: left; font-weight: 600; padding: 7px 10px; }
 .upd-hist td { padding: 7px 10px; border-top: 1px solid var(--rule); vertical-align: top; }
+.upd-hist .upd-dur { white-space: nowrap; }
 .upd-hist .upd-det { color: var(--second); max-width: 420px; }
 .upd-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; color: #fff; }
 .upd-tag--ok { background: #2a9d5c; } .upd-tag--error { background: #c0392b; } .upd-tag--en_curso { background: #eb6834; }

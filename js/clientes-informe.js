@@ -37,6 +37,14 @@
     if (!iso) return "";
     return new Date(iso).toLocaleDateString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" });
   }
+  function fmtDuracion(ini, fin) {
+    // Duracion de una corrida en min y s; si sigue en curso, lo que lleva.
+    if (!ini) return "—";
+    var ms = (fin ? new Date(fin) : new Date()) - new Date(ini);
+    if (!(ms >= 0)) return "—";
+    var t = Math.round(ms / 1000), m = Math.floor(t / 60), s = t % 60;
+    return m ? m + " min " + (s < 10 ? "0" : "") + s + " s" : s + " s";
+  }
   function fmtFechaHora(iso) {
     if (!iso) return "";
     var d = new Date(iso);
@@ -222,11 +230,11 @@
     }
     function textoBotonNuevo(t) { textoBoton = t; if (!$("upd-btn").disabled) $("upd-btn").textContent = t; }
     async function cargarHistorial() {
-      var r = await sb.from("cli_corrida").select("id,estado,origen,periodo,iniciado_en,finalizado_en,mensaje,paso,stats")
+      var r = await sb.from("cli_corrida").select("id,estado,origen,periodo,iniciado_en,finalizado_en,iniciado_por_nombre,mensaje,paso,stats")
         .eq("informe", cfg.informe).order("iniciado_en", { ascending: false }).limit(HISTORIAL);
       var body = $("upd-hist-body");
-      if (r.error) { body.innerHTML = '<tr><td colspan="4">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
-      if (!r.data.length) { body.innerHTML = '<tr><td colspan="4">Todavía no hay actualizaciones.</td></tr>'; return; }
+      if (r.error) { body.innerHTML = '<tr><td colspan="6">No se pudo leer el historial: ' + esc(r.error.message) + "</td></tr>"; return; }
+      if (!r.data.length) { body.innerHTML = '<tr><td colspan="6">Todavía no hay actualizaciones.</td></tr>'; return; }
       var etiquetas = { ok: "OK", error: "Error", en_curso: "En curso" };
       body.innerHTML = r.data.map(function (c) {
         var detalle = c.estado === "en_curso" ? (c.paso || "") : c.estado === "error" ? (c.mensaje || "")
@@ -235,6 +243,8 @@
         return "<tr><td>" + esc(fmtFechaHora(c.finalizado_en || c.iniciado_en)) + "</td>" +
           "<td>" + (c.origen === "automatica" ? "Automática" : "Manual") + "</td>" +
           '<td><span class="upd-tag upd-tag--' + esc(c.estado) + '">' + esc(etiquetas[c.estado] || c.estado) + "</span></td>" +
+          '<td class="upd-dur">' + esc(fmtDuracion(c.iniciado_en, c.finalizado_en)) + "</td>" +
+          "<td>" + esc(c.iniciado_por_nombre || "—") + "</td>" +
           '<td class="upd-det">' + esc(detalle) + "</td></tr>";
       }).join("");
     }
