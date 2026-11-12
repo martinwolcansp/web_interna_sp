@@ -321,11 +321,21 @@
       <section class="admin-section" aria-labelledby="au-periodo-title">
         <div class="admin-section__header">
           <h2 id="au-periodo-title" class="admin-section__title">Período de la auditoría</h2>
-          <p class="admin-section__subtitle">Mes en curso: contactos por fecha de alta en GHL y oportunidades por fecha de la oportunidad en NetSuite. Para otros períodos, usá el Informe de MKT.</p>
+          <p class="admin-section__subtitle">Contactos por fecha de alta en GHL y oportunidades por fecha de la oportunidad en NetSuite. Por defecto, el mes en curso.</p>
         </div>
 
         <form id="au-filtros" class="ig-toolbar" autocomplete="off">
-          <span id="au-periodo" class="au-periodo"></span>
+          <div class="au-periodo">
+            <i class="ti ti-calendar" aria-hidden="true"></i>
+            <select id="au-atajo" class="admin-select" aria-label="Atajo de período">
+              <option value="mes-actual">Mes en curso</option>
+              <option value="mes-anterior">Mes anterior</option>
+              <option value="ultimos-30">Últimos 30 días</option>
+              <option value="">Personalizado</option>
+            </select>
+            <label class="au-periodo__campo">Desde <input type="date" id="au-desde" class="admin-input" required></label>
+            <label class="au-periodo__campo">Hasta <input type="date" id="au-hasta" class="admin-input" required></label>
+          </div>
           <select id="au-vendedor" class="admin-select" aria-label="Vendedor"></select>
           <button type="submit" id="au-aplicar" class="btn btn--primary"><i class="ti ti-refresh"></i> Auditar</button>
         </form>

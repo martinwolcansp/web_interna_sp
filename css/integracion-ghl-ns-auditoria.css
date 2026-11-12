@@ -19,8 +19,22 @@
   color: var(--color-text-body);
 }
 
-.au-periodo[hidden] {
-  display: none;
+.au-periodo {
+  flex-wrap: wrap;
+}
+
+.au-periodo__campo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.au-periodo .admin-select,
+.au-periodo .admin-input {
+  width: auto;
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 .au-nota {

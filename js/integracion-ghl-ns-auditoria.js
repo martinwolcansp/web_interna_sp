@@ -17,6 +17,10 @@
         custbody_ghl_last_sync_msg_op (columna "Mensaje sync GHL").
    Además: clientes de NetSuite creados en el período sin ID de GHL.
 
+   Período: lo elige el usuario (por defecto, el mes en curso). Contactos por
+   fecha de alta en GHL y oportunidades por fecha de la oportunidad en
+   NetSuite (12/11/2026; antes era fijo el mes en curso).
+
    Fuente: las tablas informe_mkt_* que carga el servicio informe-mkt-api
    en cada actualización del Informe MKT (corrida programada de lunes a
    viernes 16 hs, o botón "Actualizar"). No llama a NetSuite ni a GHL: los
@@ -43,9 +47,15 @@ const AU_CF_NS_OPP_ID = 'tUshSe9uBgbbWpBxf1wG';
 const AU_SUBSIDIARIA = 'S.P. SEGURIDAD PRIVADA S.A.';
 // Filas por página de cada listado.
 const AU_PAGE_SIZE = { c1: 25, c2: 50, c4: 25 };
-// Servicio del Informe MKT: el botón Auditar le pide la actualización del mes
-// en curso (POST /auditoria/actualizar, migración 24). Permiso propio:
-// 'editar' en integracion-ghl-ns; el servicio corre con el usuario técnico.
+// Servicio del Informe MKT: el botón Auditar le pide la actualización del
+// período elegido (POST /auditoria/actualizar {desde, hasta}, migración 24).
+// Permiso propio: 'editar' en integracion-ghl-ns; el servicio corre con el
+// usuario técnico.
+// Límites: hasta AU_MAX_DIAS_ACTUALIZAR días se actualiza desde GHL y
+// NetSuite (igual que MAX_DIAS_RANGO del servicio); hasta AU_MAX_DIAS_CONSULTA
+// sólo se leen los datos ya cargados (igual que MAX_DIAS_CONSULTA).
+const AU_MAX_DIAS_ACTUALIZAR = 92;
+const AU_MAX_DIAS_CONSULTA = 400;
 const AU_INFORME_API_URL = 'https://informe-mkt-api.200.5.196.50.sslip.io';
 const AU_POLL_MS = 5000;
 // Librería para la descarga a Excel de los listados.
@@ -110,23 +120,66 @@ function auHoyAR() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date());
 }
 
-// Período de la auditoría: siempre el mes en curso (del 1 a hoy, hora de
-// Argentina). Otros períodos se consultan en el Informe de MKT.
-function auPeriodo() {
-  const hoy = auHoyAR();
-  return { desde: `${hoy.slice(0, 8)}01`, hasta: hoy };
+function auDias(desde, hasta) {
+  return Math.round((new Date(`${hasta}T00:00:00`) - new Date(`${desde}T00:00:00`)) / 86400000) + 1;
 }
 
-function auPintarPeriodo() {
-  const { desde, hasta } = auPeriodo();
-  const mes = new Date(`${desde}T12:00:00`).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-  document.getElementById('au-periodo').innerHTML =
-    `<i class="ti ti-calendar"></i> <b>${escapeHtml(mes.charAt(0).toUpperCase() + mes.slice(1))}</b> · ${fmtFecha(`${desde}T12:00:00`)} al ${fmtFecha(`${hasta}T12:00:00`)}`;
+// Rango de un atajo (fechas en hora de Argentina, hasta hoy como máximo).
+function auRangoAtajo(atajo) {
+  const hoy = auHoyAR();
+  const [a, m] = hoy.split('-').map(Number);
+  const iso = (d) => d.toISOString().slice(0, 10);
+  if (atajo === 'mes-anterior') {
+    const ini = new Date(Date.UTC(m === 1 ? a - 1 : a, m === 1 ? 11 : m - 2, 1));
+    const fin = new Date(Date.UTC(a, m - 1, 0));
+    return { desde: iso(ini), hasta: iso(fin) };
+  }
+  if (atajo === 'ultimos-30') {
+    const ini = new Date(`${hoy}T00:00:00Z`);
+    ini.setUTCDate(ini.getUTCDate() - 29);
+    return { desde: iso(ini), hasta: hoy };
+  }
+  return { desde: `${hoy.slice(0, 8)}01`, hasta: hoy }; // mes en curso
+}
+
+// Período elegido en los campos Desde / Hasta.
+function auPeriodo() {
+  return {
+    desde: document.getElementById('au-desde').value,
+    hasta: document.getElementById('au-hasta').value,
+  };
+}
+
+// Devuelve el mensaje de error si el período no es válido.
+function auValidarPeriodo({ desde, hasta }) {
+  if (!desde || !hasta) return 'Elegí las fechas Desde y Hasta.';
+  if (desde > hasta) return 'La fecha Desde no puede ser posterior a Hasta.';
+  if (hasta > auHoyAR()) return 'La fecha Hasta no puede ser posterior a hoy.';
+  if (auDias(desde, hasta) > AU_MAX_DIAS_CONSULTA) return `El período no puede superar ${AU_MAX_DIAS_CONSULTA} días.`;
+  return '';
+}
+
+function auPonerPeriodo({ desde, hasta }) {
+  document.getElementById('au-desde').value = desde;
+  document.getElementById('au-hasta').value = hasta;
 }
 
 function auInicializar() {
-  auPintarPeriodo();
+  const hoy = auHoyAR();
+  ['au-desde', 'au-hasta'].forEach((id) => { document.getElementById(id).max = hoy; });
+  auPonerPeriodo(auRangoAtajo('mes-actual'));
   auLlenarVendedores([]);
+
+  // Atajos: completan las fechas y auditan.
+  document.getElementById('au-atajo').addEventListener('change', (ev) => {
+    if (!ev.target.value) return;
+    auPonerPeriodo(auRangoAtajo(ev.target.value));
+    auBotonAuditar();
+  });
+  // Si se cambia una fecha a mano, el atajo pasa a "Personalizado".
+  ['au-desde', 'au-hasta'].forEach((id) => document.getElementById(id).addEventListener('change', () => {
+    document.getElementById('au-atajo').value = '';
+  }));
 
   document.getElementById('au-filtros').addEventListener('submit', (ev) => { ev.preventDefault(); auBotonAuditar(); });
 
@@ -284,8 +337,10 @@ async function auditar() {
   btn.disabled = true;
   auStatus('Procesando…', 'progreso');
   try {
-    auPintarPeriodo();
-    const { desde, hasta } = auPeriodo();
+    const periodo = auPeriodo();
+    const invalido = auValidarPeriodo(periodo);
+    if (invalido) { auStatus(invalido, 'aviso'); return; }
+    const { desde, hasta } = periodo;
     au.datos = await auCargarBase(desde, hasta);
     au.cargado = true;
     au.pag = { c1: 0, c2: 0, c4: 0 };
@@ -304,10 +359,10 @@ async function auditar() {
   }
 }
 
-/* ── Botón Auditar: actualizar el mes en curso y auditar ─────────────── */
+/* ── Botón Auditar: actualizar el período y auditar ──────────────────── */
 
 // Con permiso 'editar' en Integración NetSuite ↔ GHL, Auditar primero
-// actualiza el mes en curso desde GHL y NetSuite (servicio informe-mkt-api,
+// actualiza el período elegido desde GHL y NetSuite (servicio informe-mkt-api,
 // con el usuario técnico) y después audita. Sin ese permiso, Auditar vuelve a
 // leer lo que ya está cargado. No hace falta permiso en Informes de MKT.
 async function auVerificarPermisoActualizar() {
@@ -324,8 +379,13 @@ async function auVerificarPermisoActualizar() {
 }
 
 function auBotonAuditar() {
+  const periodo = auPeriodo();
+  const invalido = auValidarPeriodo(periodo);
+  if (invalido) { auStatus(invalido, 'aviso'); return; }
   if (!au.puedeActualizar) { auditar(); return; }
-  auActualizarMes();
+  // Períodos largos: no se actualizan, se leen los datos ya cargados.
+  if (auDias(periodo.desde, periodo.hasta) > AU_MAX_DIAS_ACTUALIZAR) { auditar(); return; }
+  auActualizarPeriodo(periodo);
 }
 
 // Durante la actualización el botón queda deshabilitado y muestra el avance.
@@ -342,19 +402,19 @@ function auEtiquetaBoton() {
   document.getElementById('au-aplicar').innerHTML = '<i class="ti ti-refresh"></i> Auditar';
 }
 
-async function auActualizarMes() {
+async function auActualizarPeriodo({ desde, hasta }) {
   if (au.actualizando) return;
   auBloquear(true);
-  auStatus('Iniciando la actualización del mes en curso…', 'progreso');
+  auStatus(`Iniciando la actualización del ${fmtFecha(`${desde}T12:00:00`)} al ${fmtFecha(`${hasta}T12:00:00`)}…`, 'progreso');
   const { data: sesion } = await window.supabaseClient.auth.getSession();
   const token = sesion && sesion.session && sesion.session.access_token;
   if (!token) { auBloquear(false); auStatus('Tu sesión venció: volvé a ingresar a la web interna.', true); return; }
 
   try {
-    // Sin cuerpo: el servicio actualiza siempre el mes en curso.
     const resp = await fetch(`${AU_INFORME_API_URL}/auditoria/actualizar`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ desde, hasta }),
     });
     const body = await resp.json().catch(() => ({}));
     if (resp.status === 409 && body.detail && body.detail.corrida_id) {
@@ -722,15 +782,18 @@ function auRender() {
 
 function auRenderCobertura(d) {
   const el = document.getElementById('au-cobertura');
-  const { totalDias, diasCargados, ultimo } = d.info;
+  const { desde, hasta, totalDias, diasCargados, ultimo } = d.info;
   const faltan = totalDias - diasCargados;
-  const como = au.puedeActualizar
-    ? 'Auditar los actualiza desde GHL y NetSuite; también se actualizan solos de lunes a viernes a las 16 hs'
-    : 'se actualizan de lunes a viernes a las 16 hs; Auditar vuelve a leerlos';
-  el.innerHTML = `Datos al <b>${fmtFechaHora(ultimo)}</b> (${como}). ` +
+  const largo = totalDias > AU_MAX_DIAS_ACTUALIZAR;
+  let como;
+  if (!au.puedeActualizar) como = 'se actualizan de lunes a viernes a las 16 hs; Auditar vuelve a leerlos';
+  else if (largo) como = `el período supera ${AU_MAX_DIAS_ACTUALIZAR} días: Auditar sólo lee los datos ya cargados`;
+  else como = 'Auditar los actualiza desde GHL y NetSuite; también se actualizan solos de lunes a viernes a las 16 hs';
+  const periodo = `Período del <b>${fmtFecha(`${desde}T12:00:00`)}</b> al <b>${fmtFecha(`${hasta}T12:00:00`)}</b> (${fmtNumero(totalDias)} días). `;
+  el.innerHTML = periodo + (ultimo ? `Datos al <b>${fmtFechaHora(ultimo)}</b> (${como}). ` : `Sin datos cargados (${como}). `) +
     (faltan > 0
-      ? `<span class="au-aviso">${fmtNumero(faltan)} de ${fmtNumero(totalDias)} días del mes no están cargados${au.puedeActualizar ? ': apretá Auditar para traerlos' : ''}.</span>`
-      : 'Todos los días del rango están cargados.');
+      ? `<span class="au-aviso">${fmtNumero(faltan)} de ${fmtNumero(totalDias)} días del período no están cargados${au.puedeActualizar && !largo ? ': apretá Auditar para traerlos' : ''}.</span>`
+      : 'Todos los días del período están cargados.');
 }
 
 function auBarra(partes) {
