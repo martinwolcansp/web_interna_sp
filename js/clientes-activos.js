@@ -4,7 +4,7 @@
    pages/clientes-activos.html: una pestaña por informe (solo las que
    el usuario puede ver) y el informe elegido en un iframe con alto
    automático (pages/clientes-activos/<archivo>). La pestaña elegida
-   queda en el hash (#segmentacion / #bajas / #visitados).
+   queda en el hash (#segmentacion / #bajas / #sin-compra).
 
    Cada informe tiene su propia sección de permisos (clientes-<id>).
    La seguridad real la dan las políticas RLS de las tablas cli_*
@@ -16,8 +16,8 @@
 window.CLIENTES_INFORMES = [
   { id: 'segmentacion', label: 'Segmentación Clientes', archivo: 'segmentacion.html', seccion: 'clientes-segmentacion', icono: 'ti-users-group' },
   { id: 'bajas', label: 'Análisis Bajas', archivo: 'bajas.html', seccion: 'clientes-bajas', icono: 'ti-user-minus' },
-  // Visitados sin compra (12/11/2026): mismo permiso que la Segmentación (migracion_47).
-  { id: 'visitados', label: 'Visitados sin compra', archivo: 'visitados.html', seccion: 'clientes-segmentacion', icono: 'ti-calendar-x' },
+  // Consultas sin compra (12/11/2026): mismo permiso que la Segmentación (migracion_47).
+  { id: 'sin-compra', label: 'Consultas sin compra', archivo: 'sin-compra.html', seccion: 'clientes-segmentacion', icono: 'ti-user-question' },
 ];
 
 function clientesEsc(s) {
