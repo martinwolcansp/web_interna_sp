@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visitados sin compra — SP Seguridad</title>
+<link rel="stylesheet" href="../../css/clientes-informe.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="report-header">
+    <div class="eyebrow">SP Seguridad Privada &middot; Clientes activos &middot; Visitados sin compra</div>
+    <h1>Visitados sin compra</h1>
+    <div class="sub">Contactos de GHL que tuvieron una visita y no tienen oportunidad ganada en NetSuite, para segmentar campañas de MKT</div>
+    <div class="upd-hero" id="upd-hero" hidden>
+      <span class="upd-hero-label">Visitas cargadas</span>
+      <span class="upd-hero-fecha" id="upd-hero-fecha"></span>
+      <span class="upd-hero-det" id="upd-hero-det"></span>
+    </div>
+    <div class="upd-bar">
+      <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
+    </div>
+  </header>
+
+  <div class="cargando" id="cargando" role="status" aria-live="polite">
+    <span>Cargando visitas…</span><span class="cargando-barra" aria-hidden="true"></span>
+  </div>
+
+  <main id="main" class="main--cargando">
+    <div class="tab-panel active" id="panel-visitados">
+      <div class="filtros" id="filtros">
+        <span class="filtros-titulo">Filtros</span>
+        <input type="search" class="filtro-buscar" id="buscar" placeholder="Buscar nombre, teléfono, email, ID…" aria-label="Buscar contacto">
+        <button type="button" class="chk-limpiar" id="limpiar" hidden>Quitar filtros</button>
+        <button type="button" class="xls-btn" id="xls">Descargar Excel</button>
+      </div>
+
+      <div class="kpi-row" id="kpis"></div>
+
+      <div class="grid-3">
+        <div class="bloque">
+          <h3>Por vendedor de la última visita</h3>
+          <div id="b-vendedor"></div>
+          <div class="bloque-nota">Usuario asignado a la cita en GHL. Click en una barra para filtrar.</div>
+        </div>
+        <div class="bloque">
+          <h3>Por estado de la oportunidad</h3>
+          <div id="b-oportunidad"></div>
+          <div class="bloque-nota">Última oportunidad de NetSuite del contacto.</div>
+        </div>
+        <div class="bloque">
+          <h3>Por última visita</h3>
+          <div id="b-recencia"></div>
+        </div>
+      </div>
+
+      <div class="explorer">
+        <div class="explorer-bar">
+          <span class="explorer-title">Contactos &mdash; click en una fila para ver visitas, presupuestos y oportunidades</span>
+          <span class="explorer-count" id="cuenta"></span>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="tabla"></table>
+        </div>
+        <div class="mas-wrap" id="mas-wrap" hidden><button type="button" class="mas-btn" id="mas">Mostrar más</button></div>
+      </div>
+
+      <div class="bloque-nota">
+        Visita: cita de un calendario de GHL con fecha ya pasada y estado distinto de Cancelada, No asistió e Inválida (mismo criterio que el Informe por vendedor).
+        Compra: oportunidad de NetSuite ganada (estados 12 / 13) del contacto o de su empresa matriz, con fecha desde <span id="nota-dias">180</span> días antes de la primera visita.
+        Presupuestos: los de NetSuite del contacto con fecha igual o posterior a la primera visita.
+        Datos del Informe MKT, que se actualiza de lunes a viernes a las 16 hs.
+      </div>
+    </div>
+  </main>
+  <footer class="report-footer" id="report-footer">SP Seguridad Privada &middot; Visitados sin compra &middot; datos de GHL y NetSuite (Informe MKT)</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script src="/js/clientes-informe.js"></script>
+<script>
+(function () {
+  "use strict";
+  var CI = window.CI, $ = CI.$, esc = CI.esc, num = CI.num, pct = CI.pct;
+  // Mismo permiso que la Segmentación (fn_cli_visitados_sin_compra lo verifica en la base).
+  var SECCION = "clientes-segmentacion";
+  var PAGINA = 200;
+  // Margen para la oportunidad ganada: fecha de la oportunidad desde N días antes de la primera visita.
+  var DIAS_PREVIOS = 180;
+
+  var URL_OPORTUNIDAD = "https://7138551.app.netsuite.com/app/accounting/transactions/opprtnty.nl?id=";
+  var URL_PRESUPUESTO = "https://7138551.app.netsuite.com/app/accounting/transactions/estimate.nl?id=";
+  var ESTADOS_CITA = { showed: "Asistió", confirmed: "Confirmada", "new": "Nueva" };
+  var REC_30 = "Últimos 30 días", REC_90 = "31 a 90 días", REC_MAS = "Más de 90 días";
+  var RECENCIAS = [REC_30, REC_90, REC_MAS];
+  var SIN_OPP = "Sin oportunidad en NetSuite";
+  var COMPRA_ANTERIOR = "Ganada antes de la visita";
+  var CON_PRES = "Con presupuesto", SIN_PRES = "Sin presupuesto";
+  var ES_CLIENTE = "Ya es cliente", PROSPECTO = "Prospecto";
+
+  var DATOS = [];
+  var F = {};
+  var vista = [];
+  var orden = { col: "ultima_visita", asc: false };
+  var mostrados = PAGINA;
+  var abiertos = new Set();
+  var cobertura = null;
+
+  function pesos(n) { return n === null || n === undefined || n === "" ? "" : "$ " + num(n); }
+  function dias(iso) { return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000); }
+  function recencia(iso) { var d = dias(iso); return d <= 30 ? REC_30 : d <= 90 ? REC_90 : REC_MAS; }
+  function fechaISO(iso) {
+    // dd/mm/aaaa en hora argentina -> aaaa-mm-dd (para Excel)
+    return iso ? CI.fmtDiaLocal(iso).split("/").reverse().join("-") : null;
+  }
+
+  // ---------------------------------------------------------------
+  // Carga
+  // ---------------------------------------------------------------
+  async function cargarDatos() {
+    var r = await Promise.all([
+      CI.sb.rpc("fn_cli_visitados_sin_compra", { p_dias_previos: DIAS_PREVIOS }),
+      CI.sb.rpc("fn_cli_visitas_cobertura"),
+    ]);
+    if (r[0].error) throw new Error(r[0].error.message);
+    cobertura = r[1].error ? null : (r[1].data || [])[0] || null;
+    DATOS = r[0].data || [];
+    DATOS.forEach(function (c) {
+      c._vend = c.vendedor || "Sin asignar";
+      // Si la última oportunidad es ganada, es una compra anterior al margen de la visita (si no, el contacto no estaría acá).
+      var ult = ((c.detalle || {}).oportunidades || [])[0];
+      c._opp = !c.estado_oportunidad ? SIN_OPP : ult && ult.ganada ? COMPRA_ANTERIOR : c.estado_oportunidad;
+      c._pres = c.presupuestos ? CON_PRES : SIN_PRES;
+      c._cli = c.cliente_ns_id ? ES_CLIENTE : PROSPECTO;
+      c._rec = recencia(c.ultima_visita);
+      c._loc = c.localidad ? c.localidad.trim().toUpperCase() : "Sin localidad";
+      c._contactable = !!(c.telefono || c.email);
+      c._busqueda = [c.nombre, c.telefono, c.email, c.localidad, c.contact_id, c.cliente_entity_id, c.vendedor].join(" ").toLowerCase();
+    });
+    armarFiltros();
+    pintar();
+    pintarCobertura();
+  }
+
+  function pintarCobertura() {
+    if (!cobertura || !cobertura.desde) { $("upd-hero").hidden = true; return; }
+    $("upd-hero").hidden = false;
+    $("upd-hero-fecha").textContent = CI.fmtDia(cobertura.desde) + " al " + CI.fmtDia(cobertura.hasta);
+    $("upd-hero-det").textContent = num(cobertura.dias) + " días cargados por el Informe MKT" +
+      (cobertura.actualizado_en ? " · última carga " + CI.fmtFechaHora(cobertura.actualizado_en) : "");
+    $("report-footer").innerHTML = "SP Seguridad Privada &middot; Visitados sin compra &middot; visitas de GHL del " +
+      esc(CI.fmtDia(cobertura.desde)) + " al " + esc(CI.fmtDia(cobertura.hasta)) + " (Informe MKT)";
+  }
+
+  // ---------------------------------------------------------------
+  // Filtros
+  // ---------------------------------------------------------------
+  function porCant(clave) {
+    var m = CI.contar(DATOS, clave);
+    return Object.keys(m).sort(function (a, b) { return m[b] - m[a]; }).map(function (k) { return { valor: k, etiqueta: k + " (" + num(m[k]) + ")" }; });
+  }
+
+  function armarFiltros() {
+    var cont = $("filtros");
+    cont.querySelectorAll(".chk-filtro").forEach(function (el) { el.remove(); });
+    var antes = $("limpiar");
+    var tmp = document.createElement("div");
+    F.vend = CI.crearFiltro(tmp, "f-vend", "Vendedor", porCant(function (c) { return c._vend; }), cambio);
+    F.opp = CI.crearFiltro(tmp, "f-opp", "Oportunidad", porCant(function (c) { return c._opp; }), cambio);
+    F.pres = CI.crearFiltro(tmp, "f-pres", "Presupuesto", [CON_PRES, SIN_PRES].map(function (v) { return { valor: v, etiqueta: v }; }), cambio);
+    F.rec = CI.crearFiltro(tmp, "f-rec", "Última visita", RECENCIAS.map(function (v) { return { valor: v, etiqueta: v }; }), cambio);
+    F.cli = CI.crearFiltro(tmp, "f-cli", "NetSuite", [PROSPECTO, ES_CLIENTE].map(function (v) { return { valor: v, etiqueta: v }; }), cambio);
+    F.loc = CI.crearFiltro(tmp, "f-loc", "Localidad", porCant(function (c) { return c._loc; }), cambio);
+    Array.prototype.slice.call(tmp.children).forEach(function (el) { cont.insertBefore(el, antes); });
+  }
+
+  function pasa(c) {
+    var q = $("buscar").value.trim().toLowerCase();
+    return F.vend.pasa(c._vend) && F.opp.pasa(c._opp) && F.pres.pasa(c._pres) && F.rec.pasa(c._rec) &&
+      F.cli.pasa(c._cli) && F.loc.pasa(c._loc) && (!q || c._busqueda.indexOf(q) >= 0);
+  }
+
+  function cambio() { mostrados = PAGINA; pintar(); }
+
+  // ---------------------------------------------------------------
+  // Pintado
+  // ---------------------------------------------------------------
+  function pintar() {
+    vista = DATOS.filter(pasa);
+    var hayFiltro = Object.keys(F).some(function (k) { return F[k].activo(); }) || $("buscar").value.trim();
+    $("limpiar").hidden = !hayFiltro;
+
+    var visitas = vista.reduce(function (s, c) { return s + (c.visitas || 0); }, 0);
+    var conPres = vista.filter(function (c) { return c.presupuestos; }).length;
+    var sinOpp = vista.filter(function (c) { return !c.oportunidades; }).length;
+    var clientes = vista.filter(function (c) { return c.cliente_ns_id; }).length;
+    var rec30 = vista.filter(function (c) { return c._rec === REC_30; }).length;
+    var contact = vista.filter(function (c) { return c._contactable; }).length;
+    $("kpis").innerHTML = CI.kpis([
+      { num: num(vista.length), label: "Visitados sin compra", det: hayFiltro ? "de " + num(DATOS.length) + " contactos" : "contactos de GHL" },
+      { num: num(visitas), label: "Visitas", det: "concretadas de esos contactos" },
+      { num: num(rec30), label: "Visitados en 30 días", det: pct(rec30, vista.length, 1) + " de los contactos" },
+      { num: num(conPres), label: "Con presupuesto", det: pct(conPres, vista.length, 1) + " recibió presupuesto" },
+      { num: num(sinOpp), label: "Sin oportunidad", det: "sin oportunidad en NetSuite" },
+      { num: num(clientes), label: "Ya son clientes", det: "en la Segmentación (etapa Cliente)" },
+      { num: pct(contact, vista.length), label: "Contactables", det: num(contact) + " con teléfono o email" },
+    ]);
+
+    $("b-vendedor").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(vista, function (c) { return c._vend; })), vista.length, { clic: true });
+    $("b-oportunidad").innerHTML = CI.barras(CI.paresOrdenados(CI.contar(vista, function (c) { return c._opp; })), vista.length, { clic: true, sec: true });
+    var rec = CI.contar(vista, function (c) { return c._rec; });
+    $("b-recencia").innerHTML = CI.barras(RECENCIAS.filter(function (k) { return rec[k]; }).map(function (k) { return [k, rec[k]]; }), vista.length, { clic: true });
+    pintarTabla();
+  }
+
+  var COLUMNAS = [
+    { id: "flecha", titulo: "", html: function () { return '<span class="flecha">&#9656;</span>'; }, sinOrden: true },
+    { id: "nombre", titulo: "Contacto", valor: function (c) { return c.nombre; } },
+    { id: "localidad", titulo: "Localidad", valor: function (c) { return c.localidad; } },
+    { id: "telefono", titulo: "Teléfono", valor: function (c) { return c.telefono; }, clase: "nowrap" },
+    { id: "ultima_visita", titulo: "Última visita", valor: function (c) { return c.ultima_visita; }, html: function (c) {
+      return esc(CI.fmtDiaLocal(c.ultima_visita)) + '<br><span class="kpi-det">' + esc(CI.hace(c.ultima_visita)) + "</span>";
+    }, clase: "nowrap" },
+    { id: "visitas", titulo: "Visitas", valor: function (c) { return c.visitas; }, clase: "num" },
+    { id: "vendedor", titulo: "Vendedor", valor: function (c) { return c._vend; } },
+    { id: "presupuestos", titulo: "Presupuestos", valor: function (c) { return c.presupuestos; }, html: function (c) {
+      return c.presupuestos ? num(c.presupuestos) + '<br><span class="kpi-det">' + esc(pesos(c.total_ultimo_presupuesto)) + "</span>" : "";
+    }, clase: "num" },
+    { id: "opp", titulo: "Oportunidad", valor: function (c) { return c._opp; }, html: function (c) {
+      return '<span class="tag ' + (c.oportunidades ? "tag--alerta" : "tag--inactivo") + '">' + esc(c._opp) + "</span>";
+    } },
+    { id: "cliente", titulo: "Cliente NS", valor: function (c) { return c.cliente_entity_id; }, html: function (c) {
+      return c.cliente_ns_id ? CI.linkNS(c.cliente_ns_id, c.cliente_entity_id) : "";
+    }, clase: "nowrap" },
+  ];
+
+  function pintarTabla() {
+    var col = COLUMNAS.filter(function (c) { return c.id === orden.col; })[0];
+    var filas = vista.slice().sort(function (a, b) {
+      var x = col.valor(a), y = col.valor(b);
+      x = x === null || x === undefined ? "" : x; y = y === null || y === undefined ? "" : y;
+      if (typeof x === "string" && typeof y === "string") return x.localeCompare(y, "es") * (orden.asc ? 1 : -1);
+      return (x < y ? -1 : x > y ? 1 : 0) * (orden.asc ? 1 : -1);
+    });
+    var visibles = filas.slice(0, mostrados);
+    $("tabla").innerHTML = "<thead><tr>" + COLUMNAS.map(function (c) {
+      var flecha = c.sinOrden ? "" : '<span class="sort-arrow">' + (orden.col === c.id ? (orden.asc ? "▲" : "▼") : "↕") + "</span>";
+      return '<th data-col="' + c.id + '">' + esc(c.titulo) + flecha + "</th>";
+    }).join("") + "</tr></thead><tbody>" + (visibles.length ? visibles.map(function (c) {
+      var abierto = abiertos.has(c.contact_id);
+      return '<tr class="fila-cliente' + (abierto ? " abierta" : "") + '" data-id="' + esc(c.contact_id) + '">' + COLUMNAS.map(function (k) {
+        return '<td class="' + (k.clase || "") + '">' + (k.html ? k.html(c) : esc(k.valor(c))) + "</td>";
+      }).join("") + "</tr>" + (abierto ? '<tr class="fila-detalle"><td colspan="' + COLUMNAS.length + '">' + detalle(c) + "</td></tr>" : "");
+    }).join("") : '<tr><td colspan="' + COLUMNAS.length + '" class="vacio">Sin resultados.</td></tr>') + "</tbody>";
+    $("cuenta").textContent = num(Math.min(mostrados, filas.length)) + " de " + num(filas.length) + " contactos";
+    $("mas-wrap").hidden = filas.length <= mostrados;
+  }
+
+  function dato(et, val) {
+    return '<div class="dato"><span class="dato-et">' + esc(et) + '</span><span class="dato-val">' + (val || "–") + "</span></div>";
+  }
+  function link(url, id, texto) {
+    return id ? '<a href="' + url + encodeURIComponent(id) + '" target="_blank" rel="noopener">' + esc(texto || id) + "</a>" : esc(texto || "");
+  }
+  function tablaSub(titulo, cabeceras, filas, vacio) {
+    return "<h4>" + esc(titulo) + " (" + filas.length + ")</h4>" + (filas.length
+      ? '<div class="pivot-scroll"><table class="sub-table"><thead><tr>' + cabeceras.map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") +
+        "</tr></thead><tbody>" + filas.join("") + "</tbody></table></div>"
+      : '<p class="vacio">' + esc(vacio) + "</p>");
+  }
+
+  function detalle(c) {
+    var d = c.detalle || {};
+    var html = '<div class="detalle"><div class="detalle-grid">' +
+      dato("Contacto GHL", CI.linkGHL(c.contact_id, c.contact_id)) +
+      dato("Cliente NetSuite", c.cliente_ns_id ? CI.linkNS(c.cliente_ns_id, c.cliente_entity_id) : "Prospecto (no está en la Segmentación)") +
+      dato("Teléfono", esc(c.telefono)) +
+      dato("Email", c.email ? '<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a>" : "") +
+      dato("Localidad", esc(c.localidad)) +
+      dato("Primera visita", esc(CI.fmtDiaLocal(c.primera_visita))) +
+      dato("Calendario", esc(c.calendario)) +
+      "</div>";
+    html += tablaSub("Visitas", ["Fecha", "Estado", "Vendedor", "Calendario", "Título"], (d.visitas || []).map(function (v) {
+      return "<tr><td>" + esc(CI.fmtFechaHora(v.inicio)) + "</td><td>" + esc(ESTADOS_CITA[v.estado] || v.estado || "") + "</td><td>" +
+        esc(v.vendedor) + "</td><td>" + esc(v.calendario) + "</td><td>" + esc(v.titulo) + "</td></tr>";
+    }), "Sin visitas.");
+    html += tablaSub("Presupuestos desde la primera visita", ["Fecha", "Presupuesto", "Estado", "Representante", "Total"], (d.presupuestos || []).map(function (p) {
+      return "<tr><td>" + esc(CI.fmtDia(p.fecha)) + "</td><td>" + link(URL_PRESUPUESTO, p.id, p.numero) + "</td><td>" + esc(p.estado) + "</td><td>" +
+        esc(p.representante) + '</td><td class="num">' + esc(pesos(p.total)) + "</td></tr>";
+    }), "Sin presupuestos de NetSuite después de la visita.");
+    html += tablaSub("Oportunidades de NetSuite", ["Fecha", "Oportunidad", "Estado", "Representante", "Unidad de negocio"], (d.oportunidades || []).map(function (o) {
+      return "<tr><td>" + esc(CI.fmtDia(o.fecha)) + "</td><td>" + link(URL_OPORTUNIDAD, o.id, o.numero) + "</td><td>" +
+        '<span class="tag ' + (o.ganada ? "tag--activo" : "tag--inactivo") + '">' + esc(o.estado) + "</span>" +
+        (o.ganada ? ' <span class="kpi-det">anterior a la visita</span>' : "") + "</td><td>" +
+        esc(o.representante) + "</td><td>" + esc(o.unidad) + "</td></tr>";
+    }), "Sin oportunidades en NetSuite (en los datos del Informe MKT).");
+    return html + "</div>";
+  }
+
+  // ---------------------------------------------------------------
+  // Excel: contactos filtrados + sus visitas
+  // ---------------------------------------------------------------
+  async function excel(ExcelJS) {
+    var wb = new ExcelJS.Workbook();
+    var sub = "Contactos: " + num(vista.length) + (vista.length !== DATOS.length ? " (filtrados de " + num(DATOS.length) + ")" : "") +
+      (cobertura && cobertura.desde ? " · visitas del " + CI.fmtDia(cobertura.desde) + " al " + CI.fmtDia(cobertura.hasta) : "");
+    CI.xlHoja(wb, "Contactos", "Visitados sin compra", sub, [
+      { titulo: "Contacto", ancho: 32 }, { titulo: "Teléfono", ancho: 16 }, { titulo: "Email", ancho: 30 }, { titulo: "Localidad", ancho: 18 },
+      { titulo: "Visitas", ancho: 8 }, { titulo: "Primera visita", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "Última visita", ancho: 11, fmt: "dd/mm/yyyy" },
+      { titulo: "Vendedor", ancho: 22 }, { titulo: "Calendario", ancho: 22 }, { titulo: "Presupuestos", ancho: 10 },
+      { titulo: "Último presupuesto", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "Total último presupuesto", ancho: 14, fmt: "#,##0" },
+      { titulo: "Oportunidades", ancho: 10 }, { titulo: "Estado oportunidad", ancho: 22 }, { titulo: "Cliente NetSuite", ancho: 12 }, { titulo: "ID GHL", ancho: 26 },
+    ], vista.map(function (c) {
+      return [c.nombre, c.telefono, c.email, c.localidad, c.visitas, CI.xlFecha(fechaISO(c.primera_visita)), CI.xlFecha(fechaISO(c.ultima_visita)),
+        c._vend, c.calendario, c.presupuestos || 0, CI.xlFecha(c.ultimo_presupuesto),
+        c.total_ultimo_presupuesto === null ? null : Number(c.total_ultimo_presupuesto), c.oportunidades || 0, c._opp,
+        c.cliente_ns_id ? CI.xlLink(c.cliente_entity_id, CI.URL_CLIENTE_NS + c.cliente_ns_id) : null,
+        CI.xlLink(c.contact_id, CI.URL_CONTACTO_GHL + c.contact_id)];
+    }));
+    var filas = [];
+    vista.forEach(function (c) {
+      ((c.detalle || {}).visitas || []).forEach(function (v) {
+        filas.push([c.nombre, CI.xlFecha(fechaISO(v.inicio)), ESTADOS_CITA[v.estado] || v.estado, v.vendedor, v.calendario, v.titulo,
+          CI.xlLink(c.contact_id, CI.URL_CONTACTO_GHL + c.contact_id)]);
+      });
+    });
+    CI.xlHoja(wb, "Visitas", "Visitas de los contactos", num(filas.length) + " visitas", [
+      { titulo: "Contacto", ancho: 32 }, { titulo: "Fecha", ancho: 11, fmt: "dd/mm/yyyy" }, { titulo: "Estado", ancho: 12 },
+      { titulo: "Vendedor", ancho: 22 }, { titulo: "Calendario", ancho: 22 }, { titulo: "Título", ancho: 36 }, { titulo: "ID GHL", ancho: 26 },
+    ], filas);
+    await CI.descargarLibro(wb, "Visitados_sin_compra_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+  }
+
+  function setEstado(texto, tipo) {
+    var el = $("upd-estado");
+    el.textContent = texto || "";
+    el.className = "upd-estado" + (tipo ? " upd-estado--" + tipo : "");
+  }
+
+  function eventos() {
+    $("buscar").addEventListener("input", function () { clearTimeout(eventos.t); eventos.t = setTimeout(cambio, 200); });
+    $("limpiar").addEventListener("click", function () { Object.keys(F).forEach(function (k) { F[k].limpiar(); }); $("buscar").value = ""; cambio(); });
+    $("mas").addEventListener("click", function () { mostrados += PAGINA; pintarTabla(); });
+    $("xls").addEventListener("click", function () { CI.exportar($("xls"), excel, setEstado); });
+    $("tabla").addEventListener("click", function (e) {
+      var th = e.target.closest("th[data-col]");
+      if (th) {
+        var id = th.getAttribute("data-col");
+        if (id === "flecha") return;
+        orden.asc = orden.col === id ? !orden.asc : true;
+        orden.col = id;
+        pintarTabla();
+        return;
+      }
+      if (e.target.closest("a")) return;
+      var tr = e.target.closest("tr.fila-cliente");
+      if (!tr) return;
+      var cid = tr.getAttribute("data-id");
+      if (abiertos.has(cid)) abiertos.delete(cid); else abiertos.add(cid);
+      pintarTabla();
+    });
+    [["b-vendedor", "vend"], ["b-oportunidad", "opp"], ["b-recencia", "rec"]].forEach(function (p) {
+      $(p[0]).addEventListener("click", function (e) {
+        var b = e.target.closest(".barra--clic");
+        if (b) F[p[1]].solo(b.getAttribute("data-valor"));
+      });
+    });
+  }
+
+  async function iniciar() {
+    var p = await CI.permisos(SECCION);
+    if (!p.sesion) { CI.sinAcceso("Iniciá sesión en la web interna para ver este informe."); return; }
+    if (!p.ver) { CI.sinAcceso("No tenés permiso para ver la Segmentación de Clientes. Pedile a un administrador que te lo habilite."); return; }
+    $("nota-dias").textContent = DIAS_PREVIOS;
+    eventos();
+    try {
+      await cargarDatos();
+      if (!DATOS.length) setEstado(cobertura && cobertura.desde ? "No hay contactos visitados sin compra en el rango cargado." :
+        "Todavía no hay visitas cargadas: se cargan con la actualización del Informe MKT.");
+    } catch (e) {
+      setEstado("No se pudieron leer los datos: " + e.message, "error");
+    }
+    $("cargando").hidden = true;
+    $("main").classList.remove("main--cargando");
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+</script>
+</body>
+</html>
