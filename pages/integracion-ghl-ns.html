@@ -311,13 +311,13 @@
          (corrida programada de lunes a viernes 16 hs + botón Actualizar):
            1. Contactos de GHL → clientes potenciales de NetSuite
            2. Oportunidades de NetSuite → oportunidades de GHL
-         Opcional: el control 2 también se puede correr subiendo los
-         exports de NetSuite y GHL (no se guardan, se procesan acá).
+           3. Oportunidades de NetSuite con error de sincronización
+         (El modo "Subir exports" se quitó el 12/11/2026.)
          Lógica en js/integracion-ghl-ns-auditoria.js.
          ══════════════════════════════════════════════════════════ -->
     <div id="ig-tab-auditoria" role="tabpanel" aria-labelledby="ig-tabbtn-auditoria">
 
-      <!-- Período, vendedor y fuente -->
+      <!-- Período y vendedor -->
       <section class="admin-section" aria-labelledby="au-periodo-title">
         <div class="admin-section__header">
           <h2 id="au-periodo-title" class="admin-section__title">Período de la auditoría</h2>
@@ -327,33 +327,10 @@
         <form id="au-filtros" class="ig-toolbar" autocomplete="off">
           <span id="au-periodo" class="au-periodo"></span>
           <select id="au-vendedor" class="admin-select" aria-label="Vendedor"></select>
-          <div class="au-fuente" role="radiogroup" aria-label="Fuente de los datos">
-            <label><input type="radio" name="au-fuente" value="base" checked> Base (automática)</label>
-            <label><input type="radio" name="au-fuente" value="archivos"> Subir exports</label>
-          </div>
           <button type="submit" id="au-aplicar" class="btn btn--primary"><i class="ti ti-refresh"></i> Auditar</button>
         </form>
 
         <p id="au-cobertura" class="au-nota"></p>
-
-        <!-- Modo archivos: sólo control 2 (como el HTML de cruce) -->
-        <div id="au-archivos" class="au-archivos" hidden>
-          <p class="au-nota">Subí el export de oportunidades de NetSuite (columna <b>ID interno</b>) y el de oportunidades de GHL (columna <b>NetSuite Opportunity ID</b>). Se procesan en el navegador y no se guardan. Con archivos sólo se corre el control 2.</p>
-          <div class="au-archivos__grid">
-            <label class="au-drop" id="au-drop-ns">
-              <i class="ti ti-file-spreadsheet"></i>
-              <span class="au-drop__titulo">Export de NetSuite (Excel o CSV)</span>
-              <span class="au-drop__archivo" id="au-fn-ns">Elegir archivo…</span>
-              <input type="file" id="au-file-ns" accept=".xlsx,.xls,.csv">
-            </label>
-            <label class="au-drop" id="au-drop-ghl">
-              <i class="ti ti-file-spreadsheet"></i>
-              <span class="au-drop__titulo">Export de GHL (CSV o Excel)</span>
-              <span class="au-drop__archivo" id="au-fn-ghl">Elegir archivo…</span>
-              <input type="file" id="au-file-ghl" accept=".csv,.xlsx,.xls">
-            </label>
-          </div>
-        </div>
 
         <p id="au-status" class="au-status" role="status" aria-live="polite" hidden></p>
       </section>
@@ -382,14 +359,15 @@
           <div class="admin-section__header ig-section-header">
             <div>
               <h2 id="au-c1-title" class="admin-section__title">1 · Contactos de GHL → clientes potenciales de NetSuite</h2>
-              <p class="admin-section__subtitle">Cada contacto de GHL <b>con al menos una oportunidad</b> debería tener un cliente en NetSuite con su ID en el campo <code>ID CLIENTE CRM</code>. Los contactos sin oportunidad no se auditan.</p>
+              <p class="admin-section__subtitle">A revisar: contactos con una oportunidad de GHL que <b>ya tiene NetSuite Opportunity ID</b> y sin cliente en NetSuite con su ID en <code>ID CLIENTE CRM</code>. El resto de los contactos sin cliente es información.</p>
             </div>
             <button type="button" class="btn btn--secondary" data-excel="c1"><i class="ti ti-download"></i> Excel</button>
           </div>
           <div class="ig-toolbar">
             <input type="search" id="au-c1-q" class="admin-input ig-toolbar__search" placeholder="Buscar por nombre, email, teléfono o ID">
             <select id="au-c1-estado" class="admin-select" aria-label="Estado">
-              <option value="falta">Faltan en NetSuite</option>
+              <option value="critico">Con NetSuite Opportunity ID, sin cliente en NS</option>
+              <option value="falta">Sin cliente en NS (información)</option>
               <option value="sin_verificar">Sin verificar</option>
               <option value="ok">Con cliente en NetSuite</option>
               <option value="">Todos</option>
@@ -425,15 +403,25 @@
           <div id="au-c2-pager" class="ig-pager"></div>
         </section>
 
-        <!-- Extra: GHL con ID NS que no está en el export (sólo modo archivos) -->
-        <section class="admin-section" id="au-c2b" aria-labelledby="au-c2b-title" hidden>
+        <!-- Control 3: errores de sincronización en NetSuite -->
+        <section class="admin-section" id="au-c4" aria-labelledby="au-c4-title">
           <div class="admin-section__header ig-section-header">
             <div>
-              <h2 id="au-c2b-title" class="admin-section__title">Oportunidades de GHL con un ID de NetSuite que no está en el export de NetSuite</h2>
+              <h2 id="au-c4-title" class="admin-section__title">3 · Oportunidades de NetSuite con error de sincronización</h2>
+              <p class="admin-section__subtitle">Último envío a GHL con <b>ERROR</b> o <b>NO ENVIADO</b> en <code>custbody_ghl_last_sync_msg_op</code>. Al reenviarse bien, sale de la lista en la próxima actualización.</p>
             </div>
-            <button type="button" class="btn btn--secondary" data-excel="c2b"><i class="ti ti-download"></i> Excel</button>
+            <button type="button" class="btn btn--secondary" data-excel="c4"><i class="ti ti-download"></i> Excel</button>
           </div>
-          <div id="au-c2b-tabla" class="admin-table-wrap"></div>
+          <div class="ig-toolbar">
+            <input type="search" id="au-c4-q" class="admin-input ig-toolbar__search" placeholder="Buscar por oportunidad, cliente, ID o mensaje">
+            <select id="au-c4-tipo" class="admin-select" aria-label="Tipo">
+              <option value="">Errores y no enviadas</option>
+              <option value="error">Sólo errores</option>
+              <option value="no_enviado">Sólo no enviadas</option>
+            </select>
+          </div>
+          <div id="au-c4-tabla" class="admin-table-wrap"></div>
+          <div id="au-c4-pager" class="ig-pager"></div>
         </section>
 
         <!-- Extra: clientes NS sin ID de GHL -->

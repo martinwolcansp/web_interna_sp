@@ -2,23 +2,26 @@
    integracion-ghl-ns-auditoria.js — Pestaña "Auditoría" de la sección
    Integración NetSuite ↔ GHL (migración 23).
 
-   Monitoreo por vendedor de cómo va la integración. Dos controles:
+   Monitoreo por vendedor de cómo va la integración:
      1. Contactos de GHL → clientes potenciales de NetSuite: cada contacto
-        de GHL tiene que estar en un cliente de NetSuite con su ID en
-        custentity_ghl_contact_id ("ID CLIENTE CRM").
+        de GHL con oportunidad tiene que estar en un cliente de NetSuite con
+        su ID en custentity_ghl_contact_id ("ID CLIENTE CRM"). Lo crítico
+        son los contactos cuya oportunidad de GHL ya tiene "NetSuite
+        Opportunity ID" y no tienen cliente en NetSuite; el resto de los
+        contactos sin cliente se muestra como información (12/11/2026).
      2. Oportunidades de NetSuite → GHL: cada oportunidad de NetSuite tiene
         que tener su oportunidad en GHL con el custom field "NetSuite
         Opportunity ID".
+     3. Oportunidades de NetSuite con error de sincronización: las que
+        tienen "ERROR | ..." o "NO ENVIADO | ..." en
+        custbody_ghl_last_sync_msg_op (columna "Mensaje sync GHL").
    Además: clientes de NetSuite creados en el período sin ID de GHL.
 
-   Fuente "Base": las tablas informe_mkt_* que carga el servicio
-   informe-mkt-api en cada actualización del Informe MKT (corrida
-   programada de lunes a viernes 16 hs, o botón "Actualizar"). No llama a
-   NetSuite ni a GHL: los datos están al día de la última actualización.
-
-   Fuente "Subir exports": sólo el control 2, con los mismos exports que
-   usaba el HTML "Cruce de Oportunidades — NetSuite vs GHL". Se procesan en
-   el navegador y no se guardan.
+   Fuente: las tablas informe_mkt_* que carga el servicio informe-mkt-api
+   en cada actualización del Informe MKT (corrida programada de lunes a
+   viernes 16 hs, o botón "Actualizar"). No llama a NetSuite ni a GHL: los
+   datos están al día de la última actualización. (El modo "Subir exports"
+   se quitó el 12/11/2026.)
 
    Usa los helpers de integracion-ghl-ns.js (escapeHtml, fmtFecha,
    fmtFechaHora, fmtMonto, fmtNumero, desdeIso, hastaIso, nombreEtapa,
@@ -35,16 +38,17 @@ const AU_GHL_URL = 'https://app.gohighlevel.com/v2/location/goympjLjeLIBzCFxsbFM
 // la variable CUSTOM_FIELD_NETSUITE_OPPORTUNITY_ID de los servicios). Si
 // queda vacío, se detecta solo: es el campo cuyo valor coincide con más IDs
 // internos de NetSuite.
-const AU_CF_NS_OPP_ID = '';
+const AU_CF_NS_OPP_ID = 'tUshSe9uBgbbWpBxf1wG';
 
 const AU_SUBSIDIARIA = 'S.P. SEGURIDAD PRIVADA S.A.';
 // Filas por página de cada listado.
-const AU_PAGE_SIZE = { c1: 25, c2: 50 };
+const AU_PAGE_SIZE = { c1: 25, c2: 50, c4: 25 };
 // Servicio del Informe MKT: el botón Auditar le pide la actualización del mes
 // en curso (POST /auditoria/actualizar, migración 24). Permiso propio:
 // 'editar' en integracion-ghl-ns; el servicio corre con el usuario técnico.
 const AU_INFORME_API_URL = 'https://informe-mkt-api.200.5.196.50.sslip.io';
 const AU_POLL_MS = 5000;
+// Librería para la descarga a Excel de los listados.
 const AU_XLSX_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
 
 // Mismo alias que NETSUITE_VENDEDOR_ALIAS de resumen_ejecutivo.py, para que
@@ -61,9 +65,8 @@ const au = {
   pollTimer: null,
   cargado: false,
   cargando: false,
-  datos: null,          // { fuente, c1, c2, c2b, c3, info }
-  archivos: { ns: null, ghl: null, nsNombre: '', ghlNombre: '' },
-  pag: { c1: 0, c2: 0 },
+  datos: null,          // { c1, c2, c3, c4, info }
+  pag: { c1: 0, c2: 0, c4: 0 },
 };
 
 /* ── Pestañas ────────────────────────────────────────────────────────── */
@@ -126,35 +129,17 @@ function auInicializar() {
   auLlenarVendedores([]);
 
   document.getElementById('au-filtros').addEventListener('submit', (ev) => { ev.preventDefault(); auBotonAuditar(); });
-  document.querySelectorAll('input[name="au-fuente"]').forEach((r) => r.addEventListener('change', auCambioFuente));
-
-  ['ns', 'ghl'].forEach((tipo) => {
-    document.getElementById(`au-file-${tipo}`).addEventListener('change', (ev) => {
-      const f = ev.target.files && ev.target.files[0];
-      if (f) auLeerArchivo(tipo, f);
-    });
-  });
 
   const rerender = (cual) => () => { au.pag[cual] = 0; auRender(); };
-  document.getElementById('au-vendedor').addEventListener('change', () => { au.pag.c1 = 0; au.pag.c2 = 0; auRender(); });
+  document.getElementById('au-vendedor').addEventListener('change', () => { au.pag = { c1: 0, c2: 0, c4: 0 }; auRender(); });
   ['au-c1-estado'].forEach((id) => document.getElementById(id).addEventListener('change', rerender('c1')));
   ['au-c2-estado', 'au-c2-aprobada'].forEach((id) => document.getElementById(id).addEventListener('change', rerender('c2')));
   document.getElementById('au-c1-q').addEventListener('input', debounce(rerender('c1'), 250));
   document.getElementById('au-c2-q').addEventListener('input', debounce(rerender('c2'), 250));
+  document.getElementById('au-c4-tipo').addEventListener('change', rerender('c4'));
+  document.getElementById('au-c4-q').addEventListener('input', debounce(rerender('c4'), 250));
 
   document.querySelectorAll('[data-excel]').forEach((b) => b.addEventListener('click', () => auExportar(b.dataset.excel)));
-}
-
-function auFuente() {
-  const r = document.querySelector('input[name="au-fuente"]:checked');
-  return r ? r.value : 'base';
-}
-
-function auCambioFuente() {
-  const archivos = auFuente() === 'archivos';
-  document.getElementById('au-archivos').hidden = !archivos;
-  document.getElementById('au-periodo').hidden = archivos;
-  if (!au.actualizando) auEtiquetaBoton();
 }
 
 function auLlenarVendedores(nombres) {
@@ -299,15 +284,11 @@ async function auditar() {
   btn.disabled = true;
   auStatus('Procesando…', 'progreso');
   try {
-    if (auFuente() === 'archivos') {
-      au.datos = await auProcesarArchivos();
-    } else {
-      auPintarPeriodo();
-      const { desde, hasta } = auPeriodo();
-      au.datos = await auCargarBase(desde, hasta);
-    }
+    auPintarPeriodo();
+    const { desde, hasta } = auPeriodo();
+    au.datos = await auCargarBase(desde, hasta);
     au.cargado = true;
-    au.pag = { c1: 0, c2: 0 };
+    au.pag = { c1: 0, c2: 0, c4: 0 };
     auLlenarVendedores([
       ...au.datos.c1.map((r) => r.vendedor),
       ...au.datos.c2.map((r) => r.vendedor),
@@ -316,7 +297,7 @@ async function auditar() {
     auRender();
   } catch (err) {
     console.error('[integracion-ghl-ns-auditoria.js] error en la auditoría', err);
-    auStatus(err && err.auUsuario ? err.message : auMensajeError(err), true);
+    auStatus(auMensajeError(err), true);
   } finally {
     au.cargando = false;
     btn.disabled = au.actualizando;
@@ -343,7 +324,7 @@ async function auVerificarPermisoActualizar() {
 }
 
 function auBotonAuditar() {
-  if (auFuente() === 'archivos' || !au.puedeActualizar) { auditar(); return; }
+  if (!au.puedeActualizar) { auditar(); return; }
   auActualizarMes();
 }
 
@@ -358,9 +339,7 @@ function auBloquear(bloqueado) {
 }
 
 function auEtiquetaBoton() {
-  document.getElementById('au-aplicar').innerHTML = auFuente() === 'archivos'
-    ? '<i class="ti ti-player-play"></i> Procesar archivos'
-    : '<i class="ti ti-refresh"></i> Auditar';
+  document.getElementById('au-aplicar').innerHTML = '<i class="ti ti-refresh"></i> Auditar';
 }
 
 async function auActualizarMes() {
@@ -467,13 +446,25 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
   const conVisita = new Set(citas.map((c) => c.contact_id));
   const oppsPorContacto = auAgrupar(ghlOpps, (o) => o.contact_id || (o.crudo && o.crudo.contactId));
 
+  // Campo de GHL con el ID de NetSuite (lo usan los controles 1 y 2).
+  const nsIds = new Set(nsOpps.map((o) => String(o.id_interno)));
+  const campo = auDetectarCampo(ghlOpps.map((o) => o.crudo || {}), nsIds);
+
   // 1. Contactos de GHL → clientes de NetSuite
   // Sólo los contactos con al menos una oportunidad en GHL tienen que estar
   // en NetSuite; el resto (leads sin oportunidad) no se audita.
+  // Estados: ok (tiene cliente), critico (sin cliente y alguna oportunidad de
+  // GHL ya tiene NetSuite Opportunity ID: la oportunidad está en NetSuite pero
+  // el contacto no quedó vinculado), falta (sin cliente, información) y
+  // sin_verificar.
   const conOportunidad = contactos.filter((c) => (oppsPorContacto.get(c.id) || []).length);
   const c1 = conOportunidad.map((c) => {
     const k = c.crudo || {};
     const encontrados = (clientesPorCrm.get(c.id) || []).map((x) => auClienteNs(x));
+    const oportunidades = (oppsPorContacto.get(c.id) || []).map((o) => ({ ...auOppGhl(o), nsOppId: auNsOppIdGhl(o, campo) }));
+    const conIdNs = oportunidades.some((o) => o.nsOppId);
+    let estado = 'ok';
+    if (!encontrados.length) estado = !c.ns_verificado_en ? 'sin_verificar' : (conIdNs ? 'critico' : 'falta');
     return {
       ghlId: c.id,
       nombre: auNombreGhl(k),
@@ -483,25 +474,19 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
       alta: c.date_added,
       origen: k.source || '',
       visita: conVisita.has(c.id),
-      oportunidades: (oppsPorContacto.get(c.id) || []).map(auOppGhl),
+      oportunidades,
+      conIdNs,
       clientes: encontrados,
       verificado: c.ns_verificado_en,
-      estado: encontrados.length ? 'ok' : (c.ns_verificado_en ? 'falta' : 'sin_verificar'),
+      estado,
     };
   });
 
   // 2. Oportunidades de NetSuite → GHL
-  const nsIds = new Set(nsOpps.map((o) => String(o.id_interno)));
-  const campo = auDetectarCampo(ghlOpps.map((o) => o.crudo || {}), nsIds);
   const oppPorNsId = new Map();
   ghlOpps.forEach((o) => {
-    const cfs = (o.crudo && o.crudo.customFields) || [];
-    cfs.forEach((cf) => {
-      if (campo.id && cf.id === campo.id) {
-        const v = auNormId(auValorCf(cf));
-        if (v) oppPorNsId.set(v, o);
-      }
-    });
+    const v = auNsOppIdGhl(o, campo);
+    if (v) oppPorNsId.set(v, o);
   });
 
   const c2 = nsOpps.map((r) => {
@@ -541,11 +526,19 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
       ghl,
       delContacto,
       diag,
+      sync: auParsearSync(f['Mensaje sync GHL']),
       estado: ghl ? 'ok' : 'falta',
     };
   });
 
-  // 3. Clientes de NetSuite sin ID de GHL: los creados en el período y los
+  // 3. Oportunidades de NetSuite con error de sincronización con GHL.
+  // "Mensaje sync GHL" sólo existe en las filas cargadas por la versión del
+  // servicio del 12/11/2026 en adelante: si no está, el control queda vacío
+  // con un aviso.
+  const syncDisponible = nsOpps.some((o) => o.fila && Object.prototype.hasOwnProperty.call(o.fila, 'Mensaje sync GHL'));
+  const c4 = c2.filter((r) => r.sync && (r.sync.tipo === 'error' || r.sync.tipo === 'no_enviado'));
+
+  // Extra: Clientes de NetSuite sin ID de GHL: los creados en el período y los
   // de oportunidades del período (aunque el cliente sea anterior), para que
   // todo aviso "sin ID de GHL" del control 2 tenga su cliente acá. Se unen
   // por código de cliente (entityid), que está en las dos fuentes.
@@ -572,9 +565,8 @@ function auCruzarBase({ desde, hasta, contactos, nsOpps, nsClientesRango, nsClie
   const ultimo = dias.reduce((m, d) => (!m || d.cargado_hasta > m ? d.cargado_hasta : m), null);
 
   return {
-    fuente: 'base',
-    c1, c2, c2b: [], c3,
-    info: { desde, hasta, totalDias, diasCargados: dias.length, ultimo, campo, c1SinOportunidad: contactos.length - conOportunidad.length },
+    c1, c2, c3, c4,
+    info: { desde, hasta, totalDias, diasCargados: dias.length, ultimo, campo, syncDisponible, c1SinOportunidad: contactos.length - conOportunidad.length },
   };
 }
 
@@ -616,7 +608,34 @@ function auDetectarCampo(opps, nsIds) {
   return { id, detectado: true, coincidencias: n };
 }
 
-/* ── Modo archivos (control 2 con exports) ───────────────────────────── */
+// Valor del "NetSuite Opportunity ID" de una oportunidad de GHL ('' si no tiene).
+function auNsOppIdGhl(o, campo) {
+  if (!campo || !campo.id) return '';
+  const cf = ((o.crudo && o.crudo.customFields) || []).find((x) => x.id === campo.id);
+  return cf ? auNormId(auValorCf(cf)) : '';
+}
+
+// custbody_ghl_last_sync_msg_op, que escribe UE_NS_Create_GHL_Opportunity:
+//   "OK | <acción> | dd/mm/aaaa hh:mm"
+//   "ERROR | <detalle> | dd/mm/aaaa hh:mm"
+//   "NO ENVIADO | <motivo> | dd/mm/aaaa hh:mm | MANUAL"
+function auParsearSync(msg) {
+  const texto = auTexto(msg);
+  if (!texto) return null;
+  const partes = texto.split(/\s+\|\s+/);
+  const cab = partes[0].trim().toUpperCase();
+  let tipo = 'otro';
+  if (cab.startsWith('ERROR')) tipo = 'error';
+  else if (cab.startsWith('NO ENVIADO')) tipo = 'no_enviado';
+  else if (cab.startsWith('OK')) tipo = 'ok';
+  const manual = partes.length > 2 && partes[partes.length - 1].trim().toUpperCase() === 'MANUAL';
+  if (manual) partes.pop();
+  const fecha = partes.length > 2 && /^\d{1,2}\/\d{1,2}\/\d{4}/.test(partes[partes.length - 1].trim()) ? partes.pop().trim() : '';
+  const mensaje = partes.slice(1).join(' | ').trim() || texto;
+  return { tipo, mensaje, fecha, manual, texto };
+}
+
+/* ── Excel ───────────────────────────────────────────────────────────── */
 
 function auCargarXlsx() {
   if (window.XLSX) return Promise.resolve(window.XLSX);
@@ -632,146 +651,6 @@ function auCargarXlsx() {
   return window.__xlsxCarga;
 }
 
-function auNormHeader(h) {
-  return String(h).trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-}
-
-function auClave(fila, candidatos) {
-  const claves = Object.keys(fila || {});
-  for (const cand of candidatos) {
-    const n = auNormHeader(cand);
-    const k = claves.find((x) => auNormHeader(x) === n);
-    if (k) return k;
-  }
-  return null;
-}
-
-async function auLeerArchivo(tipo, archivo) {
-  const el = document.getElementById(`au-fn-${tipo}`);
-  try {
-    const XLSX = await auCargarXlsx();
-    const ext = archivo.name.split('.').pop().toLowerCase();
-    const wb = (ext === 'csv' || ext === 'txt')
-      ? XLSX.read(await archivo.text(), { type: 'string', raw: true })
-      : XLSX.read(await archivo.arrayBuffer(), { type: 'array' });
-    const filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: true });
-    // Si el archivo es del otro sistema, se acomoda solo (como el HTML de cruce).
-    let destino = tipo;
-    if (filas.length && auClave(filas[0], ['NetSuite Opportunity ID', 'ID de oportunidad'])) destino = 'ghl';
-    else if (filas.length && auClave(filas[0], ['ID interno'])) destino = 'ns';
-    au.archivos[destino] = filas;
-    au.archivos[`${destino}Nombre`] = archivo.name;
-    document.getElementById(`au-fn-${destino}`).textContent = `${archivo.name} · ${fmtNumero(filas.length)} filas`;
-    if (destino !== tipo) el.textContent = 'Elegir archivo…';
-    auStatus('');
-  } catch (err) {
-    el.textContent = 'Elegir archivo…';
-    auStatus(`No se pudo leer "${archivo.name}": ${err.message}`, true);
-  }
-}
-
-function auErrorUsuario(msg) {
-  const e = new Error(msg);
-  e.auUsuario = true;
-  return e;
-}
-
-async function auProcesarArchivos() {
-  const { ns, ghl } = au.archivos;
-  if (!ns || !ghl) throw auErrorUsuario('Subí los dos exports (NetSuite y GHL).');
-  if (!ns.length || !ghl.length) throw auErrorUsuario('Alguno de los archivos no tiene filas.');
-  return auCruzarArchivos(ns, ghl);
-}
-
-// Cruce con exports. Función pura (sin DOM).
-function auCruzarArchivos(ns, ghl) {
-  const kg = {
-    nsid: auClave(ghl[0], ['NetSuite Opportunity ID']),
-    nombre: auClave(ghl[0], ['Nombre de la oportunidad']),
-    contacto: auClave(ghl[0], ['Nombre del contacto']),
-    contactId: auClave(ghl[0], ['ID de contacto', 'ID del contacto', 'Contact ID']),
-    id: auClave(ghl[0], ['ID de oportunidad', 'Opportunity ID']),
-    asignado: auClave(ghl[0], ['asignado', 'Asignado a']),
-    fase: auClave(ghl[0], ['fase', 'Etapa']),
-    estado: auClave(ghl[0], ['estado', 'Status']),
-    creado: auClave(ghl[0], ['Creado el']),
-    valor: auClave(ghl[0], ['Valor del cliente potencial', 'Valor']),
-  };
-  const kn = {
-    id: auClave(ns[0], ['ID interno']),
-    aprobada: auClave(ns[0], ['Aprobada']),
-    rep: auClave(ns[0], ['Representante de ventas']),
-    numero: auClave(ns[0], ['Número de documento', 'Oportunidad']),
-    cliente: auClave(ns[0], ['Nombre de la empresa', 'Cliente']),
-    codigo: auClave(ns[0], ['ID']),
-    crm: auClave(ns[0], ['ID CLIENTE CRM']),
-    fecha: auClave(ns[0], ['Fecha', 'Fecha Oportunidad']),
-    estado: auClave(ns[0], ['Estado', 'Estado Oportunidad', 'Estado de la oportunidad']),
-    unidad: auClave(ns[0], ['Unidad de Negocio', 'Clase']),
-  };
-  if (!kg.nsid) throw auErrorUsuario('No encontré la columna "NetSuite Opportunity ID" en el export de GHL.');
-  if (!kn.id) throw auErrorUsuario('No encontré la columna "ID interno" en el export de NetSuite.');
-
-  const oppGhl = (r) => ({
-    id: kg.id ? r[kg.id] : '',
-    nombre: kg.nombre ? r[kg.nombre] : '',
-    etapa: kg.fase ? r[kg.fase] : '',
-    estado: kg.estado ? r[kg.estado] : '',
-    monto: kg.valor ? r[kg.valor] : null,
-    contactId: kg.contactId ? auTexto(r[kg.contactId]) : '',
-    contacto: kg.contacto ? r[kg.contacto] : '',
-    vendedor: kg.asignado ? auTexto(r[kg.asignado]) : '',
-    creado: kg.creado ? r[kg.creado] : null,
-    nsId: auNormId(r[kg.nsid]),
-  });
-  const ghlOpps = ghl.map(oppGhl);
-  const ghlPorNs = new Map(ghlOpps.filter((o) => o.nsId).map((o) => [o.nsId, o]));
-  const ghlPorContacto = auAgrupar(ghlOpps, (o) => o.contactId);
-
-  const nsIds = new Set();
-  const c2 = [];
-  ns.forEach((r) => {
-    const id = auNormId(r[kn.id]);
-    if (!id || nsIds.has(id)) return;
-    nsIds.add(id);
-    const crm = kn.crm ? auTexto(r[kn.crm]) : '';
-    const ghlOpp = ghlPorNs.get(id) || null;
-    const delContacto = crm ? (ghlPorContacto.get(crm) || []) : [];
-    let diag = '';
-    if (!ghlOpp) {
-      if (kn.crm && !crm) diag = 'El cliente de NetSuite no tiene ID de GHL (ID CLIENTE CRM vacío).';
-      else if (delContacto.length) diag = `El contacto tiene ${delContacto.length} oportunidad${delContacto.length === 1 ? '' : 'es'} en el export de GHL, ninguna con este ID de NetSuite.`;
-      else diag = 'No está en el export de GHL.';
-    }
-    const apr = kn.aprobada ? String(r[kn.aprobada]).trim().toLowerCase() : '';
-    c2.push({
-      nsId: id,
-      numero: kn.numero ? r[kn.numero] : '',
-      fecha: kn.fecha ? r[kn.fecha] : null,
-      cliente: kn.cliente ? r[kn.cliente] : '',
-      codCliente: kn.codigo ? r[kn.codigo] : '',
-      vendedor: auVendedorNs(kn.rep ? r[kn.rep] : ''),
-      estadoNs: kn.estado ? r[kn.estado] : '',
-      aprobada: kn.aprobada ? ['1', 'true', 'si', 'sí'].includes(apr) : null,
-      unidad: kn.unidad ? r[kn.unidad] : '',
-      tipoProyecto: '',
-      crm,
-      ghl: ghlOpp,
-      delContacto,
-      diag,
-      estado: ghlOpp ? 'ok' : 'falta',
-    });
-  });
-
-  const c2b = ghlOpps.filter((o) => o.nsId && !nsIds.has(o.nsId));
-
-  return {
-    fuente: 'archivos',
-    c1: [], c2, c2b, c3: [],
-    info: { nsNombre: au.archivos.nsNombre, ghlNombre: au.archivos.ghlNombre, sinIdGhl: ghlOpps.filter((o) => !o.nsId).length },
-  };
-}
-
 /* ── Render ──────────────────────────────────────────────────────────── */
 
 function auFiltrosVista() {
@@ -782,6 +661,8 @@ function auFiltrosVista() {
     c2q: document.getElementById('au-c2-q').value.trim().toLowerCase(),
     c2estado: document.getElementById('au-c2-estado').value,
     c2aprobada: document.getElementById('au-c2-aprobada').value,
+    c4q: document.getElementById('au-c4-q').value.trim().toLowerCase(),
+    c4tipo: document.getElementById('au-c4-tipo').value,
   };
 }
 
@@ -811,32 +692,36 @@ function auFiltrarC2(filas, f, conEstado = true) {
   });
 }
 
+function auFiltrarC4(filas, f, conTipo = true) {
+  return filas.filter((r) => {
+    if (f.vendedor && r.vendedor !== f.vendedor) return false;
+    if (conTipo && f.c4tipo && r.sync.tipo !== f.c4tipo) return false;
+    if (f.c4q) {
+      const texto = [r.numero, r.nsId, r.cliente, r.codCliente, r.sync.texto].join(' ').toLowerCase();
+      if (!texto.includes(f.c4q)) return false;
+    }
+    return true;
+  });
+}
+
 function auRender() {
   const d = au.datos;
   if (!d) return;
   document.getElementById('au-resultados').hidden = false;
-  const base = d.fuente === 'base';
-  document.getElementById('au-c1').hidden = !base;
-  document.getElementById('au-c3').hidden = !base;
-  document.getElementById('au-c2b').hidden = base;
 
   const f = auFiltrosVista();
   auRenderCobertura(d);
   auRenderKpis(d, f);
   auRenderVendedores(d, f);
-  if (base) auRenderC1(d, f);
+  auRenderC1(d, f);
   auRenderC2(d, f);
-  if (base) auRenderC3(d, f);
-  else auRenderC2b(d, f);
+  auRenderC4(d, f);
+  auRenderC3(d, f);
   auRenderPie(d);
 }
 
 function auRenderCobertura(d) {
   const el = document.getElementById('au-cobertura');
-  if (d.fuente !== 'base') {
-    el.innerHTML = `Export de NetSuite: <b>${escapeHtml(d.info.nsNombre)}</b> · Export de GHL: <b>${escapeHtml(d.info.ghlNombre)}</b>. Sin filtro de fechas: se cruzan los archivos completos.`;
-    return;
-  }
   const { totalDias, diasCargados, ultimo } = d.info;
   const faltan = totalDias - diasCargados;
   const como = au.puedeActualizar
@@ -869,22 +754,26 @@ function auRenderKpis(d, f) {
   const el = document.getElementById('au-kpis');
   const bloques = [];
 
-  if (d.fuente === 'base') {
-    const c1 = auFiltrarC1(d.c1, f, false);
-    const ok = c1.filter((r) => r.estado === 'ok').length;
-    const falta = c1.filter((r) => r.estado === 'falta').length;
-    const sinVer = c1.filter((r) => r.estado === 'sin_verificar').length;
-    bloques.push(`<div class="au-kpi-grupo">
-      <h3 class="au-kpi-grupo__titulo">Contactos de GHL → NetSuite</h3>
-      <div class="au-kpi-grupo__items">
-        ${auKpi(fmtNumero(c1.length), 'contactos de GHL con oportunidad', 'neutro')}
-        ${auKpi(`${fmtNumero(ok)} <small>${auPorcentaje(ok, c1.length)}</small>`, 'con cliente en NetSuite', 'ok', 'c1:ok')}
-        ${auKpi(fmtNumero(falta), 'faltan en NetSuite', 'err', 'c1:falta')}
-        ${sinVer ? auKpi(fmtNumero(sinVer), 'sin verificar', 'rev', 'c1:sin_verificar') : ''}
-      </div>
-      ${auBarra([{ n: ok, mod: 'ok', label: 'Con cliente' }, { n: falta, mod: 'err', label: 'Faltan' }, { n: sinVer, mod: 'rev', label: 'Sin verificar' }])}
-    </div>`);
-  }
+  // Control 1: lo crítico son los contactos con NetSuite Opportunity ID en
+  // alguna oportunidad de GHL y sin cliente en NetSuite.
+  const c1 = auFiltrarC1(d.c1, f, false);
+  const ok = c1.filter((r) => r.estado === 'ok').length;
+  const critico = c1.filter((r) => r.estado === 'critico').length;
+  const falta = c1.filter((r) => r.estado === 'falta').length;
+  const sinVer = c1.filter((r) => r.estado === 'sin_verificar').length;
+  bloques.push(`<div class="au-kpi-grupo">
+    <h3 class="au-kpi-grupo__titulo">Contactos de GHL → NetSuite</h3>
+    <div class="au-kpi-grupo__items">
+      ${auKpi(fmtNumero(c1.length), 'contactos de GHL con oportunidad', 'neutro')}
+      ${auKpi(`${fmtNumero(ok)} <small>${auPorcentaje(ok, c1.length)}</small>`, 'con cliente en NetSuite', 'ok', 'c1:ok')}
+      ${auKpi(fmtNumero(critico), 'con NetSuite Opportunity ID y sin cliente en NetSuite', critico ? 'err' : 'ok', 'c1:critico')}
+    </div>
+    <div class="au-kpi-grupo__info">
+      ${auKpi(fmtNumero(falta), 'sin cliente en NetSuite, sin oportunidad en NetSuite (información)', 'rev', 'c1:falta')}
+      ${sinVer ? auKpi(fmtNumero(sinVer), 'sin verificar', 'rev', 'c1:sin_verificar') : ''}
+    </div>
+    ${auBarra([{ n: ok, mod: 'ok', label: 'Con cliente' }, { n: critico, mod: 'err', label: 'Con ID de NetSuite, sin cliente' }, { n: falta + sinVer, mod: 'rev', label: 'Sin cliente (información) / sin verificar' }])}
+  </div>`);
 
   const c2 = auFiltrarC2(d.c2, f, false);
   const ok2 = c2.filter((r) => r.estado === 'ok').length;
@@ -895,33 +784,43 @@ function auRenderKpis(d, f) {
       ${auKpi(fmtNumero(c2.length), 'oportunidades de NetSuite', 'neutro')}
       ${auKpi(`${fmtNumero(ok2)} <small>${auPorcentaje(ok2, c2.length)}</small>`, 'vinculadas en GHL', 'ok', 'c2:ok')}
       ${auKpi(fmtNumero(falta2), 'faltan en GHL', 'err', 'c2:falta')}
-      ${d.fuente === 'archivos' ? auKpi(fmtNumero(d.c2b.length), 'en GHL con ID que no está en NetSuite', 'rev', 'c2b') : ''}
     </div>
     ${auBarra([{ n: ok2, mod: 'ok', label: 'Vinculadas' }, { n: falta2, mod: 'err', label: 'Faltan' }])}
   </div>`);
 
-  if (d.fuente === 'base') {
-    const c3 = auFiltrarC3(d.c3, f);
-    const conOpp = c3.filter((c) => c.oportunidades.length).length;
-    bloques.push(`<div class="au-kpi-grupo au-kpi-grupo--chico">
-      <h3 class="au-kpi-grupo__titulo">Clientes NetSuite sin ID de GHL</h3>
-      <div class="au-kpi-grupo__items">
-        ${auKpi(fmtNumero(c3.length), 'clientes a completar', c3.length ? 'err' : 'ok', 'c3')}
-        ${c3.length ? auKpi(fmtNumero(conOpp), 'con oportunidades en el período', 'rev', 'c3') : ''}
-      </div>
-    </div>`);
-  }
+  const c4 = auFiltrarC4(d.c4, f, false);
+  const errores = c4.filter((r) => r.sync.tipo === 'error').length;
+  const noEnviadas = c4.length - errores;
+  bloques.push(`<div class="au-kpi-grupo au-kpi-grupo--chico">
+    <h3 class="au-kpi-grupo__titulo">Errores de sincronización en NetSuite</h3>
+    <div class="au-kpi-grupo__items">
+      ${d.info.syncDisponible
+        ? auKpi(fmtNumero(errores), 'oportunidades con ERROR', errores ? 'err' : 'ok', 'c4:error') +
+          (noEnviadas ? auKpi(fmtNumero(noEnviadas), 'no enviadas (envío manual)', 'rev', 'c4:no_enviado') : '')
+        : auKpi('—', 'todavía sin datos: falta actualizar', 'rev')}
+    </div>
+  </div>`);
+
+  const c3 = auFiltrarC3(d.c3, f);
+  const conOpp = c3.filter((c) => c.oportunidades.length).length;
+  bloques.push(`<div class="au-kpi-grupo au-kpi-grupo--chico">
+    <h3 class="au-kpi-grupo__titulo">Clientes NetSuite sin ID de GHL</h3>
+    <div class="au-kpi-grupo__items">
+      ${auKpi(fmtNumero(c3.length), 'clientes a completar', c3.length ? 'err' : 'ok', 'c3')}
+      ${c3.length ? auKpi(fmtNumero(conOpp), 'con oportunidades en el período', 'rev', 'c3') : ''}
+    </div>
+  </div>`);
 
   el.innerHTML = bloques.join('');
   el.querySelectorAll('[data-ir]').forEach((b) => b.addEventListener('click', () => auIr(b.dataset.ir)));
 }
 
-// Lleva al listado con el estado indicado ("c1:falta", "c2:ok", "c3"...).
+// Lleva al listado con el estado indicado ("c1:critico", "c2:ok", "c4:error", "c3"...).
 function auIr(destino, vendedor) {
   const [ctrl, estado] = destino.split(':');
   if (vendedor !== undefined) document.getElementById('au-vendedor').value = vendedor;
-  if (ctrl === 'c1' || ctrl === 'c2') {
-    document.getElementById(`au-${ctrl}-estado`).value = estado || '';
+  if (ctrl === 'c1' || ctrl === 'c2' || ctrl === 'c4') {
+    document.getElementById(ctrl === 'c4' ? 'au-c4-tipo' : `au-${ctrl}-estado`).value = estado || '';
     au.pag[ctrl] = 0;
   }
   auRender();
@@ -930,10 +829,10 @@ function auIr(destino, vendedor) {
 
 function auRenderVendedores(d, f) {
   const el = document.getElementById('au-vendedores');
-  const base = d.fuente === 'base';
   const fSinVendedor = { ...f, vendedor: '' };
-  const c1 = base ? auFiltrarC1(d.c1, fSinVendedor, false) : [];
+  const c1 = auFiltrarC1(d.c1, fSinVendedor, false);
   const c2 = auFiltrarC2(d.c2, fSinVendedor, false);
+  const c4 = auFiltrarC4(d.c4, fSinVendedor, false);
   const nombres = [...new Set([...c1.map((r) => r.vendedor), ...c2.map((r) => r.vendedor)])]
     .sort((a, b) => a.localeCompare(b, 'es'));
 
@@ -946,20 +845,26 @@ function auRenderVendedores(d, f) {
   const filas = nombres.map((v) => {
     const a = c1.filter((r) => r.vendedor === v);
     const b = c2.filter((r) => r.vendedor === v);
+    const e = c4.filter((r) => r.vendedor === v);
     const aOk = a.filter((r) => r.estado === 'ok').length;
+    const aCritico = a.filter((r) => r.estado === 'critico').length;
     const aFalta = a.filter((r) => r.estado === 'falta').length;
     const aSin = a.filter((r) => r.estado === 'sin_verificar').length;
     const bOk = b.filter((r) => r.estado === 'ok').length;
     const bFalta = b.length - bOk;
+    const eErr = e.filter((r) => r.sync.tipo === 'error').length;
+    const eNoEnv = e.length - eErr;
     const destacada = f.vendedor === v ? ' class="au-fila--activa"' : '';
     return `<tr${destacada}>
       <td><b>${escapeHtml(v)}</b></td>
-      ${base ? `<td class="num">${fmtNumero(a.length)}</td>
-      <td class="num">${link(aFalta, 'c1:falta', v, 'err')}${aSin ? ` <span class="au-sub" title="Sin verificar">+${fmtNumero(aSin)} s/v</span>` : ''}</td>
-      <td class="num">${auPorcentaje(aOk, a.length)}</td>` : ''}
+      <td class="num">${fmtNumero(a.length)}</td>
+      <td class="num">${link(aCritico, 'c1:critico', v, 'err')}</td>
+      <td class="num">${aFalta ? link(aFalta, 'c1:falta', v, 'info') : '<span class="au-sub">0</span>'}${aSin ? ` <span class="au-sub" title="Sin verificar">+${fmtNumero(aSin)} s/v</span>` : ''}</td>
+      <td class="num">${auPorcentaje(aOk, a.length)}</td>
       <td class="num">${fmtNumero(b.length)}</td>
       <td class="num">${link(bFalta, 'c2:falta', v, 'err')}</td>
       <td class="num">${auPorcentaje(bOk, b.length)}</td>
+      <td class="num">${d.info.syncDisponible ? link(eErr, 'c4:error', v, 'err') : '<span class="au-sub">—</span>'}${eNoEnv ? ` <span class="au-sub" title="No enviadas (envío manual)">+${fmtNumero(eNoEnv)} n/e</span>` : ''}</td>
     </tr>`;
   }).join('');
 
@@ -967,11 +872,12 @@ function auRenderVendedores(d, f) {
     <thead>
       <tr>
         <th rowspan="2">Vendedor</th>
-        ${base ? '<th colspan="3" class="au-th-grupo">Contactos GHL → NetSuite</th>' : ''}
+        <th colspan="4" class="au-th-grupo">Contactos GHL → NetSuite</th>
         <th colspan="3" class="au-th-grupo">Oportunidades NetSuite → GHL</th>
+        <th rowspan="2" class="num au-th-grupo">Errores de sync en NS</th>
       </tr>
       <tr>
-        ${base ? '<th class="num">Contactos</th><th class="num">Faltan en NS</th><th class="num">% OK</th>' : ''}
+        <th class="num" >Contactos</th><th class="num" title="Con NetSuite Opportunity ID en GHL y sin cliente en NetSuite">Con ID NS, sin cliente</th><th class="num" title="Información: sin cliente en NetSuite y sin oportunidad en NetSuite">Sin cliente (info)</th><th class="num">% OK</th>
         <th class="num">Oportunidades</th><th class="num">Faltan en GHL</th><th class="num">% OK</th>
       </tr>
     </thead>
@@ -983,10 +889,16 @@ function auRenderVendedores(d, f) {
 function auBadgeEstado(estado, tipo) {
   const map = {
     ok: ['ok', tipo === 'c1' ? 'En NetSuite' : 'En GHL'],
-    falta: ['err', tipo === 'c1' ? 'Falta en NS' : 'Falta en GHL'],
+    critico: ['err', 'Con ID NS, sin cliente'],
+    falta: tipo === 'c1' ? ['rev', 'Sin cliente en NS'] : ['err', 'Falta en GHL'],
     sin_verificar: ['rev', 'Sin verificar'],
   };
   const [mod, label] = map[estado] || ['rev', estado];
+  return `<span class="status-badge status-badge--${mod}">${label}</span>`;
+}
+
+function auBadgeSync(s) {
+  const [mod, label] = s && s.tipo === 'error' ? ['err', 'Error'] : ['rev', 'No enviado'];
   return `<span class="status-badge status-badge--${mod}">${label}</span>`;
 }
 
@@ -1019,7 +931,7 @@ function auRenderC1(d, f) {
   const filas = auFiltrarC1(d.c1, f);
   const pagina = auPaginar(filas, 'c1');
   if (!filas.length) {
-    el.innerHTML = `<p class="admin-empty">${f.c1estado === 'falta' ? '✓ No faltan contactos en NetSuite con estos filtros.' : 'Sin resultados con estos filtros.'}</p>`;
+    el.innerHTML = `<p class="admin-empty">${f.c1estado === 'critico' && !f.c1q ? '✓ No hay contactos con NetSuite Opportunity ID sin cliente en NetSuite.' : 'Sin resultados con estos filtros.'}</p>`;
     return;
   }
   el.innerHTML = `<table class="admin-table au-tabla">
@@ -1036,12 +948,13 @@ function auRenderC1(d, f) {
       <td>${valor(r.origen)}</td>
       <td>${r.visita ? '<span class="ig-tag">Visita</span> ' : ''}<span class="ig-tag">${r.oportunidades.length} oport.</span>
         <details class="au-det"><summary>Ver oportunidades</summary><ul>${r.oportunidades.map((o) =>
-          `<li>${escapeHtml(o.nombre || '(sin nombre)')} <span class="ig-cell-sub">${[o.etapa, o.estado, o.creado ? fmtFecha(o.creado) : ''].filter(Boolean).map(escapeHtml).join(' · ')}</span></li>`).join('')}</ul></details></td>
+          `<li>${escapeHtml(o.nombre || '(sin nombre)')} <span class="ig-cell-sub">${[o.etapa, o.estado, o.creado ? fmtFecha(o.creado) : ''].filter(Boolean).map(escapeHtml).join(' · ')}</span>${o.nsOppId ? ` <span class="ig-tag">NS ${escapeHtml(o.nsOppId)}</span>` : ''}</li>`).join('')}</ul></details></td>
       <td>${r.clientes.length
         ? r.clientes.map((c) => `<div>${auLinkNs('cliente', c.idInterno, `${c.codigo || c.idInterno} ${c.nombre}`.trim())}
             <div class="ig-cell-sub">${[c.estado, c.representante !== 'Sin asignar' ? c.representante : ''].filter(Boolean).map(escapeHtml).join(' · ')}</div></div>`).join('') +
           (r.clientes.length > 1 ? '<div class="au-aviso">Hay más de un cliente con este ID de GHL.</div>' : '')
-        : `<span class="ig-cell-sub">${r.verificado ? `Buscado el ${fmtFechaHora(r.verificado)}` : 'Todavía no se buscó en NetSuite'}</span>`}</td>
+        : `${r.estado === 'critico' ? `<div class="au-aviso">La oportunidad ya está en NetSuite (${r.oportunidades.filter((o) => o.nsOppId).map((o) => auLinkNs('opp', o.nsOppId, `ID ${o.nsOppId}`)).join(', ')}) pero ningún cliente tiene este ID de GHL.</div>` : ''}
+          <span class="ig-cell-sub">${r.verificado ? `Buscado el ${fmtFechaHora(r.verificado)}` : 'Todavía no se buscó en NetSuite'}</span>`}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -1054,14 +967,13 @@ function auRenderC2(d, f) {
     el.innerHTML = `<p class="admin-empty">${f.c2estado === 'falta' ? '✓ No faltan oportunidades en GHL con estos filtros.' : 'Sin resultados con estos filtros.'}</p>`;
     return;
   }
-  const base = d.fuente === 'base';
   el.innerHTML = `<table class="admin-table au-tabla">
     <thead><tr>
       <th>Estado</th><th>Oportunidad NetSuite</th><th>Cliente</th><th>Representante</th><th>Estado NS</th><th>Unidad de negocio</th><th>GHL</th>
     </tr></thead>
     <tbody>${pagina.map((r) => `<tr>
-      <td>${auBadgeEstado(r.estado, 'c2')}</td>
-      <td>${base ? auLinkNs('opp', r.nsId, r.numero || r.nsId) : escapeHtml(r.numero || r.nsId)}
+      <td>${auBadgeEstado(r.estado, 'c2')}${r.sync && r.sync.tipo === 'error' ? '<div><span class="status-badge status-badge--err" title="Ver Errores de sincronización">Error de sync</span></div>' : ''}</td>
+      <td>${auLinkNs('opp', r.nsId, r.numero || r.nsId)}
         <div class="ig-cell-sub">${fmtFecha(r.fecha)} · ID interno <span class="ig-mono">${escapeHtml(r.nsId)}</span></div></td>
       <td>${valor(r.cliente)}<div class="ig-cell-sub">${valor(r.codCliente)}</div></td>
       <td>${escapeHtml(r.vendedor)}</td>
@@ -1089,16 +1001,32 @@ function auCeldaGhlC2(r) {
   return `<div class="au-diag">${escapeHtml(r.diag)}</div>${contacto}${matriz}${lista}`;
 }
 
-function auRenderC2b(d) {
-  const el = document.getElementById('au-c2b-tabla');
-  const f = auFiltrosVista();
-  const filas = d.c2b.filter((o) => !f.vendedor || o.vendedor === f.vendedor);
-  if (!filas.length) { el.innerHTML = '<p class="admin-empty">✓ Todas las oportunidades de GHL con ID de NetSuite están en el export de NetSuite.</p>'; return; }
+function auRenderC4(d, f) {
+  const el = document.getElementById('au-c4-tabla');
+  const filas = auFiltrarC4(d.c4, f);
+  const pagina = auPaginar(filas, 'c4');
+  if (!d.info.syncDisponible) {
+    el.innerHTML = '<p class="admin-empty">Todavía no está cargado el mensaje de sincronización de las oportunidades. Se carga en la próxima actualización (Auditar o la corrida de las 16 hs) con la versión nueva del servicio del Informe MKT.</p>';
+    return;
+  }
+  if (!filas.length) {
+    el.innerHTML = `<p class="admin-empty">${f.c4q || f.c4tipo === 'no_enviado' ? 'Sin resultados con estos filtros.' : '✓ No hay oportunidades con error de sincronización en el período.'}</p>`;
+    return;
+  }
   el.innerHTML = `<table class="admin-table au-tabla">
-    <thead><tr><th>Oportunidad GHL</th><th>Contacto</th><th>Vendedor</th><th>Etapa</th><th>Creada</th><th class="num">Valor</th><th>ID NetSuite</th></tr></thead>
-    <tbody>${filas.map((o) => `<tr>
-      <td>${valor(o.nombre)}</td><td>${o.contactId ? auLinkGhl(o.contactId, o.contacto) : valor(o.contacto)}</td><td>${valor(o.vendedor)}</td>
-      <td>${valor(o.etapa)}</td><td>${fmtFecha(o.creado)}</td><td class="num">${fmtMonto(o.monto)}</td><td class="ig-mono">${escapeHtml(o.nsId)}</td>
+    <thead><tr>
+      <th>Tipo</th><th>Oportunidad NetSuite</th><th>Cliente</th><th>Representante</th><th>Unidad de negocio</th><th>Mensaje en NetSuite</th><th>GHL</th>
+    </tr></thead>
+    <tbody>${pagina.map((r) => `<tr>
+      <td>${auBadgeSync(r.sync)}</td>
+      <td>${auLinkNs('opp', r.nsId, r.numero || r.nsId)}
+        <div class="ig-cell-sub">${fmtFecha(r.fecha)} · ID interno <span class="ig-mono">${escapeHtml(r.nsId)}</span></div></td>
+      <td>${valor(r.cliente)}<div class="ig-cell-sub">${valor(r.codCliente)}</div></td>
+      <td>${escapeHtml(r.vendedor)}</td>
+      <td>${valor(r.unidad)}${r.tipoProyecto ? `<div class="ig-cell-sub">${escapeHtml(r.tipoProyecto)}</div>` : ''}</td>
+      <td><div class="au-msg">${escapeHtml(r.sync.mensaje)}</div>
+        <div class="ig-cell-sub">${[r.sync.fecha, r.sync.manual ? 'Envío manual' : ''].filter(Boolean).map(escapeHtml).join(' · ') || '—'}</div></td>
+      <td>${auBadgeEstado(r.estado, 'c2')}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -1135,16 +1063,10 @@ function auRenderC3(d, f) {
 
 function auRenderPie(d) {
   const el = document.getElementById('au-pie');
-  if (d.fuente !== 'base') {
-    el.innerHTML = d.info.sinIdGhl
-      ? `${fmtNumero(d.info.sinIdGhl)} oportunidades del export de GHL no tienen ID de NetSuite y no entran en el cruce.`
-      : '';
-    return;
-  }
   const c = d.info.campo;
   const campo = c.id
     ? `Campo de GHL con el ID de NetSuite: <span class="ig-mono">${escapeHtml(c.id)}</span>${c.detectado ? ` (detectado en ${fmtNumero(c.coincidencias)} oportunidades)` : ''}.`
-    : '<span class="au-aviso">No se pudo identificar el campo de GHL con el ID de NetSuite: ninguna oportunidad de GHL coincide con las de NetSuite del período. Configurá AU_CF_NS_OPP_ID.</span>';
+    : '<span class="au-aviso">No se pudo identificar el campo de GHL con el ID de NetSuite: ninguna oportunidad de GHL coincide con las de NetSuite del período. Configurá AU_CF_NS_OPP_ID (sin ese campo no se detectan los contactos con NetSuite Opportunity ID sin cliente).</span>';
   const sinOpp = d.info.c1SinOportunidad
     ? `${fmtNumero(d.info.c1SinOportunidad)} contactos de GHL del período no tienen oportunidad y no se auditan en el control 1. `
     : '';
@@ -1162,11 +1084,12 @@ async function auExportar(cual) {
   if (cual === 'c1') {
     hoja = 'Contactos GHL a NetSuite';
     filas = auFiltrarC1(d.c1, f).map((r) => ({
-      Estado: { ok: 'En NetSuite', falta: 'Falta en NetSuite', sin_verificar: 'Sin verificar' }[r.estado],
+      Estado: { ok: 'En NetSuite', critico: 'Con NetSuite Opportunity ID, sin cliente en NetSuite', falta: 'Sin cliente en NetSuite (información)', sin_verificar: 'Sin verificar' }[r.estado],
       'Contacto GHL': r.nombre, Email: r.email, 'Teléfono': r.telefono, 'ID contacto GHL': r.ghlId,
       'Vendedor GHL': r.vendedor, 'Alta GHL': fmtFecha(r.alta), Origen: r.origen,
       'Visita en GHL': r.visita ? 'Sí' : 'No', 'Oportunidades en GHL': r.oportunidades.length,
       'Nombres oportunidades GHL': r.oportunidades.map((o) => o.nombre).join(' | '),
+      'NetSuite Opportunity ID (GHL)': r.oportunidades.map((o) => o.nsOppId).filter(Boolean).join(' | '),
       'Cliente NetSuite': r.clientes.map((c) => `${c.codigo} ${c.nombre}`.trim()).join(' | '),
       'ID interno cliente NS': r.clientes.map((c) => c.idInterno).join(' | '),
       'Estado cliente NS': r.clientes.map((c) => c.estado).join(' | '),
@@ -1183,13 +1106,19 @@ async function auExportar(cual) {
       'Unidad de negocio': r.unidad, 'Tipo de proyecto': r.tipoProyecto, 'ID contacto GHL': r.crm, 'ID GHL vía empresa matriz': r.viaMatriz ? r.matriz : '',
       'Oportunidad GHL': r.ghl ? r.ghl.nombre : '', 'Etapa GHL': r.ghl ? r.ghl.etapa : '',
       'Diagnóstico': r.diag,
-      'Link NetSuite': d.fuente === 'base' ? `${AU_NS_URL}/app/accounting/transactions/opprtnty.nl?id=${r.nsId}` : '',
+      'Mensaje sync GHL (NetSuite)': r.sync ? r.sync.texto : '',
+      'Link NetSuite': `${AU_NS_URL}/app/accounting/transactions/opprtnty.nl?id=${r.nsId}`,
     }));
-  } else if (cual === 'c2b') {
-    hoja = 'GHL con ID NS inexistente';
-    filas = d.c2b.filter((o) => !f.vendedor || o.vendedor === f.vendedor).map((o) => ({
-      'Oportunidad GHL': o.nombre, Contacto: o.contacto, Vendedor: o.vendedor, Etapa: o.etapa,
-      Creada: fmtFecha(o.creado), Valor: o.monto, 'ID NetSuite': o.nsId,
+  } else if (cual === 'c4') {
+    hoja = 'Errores de sync NS';
+    filas = auFiltrarC4(d.c4, f).map((r) => ({
+      Tipo: r.sync.tipo === 'error' ? 'Error' : 'No enviado',
+      'Oportunidad NS': r.numero, 'ID interno NS': r.nsId, Fecha: fmtFecha(r.fecha),
+      Cliente: r.cliente, 'Código cliente': r.codCliente, Representante: r.vendedor,
+      'Estado NS': r.estadoNs, 'Unidad de negocio': r.unidad, 'Tipo de proyecto': r.tipoProyecto,
+      Mensaje: r.sync.mensaje, 'Fecha del mensaje': r.sync.fecha, 'Envío manual': r.sync.manual ? 'Sí' : 'No',
+      'En GHL': r.estado === 'ok' ? 'Sí' : 'No',
+      'Link NetSuite': `${AU_NS_URL}/app/accounting/transactions/opprtnty.nl?id=${r.nsId}`,
     }));
   } else if (cual === 'c3') {
     hoja = 'Clientes NS sin ID GHL';
@@ -1212,7 +1141,7 @@ async function auExportar(cual) {
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, hoja.slice(0, 31));
-    const sufijo = d.fuente === 'base' ? `${d.info.desde}_${d.info.hasta}` : 'exports';
+    const sufijo = `${d.info.desde}_${d.info.hasta}`;
     const vend = f.vendedor ? `_${f.vendedor.replace(/\s+/g, '-')}` : '';
     XLSX.writeFile(wb, `auditoria_${cual}_${sufijo}${vend}.xlsx`);
   } catch (err) {
@@ -1221,4 +1150,4 @@ async function auExportar(cual) {
 }
 
 // Para pruebas fuera del navegador (node): no afecta al sitio.
-if (typeof module !== 'undefined') module.exports = { auCruzarBase, auCruzarArchivos, auDetectarCampo, auFiltrarC1, auFiltrarC2 };
+if (typeof module !== 'undefined') module.exports = { auCruzarBase, auDetectarCampo, auParsearSync, auFiltrarC1, auFiltrarC2, auFiltrarC4 };

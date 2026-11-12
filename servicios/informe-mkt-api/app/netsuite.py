@@ -69,6 +69,7 @@ ETIQUETAS = {
     "comodato": "Comodato",
     "id_cliente_crm_matriz": "ID CLIENTE CRM MATRIZ",
     "empresa_matriz": "Empresa matriz",
+    "ghl_sync_msg": "Mensaje sync GHL",
 }
 
 # Establecimientos (08/10/2026): un establecimiento es un subcliente del
@@ -89,6 +90,13 @@ CAMPOS_EXTRA = {
     "categoria": ("custbody_3k_categoria", True),
     "comodato": ("custbody_3k_comodato", False),
 }
+
+# Mensaje de la ultima sincronizacion con GHL (12/11/2026): lo escribe
+# UE_NS_Create_GHL_Opportunity ("OK | ...", "ERROR | ...", "NO ENVIADO | ...").
+# La Auditoria de la integracion lista las oportunidades con ERROR / NO ENVIADO.
+# Va aparte de CAMPOS_EXTRA: si el rol no lo puede leer, la consulta se repite
+# sin el (queda vacio) y los otros campos extra no se pierden.
+CAMPO_SYNC_GHL = "custbody_ghl_last_sync_msg_op"
 
 TAMANO_PAGINA = 1000
 
@@ -201,7 +209,7 @@ def suiteql(consulta):
         offset += TAMANO_PAGINA
 
 
-def consulta_oportunidades(desde, hasta, clase_completa=True, campos_extra=True):
+def consulta_oportunidades(desde, hasta, clase_completa=True, campos_extra=True, sync_ghl=True):
     """SuiteQL equivalente a la busqueda guardada. desde/hasta: datetime.date
     (validados por el servicio, por eso se pueden poner como literales)."""
     estados = ", ".join(str(e) for e in ESTADOS_APROBADA)
@@ -218,6 +226,8 @@ def consulta_oportunidades(desde, hasta, clase_completa=True, campos_extra=True)
         (f"            BUILTIN.DF(t.{campo}) AS {alias},\n" if es_lista else f"            t.{campo} AS {alias},\n")
         for alias, (campo, es_lista) in CAMPOS_EXTRA.items()
     ) if campos_extra else ""
+    if sync_ghl:
+        extra += f"            t.{CAMPO_SYNC_GHL} AS ghl_sync_msg,\n"
     return f"""
         SELECT
             t.id                                            AS id_interno,
@@ -255,7 +265,7 @@ def _normalizar(nombre):
 def traer_oportunidades(desde, hasta, log):
     """desde/hasta: datetime.date (inclusive). Devuelve un DataFrame con las
     mismas columnas que el Excel de la busqueda guardada."""
-    opciones = {"clase_completa": True, "campos_extra": True}
+    opciones = {"clase_completa": True, "campos_extra": True, "sync_ghl": True}
     while True:
         try:
             filas = suiteql(consulta_oportunidades(desde, hasta, **opciones))
@@ -266,6 +276,11 @@ def traer_oportunidades(desde, hasta, log):
                 log("AVISO: el rol no tiene permiso sobre Clases; Unidad de Negocio sale sin la jerarquia "
                     "(ej. 'Nuevas' en vez de 'Alarmas : Nuevas'). Agregar Listas > Clases (Ver) al rol.")
                 opciones["clase_completa"] = False
+            elif opciones["sync_ghl"] and CAMPO_SYNC_GHL in texto:
+                log(f"AVISO: NetSuite no dejo leer {CAMPO_SYNC_GHL} (mensaje de sincronizacion con GHL); "
+                    "la Auditoria no va a mostrar los errores de sincronizacion. Revisar el acceso del rol "
+                    f"a ese campo. Detalle: {str(e)[:300]}")
+                opciones["sync_ghl"] = False
             elif opciones["campos_extra"] and any(c in texto for c, _ in CAMPOS_EXTRA.values()):
                 log("AVISO: NetSuite no dejo leer Tipo de establecimiento / Categoria / Comodato "
                     f"({', '.join(c for c, _ in CAMPOS_EXTRA.values())}); salen vacios. Revisar el acceso del rol "
