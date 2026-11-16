@@ -290,6 +290,13 @@ a.com-ns:hover { border-bottom-style: solid; }
 .com-info-grid .com-lineas { width: 100%; min-width: 0; }
 .com-info-ancho { grid-column: 1 / -1; }
 @media (max-width: 640px) { .com-overlay { padding: 0; } .com-dialog { width: 100vw; height: 100vh; border-radius: 0; } .com-head, .com-body { padding-left: 12px; padding-right: 12px; } }
+/* Pestañas dentro del panel Actualizaciones (16/11/2026) */
+.upd-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); margin-bottom: -6px; }
+.upd-tab { appearance: none; background: none; border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; font: inherit; font-size: 14px; color: var(--second); padding: 6px 14px; margin-bottom: -1px; cursor: pointer; }
+.upd-tab:hover { color: var(--navy); background: var(--light-fill); }
+.upd-tab.active { color: var(--navy); font-weight: 700; background: var(--surface); border-color: var(--rule); }
+.upd-tabpanel { display: grid; gap: 18px; }
+.upd-tabpanel[hidden] { display: none; }
 /* ---- Composicion de ventas (16/11/2026) ---- */
 .cv-filtros { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 4px 0 16px; font-size: 13.5px; color: var(--second); }
 .cv-filtros select { font: inherit; font-size: 13.5px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); color: var(--ink); }
@@ -336,34 +343,42 @@ details.cv-det summary { cursor: pointer; color: var(--navy); font-weight: 700; 
       <div class="per-aviso" id="per-aviso" hidden></div>
     </div>
     <div class="upd-panel" id="upd-panel" hidden>
-      <div class="upd-panel-seccion">
-        <div class="upd-panel-titulo">Nueva actualización</div>
-        <div class="upd-panel-ayuda">Trae de NetSuite y GHL los datos del rango elegido. Puede tardar algunos minutos.</div>
-        <div class="upd-controles">
-          <label class="upd-campo">Desde <input type="date" id="upd-desde"></label>
-          <label class="upd-campo">Hasta <input type="date" id="upd-hasta"></label>
-          <button type="button" class="upd-btn" id="upd-btn">Actualizar</button>
+      <div class="upd-tabs" role="tablist" aria-label="Tipo de actualización">
+        <button type="button" class="upd-tab active" id="upd-tab-btn-informe" data-upd-tab="informe" role="tab" aria-selected="true" aria-controls="upd-tab-informe">Actualización del informe</button>
+        <button type="button" class="upd-tab" id="upd-tab-btn-articulos" data-upd-tab="articulos" role="tab" aria-selected="false" aria-controls="upd-tab-articulos">Artículos y precios</button>
+      </div>
+      <div class="upd-tabpanel" id="upd-tab-informe" role="tabpanel" aria-labelledby="upd-tab-btn-informe">
+        <div class="upd-panel-seccion">
+          <div class="upd-panel-titulo">Nueva actualización</div>
+          <div class="upd-panel-ayuda">Trae de NetSuite y GHL los datos del rango elegido. Puede tardar algunos minutos.</div>
+          <div class="upd-controles">
+            <label class="upd-campo">Desde <input type="date" id="upd-desde"></label>
+            <label class="upd-campo">Hasta <input type="date" id="upd-hasta"></label>
+            <button type="button" class="upd-btn" id="upd-btn">Actualizar</button>
+          </div>
+        </div>
+        <div class="upd-panel-seccion">
+          <div class="upd-panel-titulo">Actualizaciones anteriores</div>
+          <div class="upd-panel-ayuda">Además del botón, el informe se actualiza solo de lunes a viernes a las 16 hs (del 1 del mes a hoy). Se conservan las últimas 40. Cada actualización suma sus datos a la base: con <strong>Período del informe</strong> se puede ver cualquier rango ya cargado. Con <strong>Ver</strong> se abre el informe tal como quedó en esa actualización.</div>
+          <div class="upd-hist-scroll">
+            <table class="upd-hist">
+              <thead><tr><th>Actualizada el</th><th>Rango</th><th>Tipo</th><th>Estado</th><th>Duración</th><th>Usuario</th><th>Detalle</th><th></th></tr></thead>
+              <tbody id="upd-hist-body"><tr><td colspan="8">Cargando…</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
-      <div class="upd-panel-seccion">
-        <div class="upd-panel-titulo">Artículos y precios (NetSuite)</div>
-        <div class="upd-panel-ayuda">Para la pestaña <strong>Composición de ventas</strong>. Trae el catálogo, la lista de precios y los presupuestos y OV de productos del rango. Es aparte de la actualización del informe y no se hace sola: actualizalo cuando quieras ver un período nuevo (conviene hasta hoy, porque hay OV posteriores a la venta).</div>
-        <div class="upd-controles">
-          <label class="upd-campo">Desde <input type="date" id="art-desde"></label>
-          <label class="upd-campo">Hasta <input type="date" id="art-hasta"></label>
-          <button type="button" class="upd-btn" id="art-btn">Actualizar artículos</button>
-        </div>
-        <div class="upd-estado" id="art-estado" role="status" aria-live="polite"></div>
-        <div class="upd-panel-ayuda" id="art-ultima"></div>
-      </div>
-      <div class="upd-panel-seccion">
-        <div class="upd-panel-titulo">Actualizaciones anteriores</div>
-        <div class="upd-panel-ayuda">Además del botón, el informe se actualiza solo de lunes a viernes a las 16 hs (del 1 del mes a hoy). Se conservan las últimas 40. Cada actualización suma sus datos a la base: con <strong>Período del informe</strong> se puede ver cualquier rango ya cargado. Con <strong>Ver</strong> se abre el informe tal como quedó en esa actualización.</div>
-        <div class="upd-hist-scroll">
-          <table class="upd-hist">
-            <thead><tr><th>Actualizada el</th><th>Rango</th><th>Tipo</th><th>Estado</th><th>Duración</th><th>Usuario</th><th>Detalle</th><th></th></tr></thead>
-            <tbody id="upd-hist-body"><tr><td colspan="8">Cargando…</td></tr></tbody>
-          </table>
+      <div class="upd-tabpanel" id="upd-tab-articulos" role="tabpanel" aria-labelledby="upd-tab-btn-articulos" hidden>
+        <div class="upd-panel-seccion">
+          <div class="upd-panel-titulo">Artículos y precios (NetSuite)</div>
+          <div class="upd-panel-ayuda">Para la pestaña <strong>Composición de ventas</strong>. Trae el catálogo, la lista de precios y los presupuestos y OV de productos del rango. Es aparte de la actualización del informe y no se hace sola: actualizalo cuando quieras ver un período nuevo (conviene hasta hoy, porque hay OV posteriores a la venta).</div>
+          <div class="upd-controles">
+            <label class="upd-campo">Desde <input type="date" id="art-desde"></label>
+            <label class="upd-campo">Hasta <input type="date" id="art-hasta"></label>
+            <button type="button" class="upd-btn" id="art-btn">Actualizar artículos</button>
+          </div>
+          <div class="upd-estado" id="art-estado" role="status" aria-live="polite"></div>
+          <div class="upd-panel-ayuda" id="art-ultima"></div>
         </div>
       </div>
     </div>
@@ -3334,7 +3349,23 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
     }
   }
 
+  // Pestanas del panel Actualizaciones: informe / articulos y precios.
+  function pestanasActualizaciones() {
+    var botones = document.querySelectorAll(".upd-tab");
+    botones.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.getAttribute("data-upd-tab");
+        botones.forEach(function (o) {
+          o.classList.toggle("active", o === b);
+          o.setAttribute("aria-selected", o === b ? "true" : "false");
+        });
+        document.querySelectorAll(".upd-tabpanel").forEach(function (p) { p.hidden = p.id !== "upd-tab-" + id; });
+      });
+    });
+  }
+
   async function iniciar() {
+    pestanasActualizaciones();
     if (!sb) return;
     var tab = $("tab-composicion");
     if (tab) tab.addEventListener("click", function () { cargar(false); });
