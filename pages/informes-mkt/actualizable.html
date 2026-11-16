@@ -290,6 +290,25 @@ a.com-ns:hover { border-bottom-style: solid; }
 .com-info-grid .com-lineas { width: 100%; min-width: 0; }
 .com-info-ancho { grid-column: 1 / -1; }
 @media (max-width: 640px) { .com-overlay { padding: 0; } .com-dialog { width: 100vw; height: 100vh; border-radius: 0; } .com-head, .com-body { padding-left: 12px; padding-right: 12px; } }
+/* ---- Composicion de ventas (16/11/2026) ---- */
+.cv-filtros { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 4px 0 16px; font-size: 13.5px; color: var(--second); }
+.cv-filtros select { font: inherit; font-size: 13.5px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); color: var(--ink); }
+.cv-table { width: auto; min-width: 60%; }
+.cv-table th, .cv-table td { padding: 6px 10px; font-size: 13.5px; }
+.cv-table td.num, .cv-table th.num { text-align: right; white-space: nowrap; }
+.cv-table tr.cv-total td { font-weight: 700; background: var(--light-fill); }
+.cv-sub { color: var(--muted); font-size: 12px; }
+.cv-scroll { overflow-x: auto; }
+.cv-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--second); margin: 6px 0 0; }
+.cv-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cv-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.cv-chart { position: relative; max-width: 900px; }
+.cv-tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.12); padding: 8px 10px; font-size: 12.5px; color: var(--ink); white-space: nowrap; z-index: 5; }
+.cv-tip b { color: var(--navy); }
+.cv-tip i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+details.cv-det { margin: 10px 0 14px; }
+details.cv-det summary { cursor: pointer; color: var(--navy); font-weight: 700; font-size: 15px; margin: 8px 0; }
+.cv-tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--warn-bg); color: #8a3b12; margin-left: 4px; }
 </style>
 </head>
 <body>
@@ -327,6 +346,17 @@ a.com-ns:hover { border-bottom-style: solid; }
         </div>
       </div>
       <div class="upd-panel-seccion">
+        <div class="upd-panel-titulo">Artículos y precios (NetSuite)</div>
+        <div class="upd-panel-ayuda">Para la pestaña <strong>Composición de ventas</strong>. Trae el catálogo, la lista de precios y los presupuestos y OV de productos del rango. Es aparte de la actualización del informe y no se hace sola: actualizalo cuando quieras ver un período nuevo (conviene hasta hoy, porque hay OV posteriores a la venta).</div>
+        <div class="upd-controles">
+          <label class="upd-campo">Desde <input type="date" id="art-desde"></label>
+          <label class="upd-campo">Hasta <input type="date" id="art-hasta"></label>
+          <button type="button" class="upd-btn" id="art-btn">Actualizar artículos</button>
+        </div>
+        <div class="upd-estado" id="art-estado" role="status" aria-live="polite"></div>
+        <div class="upd-panel-ayuda" id="art-ultima"></div>
+      </div>
+      <div class="upd-panel-seccion">
         <div class="upd-panel-titulo">Actualizaciones anteriores</div>
         <div class="upd-panel-ayuda">Además del botón, el informe se actualiza solo de lunes a viernes a las 16 hs (del 1 del mes a hoy). Se conservan las últimas 40. Cada actualización suma sus datos a la base: con <strong>Período del informe</strong> se puede ver cualquier rango ya cargado. Con <strong>Ver</strong> se abre el informe tal como quedó en esa actualización.</div>
         <div class="upd-hist-scroll">
@@ -342,6 +372,7 @@ a.com-ns:hover { border-bottom-style: solid; }
     <button type="button" class="tab-btn active" id="tab-resumen" data-tab="resumen" role="tab" aria-selected="true" aria-controls="panel-resumen">Informe general</button>
     <button type="button" class="tab-btn" id="tab-diario" data-tab="diario" role="tab" aria-selected="false" aria-controls="panel-diario">Reporte diario</button>
     <button type="button" class="tab-btn" id="tab-vendedor" data-tab="vendedor" role="tab" aria-selected="false" aria-controls="panel-vendedor">Informe por vendedor</button>
+    <button type="button" class="tab-btn" id="tab-composicion" data-tab="composicion" role="tab" aria-selected="false" aria-controls="panel-composicion">Composición de ventas</button>
   </nav>
   <main>
     <section class="tab-panel active" id="panel-resumen" role="tabpanel" aria-labelledby="tab-resumen">
@@ -354,6 +385,10 @@ a.com-ns:hover { border-bottom-style: solid; }
     </section>
     <section class="tab-panel" id="panel-vendedor" role="tabpanel" aria-labelledby="tab-vendedor">
       <h2>Informe por vendedor</h2>
+      <p>Cargando…</p>
+    </section>
+    <section class="tab-panel" id="panel-composicion" role="tabpanel" aria-labelledby="tab-composicion">
+      <h2>Composición de ventas</h2>
       <p>Cargando…</p>
     </section>
   </main>
@@ -2807,6 +2842,517 @@ window.iniciarInforme = function (CONTACTS, OPTS) {
       setTimeout(function () { btn.textContent = texto; }, 3000);
     }).then(function () { btn.disabled = false; });
   }
+})();
+</script>
+<script>
+/* ---- Composicion de ventas (16/11/2026) ----
+   Pestana "Composicion de ventas" y boton "Actualizar articulos" (panel
+   Actualizaciones). Los datos salen de la base, sin llamar a NetSuite:
+     fn_mkt_composicion_ventas(desde, hasta)  una fila por ganada (migracion 49)
+     ns_sincronizacion                        ultima actualizacion de articulos
+   El boton llama a POST /articulos/actualizar (app/articulos.py, migracion 48).
+   Criterios: ticket = EQUIPOS a la lista de precios vigente (sin IVA); los de
+   comodato con el precio del articulo de venta equivalente; mano de obra y
+   descuentos aparte. Cliente nuevo = alta en NetSuite hasta 30 dias antes de
+   la oportunidad. Tipo de establecimiento faltante en comodatos: inferido por
+   los abonos (kit Comercio Seguro = Comercio, ABO 16 = Hogar). */
+(function () {
+  var sb = window.supabaseClient;
+  var TZ = "America/Argentina/Buenos_Aires";
+  var POLL_MS = 4000;
+  var COLOR_TOTAL = "#52514E", COLORES = ["#2a78d6", "#eb6834"];
+  var MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  var S = { clave: null, filas: null, sinc: null, abrir: "tipo", modalidad: "todas", cargando: false };
+  var artTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  var NF0 = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+  var NF1 = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 1 });
+  function pesos(n) { return n === null || n === undefined || isNaN(n) ? "—" : (n < 0 ? "-$ " : "$ ") + NF0.format(Math.abs(n)); }
+  function miles(n) { return n === null || n === undefined || isNaN(n) ? "—" : "$ " + NF0.format(n / 1000) + " mil"; }
+  function pct(a, b) { return b ? NF0.format(100 * a / b) + " %" : "—"; }
+  function num(v) { var n = Number(v); return isNaN(n) ? 0 : n; }
+  function hoyAR() { return new Date().toLocaleDateString("en-CA", { timeZone: TZ }); }
+  function fmtDia(s) { if (!s) return ""; var p = String(s).slice(0, 10).split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
+  function fmtFechaHora(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    return d.toLocaleDateString("es-AR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }) +
+      " " + d.toLocaleTimeString("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }) + " hs";
+  }
+  function mesLabel(m) { var p = String(m).split("-"); return MESES[Number(p[1]) - 1] + " " + p[0]; }
+  function panel() { return $("panel-composicion"); }
+  function activa() { var b = $("tab-composicion"); return b && b.classList.contains("active"); }
+
+  // ---- Segmentos ----
+  function tipoGrupo(r) {
+    var t = r.tipo_establecimiento || "Sin dato";
+    if (t === "Hogar" || t === "Comercio" || t === "Sin dato") return t;
+    return "Otros";
+  }
+  function clienteGrupo(r) { return r.cliente_nuevo === true ? "Nuevo" : r.cliente_nuevo === false ? "Existente" : "Sin dato"; }
+  var APERTURAS = {
+    tipo: { nombre: "Tipo de establecimiento", orden: ["Hogar", "Comercio", "Otros", "Sin dato"], f: tipoGrupo },
+    cliente: { nombre: "Cliente nuevo / existente", orden: ["Nuevo", "Existente", "Sin dato"], f: clienteGrupo },
+    tipo_cliente: {
+      nombre: "Tipo × cliente nuevo / existente",
+      orden: ["Hogar · Nuevo", "Hogar · Existente", "Hogar · Sin dato", "Comercio · Nuevo", "Comercio · Existente", "Comercio · Sin dato", "Otros", "Sin dato"],
+      f: function (r) {
+        var t = tipoGrupo(r), c = clienteGrupo(r);
+        if (t === "Otros" || t === "Sin dato") return t;
+        return c === "Sin dato" ? t + " · Sin dato" : t + " · " + c;
+      }
+    },
+    modalidad: { nombre: "Venta / Comodato", orden: ["Venta", "Comodato", "Sin dato"], f: function (r) { return r.modalidad || "Sin dato"; } }
+  };
+  function segmentos(filas, ap) {
+    var vistos = {};
+    filas.forEach(function (r) { vistos[ap.f(r)] = true; });
+    var orden = ap.orden.filter(function (s) { return vistos[s]; });
+    Object.keys(vistos).sort().forEach(function (s) { if (orden.indexOf(s) < 0) orden.push(s); });
+    return orden;
+  }
+  function conArticulos(r) { return !!r.fuente && num(r.equipos_cantidad) > 0; }
+  function prom(filas, campo) {
+    var f = filas.filter(conArticulos);
+    if (!f.length) return null;
+    return f.reduce(function (a, r) { return a + num(r[campo]); }, 0) / f.length;
+  }
+
+  // ---- Carga ----
+  async function cargar(forzar) {
+    var d = $("per-desde") && $("per-desde").value, h = $("per-hasta") && $("per-hasta").value;
+    if (!d || !h) { panel().innerHTML = "<h2>Composición de ventas</h2><p>Elegí el Período del informe.</p>"; return; }
+    var clave = d + "|" + h;
+    if (!forzar && S.clave === clave && S.filas) { pintar(); return; }
+    if (S.cargando) return;
+    S.cargando = true;
+    panel().innerHTML = "<h2>Composición de ventas</h2><p>Cargando las ventas del " + fmtDia(d) + " al " + fmtDia(h) + "…</p>";
+    try {
+      var r = await sb.rpc("fn_mkt_composicion_ventas", { p_desde: d, p_hasta: h }).range(0, 9999);
+      if (r.error) throw r.error;
+      var s = await sb.from("ns_sincronizacion").select("desde,hasta,estado,mensaje,iniciada_en,finalizada_en")
+        .eq("tipo", "articulos").eq("estado", "ok").order("finalizada_en", { ascending: false }).limit(1);
+      S.filas = r.data || [];
+      S.sinc = s.data && s.data[0];
+      S.clave = clave;
+      S.desde = d; S.hasta = h;
+      pintar();
+    } catch (e) {
+      var msg = (e && e.message) || String(e);
+      if (/fn_mkt_composicion_ventas|ns_sincronizacion|does not exist|Could not find/i.test(msg))
+        msg += ". Falta correr las migraciones 48 y 49 en Supabase.";
+      panel().innerHTML = "<h2>Composición de ventas</h2><div class='note-box note-box--warn'><p>No se pudieron leer los datos: " + esc(msg) + "</p></div>";
+    } finally {
+      S.cargando = false;
+    }
+  }
+
+  // ---- Pintar ----
+  function pintar() {
+    var todas = S.filas || [];
+    var filas = todas.filter(function (r) { return S.modalidad === "todas" || r.modalidad === S.modalidad; });
+    var ap = APERTURAS[S.abrir];
+    var segs = segmentos(filas, ap);
+    var con = filas.filter(conArticulos);
+    var sinArt = filas.filter(function (r) { return !conArticulos(r); });
+    var inferidas = filas.filter(function (r) { return r.tipo_origen === "inferido"; });
+    var sinTipo = filas.filter(function (r) { return r.tipo_origen === "sin dato"; });
+
+    var h = "<h2>Composición de ventas</h2>";
+    h += '<div class="kpi-caveat">Ventas = oportunidades ganadas de NetSuite del período (las mismas del Informe general). ' +
+      "<strong>Ticket</strong> = equipos de la venta valorizados a la <strong>lista de precios vigente</strong> (precio base, sin IVA): " +
+      "así se comparan meses y modalidades sin el efecto de la inflación ni de los descuentos. Los equipos en comodato se valorizan con el precio del mismo artículo en venta. " +
+      "La mano de obra y los descuentos se muestran aparte. Los artículos salen de la OV de productos de la venta o, si no tiene, de su último presupuesto. " +
+      "<strong>Cliente nuevo</strong>: dado de alta en NetSuite hasta 30 días antes de la oportunidad.</div>";
+
+    // Avisos
+    var av = [];
+    if (S.sinc) av.push("Artículos y precios actualizados el " + fmtFechaHora(S.sinc.finalizada_en) +
+      " (presupuestos y OV del " + fmtDia(S.sinc.desde) + " al " + fmtDia(S.sinc.hasta) + ").");
+    else av.push("Todavía no se actualizaron los artículos: abrí <strong>Actualizaciones</strong> → <strong>Actualizar artículos</strong>.");
+    if (sinArt.length) av.push("<strong>" + sinArt.length + "</strong> de " + filas.length +
+      " ventas sin artículos cargados: no entran en el ticket ni en la composición por familia. Puede faltar actualizar los artículos del período o la venta no tiene OV ni presupuesto con equipos.");
+    if (inferidas.length) av.push(inferidas.length + " ventas en comodato sin tipo de establecimiento cargado: se infirió por los abonos (kit Comercio Seguro = Comercio, ABO 16 = Hogar).");
+    if (sinTipo.length) av.push(sinTipo.length + " ventas sin tipo de establecimiento que no se pudo inferir (\"Sin dato\").");
+    h += '<div class="note-box' + (sinArt.length ? " note-box--warn" : "") + '"><p>' + av.join("<br>") + "</p></div>";
+
+    // Filtros
+    h += '<div class="cv-filtros"><label>Abrir por <select id="cv-abrir">' +
+      Object.keys(APERTURAS).map(function (k) { return '<option value="' + k + '"' + (k === S.abrir ? " selected" : "") + ">" + APERTURAS[k].nombre + "</option>"; }).join("") +
+      '</select></label><label>Modalidad <select id="cv-modalidad">' +
+      [["todas", "Venta y comodato"], ["Venta", "Solo venta"], ["Comodato", "Solo comodato"]].map(function (o) {
+        return '<option value="' + o[0] + '"' + (o[0] === S.modalidad ? " selected" : "") + ">" + o[1] + "</option>";
+      }).join("") + '</select></label><button type="button" class="explorer-export" id="cv-excel">Exportar a Excel</button></div>';
+
+    if (!filas.length) { panel().innerHTML = h + "<p>No hay ventas en el período.</p>"; enlazar(); return; }
+
+    // KPIs
+    var desc = prom(filas, "descuentos");
+    h += '<div class="kpi-row">' +
+      kpi(NF0.format(filas.length), "Ventas del período") +
+      kpi(pct(con.length, filas.length), "Con artículos cargados (" + con.length + ")") +
+      kpi(miles(prom(filas, "equipos_lista")), "Ticket promedio de equipos (a lista)") +
+      kpi(NF1.format(prom(filas, "equipos_cantidad") || 0), "Equipos por venta") +
+      kpi(miles(prom(filas, "servicios_lista")), "Mano de obra promedio (a lista)") +
+      kpi(desc === null ? "—" : miles(-desc), "Descuento promedio") +
+      "</div>";
+
+    var meses = Array.from(new Set(filas.map(function (r) { return r.mes; }))).sort();
+
+    // 1. Mezcla por cantidad
+    h += "<h3>Mezcla de las ventas · " + esc(ap.nombre) + "</h3>";
+    h += '<div class="cv-scroll"><table class="data-table cv-table"><thead><tr><th>Mes</th>' +
+      segs.map(function (s) { return '<th class="num">' + esc(s) + "</th>"; }).join("") + '<th class="num">Total</th></tr></thead><tbody>';
+    meses.concat(["__total"]).forEach(function (m) {
+      var fm = m === "__total" ? filas : filas.filter(function (r) { return r.mes === m; });
+      h += "<tr" + (m === "__total" ? ' class="cv-total"' : "") + "><td>" + (m === "__total" ? "Total" : mesLabel(m)) + "</td>";
+      segs.forEach(function (s) {
+        var n = fm.filter(function (r) { return ap.f(r) === s; }).length;
+        h += '<td class="num">' + (n ? n + ' <span class="cv-sub">' + pct(n, fm.length) + "</span>" : "—") + "</td>";
+      });
+      h += '<td class="num">' + fm.length + "</td></tr>";
+    });
+    h += "</tbody></table></div>";
+
+    // 2. Ticket promedio de equipos
+    h += "<h3>Ticket promedio de equipos (a lista) · " + esc(ap.nombre) + "</h3>";
+    var principales = segs.filter(function (s) { return s !== "Sin dato" && s !== "Otros" && s.indexOf("Sin dato") < 0; }).slice(0, 2);
+    if (meses.length > 1) h += grafico(filas, meses, ap, principales);
+    h += '<div class="cv-scroll"><table class="data-table cv-table"><thead><tr><th>Mes</th>' +
+      segs.concat(["Total"]).map(function (s) { return '<th class="num">' + esc(s) + "</th>"; }).join("") +
+      "</tr></thead><tbody>";
+    meses.concat(["__total"]).forEach(function (m) {
+      var fm = m === "__total" ? filas : filas.filter(function (r) { return r.mes === m; });
+      h += "<tr" + (m === "__total" ? ' class="cv-total"' : "") + "><td>" + (m === "__total" ? "Período" : mesLabel(m)) + "</td>";
+      segs.concat(["Total"]).forEach(function (s) {
+        var fs = s === "Total" ? fm : fm.filter(function (r) { return ap.f(r) === s; });
+        var n = fs.filter(conArticulos).length;
+        var t = prom(fs, "equipos_lista");
+        h += '<td class="num">' + (t === null ? "—" : pesos(t) + ' <span class="cv-sub">(' + n + ")</span>") + "</td>";
+      });
+      h += "</tr>";
+    });
+    h += '</tbody></table></div><p class="cv-sub">Entre paréntesis, la cantidad de ventas con artículos cargados en las que se calcula el promedio.</p>';
+
+    // Mano de obra y descuentos por segmento (periodo)
+    h += "<h3>Equipos, mano de obra y descuentos por venta · período</h3>";
+    h += '<div class="cv-scroll"><table class="data-table cv-table"><thead><tr><th>Segmento</th><th class="num">Ventas con artículos</th>' +
+      '<th class="num">Equipos por venta</th><th class="num">Equipos (a lista)</th><th class="num">Mano de obra (a lista)</th>' +
+      '<th class="num">Descuentos</th><th class="num">Equipos facturados</th></tr></thead><tbody>';
+    segs.concat(["Total"]).forEach(function (s) {
+      var fs = s === "Total" ? filas : filas.filter(function (r) { return ap.f(r) === s; });
+      var n = fs.filter(conArticulos).length;
+      var d = prom(fs, "descuentos");
+      h += "<tr" + (s === "Total" ? ' class="cv-total"' : "") + "><td>" + esc(s) + '</td><td class="num">' + n + "</td>" +
+        '<td class="num">' + NF1.format(prom(fs, "equipos_cantidad") || 0) + "</td>" +
+        '<td class="num">' + pesos(prom(fs, "equipos_lista")) + "</td>" +
+        '<td class="num">' + pesos(prom(fs, "servicios_lista")) + "</td>" +
+        '<td class="num">' + (d === null ? "—" : pesos(d)) + "</td>" +
+        '<td class="num">' + pesos(prom(fs, "equipos_real")) + "</td></tr>";
+    });
+    h += '</tbody></table></div><p class="cv-sub">Promedios por venta. «Equipos facturados» es el importe real de las líneas (en comodato es 0): sirve para ver la diferencia contra la lista.</p>';
+
+    // 3. Composicion por familia
+    h += "<h3>Composición por familia de producto · " + esc(ap.nombre) + "</h3>";
+    var familias = {};
+    con.forEach(function (r) { Object.keys(r.familias || {}).forEach(function (f) { familias[f] = (familias[f] || 0) + num(r.familias[f].lista); }); });
+    var famOrden = Object.keys(familias).sort(function (a, b) { return familias[b] - familias[a]; });
+    var totalValor = famOrden.reduce(function (a, f) { return a + familias[f]; }, 0);
+    h += '<div class="cv-scroll"><table class="data-table cv-table"><thead><tr><th>Familia</th><th class="num">% del valor de equipos</th>' +
+      segs.concat(["Total"]).map(function (s) { return '<th class="num">' + esc(s) + "</th>"; }).join("") +
+      '</tr></thead><tbody>';
+    famOrden.forEach(function (f) {
+      h += "<tr><td>" + esc(f) + '</td><td class="num">' + pct(familias[f], totalValor) + "</td>";
+      segs.concat(["Total"]).forEach(function (s) {
+        var fs = (s === "Total" ? con : con.filter(function (r) { return ap.f(r) === s; }));
+        if (!fs.length) { h += '<td class="num">—</td>'; return; }
+        var lleva = fs.filter(function (r) { return r.familias && r.familias[f]; });
+        var unid = lleva.reduce(function (a, r) { return a + num(r.familias[f].cantidad); }, 0);
+        h += '<td class="num">' + pct(lleva.length, fs.length) +
+          (lleva.length ? ' <span class="cv-sub">' + NF1.format(unid / lleva.length) + " u.</span>" : "") + "</td>";
+      });
+      h += "</tr>";
+    });
+    h += '</tbody></table></div><p class="cv-sub">Por segmento: % de las ventas que llevan la familia y, en gris, las unidades promedio en esas ventas. Las familias se configuran por prefijo de código (tabla ns_familia_articulo).</p>';
+
+    // Controles
+    var sinPrecio = {};
+    con.forEach(function (r) {
+      (r.lineas || []).forEach(function (l) {
+        if ((l.categoria === "Equipo" || l.categoria === "Servicio") && l.precio_origen !== "lista" && l.precio_origen !== "equivalente") {
+          var k = l.articulo || "(sin nombre)";
+          sinPrecio[k] = sinPrecio[k] || { n: 0, origen: l.precio_origen ? "precio de la línea" : "sin precio (no suma)" };
+          sinPrecio[k].n += 1;
+        }
+      });
+    });
+    var sp = Object.keys(sinPrecio).sort(function (a, b) { return sinPrecio[b].n - sinPrecio[a].n; });
+    h += '<details class="cv-det"><summary>Artículos sin precio de lista (' + sp.length + ")</summary>" +
+      (sp.length ? '<table class="data-table cv-table"><thead><tr><th>Artículo</th><th class="num">Líneas</th><th>Se valoriza con</th></tr></thead><tbody>' +
+        sp.map(function (k) { return "<tr><td>" + esc(k) + '</td><td class="num">' + sinPrecio[k].n + "</td><td>" + sinPrecio[k].origen + "</td></tr>"; }).join("") +
+        "</tbody></table><p class='cv-sub'>Cargarles el precio base en pesos en NetSuite mejora la comparación.</p>" : "<p>Todos los artículos tienen precio de lista.</p>") + "</details>";
+
+    var revisar = filas.filter(function (r) { return r.tipo_origen !== "cargado"; });
+    h += '<details class="cv-det"><summary>Ventas sin tipo de establecimiento cargado (' + revisar.length + ")</summary>" +
+      (revisar.length ? '<table class="data-table cv-table"><thead><tr><th>Oportunidad</th><th>Fecha</th><th>Cliente</th><th>Modalidad</th><th>Abonos</th><th>Tipo asignado</th></tr></thead><tbody>' +
+        revisar.map(function (r) {
+          return "<tr><td>" + esc(r.oportunidad) + "</td><td>" + fmtDia(r.fecha) + "</td><td>" + esc(r.cliente) + "</td><td>" + esc(r.modalidad) +
+            "</td><td>" + esc((r.abonos || []).map(function (n) { return "ABO " + n; }).join(", ")) + "</td><td>" + esc(r.tipo_establecimiento) +
+            (r.tipo_origen === "inferido" ? '<span class="cv-tag">inferido</span>' : "") + "</td></tr>";
+        }).join("") + "</tbody></table>" : "<p>Todas tienen el tipo cargado.</p>") + "</details>";
+
+    var listaSinArt = sinArt;
+    h += '<details class="cv-det"><summary>Ventas sin artículos cargados (' + listaSinArt.length + ")</summary>" +
+      (listaSinArt.length ? '<table class="data-table cv-table"><thead><tr><th>Oportunidad</th><th>Fecha</th><th>Cliente</th><th>Modalidad</th><th>Fuente</th></tr></thead><tbody>' +
+        listaSinArt.map(function (r) {
+          return "<tr><td>" + esc(r.oportunidad) + "</td><td>" + fmtDia(r.fecha) + "</td><td>" + esc(r.cliente) + "</td><td>" + esc(r.modalidad) +
+            "</td><td>" + esc(r.fuente ? r.fuente + " " + (r.transacciones || "") + " sin equipos" : "Sin OV ni presupuesto cargados") + "</td></tr>";
+        }).join("") + "</tbody></table>" : "<p>Todas las ventas tienen artículos.</p>") + "</details>";
+
+    panel().innerHTML = h;
+    enlazar();
+  }
+
+  function kpi(n, label) { return '<div class="kpi-card"><div class="kpi-num">' + n + '</div><div class="kpi-label">' + esc(label) + "</div></div>"; }
+
+  // ---- Grafico de lineas: ticket por mes (Total + hasta 2 segmentos) ----
+  function grafico(filas, meses, ap, segs) {
+    var series = [{ nombre: "Total", color: COLOR_TOTAL, f: function () { return true; } }];
+    segs.forEach(function (s, i) { series.push({ nombre: s, color: COLORES[i], f: function (r) { return ap.f(r) === s; } }); });
+    series.forEach(function (se) {
+      se.vals = meses.map(function (m) {
+        var fs = filas.filter(function (r) { return r.mes === m && se.f(r); });
+        return { v: prom(fs, "equipos_lista"), n: fs.filter(conArticulos).length };
+      });
+    });
+    var W = 860, H = 280, L = 70, R = 90, T = 16, B = 34;
+    var max = 0;
+    series.forEach(function (se) { se.vals.forEach(function (x) { if (x.v !== null && x.v > max) max = x.v; }); });
+    if (!max) return "";
+    var paso = Math.pow(10, Math.floor(Math.log10(max)));
+    var tope = Math.ceil(max * 1.1 / paso) * paso;
+    var x = function (i) { return L + (meses.length === 1 ? (W - L - R) / 2 : i * (W - L - R) / (meses.length - 1)); };
+    var y = function (v) { return T + (H - T - B) * (1 - v / tope); };
+    var svg = '<svg class="chart-svg" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Ticket promedio de equipos por mes">';
+    for (var g = 0; g <= 4; g++) {
+      var gv = tope * g / 4;
+      svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(gv) + '" y2="' + y(gv) + '" stroke="#E4E2DA" stroke-width="1"/>' +
+        '<text class="axis-label" x="' + (L - 8) + '" y="' + (y(gv) + 4) + '" text-anchor="end">' + miles(gv) + "</text>";
+    }
+    meses.forEach(function (m, i) {
+      svg += '<text class="axis-label" x="' + x(i) + '" y="' + (H - 12) + '" text-anchor="middle">' + mesLabel(m) + "</text>";
+    });
+    var etiquetas = [];
+    series.forEach(function (se) {
+      var d = "", ult = null;
+      se.vals.forEach(function (p, i) {
+        if (p.v === null) return;
+        d += (d ? " L" : "M") + x(i).toFixed(1) + " " + y(p.v).toFixed(1);
+        ult = i;
+      });
+      svg += '<path d="' + d + '" fill="none" stroke="' + se.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+      se.vals.forEach(function (p, i) {
+        if (p.v === null) return;
+        svg += '<circle cx="' + x(i) + '" cy="' + y(p.v) + '" r="4" fill="' + se.color + '" stroke="#fff" stroke-width="2"/>';
+      });
+      if (ult !== null) etiquetas.push({ x: x(ult) + 10, y: y(se.vals[ult].v) + 4, t: se.nombre });
+    });
+    // Etiquetas al final de cada linea, separadas para que no se pisen.
+    etiquetas.sort(function (a, b) { return a.y - b.y; });
+    for (var k = 1; k < etiquetas.length; k++) {
+      if (etiquetas[k].y - etiquetas[k - 1].y < 14) etiquetas[k].y = etiquetas[k - 1].y + 14;
+    }
+    etiquetas.forEach(function (e) { svg += '<text class="val-label" x="' + e.x + '" y="' + e.y + '">' + esc(e.t) + "</text>"; });
+    meses.forEach(function (m, i) {
+      var ancho = meses.length > 1 ? (W - L - R) / (meses.length - 1) : (W - L - R);
+      svg += '<rect class="cv-hit" data-i="' + i + '" x="' + (x(i) - ancho / 2) + '" y="' + T + '" width="' + ancho + '" height="' + (H - T - B) + '" fill="transparent"/>';
+    });
+    svg += "</svg>";
+    S.serie = { series: series, meses: meses };
+    return '<div class="cv-chart" id="cv-chart">' + svg + '<div class="cv-tip" id="cv-tip" hidden></div></div>' +
+      '<div class="cv-legend">' + series.map(function (se) { return '<span><i style="background:' + se.color + '"></i>' + esc(se.nombre) + "</span>"; }).join("") + "</div>";
+  }
+
+  function enlazar() {
+    var a = $("cv-abrir"), m = $("cv-modalidad"), x = $("cv-excel");
+    if (a) a.addEventListener("change", function () { S.abrir = a.value; pintar(); });
+    if (m) m.addEventListener("change", function () { S.modalidad = m.value; pintar(); });
+    if (x) x.addEventListener("click", exportar);
+    var chart = $("cv-chart"), tip = $("cv-tip");
+    if (chart && tip && S.serie) {
+      chart.querySelectorAll(".cv-hit").forEach(function (r) {
+        r.addEventListener("mouseenter", function (ev) {
+          var i = Number(r.getAttribute("data-i"));
+          tip.innerHTML = "<b>" + mesLabel(S.serie.meses[i]) + "</b><br>" + S.serie.series.map(function (se) {
+            var p = se.vals[i];
+            return '<i style="background:' + se.color + '"></i>' + esc(se.nombre) + ": " + (p.v === null ? "—" : pesos(p.v) + " (" + p.n + " ventas)");
+          }).join("<br>");
+          tip.hidden = false;
+          ubicar(ev);
+        });
+        r.addEventListener("mousemove", ubicar);
+        function ubicar(ev) {
+          var b = chart.getBoundingClientRect();
+          var left = ev.clientX - b.left + 14;
+          if (left + tip.offsetWidth > b.width) left = ev.clientX - b.left - tip.offsetWidth - 14;
+          tip.style.left = left + "px";
+          tip.style.top = (ev.clientY - b.top + 10) + "px";
+        }
+        r.addEventListener("mouseleave", function () { tip.hidden = true; });
+      });
+    }
+  }
+
+  // ---- Exportar a Excel ----
+  function cargarXlsx() {
+    if (window.XLSX) return Promise.resolve();
+    if (!window.__xlsxCarga) {
+      window.__xlsxCarga = new Promise(function (ok, mal) {
+        var s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        s.onload = ok;
+        s.onerror = function () { window.__xlsxCarga = null; mal(new Error("No se pudo cargar la librería de Excel.")); };
+        document.head.appendChild(s);
+      });
+    }
+    return window.__xlsxCarga;
+  }
+  async function exportar() {
+    var btn = $("cv-excel");
+    btn.disabled = true;
+    try {
+      await cargarXlsx();
+      var filas = (S.filas || []).filter(function (r) { return S.modalidad === "todas" || r.modalidad === S.modalidad; });
+      var fecha = function (s) { if (!s) return null; var p = String(s).slice(0, 10).split("-"); return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); };
+      var ventas = filas.map(function (r) {
+        return {
+          "Oportunidad": r.oportunidad, "Fecha": fecha(r.fecha), "Mes": r.mes, "Cliente": r.cliente, "Nro. cliente": r.nro_cliente,
+          "Vendedor": r.vendedor, "Unidad de negocio": r.unidad_negocio, "Tipo de establecimiento": r.tipo_establecimiento,
+          "Tipo (origen)": r.tipo_origen, "Modalidad": r.modalidad, "Alta del cliente": fecha(r.alta_cliente),
+          "Cliente nuevo": r.cliente_nuevo === true ? "Sí" : r.cliente_nuevo === false ? "No" : "Sin dato",
+          "Fuente de artículos": r.fuente || "Sin artículos", "OV / presupuesto": r.transacciones,
+          "Abonos": (r.abonos || []).map(function (n) { return "ABO " + n; }).join(", "),
+          "Equipos (unidades)": num(r.equipos_cantidad), "Equipos a lista": num(r.equipos_lista), "Equipos facturados": num(r.equipos_real),
+          "Mano de obra a lista": num(r.servicios_lista), "Mano de obra facturada": num(r.servicios_real), "Descuentos": num(r.descuentos),
+          "Líneas sin precio": num(r.lineas_sin_precio)
+        };
+      });
+      var lineas = [];
+      filas.forEach(function (r) {
+        (r.lineas || []).forEach(function (l) {
+          lineas.push({
+            "Oportunidad": r.oportunidad, "Fecha": fecha(r.fecha), "Tipo de establecimiento": r.tipo_establecimiento, "Modalidad": r.modalidad,
+            "Categoría": l.categoria, "Familia": l.familia, "Artículo": l.articulo, "Cantidad": num(l.cantidad),
+            "Precio de referencia": l.precio_ref === null ? null : num(l.precio_ref), "Precio tomado de": l.precio_origen || "sin precio",
+            "Valor a lista": l.valor_lista === null ? null : num(l.valor_lista), "Importe facturado": l.importe === null ? null : num(l.importe)
+          });
+        });
+      });
+      var libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(ventas), "Ventas");
+      XLSX.utils.book_append_sheet(libro, XLSX.utils.json_to_sheet(lineas), "Líneas");
+      XLSX.writeFile(libro, "Composicion_de_ventas_" + S.desde + "_al_" + S.hasta + ".xlsx");
+    } catch (e) {
+      alert("No se pudo exportar: " + e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ---- Boton "Actualizar articulos" ----
+  function artEstado(texto, tipo) {
+    var el = $("art-estado");
+    if (!el) return;
+    el.innerHTML = texto || "";
+    el.className = "upd-estado" + (tipo ? " upd-estado--" + tipo : "");
+  }
+  function artBloquear(b) {
+    $("art-btn").disabled = b; $("art-desde").disabled = b; $("art-hasta").disabled = b;
+    $("art-btn").textContent = b ? "Actualizando…" : "Actualizar artículos";
+  }
+  async function artUltima() {
+    var r = await sb.from("ns_sincronizacion").select("id,desde,hasta,estado,paso,mensaje,iniciada_en,finalizada_en,solicitado_por")
+      .eq("tipo", "articulos").order("iniciada_en", { ascending: false }).limit(1);
+    var el = $("art-ultima");
+    if (r.error) { if (el) el.textContent = ""; return null; }
+    var u = r.data && r.data[0];
+    if (el) el.innerHTML = u ? "Última: " + fmtFechaHora(u.finalizada_en || u.iniciada_en) + " · del " + fmtDia(u.desde) + " al " + fmtDia(u.hasta) +
+      " · " + (u.estado === "ok" ? "OK" : u.estado === "error" ? "con error" : "en curso") + (u.mensaje ? " · " + esc(u.mensaje) : "") : "Todavía no se actualizaron los artículos.";
+    return u;
+  }
+  function artSeguir(id) {
+    artBloquear(true);
+    if (artTimer) clearInterval(artTimer);
+    artTimer = setInterval(async function () {
+      var r = await sb.from("ns_sincronizacion").select("estado,paso,mensaje").eq("id", id).single();
+      if (r.error) { artEstado("No se pudo consultar el avance: " + esc(r.error.message), "error"); return; }
+      if (r.data.estado === "en_curso") { artEstado("Actualizando artículos: " + esc(r.data.paso || "…")); return; }
+      clearInterval(artTimer); artTimer = null; artBloquear(false);
+      await artUltima();
+      if (r.data.estado === "ok") {
+        artEstado("Artículos actualizados.", "ok");
+        S.clave = null;
+        if (activa()) cargar(true);
+      } else artEstado("La actualización de artículos falló: " + esc(r.data.mensaje || "error desconocido"), "error");
+    }, POLL_MS);
+  }
+  async function artActualizar() {
+    var d = $("art-desde").value, h = $("art-hasta").value;
+    if (!d || !h) { artEstado("Completá las dos fechas.", "error"); return; }
+    if (d > h) { artEstado("La fecha Desde no puede ser posterior a Hasta.", "error"); return; }
+    if (h > hoyAR()) { artEstado("La fecha Hasta no puede ser posterior a hoy.", "error"); return; }
+    var s = await sb.auth.getSession();
+    var token = s.data && s.data.session && s.data.session.access_token;
+    if (!token) { artEstado("Tu sesión venció: volvé a ingresar a la web interna.", "error"); return; }
+    artBloquear(true);
+    artEstado("Iniciando…");
+    try {
+      var resp = await fetch(window.INFORME_MKT_API + "/articulos/actualizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ desde: d, hasta: h })
+      });
+      var body = await resp.json().catch(function () { return {}; });
+      if (!resp.ok) {
+        artBloquear(false);
+        var det = body.detail;
+        if (resp.status === 409) { var u = await artUltima(); if (u && u.estado === "en_curso") { artSeguir(u.id); return; } }
+        if (resp.status === 404) det = "el servicio todavía no tiene esta función: falta el push y el Redeploy de informe-mkt-api";
+        artEstado("No se pudo iniciar: " + esc(typeof det === "string" ? det : (det && det.mensaje) || ("error " + resp.status)), "error");
+        return;
+      }
+      artSeguir(body.sincronizacion_id);
+    } catch (e) {
+      artBloquear(false);
+      artEstado("No se pudo contactar al servicio (" + esc(e.message) + ").", "error");
+    }
+  }
+
+  async function iniciar() {
+    if (!sb) return;
+    var tab = $("tab-composicion");
+    if (tab) tab.addEventListener("click", function () { cargar(false); });
+    var per = $("per-btn");
+    if (per) per.addEventListener("click", function () { S.clave = null; if (activa()) setTimeout(function () { cargar(true); }, 0); });
+    if ($("art-btn")) {
+      $("art-desde").max = hoyAR(); $("art-hasta").max = hoyAR();
+      var hoy = hoyAR(), d = new Date(hoy + "T12:00:00");
+      d.setMonth(d.getMonth() - 2); d.setDate(1);
+      $("art-desde").value = d.toISOString().slice(0, 10);
+      $("art-hasta").value = hoy;
+      $("art-btn").addEventListener("click", artActualizar);
+      var u = await artUltima();
+      if (u && u.estado === "en_curso") artSeguir(u.id);
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
 })();
 </script>
 </body>
