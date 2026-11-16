@@ -25,6 +25,12 @@
 #   Usa la configuracion de abonos, unidades, vendedores y porcentajes (migraciones 28 a 31):
 #   fondo comisionable por unidad con las ventas de todos y reparto por porcentaje.
 #
+# POST /articulos/actualizar {desde, hasta}
+#   Actualizacion MANUAL de articulos, lista de precios, presupuestos y OV de
+#   productos de NetSuite (app/articulos.py, migracion 48), aparte de la
+#   corrida del informe. Permiso: editar en Informes de MKT. Corre en segundo
+#   plano; la pagina sigue el avance en la tabla ns_sincronizacion.
+#
 # POST /comisiones/liquidar {mes: "AAAA-MM"}
 #   Calcula el mes completo como el pop up y guarda la liquidacion
 #   (fn_comision_guardar_liquidacion). Permiso: editar en Comisiones. Si ya
@@ -42,7 +48,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 
-from app import acumulado, comisiones, config, job
+from app import acumulado, articulos, comisiones, config, job
 from app import supabase_rest as sb
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
@@ -116,6 +122,39 @@ def consultar(pedido: PedidoActualizacion, authorization: str = Header(None)):
     except Exception as e:
         logger.exception("Error al consultar el informe")
         raise HTTPException(500, f"Error interno al consultar el informe: {e}")
+
+
+@app.post("/articulos/actualizar", status_code=202)
+def actualizar_articulos(pedido: PedidoActualizacion, background: BackgroundTasks, authorization: str = Header(None)):
+    try:
+        token = _token_valido(authorization)
+        if not sb.tiene_permiso(token, "informes-mkt", "editar"):
+            raise HTTPException(403, "Tu usuario no tiene permiso para actualizar los articulos (editar en Informes de MKT).")
+        hoy = datetime.now(ZoneInfo(config.ZONA_HORARIA)).date()
+        if pedido.desde > pedido.hasta:
+            raise HTTPException(422, "La fecha 'desde' no puede ser posterior a 'hasta'.")
+        if pedido.hasta > hoy:
+            raise HTTPException(422, "La fecha 'hasta' no puede ser posterior a hoy.")
+        if (pedido.hasta - pedido.desde).days + 1 > config.MAX_DIAS_CONSULTA:
+            raise HTTPException(422, f"El rango no puede superar {config.MAX_DIAS_CONSULTA} dias.")
+        usuario = sb.verificar_usuario(token) or {}
+        sinc = articulos.crear_sincronizacion(token, pedido.desde, pedido.hasta, usuario.get("email"))
+        if not sinc:
+            raise HTTPException(409, "Ya hay una actualizacion de articulos en curso.")
+
+        def tarea():
+            try:
+                articulos.ejecutar(token, pedido.desde, pedido.hasta, log=logger.info, sinc_id=sinc["id"])
+            except Exception:
+                logger.exception("Error en la actualizacion de articulos %s", sinc["id"])
+
+        background.add_task(tarea)
+        return {"sincronizacion_id": sinc["id"], "estado": "en_curso"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error al iniciar la actualizacion de articulos")
+        raise HTTPException(500, f"Error interno al iniciar la actualizacion de articulos: {e}")
 
 
 @app.post("/informe-mkt/comisiones")

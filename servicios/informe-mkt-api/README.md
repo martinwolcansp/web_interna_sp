@@ -105,3 +105,11 @@ curl -X POST "https://<dominio-coolify>/informe-mkt/actualizar" -H "Authorizatio
 ```
 
 El avance queda en la tabla `informe_mkt_corrida`, en las columnas `estado`, `paso`, `mensaje` y `log`.
+
+## Artículos, precios, presupuestos y OV de productos (13/11/2026)
+
+Actualización **manual** y aparte del informe (no le suma tiempo a la corrida): `POST /articulos/actualizar {desde, hasta}` (permiso editar en Informes de MKT) o, desde la PC, `python actualizar_articulos.py AAAA-MM-DD AAAA-MM-DD [--simular]`. Lógica en `app/articulos.py`; tablas de la migración 48 (`ns_articulo`, `ns_articulo_precio`, `ns_familia_articulo`, `ns_articulo_familia`, `ns_transaccion`, `ns_transaccion_linea`, `ns_sincronizacion` y la vista `ns_articulo_clasificado`).
+
+- Catálogo completo y precio base en pesos (`pricing`, nivel 1, moneda 1). Los artículos de comodato `CC-XXX` se valorizan con el de venta `XXX`. Cada cambio de precio queda en el historial.
+- Presupuestos y OV de PRODUCTOS / PRODUCTOS y ABONOS del rango con sus líneas (Equipo, Servicio, Descuento, ABO; los descuentos restan). Las OV mensuales de ABONOS no se guardan.
+- Requiere en el rol Listas → Artículos (Ver). Pruebas previas: `python diagnostico_articulos.py AAAA-MM-DD AAAA-MM-DD`.

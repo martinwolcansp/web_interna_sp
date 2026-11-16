@@ -1,0 +1,211 @@
+{
+ "desde": "2026-09-01",
+ "hasta": "2026-09-30",
+ "permisos": {
+  "Articulos (item)": "OK",
+  "Articulos: todos los campos (ver nombres)": "OK",
+  "Articulos: clase": "OK",
+  "Articulos: campos de comodato / habilitado para venta": "OK",
+  "Precios por nivel (pricing)": "OK",
+  "Monedas (currency)": "ERROR: rfc-editor.org/rfc/rfc9110.html#section-15.5.1\",\"title\":\"Bad Request\",\"status\":400,\"o:errorDetails\":[{\"detail\":\"Invalid search query. Detailed unprocessed description follows. Se produjo un error de búsqueda: Record 'currency' was not found.\",\"o:errorPath\":\"$.*\",\"o:errorCode\":\"INVALID_PARAMETER\"}]}\n"
+ },
+ "catalogo": {
+  "total": 933,
+  "por_tipo": [
+   {
+    "isinactive": "F",
+    "itemtype": "Assembly",
+    "n": "1"
+   },
+   {
+    "isinactive": "F",
+    "itemtype": "Description",
+    "n": "3"
+   },
+   {
+    "isinactive": "T",
+    "itemtype": "Discount",
+    "n": "21"
+   },
+   {
+    "isinactive": "F",
+    "itemtype": "Discount",
+    "n": "14"
+   },
+   {
+    "isinactive": "F",
+    "itemtype": "Group",
+    "n": "1"
+   },
+   {
+    "isinactive": "T",
+    "itemtype": "InvtPart",
+    "n": "18"
+   },
+   {
+    "isinactive": "F",
+    "itemtype": "InvtPart",
+    "n": "587"
+   },
+   {
+    "isinactive": "F",
+    "itemtype": "Kit",
+    "n": "43"
+   },
+   {
+    "isinactive": "T",
+    "itemtype": "Kit",
+    "n": "6"
+   },
+   {
+    "isinactive": "F",
+    "itemtype": "NonInvtPart",
+    "n": "60"
+   },
+   {
+    "isinactive": "T",
+    "itemtype": "NonInvtPart",
+    "n": "1"
+   },
+   {
+    "isinactive": "T",
+    "itemtype": "Service",
+    "n": "38"
+   },
+   {
+    "isinactive": "F",
+    "itemtype": "Service",
+    "n": "139"
+   },
+   {
+    "isinactive": "T",
+    "itemtype": "Subtotal",
+    "n": "1"
+   }
+  ]
+ },
+ "volumen_rango": [
+  {
+   "lineas": "3268",
+   "tipo": "Estimate",
+   "transacciones": "552"
+  },
+  {
+   "lineas": "774",
+   "tipo": "SalesOrd",
+   "tipo_ov": "Orden de Venta PRODUCTOS y ABONOS (Contrato)",
+   "transacciones": "83"
+  },
+  {
+   "lineas": "27863",
+   "tipo": "SalesOrd",
+   "tipo_ov": "Orden de Venta ABONOS (Contrato)",
+   "transacciones": "9587"
+  },
+  {
+   "lineas": "12",
+   "tipo": "SalesOrd",
+   "transacciones": "6"
+  },
+  {
+   "lineas": "2808",
+   "tipo": "SalesOrd",
+   "tipo_ov": "Orden de Venta PRODUCTOS",
+   "transacciones": "711"
+  }
+ ],
+ "ganadas": 71,
+ "ganadas_detalle": {
+  "con_ov": 63,
+  "con_ov_productos": 62,
+  "con_presupuesto": 71,
+  "ov": 237,
+  "presupuestos": 115
+ },
+ "lineas": {
+  "Presupuesto / Equipo / Venta": {
+   "lineas": 589,
+   "importe_0": 116,
+   "con_precio_ref": 580,
+   "por_equivalente": 17
+  },
+  "Presupuesto / Servicio / Venta": {
+   "lineas": 92,
+   "importe_0": 1,
+   "con_precio_ref": 84,
+   "por_equivalente": 0
+  },
+  "Presupuesto / ABO / Venta": {
+   "lineas": 89,
+   "importe_0": 2,
+   "con_precio_ref": 0,
+   "por_equivalente": 0
+  },
+  "Presupuesto / Descuento / Venta": {
+   "lineas": 1,
+   "importe_0": 0,
+   "con_precio_ref": 0,
+   "por_equivalente": 0
+  },
+  "Presupuesto / Equipo / Comodato": {
+   "lineas": 117,
+   "importe_0": 104,
+   "con_precio_ref": 117,
+   "por_equivalente": 100
+  },
+  "Presupuesto / ABO / Comodato": {
+   "lineas": 37,
+   "importe_0": 0,
+   "con_precio_ref": 0,
+   "por_equivalente": 0
+  },
+  "OV / ABO / Venta": {
+   "lineas": 132,
+   "importe_0": 0,
+   "con_precio_ref": 0,
+   "por_equivalente": 0
+  },
+  "OV / Equipo / Comodato": {
+   "lineas": 119,
+   "importe_0": 119,
+   "con_precio_ref": 119,
+   "por_equivalente": 119
+  },
+  "OV / ABO / Comodato": {
+   "lineas": 113,
+   "importe_0": 0,
+   "con_precio_ref": 0,
+   "por_equivalente": 0
+  },
+  "OV / Equipo / Venta": {
+   "lineas": 294,
+   "importe_0": 62,
+   "con_precio_ref": 270,
+   "por_equivalente": 0
+  },
+  "OV / Servicio / Venta": {
+   "lineas": 56,
+   "importe_0": 2,
+   "con_precio_ref": 52,
+   "por_equivalente": 0
+  },
+  "OV / Descuento / Venta": {
+   "lineas": 153,
+   "importe_0": 0,
+   "con_precio_ref": 0,
+   "por_equivalente": 0
+  },
+  "Presupuesto / Servicio / Comodato": {
+   "lineas": 8,
+   "importe_0": 0,
+   "con_precio_ref": 8,
+   "por_equivalente": 0
+  },
+  "OV / Servicio / Comodato": {
+   "lineas": 1,
+   "importe_0": 0,
+   "con_precio_ref": 1,
+   "por_equivalente": 0
+  }
+ }
+}
