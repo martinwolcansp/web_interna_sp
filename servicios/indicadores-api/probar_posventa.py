@@ -46,6 +46,10 @@ def probar_netsuite():
     guardar("relevamientos.json", relev)
     print("  Relevamientos por mes:", dict(sorted(Counter((r["fecha_creacion"] or "")[:7] for r in relev).items())))
     print("  Acciones:", dict(Counter(a for r in relev for a in r["acciones"]).most_common()))
+    print("  Prioridades:", dict(Counter(f'{r["prioridad_id"]} {r["prioridad"]}' if r["prioridad_id"] else "Sin prioridad" for r in relev).most_common()))
+    for r in relev:
+        if r["prioridad_id"]:
+            print(f'    {r["numero_caso"] or "sin caso"} · relevamiento {r["relevamiento_id"]} · {r["prioridad"]}')
 
 
 def probar_ghl():

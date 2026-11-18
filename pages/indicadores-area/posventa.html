@@ -141,6 +141,30 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .leyenda-alerta .ley-llamado::before { background: #fde8e6; box-shadow: inset 3px 0 0 #c0392b; }
 .leyenda-alerta .ley-negativa::before { background: #fff4dc; box-shadow: inset 3px 0 0 #d99a00; }
 
+/* Detalle de relevamientos: una fila por caso, desplegable, con prioridad */
+.filtros--detalle { margin: 0 0 8px; }
+.data-table td.num { text-align: center; font-variant-numeric: tabular-nums; }
+.data-table th.col-toggle, .data-table td.col-toggle { width: 36px; padding-left: 8px; padding-right: 0; cursor: default; }
+.data-table tr.caso-fila { cursor: pointer; }
+.data-table tr.caso-fila:hover td { background: var(--light-fill); }
+.data-table tr.caso-fila td:first-child, .data-table tr.sub-fila td:first-child { box-shadow: inset 4px 0 0 var(--prio, transparent); }
+.data-table tr.caso-fila.abierta td { background: var(--light-fill); border-bottom-color: transparent; }
+.data-table tr.sub-fila > td { background: var(--light-fill); padding: 0 10px 12px; }
+.toggle-btn { appearance: none; border: 1px solid var(--rule); background: var(--surface); color: var(--navy); width: 22px; height: 22px; border-radius: 5px; font-size: 12px; line-height: 1; padding: 0; cursor: pointer; }
+.toggle-btn:hover { border-color: var(--navy); }
+.sub-tabla { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--rule); font-size: 13px; }
+.data-table .sub-tabla th, .data-table .sub-tabla th:hover { background: #dfe6f2; color: var(--navy); position: static; cursor: default; padding: 6px 10px; }
+.data-table .sub-tabla td { background: var(--surface); padding: 6px 10px; }
+.data-table .sub-tabla tr:last-child td { border-bottom: 0; }
+.data-table .sub-tabla tr.rel-coincide td { background: #fff8e8; }
+.data-table .sub-tabla tr.rel-fuera td { color: var(--muted); }
+.prio-badge { display: inline-flex; align-items: center; gap: 6px; padding: 1px 9px 1px 7px; border: 1px solid var(--prio); border-radius: 10px; background: #fff; color: var(--prio); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.prio-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--prio); }
+.prio-sin { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.leyenda-alerta .ley-prio::before { background: #fff; border: 1px solid var(--rule); box-shadow: inset 3px 0 0 var(--prio); }
+.explorer-btn { appearance: none; border: 1px solid var(--rule); background: var(--surface); color: var(--navy); font: inherit; font-size: 12.5px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+.explorer-btn:hover { border-color: var(--navy); }
+
 /* Barra de actualizacion (igual que el informe MKT) */
 .upd-hero { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; padding: 10px 16px; background: var(--navy); color: #fff; border-left: 6px solid #8fb3e8; border-radius: 0 6px 6px 0; }
 .upd-hero[hidden] { display: none; }
@@ -259,14 +283,20 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <div class="bloque">
         <h3>Detalle de relevamientos</h3>
         <div class="sel-chip" id="sel-relev" hidden></div>
+        <div class="filtros filtros--detalle" id="filtros-detalle">
+          <span class="filtros-titulo">Filtrar detalle</span>
+        </div>
+        <div class="leyenda-alerta" id="leyenda-prio"></div>
         <div class="explorer">
           <div class="explorer-bar">
-            <span class="explorer-title">Relevamientos posventa</span>
+            <span class="explorer-title">Casos con relevamiento posventa</span>
+            <button type="button" class="explorer-btn" id="expandir-relev">Expandir todo</button>
             <input type="search" class="explorer-search" id="buscar-relev" placeholder="Buscar caso, cuenta, empresa…">
             <span class="explorer-count" id="cuenta-relev"></span>
           </div>
           <div class="table-scroll"><table class="data-table" id="tabla-relev"></table></div>
         </div>
+        <div class="bloque-nota">Una fila por caso, marcada con la prioridad más alta de sus relevamientos. Hacé click en la fila para ver los relevamientos y abrirlos en NetSuite para asignar o cambiar la prioridad (se ve en la web después de tocar Actualizar ahora). El filtro de prioridad muestra los casos con al menos un relevamiento del nivel elegido.</div>
       </div>
     </section>
 
@@ -349,7 +379,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   function opcion(valor, validas) { return !valor ? "Sin respuesta" : validas.indexOf(valor) >= 0 ? valor : "Otra respuesta"; }
 
   var sb = window.supabaseClient;
-  var DATOS = { casos: [], relev: [], enc: [] };
+  var DATOS = { casos: [], relev: [], enc: [], prio: [] };
   var puedeEditar = false;
   var pollTimer = null;
 
@@ -623,6 +653,181 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     }
     $(buscarId).addEventListener("input", pintar);
     return { mostrar: function (filas) { estado.filas = filas; pintar(); }, repintar: pintar };
+  }
+
+  // =====================================================================
+  // Detalle de relevamientos: una fila por caso, con prioridad
+  // =====================================================================
+  // Niveles de ind_posventa_prioridad por ID interno de la lista de NetSuite.
+  // rango 1 = mas alta. Un ID que no esta en la tabla (nivel nuevo en NetSuite)
+  // se muestra en gris, por debajo de los conocidos.
+  var PRIO = {};
+  var SIN_PRIORIDAD = { id: 0, nombre: "Sin prioridad", rango: 999, color: null };
+  var filtroPrio = null;
+
+  function prioDe(r) {
+    if (!r.prioridad_id) return SIN_PRIORIDAD;
+    return PRIO[r.prioridad_id] || { id: r.prioridad_id, nombre: r.prioridad || "Prioridad " + r.prioridad_id, rango: 500, color: "#9AA0A6" };
+  }
+  function htmlPrio(p) {
+    if (!p.color) return '<span class="prio-sin">Sin prioridad</span>';
+    return '<span class="prio-badge" style="--prio:' + esc(p.color) + '">' + esc(p.nombre) + "</span>";
+  }
+  // Abre el relevamiento en modo edicion, para asignar la prioridad.
+  function urlEditarRelev(id) { return URL_RELEVAMIENTO + encodeURIComponent(id) + "&e=T"; }
+
+  // Un grupo por caso; un relevamiento sin caso queda solo en su fila.
+  // La prioridad del caso es la mas alta (menor rango) de sus relevamientos.
+  function agruparPorCaso(relevs) {
+    var porClave = {}, grupos = [];
+    relevs.forEach(function (r) {
+      var clave = r.numero_caso ? "c:" + r.numero_caso : "r:" + r.relevamiento_id;
+      var g = porClave[clave];
+      if (!g) {
+        g = porClave[clave] = { clave: clave, numero_caso: r.numero_caso, caso_id: r.caso_id, nro_cuenta: r.nro_cuenta,
+          empresa: r.empresa, tipo_posventa: r.tipo_posventa, relev: [] };
+        grupos.push(g);
+      }
+      if (!g.caso_id && r.caso_id) g.caso_id = r.caso_id;
+      if (!g.tipo_posventa && r.tipo_posventa) g.tipo_posventa = r.tipo_posventa;
+      g.relev.push(r);
+    });
+    grupos.forEach(function (g) {
+      g.relev.sort(function (a, b) {
+        return (b.fecha_creacion || "").localeCompare(a.fecha_creacion || "") || b.relevamiento_id - a.relevamiento_id;
+      });
+      g.ultima = g.relev[0].fecha_creacion;
+      g.prio = g.relev.reduce(function (m, r) { var p = prioDe(r); return p.rango < m.rango ? p : m; }, SIN_PRIORIDAD);
+      g.texto = [g.numero_caso, g.nro_cuenta, g.empresa, g.tipo_posventa].concat(g.relev.map(function (r) {
+        return [(r.acciones || []).join(" "), r.comentarios, r.realizo, prioDe(r).nombre].join(" ");
+      })).join(" ").toLowerCase();
+    });
+    return grupos;
+  }
+
+  // Filtro de prioridad y leyenda (se rearman en cada carga de datos).
+  function armarFiltroPrioridad() {
+    var cont = $("filtros-detalle");
+    cont.querySelectorAll(".chk-filtro").forEach(function (el) { el.remove(); });
+    var niveles = DATOS.prio.slice().sort(function (a, b) { return a.rango - b.rango; });
+    filtroPrio = crearFiltro(cont, "filtro-prio", "Prioridad",
+      niveles.map(function (p) { return { valor: String(p.id), etiqueta: p.nombre }; })
+        .concat([{ valor: "0", etiqueta: SIN_PRIORIDAD.nombre }]),
+      function () { if (tablaRelev) tablaRelev.repintar(); });
+    $("leyenda-prio").innerHTML = niveles.map(function (p) {
+      return '<span class="ley-prio" style="--prio:' + esc(p.color) + '">' + esc(p.nombre) + "</span>";
+    }).join("");
+  }
+
+  // Tabla de casos desplegable. mostrar(relevs) recibe los relevamientos del
+  // periodo / numero elegido: aparecen los casos que tienen alguno, y al
+  // desplegar se ven todos los relevamientos del caso (los que quedan fuera
+  // del filtro, en gris). Asi la prioridad del caso no depende del mes elegido.
+  function crearTablaCasos(tablaId, buscarId, cuentaId) {
+    var estado = { grupos: [], enSel: new Set(), orden: null, asc: true, abiertos: new Set() };
+    var tabla = $(tablaId);
+    var ultimaLista = [];
+    var columnas = [
+      { titulo: "Prioridad", html: function (g) { return htmlPrio(g.prio); }, orden: function (g) { return g.prio.rango; }, clase: "nowrap" },
+      { titulo: "Número", html: function (g) { return g.numero_caso ? htmlCasoRelev(g) : '<span class="sin-cliente">Sin caso</span>'; },
+        orden: function (g) { return g.numero_caso || "~"; }, clase: "nowrap" },
+      { titulo: "Nro cuenta", html: function (g) { return esc(g.nro_cuenta || ""); }, orden: function (g) { return +g.nro_cuenta || 0; } },
+      { titulo: "Empresa", html: function (g) { return esc(g.empresa || ""); }, orden: function (g) { return (g.empresa || "").toLowerCase(); } },
+      { titulo: "Relevamientos", html: function (g) { return String(g.relev.length); }, orden: function (g) { return g.relev.length; }, clase: "num" },
+      { titulo: "Último relevamiento", html: function (g) { return esc(fmtDia(g.ultima)); }, orden: function (g) { return g.ultima || ""; }, clase: "nowrap" },
+      { titulo: "Tipo de posventa", html: function (g) { return esc(g.tipo_posventa || ""); }, orden: function (g) { return g.tipo_posventa || ""; } },
+    ];
+    // Por defecto: prioridad mas alta primero; dentro de cada nivel, el relevamiento mas reciente.
+    function ordenDefecto(a, b) { return a.prio.rango - b.prio.rango || (b.ultima || "").localeCompare(a.ultima || ""); }
+    function pasaPrio(r) { return !filtroPrio || filtroPrio.pasa(prioDe(r).id); }
+
+    function visibles() {
+      var q = $(buscarId).value.trim().toLowerCase();
+      var lista = estado.grupos.filter(function (g) { return (!q || g.texto.indexOf(q) >= 0) && g.relev.some(pasaPrio); });
+      if (estado.orden === null) return lista.sort(ordenDefecto);
+      var col = columnas[estado.orden];
+      return lista.sort(function (a, b) {
+        var x = col.orden(a), y = col.orden(b);
+        return ((x < y ? -1 : x > y ? 1 : 0) * (estado.asc ? 1 : -1)) || ordenDefecto(a, b);
+      });
+    }
+
+    function htmlRelevamientos(g) {
+      var marcar = filtroPrio && filtroPrio.activo();
+      return '<table class="sub-tabla"><thead><tr><th>Prioridad</th><th>Fecha</th><th>Acciones posventa</th>' +
+        "<th>Comentarios posventa</th><th>Realizó</th><th>NetSuite</th></tr></thead><tbody>" +
+        g.relev.map(function (r) {
+          var fuera = !estado.enSel.has(r.relevamiento_id);
+          var clase = fuera ? "rel-fuera" : marcar && pasaPrio(r) ? "rel-coincide" : "";
+          return "<tr" + (clase ? ' class="' + clase + '"' : "") + ">" +
+            '<td class="nowrap">' + htmlPrio(prioDe(r)) + "</td>" +
+            '<td class="nowrap">' + esc(fmtDia(r.fecha_creacion)) + (fuera ? '<span class="accion-det">Fuera del filtro</span>' : "") + "</td>" +
+            "<td>" + esc((r.acciones || []).join(", ")) + "</td>" +
+            '<td class="texto-largo">' + esc(r.comentarios || "") + "</td>" +
+            "<td>" + esc(r.realizo || "") + "</td>" +
+            '<td class="nowrap"><a class="accion-link" href="' + urlEditarRelev(r.relevamiento_id) +
+            '" target="_blank" rel="noopener" title="Abrir el relevamiento en NetSuite para editarlo (asignar o cambiar la prioridad)">Editar relevamiento ↗</a></td>' +
+            "</tr>";
+        }).join("") + "</tbody></table>";
+    }
+
+    function pintar() {
+      var lista = visibles();
+      var html = '<thead><tr><th class="col-toggle"></th>' + columnas.map(function (c, i) {
+        var flecha = estado.orden === i ? (estado.asc ? "▲" : "▼") : "↕";
+        return '<th data-col="' + i + '">' + esc(c.titulo) + '<span class="sort-arrow">' + flecha + "</span></th>";
+      }).join("") + "</tr></thead><tbody>";
+      if (!lista.length) html += '<tr><td colspan="' + (columnas.length + 1) + '" class="vacio">Sin resultados.</td></tr>';
+      lista.forEach(function (g) {
+        var abierto = estado.abiertos.has(g.clave);
+        var color = g.prio.color ? ' style="--prio:' + esc(g.prio.color) + '"' : "";
+        html += '<tr class="caso-fila' + (abierto ? " abierta" : "") + '" data-clave="' + esc(g.clave) + '"' + color + ">" +
+          '<td class="col-toggle"><button type="button" class="toggle-btn" aria-expanded="' + abierto + '" title="' +
+          (abierto ? "Ocultar" : "Ver") + ' relevamientos">' + (abierto ? "▾" : "▸") + "</button></td>" +
+          columnas.map(function (c) { return '<td class="' + (c.clase || "") + '">' + c.html(g) + "</td>"; }).join("") + "</tr>";
+        if (abierto) html += '<tr class="sub-fila"' + color + '><td></td><td colspan="' + columnas.length + '">' + htmlRelevamientos(g) + "</td></tr>";
+      });
+      tabla.innerHTML = html + "</tbody>";
+      ultimaLista = lista;
+      var nRel = lista.reduce(function (s, g) { return s + g.relev.length; }, 0);
+      $(cuentaId).textContent = lista.length + " de " + estado.grupos.length + " filas · " + nRel + " relevamientos";
+      $("expandir-relev").textContent = lista.length && lista.every(function (g) { return estado.abiertos.has(g.clave); })
+        ? "Contraer todo" : "Expandir todo";
+    }
+
+    tabla.addEventListener("click", function (e) {
+      var th = e.target.closest("th[data-col]");
+      if (th) {
+        var i = +th.getAttribute("data-col");
+        estado.asc = estado.orden === i ? !estado.asc : true;
+        estado.orden = i;
+        pintar();
+        return;
+      }
+      if (e.target.closest("a")) return; // los links abren NetSuite sin desplegar
+      var tr = e.target.closest("tr.caso-fila");
+      if (!tr) return;
+      var clave = tr.getAttribute("data-clave");
+      if (estado.abiertos.has(clave)) estado.abiertos.delete(clave); else estado.abiertos.add(clave);
+      pintar();
+    });
+    $("expandir-relev").addEventListener("click", function () {
+      var todos = ultimaLista.length && ultimaLista.every(function (g) { return estado.abiertos.has(g.clave); });
+      ultimaLista.forEach(function (g) { if (todos) estado.abiertos.delete(g.clave); else estado.abiertos.add(g.clave); });
+      pintar();
+    });
+    $(buscarId).addEventListener("input", pintar);
+
+    return {
+      mostrar: function (relevs) {
+        estado.enSel = new Set(relevs.map(function (r) { return r.relevamiento_id; }));
+        estado.grupos = agruparPorCaso(DATOS.relev).filter(function (g) {
+          return g.relev.some(function (r) { return estado.enSel.has(r.relevamiento_id); });
+        });
+        pintar();
+      },
+      repintar: pintar,
+    };
   }
 
   // =====================================================================
@@ -1100,17 +1305,22 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     sig = xlMatriz(ws, 5, "Tipo de posventa", tipos, mesesDe(relevCaso, "fecha_creacion"), function (k, m) { return porTipo[k][m]; });
     xlNotas(ws, sig, ["Relevamientos con caso de instalación, según el tipo de posventa del caso, por mes de creación del relevamiento."]);
 
-    // 4. Detalle de relevamientos
+    // 4. Detalle de relevamientos (con la prioridad del relevamiento y la del caso)
+    var prioCaso = {};
+    agruparPorCaso(DATOS.relev).forEach(function (g) { g.relev.forEach(function (r) { prioCaso[r.relevamiento_id] = g.prio; }); });
+    var nombrePrio = function (p) { return p && p.color ? p.nombre : null; };
     ws = xlHoja(wb, "Detalle relevamientos", "Detalle de relevamientos", periodo);
     var orden = relev.slice().sort(function (a, b) { return (b.fecha_creacion || "").localeCompare(a.fecha_creacion || ""); });
     xlTabla(ws, 5, [
-      { titulo: "Número de caso", ancho: 16 }, { titulo: "Nro cuenta", ancho: 11 }, { titulo: "Empresa", ancho: 34 },
+      { titulo: "Número de caso", ancho: 16 }, { titulo: "Prioridad del caso", ancho: 12 }, { titulo: "Prioridad", ancho: 12 },
+      { titulo: "Nro cuenta", ancho: 11 }, { titulo: "Empresa", ancho: 34 },
       { titulo: "Fecha de creación", ancho: 12, fmt: XL_DIA }, { titulo: "Acciones posventa", ancho: 32, ajustar: true },
       { titulo: "Comentarios posventa", ancho: 70, ajustar: true }, { titulo: "Tipo de posventa", ancho: 22 },
       { titulo: "Realizó", ancho: 24 }, { titulo: "Relevamiento", ancho: 13 },
     ], orden.map(function (r) {
       return [
         r.caso_id ? xlLink(r.numero_caso, URL_CASO + encodeURIComponent(r.caso_id)) : r.numero_caso,
+        nombrePrio(prioCaso[r.relevamiento_id]), nombrePrio(prioDe(r)),
         xlNumero(r.nro_cuenta), r.empresa, xlFecha(r.fecha_creacion), (r.acciones || []).join(", "), r.comentarios,
         r.tipo_posventa, r.realizo, xlLink(r.relevamiento_id, URL_RELEVAMIENTO + encodeURIComponent(r.relevamiento_id)),
       ];
@@ -1248,10 +1458,14 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var res = await Promise.all([
       // Tabla comun: solo los casos del alcance de Posventa / Instalaciones (asignado 133).
       leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id", ["alcance", "instalaciones"]),
-      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl,caso_id", "relevamiento_id"),
+      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl,caso_id,prioridad_id,prioridad", "relevamiento_id"),
       leerTodo("ind_posventa_encuesta", "contact_id,contacto,estado,fecha,calificacion,expectativa,comentarios,cliente_ns_id,cliente_ns,cliente_ns_nombre,cliente_ns_cant,caso_ns_id,caso_ns,caso_ns_fecha,caso_ns_cant", "contact_id"),
+      leerTodo("ind_posventa_prioridad", "id,nombre,rango,color", "id"),
     ]);
-    DATOS.casos = res[0]; DATOS.relev = res[1]; DATOS.enc = res[2];
+    DATOS.casos = res[0]; DATOS.relev = res[1]; DATOS.enc = res[2]; DATOS.prio = res[3];
+    PRIO = {};
+    DATOS.prio.forEach(function (p) { PRIO[p.id] = p; });
+    armarFiltroPrioridad();
     indexarRelevamientos();
 
     filtroInst = crearFiltrosPeriodo("filtros-inst",
@@ -1261,15 +1475,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     filtroEnc = crearFiltrosPeriodo("filtros-enc", DATOS.enc.map(function (e) { return e.fecha; }), pintarEncuestas);
     if (!iniciado) {
       iniciado = true;
-      tablaRelev = crearTabla("tabla-relev", "buscar-relev", "cuenta-relev", [
-        { titulo: "Número", html: htmlCasoRelev, valor: function (r) { return r.numero_caso || ""; }, clase: "nowrap" },
-        { titulo: "Nro cuenta", valor: function (r) { return r.nro_cuenta || ""; }, orden: function (r) { return +r.nro_cuenta || 0; } },
-        { titulo: "Empresa", valor: function (r) { return r.empresa || ""; } },
-        { titulo: "Fecha de creación", valor: function (r) { return fmtDia(r.fecha_creacion); }, orden: function (r) { return r.fecha_creacion; }, clase: "nowrap" },
-        { titulo: "Acciones posventa", valor: function (r) { return (r.acciones || []).join(", "); } },
-        { titulo: "Comentarios posventa", valor: function (r) { return r.comentarios || ""; }, clase: "texto-largo" },
-        { titulo: "Tipo de posventa", valor: function (r) { return r.tipo_posventa || ""; } },
-      ], function (r) { return [r.numero_caso, r.nro_cuenta, r.empresa, (r.acciones || []).join(" "), r.comentarios, r.tipo_posventa, r.realizo].join(" "); });
+      tablaRelev = crearTablaCasos("tabla-relev", "buscar-relev", "cuenta-relev");
       tablaEnc = crearTabla("tabla-enc", "buscar-enc", "cuenta-enc", [
         { titulo: "Contacto", valor: function (e) { return e.contacto || ""; } },
         { titulo: "Cliente NetSuite", html: htmlCliente, valor: function (e) { return e.cliente_ns || ""; },

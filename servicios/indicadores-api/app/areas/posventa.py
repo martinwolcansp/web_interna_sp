@@ -4,7 +4,8 @@
 #   - Casos de instalacion  = busqueda guardada 2560 (supportcase). Tabla comun
 #                             ind_caso_instalacion (app/fuentes/casos.py),
 #                             compartida con Instalaciones.
-#   - Relevamientos         = busqueda guardada 2557 (customrecord_ap_sp_relevamiento_posventa)
+#   - Relevamientos         = busqueda guardada 2557 (customrecord_ap_sp_relevamiento_posventa),
+#                             mas la prioridad (custrecord_sp_relev_prioridad)
 #   - Encuestas posventa    = GHL: contactos con etiqueta enviar_encuesta /
 #                             enviar_encuesta_finalizada + objeto de encuestas
 # La busqueda 2897 (oportunidades con articulos) no se usa: el informe no la
@@ -63,6 +64,9 @@ def consulta_relevamientos(desde):
             BUILTIN.DF(r.custrecord_mw_sp_motivos_variacion_mo)     AS motivos_variacion_mo,
             r.custrecord_ap_sp_comentarios_posventa                 AS comentarios,
             BUILTIN.DF(sc.custevent_mw_sp_tipo_posventa)            AS tipo_posventa,
+            -- Prioridad del relevamiento (lista customlist_sp_prioridad_relev).
+            r.custrecord_sp_relev_prioridad                         AS prioridad_id,
+            BUILTIN.DF(r.custrecord_sp_relev_prioridad)             AS prioridad,
             COALESCE(c.custentity_ghl_contact_id, cp.custentity_ghl_contact_id) AS id_cliente_ghl
         FROM customrecord_ap_sp_relevamiento_posventa r
         LEFT JOIN supportcase sc ON sc.id = r.custrecord_ap_sp_posventa_caso
@@ -141,6 +145,9 @@ def filas_relevamientos(crudas, corrida_id):
             "tipo_posventa": _primera_palabra(_texto(f.get("tipo_posventa"))),
             # Contacto de GHL del cliente: cruza el relevamiento con la encuesta.
             "id_cliente_ghl": _texto(f.get("id_cliente_ghl")),
+            # Prioridad: el ID interno cruza con ind_posventa_prioridad (rango y color).
+            "prioridad_id": int(f["prioridad_id"]) if f.get("prioridad_id") else None,
+            "prioridad": _texto(f.get("prioridad")),
             "corrida_id": corrida_id,
             "actualizado_en": sb.ahora_iso(),
         })
