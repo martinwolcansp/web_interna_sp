@@ -5,7 +5,8 @@
 #                             ind_caso_instalacion (app/fuentes/casos.py),
 #                             compartida con Instalaciones.
 #   - Relevamientos         = busqueda guardada 2557 (customrecord_ap_sp_relevamiento_posventa),
-#                             mas la prioridad (custrecord_sp_relev_prioridad)
+#                             mas la prioridad (custrecord_sp_relev_prioridad) y, si no
+#                             tiene caso, el cliente (custrecord_sp_relev_cliente)
 #   - Encuestas posventa    = GHL: contactos con etiqueta enviar_encuesta /
 #                             enviar_encuesta_finalizada + objeto de encuestas
 # La busqueda 2897 (oportunidades con articulos) no se usa: el informe no la
@@ -55,6 +56,9 @@ def consulta_relevamientos(desde):
             TO_CHAR(r.created, 'YYYY-MM-DD')                        AS fecha_creacion,
             sc.id                                                   AS caso_id,
             sc.casenumber                                           AS numero_caso,
+            -- Cliente: el del caso; sin caso, el del campo Cliente del relevamiento.
+            c.id                                                    AS cliente_id,
+            CASE WHEN sc.id IS NOT NULL THEN 'caso' WHEN c.id IS NOT NULL THEN 'relevamiento' END AS cliente_origen,
             c.altname                                               AS empresa,
             BUILTIN.DF(c.custentity_3k_nro_cuenta)                  AS nro_cuenta,
             r.custrecord_ap_sp_es_obra_constr                       AS es_obra_construccion,
@@ -72,7 +76,7 @@ def consulta_relevamientos(desde):
             COALESCE(c.custentity_ghl_contact_id, cp.custentity_ghl_contact_id) AS id_cliente_ghl
         FROM customrecord_ap_sp_relevamiento_posventa r
         LEFT JOIN supportcase sc ON sc.id = r.custrecord_ap_sp_posventa_caso
-        LEFT JOIN customer c ON c.id = sc.company
+        LEFT JOIN customer c ON c.id = COALESCE(sc.company, r.custrecord_sp_relev_cliente)
         -- El caso apunta al subcliente (C16312-1); el ID de GHL suele estar en el padre (C16312).
         LEFT JOIN customer cp ON cp.id = c.parent
         WHERE r.created >= TO_DATE('{desde.isoformat()}', 'YYYY-MM-DD')
@@ -144,6 +148,9 @@ def filas_relevamientos(crudas, corrida_id):
         filas.append({
             "relevamiento_id": int(f["relevamiento_id"]),
             "fecha_creacion": f.get("fecha_creacion"),
+            # Cliente del caso o, sin caso, del campo Cliente del relevamiento.
+            "cliente_id": int(f["cliente_id"]) if f.get("cliente_id") else None,
+            "cliente_origen": _texto(f.get("cliente_origen")),
             "caso_id": int(f["caso_id"]) if f.get("caso_id") else None,
             "numero_caso": _texto(f.get("numero_caso")),
             "empresa": _texto(f.get("empresa")),

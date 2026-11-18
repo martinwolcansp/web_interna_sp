@@ -46,6 +46,11 @@ def probar_netsuite():
     guardar("relevamientos.json", relev)
     print("  Relevamientos por mes:", dict(sorted(Counter((r["fecha_creacion"] or "")[:7] for r in relev).items())))
     print("  Acciones:", dict(Counter(a for r in relev for a in r["acciones"]).most_common()))
+    sin_caso = [r for r in relev if not r["caso_id"]]
+    print(f"  Sin caso: {len(sin_caso)}, con cliente cargado: {sum(1 for r in sin_caso if r['cliente_id'])}")
+    for r in sin_caso:
+        if r["cliente_id"]:
+            print(f'    relevamiento {r["relevamiento_id"]} · {r["nro_cuenta"]} · {r["empresa"]}')
     print("  Area del caso:", dict(Counter(r["area_caso"] or "Sin caso" for r in relev).most_common()))
     print("  Prioridades:", dict(Counter(f'{r["prioridad_id"]} {r["prioridad"]}' if r["prioridad_id"] else "Sin prioridad" for r in relev).most_common()))
     for r in relev:

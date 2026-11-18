@@ -301,7 +301,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           </div>
           <div class="table-scroll"><table class="data-table" id="tabla-relev"></table></div>
         </div>
-        <div class="bloque-nota">Una fila por caso, marcada con la prioridad más alta de sus relevamientos. El Área sale del "asignado a" del caso. Hacé click en la fila para ver los relevamientos y abrirlos en NetSuite para asignar o cambiar la prioridad (se ve en la web después de tocar Actualizar ahora). El filtro de prioridad muestra los casos con al menos un relevamiento del nivel elegido.</div>
+        <div class="bloque-nota">Una fila por caso, marcada con la prioridad más alta de sus relevamientos. El Área sale del "asignado a" del caso. Los relevamientos sin caso se agrupan por el cliente cargado en el relevamiento. Hacé click en la fila para ver los relevamientos y abrirlos en NetSuite para asignar o cambiar la prioridad (se ve en la web después de tocar Actualizar ahora). El filtro de prioridad muestra los casos con al menos un relevamiento del nivel elegido.</div>
       </div>
     </section>
 
@@ -695,16 +695,17 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // Abre el relevamiento en modo edicion, para asignar la prioridad.
   function urlEditarRelev(id) { return URL_RELEVAMIENTO + encodeURIComponent(id) + "&e=T"; }
 
-  // Un grupo por caso; un relevamiento sin caso queda solo en su fila.
+  // Un grupo por caso. Sin caso: un grupo por cliente (campo Cliente del
+  // relevamiento); sin caso ni cliente, cada relevamiento queda solo en su fila.
   // La prioridad del caso es la mas alta (menor rango) de sus relevamientos.
   function agruparPorCaso(relevs) {
     var porClave = {}, grupos = [];
     relevs.forEach(function (r) {
-      var clave = r.numero_caso ? "c:" + r.numero_caso : "r:" + r.relevamiento_id;
+      var clave = r.numero_caso ? "c:" + r.numero_caso : r.cliente_id ? "cl:" + r.cliente_id : "r:" + r.relevamiento_id;
       var g = porClave[clave];
       if (!g) {
         g = porClave[clave] = { clave: clave, numero_caso: r.numero_caso, caso_id: r.caso_id, nro_cuenta: r.nro_cuenta,
-          empresa: r.empresa, tipo_posventa: r.tipo_posventa, area_caso: r.area_caso, asignado_a: r.asignado_a, relev: [] };
+          empresa: r.empresa, cliente_id: r.cliente_id, tipo_posventa: r.tipo_posventa, area_caso: r.area_caso, asignado_a: r.asignado_a, relev: [] };
         grupos.push(g);
       }
       if (!g.caso_id && r.caso_id) g.caso_id = r.caso_id;
@@ -776,7 +777,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           return g.area_caso ? '<span title="Asignado a: ' + esc(g.asignado_a || "") + '">' + esc(g.area_caso) + "</span>" : "";
         }, orden: function (g) { return g.area_caso || "~"; }, clase: "nowrap" },
       { titulo: "Nro cuenta", html: function (g) { return esc(g.nro_cuenta || ""); }, orden: function (g) { return +g.nro_cuenta || 0; } },
-      { titulo: "Empresa", html: function (g) { return esc(g.empresa || ""); }, orden: function (g) { return (g.empresa || "").toLowerCase(); } },
+      { titulo: "Empresa", html: function (g) {
+          if (!g.empresa) return g.numero_caso ? "" : '<span class="sin-cliente">Sin cliente cargado</span>';
+          if (!g.cliente_id) return esc(g.empresa);
+          return '<a class="accion-link" href="' + URL_CLIENTE + encodeURIComponent(g.cliente_id) +
+            '" target="_blank" rel="noopener" title="Abrir el cliente en NetSuite">' + esc(g.empresa) + " ↗</a>";
+        }, orden: function (g) { return (g.empresa || "").toLowerCase(); } },
       { titulo: "Relevamientos", html: function (g) { return String(g.relev.length); }, orden: function (g) { return g.relev.length; }, clase: "num" },
       { titulo: "Último relevamiento", html: function (g) { return esc(fmtDia(g.ultima)); }, orden: function (g) { return g.ultima || ""; }, clase: "nowrap" },
       { titulo: "Tipo de posventa", html: function (g) { return esc(g.tipo_posventa || ""); }, orden: function (g) { return g.tipo_posventa || ""; } },
@@ -1397,7 +1403,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       return [
         r.caso_id ? xlLink(r.numero_caso, URL_CASO + encodeURIComponent(r.caso_id)) : r.numero_caso,
         r.area_caso || null, nombrePrio(prioCaso[r.relevamiento_id]), nombrePrio(prioDe(r)),
-        xlNumero(r.nro_cuenta), r.empresa, xlFecha(r.fecha_creacion), (r.acciones || []).join(", "), r.comentarios,
+        xlNumero(r.nro_cuenta), r.cliente_id ? xlLink(r.empresa, URL_CLIENTE + encodeURIComponent(r.cliente_id)) : r.empresa, xlFecha(r.fecha_creacion), (r.acciones || []).join(", "), r.comentarios,
         r.tipo_posventa, r.realizo, xlLink(r.relevamiento_id, URL_RELEVAMIENTO + encodeURIComponent(r.relevamiento_id)),
       ];
     }), { filtro: true, fijar: true });
@@ -1538,7 +1544,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var res = await Promise.all([
       // Tabla comun: solo los casos del alcance de Posventa / Instalaciones (asignado 133).
       leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id", ["alcance", "instalaciones"]),
-      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl,caso_id,prioridad_id,prioridad,area_caso,asignado_a", "relevamiento_id"),
+      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl,caso_id,prioridad_id,prioridad,area_caso,asignado_a,cliente_id,cliente_origen", "relevamiento_id"),
       leerTodo("ind_posventa_encuesta", "contact_id,contacto,estado,fecha,calificacion,expectativa,comentarios,cliente_ns_id,cliente_ns,cliente_ns_nombre,cliente_ns_cant,caso_ns_id,caso_ns,caso_ns_fecha,caso_ns_cant", "contact_id"),
       leerTodo("ind_posventa_prioridad", "id,nombre,rango,color", "id"),
     ]);
