@@ -58,6 +58,8 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .pivot thead th.pv-total { background: #16294d; color: #fff; }
 .pivot td.pv-cero { color: #b7b4ab; }
 .pivot tfoot td { font-weight: 700; color: var(--navy); background: var(--light-fill); border-top: 2px solid var(--navy); border-bottom: 0; }
+.pivot tfoot tr.pv-extra td { font-weight: 600; color: var(--second); background: var(--surface); border-top: 1px solid var(--rule); }
+.pivot tfoot tr.pv-extra td.pv-fila { background: var(--surface); }
 .pivot th.pv-fila, .pivot td.pv-fila { position: sticky; left: 0; z-index: 1; }
 .pivot td.pv-fila { background: var(--surface); }
 .pivot tfoot td.pv-fila { background: var(--light-fill); }
@@ -263,7 +265,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       <div class="bloque">
         <h3>Análisis por acción de posventa</h3>
         <div id="pv-acciones"></div>
-        <div class="bloque-nota">Cantidad de relevamientos por acción y mes de creación del relevamiento. Un relevamiento puede tener varias acciones.</div>
+        <div class="bloque-nota">Cantidad de relevamientos por acción y mes de creación del relevamiento. Un relevamiento puede tener varias acciones, por eso el total de acciones puede superar a los relevamientos del mes.</div>
       </div>
 
       <div class="bloque">
@@ -571,9 +573,15 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       totGral += totFila;
       return '<tr><td class="pv-fila">' + esc(f) + "</td>" + celdas + celda(totFila, f, "", "pv-total") + "</tr>";
     }).join("");
+    // opciones.etiquetaTotal: texto de la fila de totales (por defecto "Total").
+    // opciones.filaExtra: {etiqueta, valor(mes), total} fila adicional al pie.
     var pie = opciones.sinTotalFilas ? "" :
-      '<tfoot><tr><td class="pv-fila">Total</td>' + meses.map(function (m) { return celda(totCol[m] || 0, "", m || ""); }).join("") +
-      celda(totGral, "", "") + "</tr></tfoot>";
+      '<tfoot><tr><td class="pv-fila">' + esc(opciones.etiquetaTotal || "Total") + "</td>" +
+      meses.map(function (m) { return celda(totCol[m] || 0, "", m || ""); }).join("") +
+      celda(totGral, "", "") + "</tr>" +
+      (opciones.filaExtra ? '<tr class="pv-extra"><td class="pv-fila">' + esc(opciones.filaExtra.etiqueta) + "</td>" +
+        meses.map(function (m) { return celda(opciones.filaExtra.valor(m) || 0, "", m || ""); }).join("") +
+        celda(opciones.filaExtra.total, "", "") + "</tr>" : "") + "</tfoot>";
     return '<div class="pivot-scroll"><table class="pivot"><thead><tr><th class="pv-fila">' + esc(titulo) + "</th>" +
       meses.map(function (m) { return "<th>" + esc(etiquetaMes(m)) + "</th>"; }).join("") +
       '<th class="pv-total">Total</th></tr></thead><tbody>' + cuerpo + "</tbody>" + pie + "</table></div>";
@@ -970,7 +978,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       Object.keys(porAccion[b]).forEach(function (m) { tb += porAccion[b][m]; });
       return tb - ta;
     });
-    $("pv-acciones").innerHTML = matriz("Acción posventa", acciones, mesesRelev, function (a, m) { return porAccion[a][m]; }, { sinTotalFilas: true, grupo: "accion" });
+    $("pv-acciones").innerHTML = matriz("Acción posventa", acciones, mesesRelev, function (a, m) { return porAccion[a][m]; }, {
+      grupo: "accion", etiquetaTotal: "Total de acciones",
+      // Un relevamiento puede tener varias acciones: se muestra tambien cuantos relevamientos hubo.
+      filaExtra: { etiqueta: "Relevamientos del mes", total: relev.length, valor: function (m) {
+        return relev.filter(function (r) { return anioMes(r.fecha_creacion) === m; }).length;
+      } },
+    });
 
     // Instalaciones finalizadas por mes de fin (distintas por id_inst) y casos.
     var porMes = {};
