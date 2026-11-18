@@ -301,7 +301,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           </div>
           <div class="table-scroll"><table class="data-table" id="tabla-relev"></table></div>
         </div>
-        <div class="bloque-nota">Una fila por caso, marcada con la prioridad más alta de sus relevamientos. Hacé click en la fila para ver los relevamientos y abrirlos en NetSuite para asignar o cambiar la prioridad (se ve en la web después de tocar Actualizar ahora). El filtro de prioridad muestra los casos con al menos un relevamiento del nivel elegido.</div>
+        <div class="bloque-nota">Una fila por caso, marcada con la prioridad más alta de sus relevamientos. El Área sale del "asignado a" del caso. Hacé click en la fila para ver los relevamientos y abrirlos en NetSuite para asignar o cambiar la prioridad (se ve en la web después de tocar Actualizar ahora). El filtro de prioridad muestra los casos con al menos un relevamiento del nivel elegido.</div>
       </div>
     </section>
 
@@ -680,7 +680,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // se muestra en gris, por debajo de los conocidos.
   var PRIO = {};
   var SIN_PRIORIDAD = { id: 0, nombre: "Sin prioridad", rango: 999, color: null };
-  var filtroPrio = null, filtroPrioEnc = null;
+  var filtroPrio = null, filtroPrioEnc = null, filtroArea = null;
+  var SIN_AREA = "__sin_area__"; // valor del filtro de Area para relevamientos sin caso
+  function areaDe(g) { return g.area_caso || SIN_AREA; }
 
   function prioDe(r) {
     if (!r.prioridad_id) return SIN_PRIORIDAD;
@@ -728,6 +730,16 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var cont = $("filtros-detalle");
     cont.querySelectorAll(".chk-filtro").forEach(function (el) { el.remove(); });
     var niveles = DATOS.prio.slice().sort(function (a, b) { return a.rango - b.rango; });
+    // Area del caso (segun su asignado): Instalaciones y Ampliaciones primero.
+    var areas = Array.from(new Set(DATOS.relev.map(function (r) { return r.area_caso; }).filter(Boolean)));
+    var ORDEN_AREAS = ["Instalaciones", "Ampliaciones"];
+    areas.sort(function (a, b) {
+      var ia = ORDEN_AREAS.indexOf(a), ib = ORDEN_AREAS.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+    });
+    filtroArea = crearFiltro(cont, "filtro-area", "Área",
+      areas.map(function (a) { return { valor: a, etiqueta: a }; }).concat([{ valor: SIN_AREA, etiqueta: "Sin caso" }]),
+      function () { if (tablaRelev) tablaRelev.repintar(); });
     filtroPrio = crearFiltro(cont, "filtro-prio", "Prioridad",
       niveles.map(function (p) { return { valor: String(p.id), etiqueta: p.nombre }; })
         .concat([{ valor: "0", etiqueta: SIN_PRIORIDAD.nombre }]),
@@ -775,7 +787,9 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
     function visibles() {
       var q = $(buscarId).value.trim().toLowerCase();
-      var lista = estado.grupos.filter(function (g) { return (!q || g.texto.indexOf(q) >= 0) && g.relev.some(pasaPrio); });
+      var lista = estado.grupos.filter(function (g) {
+        return (!q || g.texto.indexOf(q) >= 0) && (!filtroArea || filtroArea.pasa(areaDe(g))) && g.relev.some(pasaPrio);
+      });
       if (estado.orden === null) return lista.sort(ordenDefecto);
       var col = columnas[estado.orden];
       return lista.sort(function (a, b) {
