@@ -301,7 +301,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
           </div>
           <div class="table-scroll"><table class="data-table" id="tabla-relev"></table></div>
         </div>
-        <div class="bloque-nota">Una fila por caso, marcada con la prioridad más alta de sus relevamientos. El Área sale del "asignado a" del caso. Los relevamientos sin caso se agrupan por el cliente cargado en el relevamiento. Hacé click en la fila para ver los relevamientos y abrirlos en NetSuite para asignar o cambiar la prioridad (se ve en la web después de tocar Actualizar ahora). El filtro de prioridad muestra los casos con al menos un relevamiento del nivel elegido.</div>
+        <div class="bloque-nota">Una fila por caso, marcada con la prioridad más alta de sus relevamientos. El Área sale del "asignado a" del caso. Los relevamientos sin caso se agrupan por el cliente cargado en el relevamiento. Hacé click en la fila para ver los relevamientos y abrirlos en NetSuite para asignar o cambiar la prioridad (se ve en la web después de tocar Actualizar ahora). Los filtros de acciones y de prioridad muestran los casos con al menos un relevamiento que cumpla lo elegido (si se usan los dos, en el mismo relevamiento); al desplegar, esos relevamientos quedan resaltados.</div>
       </div>
     </section>
 
@@ -680,7 +680,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // se muestra en gris, por debajo de los conocidos.
   var PRIO = {};
   var SIN_PRIORIDAD = { id: 0, nombre: "Sin prioridad", rango: 999, color: null };
-  var filtroPrio = null, filtroPrioEnc = null, filtroArea = null;
+  var filtroPrio = null, filtroPrioEnc = null, filtroArea = null, filtroAccion = null;
+  var SIN_ACCION = "__sin_accion__"; // valor del filtro de Acciones para relevamientos sin accion
   var SIN_AREA = "__sin_area__"; // valor del filtro de Area para relevamientos sin caso
   function areaDe(g) { return g.area_caso || SIN_AREA; }
 
@@ -738,6 +739,13 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       var ia = ORDEN_AREAS.indexOf(a), ib = ORDEN_AREAS.indexOf(b);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
     });
+    // Acciones posventa (seleccion multiple): las mas usadas primero.
+    var usoAccion = {};
+    DATOS.relev.forEach(function (r) { (r.acciones || []).forEach(function (a) { usoAccion[a] = (usoAccion[a] || 0) + 1; }); });
+    var acciones = Object.keys(usoAccion).sort(function (a, b) { return usoAccion[b] - usoAccion[a] || a.localeCompare(b); });
+    filtroAccion = crearFiltro(cont, "filtro-accion", "Acciones",
+      acciones.map(function (a) { return { valor: a, etiqueta: a }; }).concat([{ valor: SIN_ACCION, etiqueta: "Sin acción" }]),
+      function () { if (tablaRelev) tablaRelev.repintar(); });
     filtroArea = crearFiltro(cont, "filtro-area", "Área",
       areas.map(function (a) { return { valor: a, etiqueta: a }; }).concat([{ valor: SIN_AREA, etiqueta: "Sin caso" }]),
       function () { if (tablaRelev) tablaRelev.repintar(); });
@@ -790,11 +798,19 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     // Por defecto: prioridad mas alta primero; dentro de cada nivel, el relevamiento mas reciente.
     function ordenDefecto(a, b) { return a.prio.rango - b.prio.rango || (b.ultima || "").localeCompare(a.ultima || ""); }
     function pasaPrio(r) { return !filtroPrio || filtroPrio.pasa(prioDe(r).id); }
+    // Pasa si el relevamiento tiene alguna de las acciones elegidas.
+    function pasaAccion(r) {
+      if (!filtroAccion || !filtroAccion.activo()) return true;
+      var as = r.acciones || [];
+      return as.length ? as.some(function (a) { return filtroAccion.pasa(a); }) : filtroAccion.pasa(SIN_ACCION);
+    }
+    // Prioridad y acciones se cumplen en un mismo relevamiento del caso.
+    function pasaRel(r) { return pasaPrio(r) && pasaAccion(r); }
 
     function visibles() {
       var q = $(buscarId).value.trim().toLowerCase();
       var lista = estado.grupos.filter(function (g) {
-        return (!q || g.texto.indexOf(q) >= 0) && (!filtroArea || filtroArea.pasa(areaDe(g))) && g.relev.some(pasaPrio);
+        return (!q || g.texto.indexOf(q) >= 0) && (!filtroArea || filtroArea.pasa(areaDe(g))) && g.relev.some(pasaRel);
       });
       if (estado.orden === null) return lista.sort(ordenDefecto);
       var col = columnas[estado.orden];
@@ -805,12 +821,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     }
 
     function htmlRelevamientos(g) {
-      var marcar = filtroPrio && filtroPrio.activo();
+      var marcar = (filtroPrio && filtroPrio.activo()) || (filtroAccion && filtroAccion.activo());
       return '<table class="sub-tabla"><thead><tr><th>Prioridad</th><th>Fecha</th><th>Acciones posventa</th>' +
         "<th>Comentarios posventa</th><th>Realizó</th><th>NetSuite</th></tr></thead><tbody>" +
         g.relev.map(function (r) {
           var fuera = !estado.enSel.has(r.relevamiento_id);
-          var clase = fuera ? "rel-fuera" : marcar && pasaPrio(r) ? "rel-coincide" : "";
+          var clase = fuera ? "rel-fuera" : marcar && pasaRel(r) ? "rel-coincide" : "";
           return "<tr" + (clase ? ' class="' + clase + '"' : "") + ">" +
             '<td class="nowrap">' + htmlPrio(prioDe(r)) + "</td>" +
             '<td class="nowrap">' + esc(fmtDia(r.fecha_creacion)) + (fuera ? '<span class="accion-det">Fuera del filtro</span>' : "") + "</td>" +
