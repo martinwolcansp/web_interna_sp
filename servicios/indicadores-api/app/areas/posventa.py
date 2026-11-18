@@ -64,6 +64,8 @@ def consulta_relevamientos(desde):
             BUILTIN.DF(r.custrecord_mw_sp_motivos_variacion_mo)     AS motivos_variacion_mo,
             r.custrecord_ap_sp_comentarios_posventa                 AS comentarios,
             BUILTIN.DF(sc.custevent_mw_sp_tipo_posventa)            AS tipo_posventa,
+            sc.assigned                                             AS asignado_id,
+            BUILTIN.DF(sc.assigned)                                 AS asignado_a,
             -- Prioridad del relevamiento (lista customlist_sp_prioridad_relev).
             r.custrecord_sp_relev_prioridad                         AS prioridad_id,
             BUILTIN.DF(r.custrecord_sp_relev_prioridad)             AS prioridad,
@@ -123,6 +125,18 @@ def _bool(valor):
     return None if valor is None else str(valor).upper() == "T"
 
 
+def _area_caso(asignado_id, asignado_a):
+    """Area del caso segun su "asignado a", con los mismos ids que los informes
+    de Instalaciones y Ampliaciones. Otro asignado: su nombre."""
+    if not asignado_id:
+        return None
+    ids = {
+        int(config.CASOS_INSTALACION_ASIGNADO_A): "Instalaciones",
+        int(config.CASOS_AMPLIACIONES_ASIGNADO_A): "Ampliaciones",
+    }
+    return ids.get(int(asignado_id)) or _texto(asignado_a)
+
+
 def filas_relevamientos(crudas, corrida_id):
     filas = []
     for f in crudas:
@@ -143,6 +157,10 @@ def filas_relevamientos(crudas, corrida_id):
             "motivos_variacion_mo": _texto(f.get("motivos_variacion_mo")),
             "comentarios": _texto(f.get("comentarios")),
             "tipo_posventa": _primera_palabra(_texto(f.get("tipo_posventa"))),
+            # Asignado del caso y area que se deduce (Instalaciones / Ampliaciones).
+            "asignado_id": int(f["asignado_id"]) if f.get("asignado_id") else None,
+            "asignado_a": _texto(f.get("asignado_a")),
+            "area_caso": _area_caso(f.get("asignado_id"), f.get("asignado_a")),
             # Contacto de GHL del cliente: cruza el relevamiento con la encuesta.
             "id_cliente_ghl": _texto(f.get("id_cliente_ghl")),
             # Prioridad: el ID interno cruza con ind_posventa_prioridad (rango y color).

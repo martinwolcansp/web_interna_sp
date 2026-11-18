@@ -702,11 +702,12 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       var g = porClave[clave];
       if (!g) {
         g = porClave[clave] = { clave: clave, numero_caso: r.numero_caso, caso_id: r.caso_id, nro_cuenta: r.nro_cuenta,
-          empresa: r.empresa, tipo_posventa: r.tipo_posventa, relev: [] };
+          empresa: r.empresa, tipo_posventa: r.tipo_posventa, area_caso: r.area_caso, asignado_a: r.asignado_a, relev: [] };
         grupos.push(g);
       }
       if (!g.caso_id && r.caso_id) g.caso_id = r.caso_id;
       if (!g.tipo_posventa && r.tipo_posventa) g.tipo_posventa = r.tipo_posventa;
+      if (!g.area_caso && r.area_caso) { g.area_caso = r.area_caso; g.asignado_a = r.asignado_a; }
       g.relev.push(r);
     });
     grupos.forEach(function (g) {
@@ -715,7 +716,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       });
       g.ultima = g.relev[0].fecha_creacion;
       g.prio = g.relev.reduce(function (m, r) { var p = prioDe(r); return p.rango < m.rango ? p : m; }, SIN_PRIORIDAD);
-      g.texto = [g.numero_caso, g.nro_cuenta, g.empresa, g.tipo_posventa].concat(g.relev.map(function (r) {
+      g.texto = [g.numero_caso, g.area_caso, g.nro_cuenta, g.empresa, g.tipo_posventa].concat(g.relev.map(function (r) {
         return [(r.acciones || []).join(" "), r.comentarios, r.realizo, prioDe(r).nombre].join(" ");
       })).join(" ").toLowerCase();
     });
@@ -758,6 +759,10 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       { titulo: "Prioridad", html: function (g) { return htmlPrio(g.prio); }, orden: function (g) { return g.prio.rango; }, clase: "nowrap" },
       { titulo: "Número", html: function (g) { return g.numero_caso ? htmlCasoRelev(g) : '<span class="sin-cliente">Sin caso</span>'; },
         orden: function (g) { return g.numero_caso || "~"; }, clase: "nowrap" },
+      // Area segun el "asignado a" del caso (Instalaciones / Ampliaciones).
+      { titulo: "Área", html: function (g) {
+          return g.area_caso ? '<span title="Asignado a: ' + esc(g.asignado_a || "") + '">' + esc(g.area_caso) + "</span>" : "";
+        }, orden: function (g) { return g.area_caso || "~"; }, clase: "nowrap" },
       { titulo: "Nro cuenta", html: function (g) { return esc(g.nro_cuenta || ""); }, orden: function (g) { return +g.nro_cuenta || 0; } },
       { titulo: "Empresa", html: function (g) { return esc(g.empresa || ""); }, orden: function (g) { return (g.empresa || "").toLowerCase(); } },
       { titulo: "Relevamientos", html: function (g) { return String(g.relev.length); }, orden: function (g) { return g.relev.length; }, clase: "num" },
@@ -1369,7 +1374,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     ws = xlHoja(wb, "Detalle relevamientos", "Detalle de relevamientos", periodo);
     var orden = relev.slice().sort(function (a, b) { return (b.fecha_creacion || "").localeCompare(a.fecha_creacion || ""); });
     xlTabla(ws, 5, [
-      { titulo: "Número de caso", ancho: 16 }, { titulo: "Prioridad del caso", ancho: 12 }, { titulo: "Prioridad", ancho: 12 },
+      { titulo: "Número de caso", ancho: 16 }, { titulo: "Área del caso", ancho: 14 }, { titulo: "Prioridad del caso", ancho: 12 }, { titulo: "Prioridad", ancho: 12 },
       { titulo: "Nro cuenta", ancho: 11 }, { titulo: "Empresa", ancho: 34 },
       { titulo: "Fecha de creación", ancho: 12, fmt: XL_DIA }, { titulo: "Acciones posventa", ancho: 32, ajustar: true },
       { titulo: "Comentarios posventa", ancho: 70, ajustar: true }, { titulo: "Tipo de posventa", ancho: 22 },
@@ -1377,7 +1382,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     ], orden.map(function (r) {
       return [
         r.caso_id ? xlLink(r.numero_caso, URL_CASO + encodeURIComponent(r.caso_id)) : r.numero_caso,
-        nombrePrio(prioCaso[r.relevamiento_id]), nombrePrio(prioDe(r)),
+        r.area_caso || null, nombrePrio(prioCaso[r.relevamiento_id]), nombrePrio(prioDe(r)),
         xlNumero(r.nro_cuenta), r.empresa, xlFecha(r.fecha_creacion), (r.acciones || []).join(", "), r.comentarios,
         r.tipo_posventa, r.realizo, xlLink(r.relevamiento_id, URL_RELEVAMIENTO + encodeURIComponent(r.relevamiento_id)),
       ];
@@ -1519,7 +1524,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var res = await Promise.all([
       // Tabla comun: solo los casos del alcance de Posventa / Instalaciones (asignado 133).
       leerTodo("ind_caso_instalacion", "caso_id,numero,id_inst,fecha_fin_inst,tipo_posventa", "caso_id", ["alcance", "instalaciones"]),
-      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl,caso_id,prioridad_id,prioridad", "relevamiento_id"),
+      leerTodo("ind_posventa_relevamiento", "relevamiento_id,fecha_creacion,numero_caso,empresa,nro_cuenta,acciones,comentarios,tipo_posventa,realizo,id_cliente_ghl,caso_id,prioridad_id,prioridad,area_caso,asignado_a", "relevamiento_id"),
       leerTodo("ind_posventa_encuesta", "contact_id,contacto,estado,fecha,calificacion,expectativa,comentarios,cliente_ns_id,cliente_ns,cliente_ns_nombre,cliente_ns_cant,caso_ns_id,caso_ns,caso_ns_fecha,caso_ns_cant", "contact_id"),
       leerTodo("ind_posventa_prioridad", "id,nombre,rango,color", "id"),
     ]);
