@@ -125,9 +125,10 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .data-table td.texto-largo { min-width: 280px; }
 /* Encuestas con alerta: pide llamado (rojo) o respuesta negativa (ambar) */
 .data-table tr.fila-llamado td { background: #fde8e6; }
-.data-table tr.fila-llamado td:first-child { box-shadow: inset 4px 0 0 #c0392b; }
 .data-table tr.fila-negativa td { background: #fff4dc; }
-.data-table tr.fila-negativa td:first-child { box-shadow: inset 4px 0 0 #d99a00; }
+/* Prioridad del caso (segun sus relevamientos): borde izquierdo */
+.data-table tr.fila-prio td:first-child { box-shadow: inset 4px 0 0 var(--prio); }
+.tag-llamado { display: inline-block; padding: 1px 9px; border-radius: 10px; background: #c0392b; color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .data-table a.accion-link { color: var(--navy); font-weight: 600; text-decoration: none; white-space: nowrap; }
 .data-table a.accion-link:hover { text-decoration: underline; }
 .accion-det { display: block; font-size: 12px; color: var(--second); }
@@ -138,8 +139,10 @@ main { background: var(--surface); border: 1px solid var(--rule); border-radius:
 .explorer-check input { width: 15px; height: 15px; accent-color: var(--navy); margin: 0; }
 .leyenda-alerta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--second); margin: 0 0 8px; }
 .leyenda-alerta span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -2px; }
-.leyenda-alerta .ley-llamado::before { background: #fde8e6; box-shadow: inset 3px 0 0 #c0392b; }
-.leyenda-alerta .ley-negativa::before { background: #fff4dc; box-shadow: inset 3px 0 0 #d99a00; }
+.leyenda-alerta .ley-llamado::before { background: #fde8e6; border: 1px solid #c0392b; }
+.leyenda-alerta .ley-negativa::before { background: #fff4dc; border: 1px solid #d99a00; }
+.leyenda-alerta .ley-titulo { font-weight: 700; color: var(--navy); }
+.leyenda-alerta .ley-titulo::before { display: none; }
 
 /* Detalle de relevamientos: una fila por caso, desplegable, con prioridad */
 .filtros--detalle { margin: 0 0 8px; }
@@ -325,14 +328,19 @@ main.main--cargando { opacity: .35; pointer-events: none; }
 
       <div class="bloque">
         <h3>Detalle de encuestas</h3>
+        <div class="filtros filtros--detalle" id="filtros-detalle-enc">
+          <span class="filtros-titulo">Filtrar detalle</span>
+        </div>
         <div class="leyenda-alerta">
+          <span class="ley-titulo">Fondo:</span>
           <span class="ley-llamado">Solicita llamado</span>
           <span class="ley-negativa">Calificación Mala o expectativa No las cumplió</span>
         </div>
+        <div class="leyenda-alerta" id="leyenda-prio-enc"></div>
         <div class="explorer">
           <div class="explorer-bar">
             <span class="explorer-title">Encuestas posventa</span>
-            <label class="explorer-check"><input type="checkbox" id="solo-alerta-enc"> Solo con alerta</label>
+            <label class="explorer-check"><input type="checkbox" id="solo-llamado-enc"> Solo solicita llamado</label>
             <input type="search" class="explorer-search" id="buscar-enc" placeholder="Buscar contacto, cliente, comentario…">
             <span class="explorer-count" id="cuenta-enc"></span>
           </div>
@@ -637,7 +645,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         return '<th data-col="' + i + '">' + esc(c.titulo) + '<span class="sort-arrow">' + flecha + "</span></th>";
       }).join("") + "</tr></thead><tbody>" + (filas.length ? filas.map(function (f) {
         var claseFila = opciones.claseFila ? opciones.claseFila(f) : "";
-        return "<tr" + (claseFila ? ' class="' + claseFila + '"' : "") + ">" + columnas.map(function (c) {
+        var estiloFila = opciones.estiloFila ? opciones.estiloFila(f) : "";
+        return "<tr" + (claseFila ? ' class="' + claseFila + '"' : "") + (estiloFila ? ' style="' + esc(estiloFila) + '"' : "") + ">" + columnas.map(function (c) {
           return '<td class="' + (c.clase || "") + '">' + (c.html ? c.html(f) : esc(c.valor(f))) + "</td>";
         }).join("") + "</tr>";
       }).join("") : '<tr><td colspan="' + columnas.length + '" class="vacio">Sin resultados.</td></tr>') + "</tbody>";
@@ -663,7 +672,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // se muestra en gris, por debajo de los conocidos.
   var PRIO = {};
   var SIN_PRIORIDAD = { id: 0, nombre: "Sin prioridad", rango: 999, color: null };
-  var filtroPrio = null;
+  var filtroPrio = null, filtroPrioEnc = null;
 
   function prioDe(r) {
     if (!r.prioridad_id) return SIN_PRIORIDAD;
@@ -714,9 +723,19 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       niveles.map(function (p) { return { valor: String(p.id), etiqueta: p.nombre }; })
         .concat([{ valor: "0", etiqueta: SIN_PRIORIDAD.nombre }]),
       function () { if (tablaRelev) tablaRelev.repintar(); });
-    $("leyenda-prio").innerHTML = niveles.map(function (p) {
+    var leyenda = niveles.map(function (p) {
       return '<span class="ley-prio" style="--prio:' + esc(p.color) + '">' + esc(p.nombre) + "</span>";
     }).join("");
+    $("leyenda-prio").innerHTML = leyenda;
+
+    // Encuestas: prioridad del caso de instalacion de la encuesta.
+    var contEnc = $("filtros-detalle-enc");
+    contEnc.querySelectorAll(".chk-filtro").forEach(function (el) { el.remove(); });
+    filtroPrioEnc = crearFiltro(contEnc, "filtro-prio-enc", "Prioridad del caso",
+      niveles.map(function (p) { return { valor: String(p.id), etiqueta: p.nombre }; })
+        .concat([{ valor: "0", etiqueta: SIN_PRIORIDAD.nombre }]),
+      function () { if (tablaEnc) tablaEnc.repintar(); });
+    $("leyenda-prio-enc").innerHTML = '<span class="ley-titulo">Borde: prioridad del caso</span>' + leyenda;
   }
 
   // Tabla de casos desplegable. mostrar(relevs) recibe los relevamientos del
@@ -1013,9 +1032,14 @@ main.main--cargando { opacity: .35; pointer-events: none; }
   // a la encuesta.
   var relevPorGhl = {};
   var relevPorCaso = {};
+  var relevTodosPorCaso = {}; // todos los relevamientos del caso (para la prioridad)
   function indexarRelevamientos() {
     relevPorGhl = {};
     relevPorCaso = {};
+    relevTodosPorCaso = {};
+    DATOS.relev.forEach(function (r) {
+      if (r.caso_id) (relevTodosPorCaso[r.caso_id] = relevTodosPorCaso[r.caso_id] || []).push(r);
+    });
     var porFecha = function (a, b) { return a.fecha_creacion < b.fecha_creacion ? -1 : a.fecha_creacion > b.fecha_creacion ? 1 : 0; };
     DATOS.relev.forEach(function (r) {
       if (!(r.acciones || []).some(function (a) { return ACCION_RESPUESTA.test(a); })) return;
@@ -1034,6 +1058,22 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     return (relevPorGhl[e.contact_id] || []).filter(function (r) {
       return !e.fecha || !r.fecha_creacion || r.fecha_creacion >= e.fecha;
     });
+  }
+  // Relevamientos que definen la prioridad de la encuesta: todos los del caso de
+  // instalacion de la encuesta; sin caso, los relevamientos de su accion posventa.
+  function relevPrioridadEncuesta(e) {
+    return e.caso_ns_id ? (relevTodosPorCaso[e.caso_ns_id] || []) : (e._acciones || []);
+  }
+  function prioridadEncuesta(e) {
+    return relevPrioridadEncuesta(e).reduce(function (m, r) { var p = prioDe(r); return p.rango < m.rango ? p : m; }, SIN_PRIORIDAD);
+  }
+  // Filtro "por cualquier relevamiento": pasa si alguno de los relevamientos del
+  // caso tiene el nivel elegido (sin relevamientos cuenta como Sin prioridad).
+  function pasaPrioEncuesta(e) {
+    if (!filtroPrioEnc || !filtroPrioEnc.activo()) return true;
+    var rs = relevPrioridadEncuesta(e);
+    if (!rs.length) return filtroPrioEnc.pasa(SIN_PRIORIDAD.id);
+    return rs.some(function (r) { return filtroPrioEnc.pasa(prioDe(r).id); });
   }
   function htmlCaso(e) {
     if (!e.caso_ns_id) return "";
@@ -1093,7 +1133,10 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       torta("Calificación", ordenarPares(contar(fin, function (e) { return opcion(e.calificacion, CALIFICACIONES); }), CALIFICACIONES.concat(resto)), "finalizadas", COLOR_RESULTADO) +
       torta("Expectativa", ordenarPares(contar(fin, function (e) { return opcion(e.expectativa, EXPECTATIVAS); }), EXPECTATIVAS.concat(resto)), "finalizadas", COLOR_RESULTADO);
 
-    enc.forEach(function (e) { e._alerta = alertaEncuesta(e); e._acciones = accionesDeEncuesta(e); e._accion = e._acciones[0] || null; });
+    enc.forEach(function (e) {
+      e._alerta = alertaEncuesta(e); e._acciones = accionesDeEncuesta(e); e._accion = e._acciones[0] || null;
+      e._prio = prioridadEncuesta(e);
+    });
     tablaEnc.mostrar(enc);
   }
 
@@ -1393,6 +1436,7 @@ main.main--cargando { opacity: .35; pointer-events: none; }
     var orden = enc.slice().sort(function (a, b) { return (b.fecha || "").localeCompare(a.fecha || ""); });
     var ALERTA = { llamado: "Solicita llamado", negativa: "Respuesta negativa" };
     xlTabla(ws, 5, [
+      { titulo: "Prioridad del caso", ancho: 12 },
       { titulo: "Contacto", ancho: 28 }, { titulo: "Cliente NetSuite", ancho: 14 }, { titulo: "Nombre cliente NetSuite", ancho: 32 },
       { titulo: "Fecha", ancho: 12, fmt: XL_DIA }, { titulo: "Estado", ancho: 11 }, { titulo: "Calificación", ancho: 13 },
       { titulo: "Expectativa", ancho: 15 }, { titulo: "Comentarios", ancho: 60, ajustar: true }, { titulo: "Alerta", ancho: 18 },
@@ -1400,7 +1444,10 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       { titulo: "Realizó la acción", ancho: 24 }, { titulo: "Otros relevamientos Comunicación Cliente", ancho: 16 },
     ], orden.map(function (e) {
       var x = info.get(e), r = x.acciones[0] || null;
+      var pe = relevPrioridadEncuesta({ caso_ns_id: e.caso_ns_id, _acciones: x.acciones })
+        .reduce(function (m, rr) { var p = prioDe(rr); return p.rango < m.rango ? p : m; }, SIN_PRIORIDAD);
       return [
+        pe.color ? pe.nombre : null,
         e.contacto,
         e.cliente_ns_id ? xlLink(e.cliente_ns || e.cliente_ns_id, URL_CLIENTE + encodeURIComponent(e.cliente_ns_id)) : "Sin vincular",
         e.cliente_ns_nombre, xlFecha(e.fecha), e.estado, e.calificacion, e.expectativa, e.comentarios, ALERTA[x.alerta] || null,
@@ -1477,6 +1524,8 @@ main.main--cargando { opacity: .35; pointer-events: none; }
       iniciado = true;
       tablaRelev = crearTablaCasos("tabla-relev", "buscar-relev", "cuenta-relev");
       tablaEnc = crearTabla("tabla-enc", "buscar-enc", "cuenta-enc", [
+        { titulo: "Prioridad del caso", html: function (e) { return htmlPrio(e._prio); }, valor: function (e) { return e._prio.nombre; },
+          orden: function (e) { return e._prio.rango; }, clase: "nowrap" },
         { titulo: "Contacto", valor: function (e) { return e.contacto || ""; } },
         { titulo: "Cliente NetSuite", html: htmlCliente, valor: function (e) { return e.cliente_ns || ""; },
           orden: function (e) { return e.cliente_ns ? +String(e.cliente_ns).replace(/\D/g, "") || 0 : -1; } },
@@ -1484,15 +1533,17 @@ main.main--cargando { opacity: .35; pointer-events: none; }
         { titulo: "Estado", valor: function (e) { return e.estado || ""; } },
         { titulo: "Calificación", valor: function (e) { return e.calificacion || ""; } },
         { titulo: "Expectativa", valor: function (e) { return e.expectativa || ""; } },
-        { titulo: "Comentarios", valor: function (e) { return e.comentarios || ""; }, clase: "texto-largo" },
+        { titulo: "Comentarios", valor: function (e) { return e.comentarios || ""; }, clase: "texto-largo",
+          html: function (e) { return e._alerta === "llamado" ? '<span class="tag-llamado">Solicita llamado</span>' : esc(e.comentarios || ""); } },
         { titulo: "Acción posventa", html: htmlAccion,
           valor: function (e) { return e._accion ? fmtDia(e._accion.fecha_creacion) : e._alerta ? "Sin acción" : ""; },
           orden: function (e) { return e._accion ? "2" + e._accion.fecha_creacion : e._alerta ? "1" : "0"; } },
       ], function (e) { return [e.contacto, e.cliente_ns, e.cliente_ns_nombre, e.estado, e.calificacion, e.expectativa, e.comentarios, e.caso_ns, e._accion ? "" : e._alerta ? "sin acción" : ""].join(" "); }, {
-        claseFila: function (e) { return e._alerta ? "fila-" + e._alerta : ""; },
-        filtro: function (e) { return !$("solo-alerta-enc").checked || !!e._alerta; },
+        claseFila: function (e) { return [e._alerta ? "fila-" + e._alerta : "", e._prio.color ? "fila-prio" : ""].join(" ").trim(); },
+        estiloFila: function (e) { return e._prio.color ? "--prio:" + e._prio.color : ""; },
+        filtro: function (e) { return (!$("solo-llamado-enc").checked || e._alerta === "llamado") && pasaPrioEncuesta(e); },
       });
-      $("solo-alerta-enc").addEventListener("change", function () { tablaEnc.repintar(); });
+      $("solo-llamado-enc").addEventListener("change", function () { tablaEnc.repintar(); });
     }
     pintarInstalaciones();
     pintarEncuestas();
