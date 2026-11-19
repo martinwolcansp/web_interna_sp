@@ -11,6 +11,7 @@
 # de seguir con datos parciales (un informe a medias es peor que ninguno).
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 import requests
@@ -23,6 +24,9 @@ PAUSA_ENTRE_LLAMADAS = 0.25
 MAX_REINTENTOS = 3
 MAX_PAGINAS_CONTACTOS = 500
 MAX_PAGINAS_OPORTUNIDADES = 1000
+# Pedidos simultaneos para traer contactos / oportunidades por ID (19/11/2026).
+# GHL admite 100 pedidos cada 10 s por cuenta; con 5 a ~2 s cada uno queda lejos.
+PEDIDOS_SIMULTANEOS = 5
 
 
 def _headers(version):
@@ -151,34 +155,36 @@ def traer_oportunidades(desde, hasta_excl, log):
 def traer_contactos_por_id(ids, log):
     """GET /contacts/{id} para contactos que no vinieron en el rango (contacto
     creado antes, pero con oportunidad en NetSuite en el rango)."""
-    contactos = []
-    for cid in ids:
+    def uno(cid):
         try:
             data = _get(f"{BASE_URL}/contacts/{cid}", "2021-07-28", None, log)
         except RuntimeError as e:
             log(f"  GHL contacto {cid}: no se pudo traer ({str(e)[:120]})")
-            continue
+            return None
         c = data.get("contact") or {}
         if c:
             c["contactId"] = c.get("id")
-            contactos.append(c)
-        time.sleep(PAUSA_ENTRE_LLAMADAS)
+        return c or None
+
+    with ThreadPoolExecutor(max_workers=PEDIDOS_SIMULTANEOS) as ex:
+        contactos = [c for c in ex.map(uno, ids) if c]
     log(f"GHL contactos por ID (oportunidades NetSuite fuera del rango de GHL): {len(contactos)} de {len(ids)}.")
     return contactos
 
 
 def traer_oportunidades_por_contacto(ids, log):
     """Oportunidades de GHL (todos los estados) de una lista de contactos."""
-    oportunidades = []
-    for cid in ids:
+    def de_uno(cid):
         try:
             data = _get(f"{BASE_URL}/opportunities/search", "v3",
                         {"locationId": config.GHL_LOCATION_ID, "contactId": cid, "status": "all", "limit": 100}, log)
         except RuntimeError as e:
             log(f"  GHL oportunidades de {cid}: no se pudieron traer ({str(e)[:120]})")
-            continue
-        oportunidades.extend(data.get("opportunities", []))
-        time.sleep(PAUSA_ENTRE_LLAMADAS)
+            return []
+        return data.get("opportunities", [])
+
+    with ThreadPoolExecutor(max_workers=PEDIDOS_SIMULTANEOS) as ex:
+        oportunidades = [o for lista in ex.map(de_uno, ids) for o in lista]
     log(f"GHL oportunidades de esos contactos: {len(oportunidades)}.")
     return oportunidades
 

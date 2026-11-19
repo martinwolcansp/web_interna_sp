@@ -13,6 +13,7 @@
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -168,10 +169,14 @@ def ejecutar(corrida_id, token, desde, hasta, completa=True):
         paso("Descargando contactos de GHL")
         contactos = ghl.traer_contactos(inicio, fin_excl, log)
 
-        paso("Descargando oportunidades de GHL")
-        oportunidades = ghl.traer_oportunidades(inicio, fin_excl, log)
+        # Las oportunidades de GHL (recorrer toda la cuenta, ~1 min) se bajan en
+        # paralelo con NetSuite y los contactos por ID, que no dependen de ellas
+        # (19/11/2026). El resultado se espera antes de completar los datos.
+        pool = ThreadPoolExecutor(max_workers=1)
+        futuro_opps = pool.submit(ghl.traer_oportunidades, inicio, fin_excl, log)
+        pool.shutdown(wait=False)
 
-        paso("Consultando NetSuite")
+        paso("Consultando NetSuite (y oportunidades de GHL en paralelo)")
         ventas_df = netsuite.traer_oportunidades(desde, hasta, log)
 
         # Visitas (citas de GHL) y presupuestos de NetSuite (08/10/2026). Si
@@ -204,12 +209,21 @@ def ejecutar(corrida_id, token, desde, hasta, completa=True):
         ids_ns = {str(x) for col in ("ID CLIENTE CRM", "ID CLIENTE CRM MATRIZ")
                   for x in ventas_df.get(col, []) if x is not None and str(x).strip() and str(x) != "nan"}
         ids_faltantes = sorted(ids_ns - {c.get("id") for c in contactos})
+        extra = []
         if ids_faltantes:
             contactos = contactos + ghl.traer_contactos_por_id(ids_faltantes, log)
+            # Se piden para todos los faltantes (sin esperar la descarga de
+            # oportunidades); despues se dejan solo los de contactos sin
+            # oportunidad en el rango, como antes.
+            extra = ghl.traer_oportunidades_por_contacto(ids_faltantes, log)
+
+        paso("Esperando las oportunidades de GHL")
+        oportunidades = futuro_opps.result()
+        if extra:
             ids_con_opp = {o.get("contactId") for o in oportunidades}
-            extra = ghl.traer_oportunidades_por_contacto([i for i in ids_faltantes if i not in ids_con_opp], log)
             vistas = {o.get("id") for o in oportunidades}
-            oportunidades = oportunidades + [o for o in extra if o.get("id") not in vistas]
+            oportunidades = oportunidades + [o for o in extra
+                                             if o.get("contactId") not in ids_con_opp and o.get("id") not in vistas]
 
         # Clientes potenciales de NetSuite de los contactos de GHL de la corrida
         # (Auditoria de la seccion Integracion NetSuite <-> GHL). Si falla no
