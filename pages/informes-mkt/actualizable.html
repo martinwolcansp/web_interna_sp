@@ -177,10 +177,9 @@ nav.tabs.reportes { margin: 10px 0 4px; }
 .upd-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .upd-campo { font-size: 13px; color: var(--second); display: inline-flex; align-items: center; gap: 6px; }
 .upd-campo input { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--surface); color: var(--ink); }
-.upd-opcion { margin: 12px 0 2px; max-width: 760px; }
-.upd-opcion label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--navy); cursor: pointer; }
-.upd-opcion input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--navy); cursor: pointer; margin: 0; }
-.upd-opcion-leyenda { margin-top: 8px; padding: 10px 12px; background: var(--light-fill); border-left: 4px solid var(--orange); border-radius: 0 6px 6px 0; font-size: 13px; color: var(--ink); line-height: 1.45; }
+.upd-opcion-check { display: inline-flex; align-items: center; gap: 8px; margin-left: 6px; font-size: 14px; font-weight: 600; color: var(--navy); cursor: pointer; }
+.upd-opcion-check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--navy); cursor: pointer; margin: 0; }
+.upd-opcion-leyenda { margin-top: 10px; max-width: 760px; padding: 10px 12px; background: var(--light-fill); border-left: 4px solid var(--orange); border-radius: 0 6px 6px 0; font-size: 13px; color: var(--ink); line-height: 1.45; }
 .upd-opcion-leyenda strong { color: var(--navy); }
 .upd-btn { appearance: none; border: 0; background: var(--navy); color: #fff; font: inherit; font-size: 13.5px; font-weight: 600; padding: 7px 16px; border-radius: 5px; cursor: pointer; }
 .upd-btn:hover { background: #16294d; }
@@ -360,11 +359,9 @@ details.cv-det summary { cursor: pointer; color: var(--navy); font-weight: 700; 
             <label class="upd-campo">Desde <input type="date" id="upd-desde"></label>
             <label class="upd-campo">Hasta <input type="date" id="upd-hasta"></label>
             <button type="button" class="upd-btn" id="upd-btn">Actualizar</button>
+            <label class="upd-opcion-check"><input type="checkbox" id="upd-completa"> Incluir visitas, presupuestos y Auditoría</label>
           </div>
-          <div class="upd-opcion">
-            <label><input type="checkbox" id="upd-completa"> Incluir visitas, presupuestos y Auditoría</label>
-            <div class="upd-opcion-leyenda" id="upd-completa-leyenda"></div>
-          </div>
+          <div class="upd-opcion-leyenda" id="upd-completa-leyenda"></div>
         </div>
         <div class="upd-panel-seccion">
           <div class="upd-panel-titulo">Actualizaciones anteriores</div>
