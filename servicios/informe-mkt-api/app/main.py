@@ -67,6 +67,9 @@ app.add_middleware(
 class PedidoActualizacion(BaseModel):
     desde: date
     hasta: date
+    # Casilla "Incluir visitas, presupuestos y Auditoria" (19/11/2026). Por
+    # defecto no: el boton hace la actualizacion rapida del Informe general.
+    incluir_visitas_auditoria: bool = False
 
 
 class PedidoAuditoria(BaseModel):
@@ -330,5 +333,6 @@ def _actualizar(pedido, background, authorization):
         raise HTTPException(409, {"mensaje": "Ya hay una actualizacion en curso.",
                                   "corrida_id": en_curso["id"] if en_curso else None})
 
-    background.add_task(job.ejecutar, corrida["id"], token, pedido.desde, pedido.hasta)
+    background.add_task(job.ejecutar, corrida["id"], token, pedido.desde, pedido.hasta,
+                        completa=pedido.incluir_visitas_auditoria)
     return {"corrida_id": corrida["id"], "estado": "en_curso"}

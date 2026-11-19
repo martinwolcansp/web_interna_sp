@@ -140,7 +140,15 @@ def contactos_previos(token, log):
     return list(previos.values())
 
 
-def ejecutar(corrida_id, token, desde, hasta):
+class _Omitido(Exception):
+    """Paso salteado a proposito en la actualizacion rapida."""
+
+
+def ejecutar(corrida_id, token, desde, hasta, completa=True):
+    """completa=False (actualizacion rapida, 19/11/2026): no descarga visitas,
+    presupuestos ni clientes de NetSuite para la Auditoria. El bloque de visitas
+    se arma con lo guardado por la ultima actualizacion completa (la automatica
+    de las 16 hs o una manual con la casilla tildada)."""
     lineas = []
 
     def log(msg):
@@ -154,6 +162,8 @@ def ejecutar(corrida_id, token, desde, hasta):
     try:
         inicio, fin_excl = limites_del_rango(desde, hasta)
         log(f"Rango: {desde} a {hasta} ({config.ZONA_HORARIA}).")
+        if not completa:
+            log("Actualizacion rapida: sin visitas, presupuestos ni Auditoria (se usan los ultimos datos guardados).")
 
         paso("Descargando contactos de GHL")
         contactos = ghl.traer_contactos(inicio, fin_excl, log)
@@ -170,11 +180,15 @@ def ejecutar(corrida_id, token, desde, hasta):
         citas = presupuestos = None
         error_visitas = None
         try:
+            if not completa:
+                raise _Omitido()
             paso("Descargando visitas de GHL")
             citas = ghl.traer_citas(inicio, fin_excl, log)
             paso("Consultando presupuestos en NetSuite")
             ids_visitados = {c.get("contactId") for c in citas if visitas.es_concretada(c)}
             presupuestos = netsuite.traer_presupuestos(desde, hasta, ids_visitados, log)
+        except _Omitido:
+            pass
         except Exception as e:
             citas = presupuestos = None
             error_visitas = f"No se pudieron traer las visitas / presupuestos: {e}"
@@ -201,11 +215,15 @@ def ejecutar(corrida_id, token, desde, hasta):
         # (Auditoria de la seccion Integracion NetSuite <-> GHL). Si falla no
         # frena el informe: los contactos quedan "sin verificar".
         ns_verificado = False
-        paso("Consultando clientes potenciales en NetSuite")
         try:
+            if not completa:
+                raise _Omitido()
+            paso("Consultando clientes potenciales en NetSuite")
             clientes_ns = netsuite.traer_clientes(desde, hasta, [c.get("id") for c in contactos], log)
             acumulado.guardar_clientes_ns(token, corrida_id, clientes_ns, log)
             ns_verificado = True
+        except _Omitido:
+            pass
         except Exception as e:
             # Suele ser que falta la migracion 23.
             advertencias.append(f"No se pudieron traer / guardar los clientes de NetSuite para la auditoria: {e}")
@@ -234,7 +252,12 @@ def ejecutar(corrida_id, token, desde, hasta):
             rango_label=f"{desde.strftime('%d/%m/%Y')} al {hasta.strftime('%d/%m/%Y')}",
             fecha_actualizacion=ahora.strftime("%d/%m/%Y %H:%M"),
         )
-        if error_visitas:
+        if not completa:
+            # Visitas y presupuestos de la ultima actualizacion completa. Los
+            # dias que esa no cubrio salen en la nota "Sin visitas cargadas".
+            bloque = acumulado.bloque_visitas(token, desde, hasta, inicio, fin_excl)
+            bloque["rapida"] = True
+        elif error_visitas:
             bloque = {"version": 1, "error": error_visitas}
         else:
             nombres = {c.get("id"): c for c in contactos if c.get("id")}
@@ -257,7 +280,7 @@ def ejecutar(corrida_id, token, desde, hasta):
             # poder sumarla a otras (suele ser que falta la migracion 19).
             advertencias.append(f"No se pudieron guardar los datos para consultas por rango: {e}")
             log(f"AVISO: {advertencias[-1]}")
-        if not error_visitas:
+        if completa and not error_visitas:
             try:
                 acumulado.guardar_visitas(token, corrida_id, desde, hasta, inicio, fin_excl, citas, presupuestos, log)
             except Exception as e:
@@ -265,8 +288,9 @@ def ejecutar(corrida_id, token, desde, hasta):
                 advertencias.append(f"No se pudieron guardar visitas / presupuestos para consultas por rango: {e}")
                 log(f"AVISO: {advertencias[-1]}")
 
-        stats = dict(resultado["stats"], advertencias=advertencias, netsuite_filas=len(ventas_df))
-        if not error_visitas:
+        stats = dict(resultado["stats"], advertencias=advertencias, netsuite_filas=len(ventas_df),
+                     completa=completa)
+        if completa and not error_visitas:
             stats.update(citas_ghl=len(citas), visitas_concretadas=len(bloque["visitas"]),
                          presupuestos_ns=sum(1 for p in bloque["presupuestos"] if p["en_periodo"]))
         log(f"Listo: {json.dumps(stats, ensure_ascii=False)}")
