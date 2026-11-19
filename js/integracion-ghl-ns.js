@@ -225,6 +225,7 @@ function estadoOportunidadBadge(estado) {
     open: ['prog', 'Abierta'],
     won: ['ok', 'Ganada'],
     lost: ['err', 'Perdida'],
+    abandoned: ['rev', 'Abandonada'],
   };
   const [mod, label] = map[estado] || ['rev', estado || '—'];
   return `<span class="status-badge status-badge--${mod}">${label}</span>`;

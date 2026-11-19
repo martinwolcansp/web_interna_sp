@@ -112,7 +112,7 @@ def cargar_en_supabase(token, contactos, oportunidades, log):
             "pipeline_stage_id": o.get("pipelineStageId"),
             "fecha_creacion_ghl": o.get("createdAt"),
             "fecha_actualizacion_ghl": o.get("updatedAt"),
-            "fecha_cierre": o.get("lastStatusChangeAt") if estado in ("won", "lost") else None,
+            "fecha_cierre": o.get("lastStatusChangeAt") if estado in ("won", "lost", "abandoned") else None,
             "sync_estado": "sincronizado",
             "sync_actualizado_en": ahora,
             "origen_ultimo_cambio": "ghl",
