@@ -53,6 +53,11 @@ def _direccion(f):
     }
 
 
+def _telefonos(f):
+    """Telefonos completos de NetSuite (grupo opcional 'telefonos completos')."""
+    return {k: texto(f.get(k)) for k in ("telefono_car", "celular", "celular_car", "telefono2", "telefono2_car")}
+
+
 def _nombre(f):
     return texto(f.get("empresa")) or texto(f.get("nombre")) or texto(f.get("entity_id"))
 
@@ -73,7 +78,7 @@ def fila_cliente(f, corrida_id, ts):
         "vigente": True,
         "corrida_id": corrida_id,
         "actualizado_en": ts,
-    }, **_direccion(f))
+    }, **_direccion(f), **_telefonos(f))
 
 
 def fila_establecimiento(f, cliente_ns_id, corrida_id, ts):
@@ -102,7 +107,7 @@ def fila_establecimiento(f, cliente_ns_id, corrida_id, ts):
         "vigente": True,
         "corrida_id": corrida_id,
         "actualizado_en": ts,
-    }, **_direccion(f))
+    }, **_direccion(f), **_telefonos(f))
 
 
 def raices(por_id):

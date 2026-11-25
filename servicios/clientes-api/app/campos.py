@@ -57,6 +57,20 @@ def opcionales():
                      "LEFT JOIN customerAddressbookEntityAddress ea ON ea.nkey = cab.addressbookaddress"),
         },
     ]
+    # Telefonos completos (25/11/2026, pestaña Clientes activos + contactos).
+    # En SP altphone es el celular (mobilephone no se usa) y la caracteristica
+    # de cada numero va en un campo aparte (ver split_phone() del servicio de
+    # citas de la integracion GHL).
+    grupos.append({
+        "nombre": "telefonos completos",
+        "campos": {
+            "telefono_car": "c.custentity_ap_codigo_de_area_telefono",
+            "celular": "c.altphone",
+            "celular_car": "c.custentity_ap_codigo_area_tel_celular",
+            "telefono2": "c.custentity_ap_telefono_contacto2",
+            "telefono2_car": "c.custentity_ap_codigo_area_tel_cont2",
+        },
+    })
     # Datos del establecimiento en ByKom (campos 3K, vistos en el diagnostico)
     grupos.append({
         "nombre": "datos ByKom del establecimiento",
