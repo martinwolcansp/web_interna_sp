@@ -68,3 +68,15 @@ Reglas de ByKom (`app/contactos/telefonos.py`):
 - Cada número se separa en característica y número, sin 54, 9, 0 ni 15 (igual que `split_phone()` de la integración GHL). Celular o fijo se infiere: con 15 adelante es celular; si no, los que empiezan con 4 o 2 son fijos.
 
 Variables nuevas (opcionales): `BUCKET_BYKOM`, `CARGAS_A_CONSERVAR`, `GENERICO_MIN_CUENTAS`, `MAX_MB_ARCHIVO`, `MINUTOS_CARGA_COLGADA`.
+
+**Comparación** — corrida `contactos` de `cli_corrida` (`app/informes/contactos.py` + `app/contactos/cruce.py`). Se dispara sola al terminar cada carga (si ya hay cuentas y contactos) y con el botón *Recalcular comparación* (`POST /clientes/contactos/actualizar`). Arma `cnt_propuesta`, una fila por registro de NetSuite y campo:
+
+| Campo | NetSuite |
+|---|---|
+| `celular` | `altphone` + `custentity_ap_codigo_area_tel_celular` |
+| `fijo` | `phone` + `custentity_ap_codigo_de_area_telefono` |
+| `telefono2` | `custentity_ap_telefono_contacto2` + `custentity_ap_codigo_area_tel_cont2` |
+
+- Establecimiento: teléfonos de su propia cuenta. Cliente principal: los de su mejor cuenta (habilitada y con establecimiento activo primero). Dentro de la cuenta, primero el titular (comparte una palabra del nombre con la cuenta).
+- Acción: `completar` (NetSuite vacío; va al CSV por defecto), `igual` (el número ya está en algún campo del registro), `distinto` (se revisa y se marca a mano), `sin_dato`, `ya_no_en_bykom`.
+- Las marcas manuales se conservan entre cálculos mientras el número propuesto no cambie.

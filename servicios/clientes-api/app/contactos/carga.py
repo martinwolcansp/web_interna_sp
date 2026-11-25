@@ -9,6 +9,8 @@
 #      no_vigente_desde) y registra en cnt_evento las altas, bajas y cambios.
 #      En la primera carga de cada tipo no hay eventos: no hay contra que comparar.
 #   5. Cierra la carga con sus estadisticas y borra los respaldos viejos.
+#   6. Si ya hay cuentas y contactos cargados, recalcula la comparacion con
+#      NetSuite (corrida 'contactos', origen automatica; app/informes/contactos.py).
 #
 # El avance se ve en cnt_carga.mensaje mientras estado = 'en_curso'.
 
@@ -198,6 +200,7 @@ def ejecutar(token, carga_id, contenido, nombre):
             "mensaje": resumen, "procesado_en": sb.ahora_iso(),
         })
         _limpiar_respaldos(token)
+        _recalcular_comparacion(token)
     except Exception as e:
         logger.exception("Fallo la carga %s", carga_id)
         try:
@@ -218,3 +221,23 @@ def _limpiar_respaldos(token):
         sb.patch(token, T_CARGA, {"id": f"in.({','.join(str(v['id']) for v in viejas)})"}, {"ruta": None})
     except Exception:
         logger.warning("No se pudieron borrar los respaldos viejos", exc_info=True)
+
+
+def _recalcular_comparacion(token):
+    """Corrida automatica de la comparacion, si ya estan los dos archivos."""
+    from app import job  # import local: job -> informes -> contactos
+
+    try:
+        tipos = {c["tipo"] for c in sb.leer_todo(token, T_CARGA, "tipo", {"estado": "eq.ok"})}
+        if not {"cuentas", "contactos"} <= tipos:
+            logger.info("Comparacion pendiente: falta cargar %s", {"cuentas", "contactos"} - tipos)
+            return
+        sb.cerrar_corridas_colgadas(token, "contactos")
+        if sb.corrida_en_curso(token, "contactos"):
+            logger.info("Ya hay una comparacion en curso; no se dispara otra")
+            return
+        corrida = sb.crear_corrida(token, "contactos", origen="automatica")
+        if corrida:
+            job.ejecutar("contactos", corrida["id"], token)
+    except Exception:
+        logger.warning("No se pudo recalcular la comparacion despues de la carga", exc_info=True)

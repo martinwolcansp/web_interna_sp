@@ -228,6 +228,16 @@ def patch(token, tabla, params, cambios):
     ), f"actualizar {tabla}")
 
 
+def borrar(token, tabla, params):
+    """DELETE con filtros de PostgREST (params) y RLS del usuario."""
+    _check(requests.delete(
+        _rest(tabla),
+        headers=_h(token, "return=minimal"),
+        params=params,
+        timeout=300,
+    ), f"borrar en {tabla}")
+
+
 # ---------- Storage ----------
 
 def subir_objeto(token, bucket, ruta, contenido, content_type="application/octet-stream"):

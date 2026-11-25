@@ -79,7 +79,26 @@
 
     <!-- 4. Comparacion -->
     <h2 class="paso-titulo">4 · Comparación de teléfonos</h2>
-    <p class="paso-texto">Para cada cliente y establecimiento de NetSuite, el teléfono que propone ByKom en cada campo. Hacé clic en una tarjeta para filtrar. Por defecto el CSV lleva sólo <strong>Completar</strong>; los <strong>Distinto</strong> se agregan a mano después de revisarlos.</p>
+    <p class="paso-texto">Para cada cliente y establecimiento de NetSuite, el teléfono que propone ByKom en cada campo. Hacé clic en una tarjeta para filtrar. Por defecto el CSV lleva sólo <strong>Completar</strong>; los <strong>Distinto</strong> se agregan a mano después de revisarlos. La comparación se recalcula sola después de cada carga; si actualizaste la Segmentación, recalculala con el botón.</p>
+    <div class="upd-hero" id="upd-hero" hidden>
+      <span class="upd-hero-label">Comparación calculada</span>
+      <span class="upd-hero-fecha" id="upd-hero-fecha"></span>
+      <span class="upd-hero-det" id="upd-hero-det"></span>
+    </div>
+    <div class="upd-bar">
+      <button type="button" class="upd-btn" id="upd-btn" hidden>Recalcular comparación</button>
+      <button type="button" class="upd-menu-btn" id="upd-menu-btn" aria-expanded="false" aria-controls="upd-panel" hidden>Cálculos anteriores &#9662;</button>
+      <span class="upd-estado" id="upd-estado" role="status" aria-live="polite"></span>
+    </div>
+    <div class="upd-panel" id="upd-panel" hidden>
+      <div class="upd-panel-ayuda">Cada cálculo cruza la última Segmentación de NetSuite con la última carga de ByKom. Las marcas manuales (Distinto agregados al CSV) se conservan mientras el número propuesto no cambie.</div>
+      <div class="upd-hist-scroll">
+        <table class="upd-hist">
+          <thead><tr><th>Calculada el</th><th>Tipo</th><th>Estado</th><th>Duración</th><th>Usuario</th><th>Detalle</th></tr></thead>
+          <tbody id="upd-hist-body"><tr><td colspan="6">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
     <div class="kpi-row" id="acc-kpis"></div>
     <div class="filtros">
       <span class="filtros-titulo">Filtros</span>
@@ -122,6 +141,7 @@
     ["contacto_nuevo", "Contactos nuevos"], ["contacto_eliminado", "Contactos eliminados"], ["telefono_cambiado", "Teléfonos cambiados"],
   ];
   var permiso = { editar: false };
+  var barra = null;
   var apiLista = false;
   var D = { props: [], porAccion: {} };
   var filtroAccion = "";
@@ -175,6 +195,9 @@
         var fin = await seguirCarga(j.carga_id, f.name);
         if (fin.estado !== "ok") { setDrop(f.name + ": " + (fin.mensaje || "error al procesar"), "error"); await recargar(); return; }
         setDrop(f.name + ": " + (fin.mensaje || "cargado"), "ok");
+        // La carga dispara sola el recalculo de la comparacion: se sigue su avance.
+        await new Promise(function (ok) { setTimeout(ok, 2500); });
+        if (barra) barra.seguirSiHayEnCurso();
       } catch (e) {
         setDrop(f.name + ": " + e.message, "error");
         return;
@@ -356,11 +379,22 @@
   // ---------------------------------------------------------------
   // Inicio
   // ---------------------------------------------------------------
+  async function pintarUltimaComparacion() {
+    var r = await CI.sb.from("cli_corrida").select("finalizado_en,origen,stats")
+      .eq("informe", "contactos").eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1);
+    if (r.error || !r.data.length) { $("upd-hero").hidden = true; return; }
+    var c = r.data[0];
+    $("upd-hero").hidden = false;
+    $("upd-hero-fecha").textContent = CI.fmtFechaHora(c.finalizado_en);
+    $("upd-hero-det").textContent = [c.origen === "automatica" ? "Automática (después de una carga)" : "Manual", CI.hace(c.finalizado_en)].join(" · ");
+  }
+
   async function recargar() {
     await pintarCargas();
     try { await pintarEstado(); } catch (e) { setDrop("No se pudo leer el estado de las bases: " + e.message + ". ¿Se corrió la migración 55?", "error"); }
     try { await pintarEventos(); } catch (e) { $("eventos-kpis").innerHTML = '<p class="vacio">' + esc(e.message) + "</p>"; }
     try { await cargarPropuestas(); } catch (e) { D.props = []; }
+    await pintarUltimaComparacion();
     pintarComparacion();
   }
 
@@ -397,12 +431,23 @@
     if (!p.sesion) { CI.sinAcceso("Iniciá sesión en la web interna para ver esta pestaña."); return; }
     if (!p.ver) { CI.sinAcceso("No tenés permiso para ver Clientes activos + contactos. Pedile a un administrador que te lo habilite."); return; }
     permiso = p;
+    barra = CI.barraActualizacion({
+      informe: "contactos",
+      puedeEditar: p.editar,
+      detalleCorrida: function (c) {
+        var s = c.stats || {};
+        return s.propuestas != null ? num(s.propuestas) + " propuestas · " + num(s.establecimientos) + " establecimientos y " + num(s.clientes) +
+          " clientes · " + num(s.al_csv) + " al CSV" : "";
+      },
+      alTerminar: async function () { await recargar(); },
+    });
     eventos();
     await verificarApi();
     await recargar();
     $("cargando").hidden = true;
     $("main").classList.remove("main--cargando");
     $("report-footer").innerHTML = "SP Seguridad Privada &middot; Clientes activos + contactos &middot; simulación, no escribe en NetSuite ni en GHL";
+    barra.seguirSiHayEnCurso();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
