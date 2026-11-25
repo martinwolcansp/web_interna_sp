@@ -51,7 +51,7 @@
 
     <!-- 1. Carga de archivos -->
     <h2 class="paso-titulo">1 · Archivos de ByKom</h2>
-    <p class="paso-texto">Subí los dos exports de ByKom: <strong>Clientes cuenta</strong> (.XLS) y <strong>Clientes contactos</strong> (.xlsx). El sistema reconoce cuál es cada uno por sus columnas, guarda el archivo como respaldo con la fecha de subida y carga sus datos.</p>
+    <p class="paso-texto">Subí los dos exports de ByKom: <strong>Clientes cuenta</strong> (.XLS) y <strong>Clientes contactos</strong> (.xlsx). El sistema reconoce cuál es cada uno por sus columnas, guarda el archivo como respaldo con la fecha de subida y carga sus datos. Subí primero <strong>Clientes cuenta</strong>: con las cuentas cargadas, los contactos se vinculan sólo a números de cuenta reales.</p>
     <div class="drop" id="drop">
       <div><strong>Arrastrá los archivos acá</strong> o elegilos desde tu PC</div>
       <input type="file" id="archivo" accept=".xls,.xlsx" multiple>
@@ -147,7 +147,7 @@
     try {
       var r = await fetch(CI.API_BASE_URL + "/health", { cache: "no-store" });
       var j = await r.json();
-      apiLista = (j.informes || []).indexOf("contactos") >= 0;
+      apiLista = (j.cargas || []).indexOf("contactos") >= 0;
     } catch (e) { apiLista = false; }
     var habilitada = apiLista && permiso.editar;
     $("drop").classList.toggle("is-deshabilitada", !habilitada);
@@ -170,13 +170,28 @@
         var r = await fetch(CI.API_BASE_URL + "/clientes/contactos/cargar", { method: "POST", headers: { Authorization: "Bearer " + token }, body: fd });
         var j = await r.json().catch(function () { return {}; });
         if (!r.ok) throw new Error((j.detail && (j.detail.mensaje || j.detail)) || ("HTTP " + r.status));
-        setDrop(f.name + ": " + (j.mensaje || "cargado"), "ok");
+        setDrop(f.name + ": " + (j.mensaje || "recibido"));
+        await pintarCargas();
+        var fin = await seguirCarga(j.carga_id, f.name);
+        if (fin.estado !== "ok") { setDrop(f.name + ": " + (fin.mensaje || "error al procesar"), "error"); await recargar(); return; }
+        setDrop(f.name + ": " + (fin.mensaje || "cargado"), "ok");
       } catch (e) {
         setDrop(f.name + ": " + e.message, "error");
         return;
       }
     }
     await recargar();
+  }
+
+  // Sigue una carga hasta que termina (la procesa clientes-api en segundo plano).
+  async function seguirCarga(id, nombre) {
+    for (;;) {
+      await new Promise(function (ok) { setTimeout(ok, 3000); });
+      var r = await CI.sb.from("cnt_carga").select("estado,mensaje").eq("id", id).single();
+      if (r.error) return { estado: "error", mensaje: r.error.message };
+      if (r.data.estado !== "en_curso") return r.data;
+      setDrop(nombre + ": " + (r.data.mensaje || "procesando") + "…");
+    }
   }
 
   async function pintarCargas() {

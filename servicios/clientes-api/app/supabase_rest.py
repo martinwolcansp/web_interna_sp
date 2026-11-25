@@ -6,6 +6,7 @@
 #   cli_corrida                       ver/editar segun clientes-<informe>
 #   cli_cliente, cli_establecimiento  ver/editar segun clientes-segmentacion
 #   cli_baja                          ver/editar segun clientes-bajas
+#   cnt_*, bucket bykom-exports       ver/editar segun clientes-contactos
 
 import math
 from datetime import datetime, timedelta, timezone
@@ -192,3 +193,57 @@ def marcar_no_vistos(token, tabla, corrida_id, filtros=None):
         json={"vigente": False},
         timeout=120,
     ), f"marcar no vistos en {tabla}")
+
+
+def insertar(token, tabla, filas):
+    """Insert por lotes (sin upsert)."""
+    filas = _sin_nan(filas)
+    for i in range(0, len(filas), TAMANO_LOTE):
+        _check(requests.post(
+            _rest(tabla),
+            headers=_h(token, "return=minimal"),
+            json=filas[i:i + TAMANO_LOTE],
+            timeout=120,
+        ), f"insertar en {tabla}")
+
+
+def insertar_uno(token, tabla, fila):
+    """Inserta una fila y la devuelve (con los valores por defecto de la base)."""
+    return _check(requests.post(
+        _rest(tabla),
+        headers=_h(token, "return=representation"),
+        json=_sin_nan(fila),
+        timeout=30,
+    ), f"insertar en {tabla}").json()[0]
+
+
+def patch(token, tabla, params, cambios):
+    """UPDATE con filtros de PostgREST (params) y RLS del usuario."""
+    _check(requests.patch(
+        _rest(tabla),
+        headers=_h(token, "return=minimal"),
+        params=params,
+        json=_sin_nan(cambios),
+        timeout=300,
+    ), f"actualizar {tabla}")
+
+
+# ---------- Storage ----------
+
+def subir_objeto(token, bucket, ruta, contenido, content_type="application/octet-stream"):
+    _check(requests.post(
+        f"{config.SUPABASE_URL}/storage/v1/object/{bucket}/{ruta}",
+        headers={"apikey": config.SUPABASE_ANON_KEY, "Authorization": f"Bearer {token}",
+                 "Content-Type": content_type, "x-upsert": "false"},
+        data=contenido,
+        timeout=300,
+    ), f"subir {ruta} a Storage")
+
+
+def borrar_objetos(token, bucket, rutas):
+    _check(requests.delete(
+        f"{config.SUPABASE_URL}/storage/v1/object/{bucket}",
+        headers={"apikey": config.SUPABASE_ANON_KEY, "Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json={"prefixes": list(rutas)},
+        timeout=60,
+    ), "borrar respaldos de Storage")

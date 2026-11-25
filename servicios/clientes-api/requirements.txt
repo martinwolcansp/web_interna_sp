@@ -4,3 +4,6 @@ requests
 python-dotenv
 PyJWT[crypto]
 tzdata
+python-multipart
+xlrd
+openpyxl

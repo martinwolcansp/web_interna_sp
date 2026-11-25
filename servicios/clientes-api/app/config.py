@@ -86,4 +86,11 @@ ZONA_HORARIA = os.getenv("ZONA_HORARIA", "America/Argentina/Buenos_Aires")
 MINUTOS_CORRIDA_COLGADA = int(os.getenv("MINUTOS_CORRIDA_COLGADA", "30"))
 CORRIDAS_A_CONSERVAR = int(os.getenv("CORRIDAS_A_CONSERVAR", "40"))
 
+# Pestaña Clientes activos + contactos (migracion_55)
+BUCKET_BYKOM = os.getenv("BUCKET_BYKOM", "bykom-exports")
+CARGAS_A_CONSERVAR = int(os.getenv("CARGAS_A_CONSERVAR", "20"))        # respaldos en Storage
+GENERICO_MIN_CUENTAS = int(os.getenv("GENERICO_MIN_CUENTAS", "10"))    # telefono en N cuentas = generico
+MAX_MB_ARCHIVO = int(os.getenv("MAX_MB_ARCHIVO", "60"))
+MINUTOS_CARGA_COLGADA = int(os.getenv("MINUTOS_CARGA_COLGADA", "30"))
+
 ALLOWED_ORIGINS = _lista("ALLOWED_ORIGINS")

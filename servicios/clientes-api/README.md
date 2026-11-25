@@ -49,3 +49,22 @@ Misma clasificación que el informe manual: por motivo de baja y, para "Otro", p
    Bajas de septiembre debería dar 116 (lo que trae hoy la búsqueda guardada).
 4. **Coolify**: otra aplicación del mismo repo, igual que indicadores-api. Build Pack Dockerfile, Base Directory `/servicios/clientes-api`, puerto 8000, health check `/health`, Watch Paths `servicios/clientes-api/**`. Variables: las del `.env.example`, con `SUPABASE_URL` interna y `NETSUITE_PRIVATE_KEY` cargada sola con **+ Add** (ver README de indicadores-api).
 5. Poner el dominio en `API_BASE_URL` de `pages/clientes-activos/segmentacion.html` y `bajas.html` (hoy `https://clientes-api.200.5.196.50.sslip.io`).
+
+## Clientes activos + contactos (`app/contactos/`, migraciones 55 y 56)
+
+Pestaña `pages/clientes-activos/contactos.html`, sección de permisos `clientes-contactos`. Primera etapa de la sincronización de contactos ByKom → NetSuite → GHL: no escribe en NetSuite ni en GHL.
+
+**Carga de exports de ByKom** — `POST /clientes/contactos/cargar` (multipart, campo `archivo`, permiso editar):
+
+1. Reconoce el archivo por sus columnas: *Clientes cuenta* (.XLS, BIFF, se lee con `xlrd`) o *Clientes contactos* (.xlsx, `openpyxl`).
+2. Guarda el archivo como respaldo en Storage: `bykom-exports/<cuentas|contactos>/<AAAA-MM-DD_HHMMSS>_<archivo>`. Se conservan los últimos `CARGAS_A_CONSERVAR` (20).
+3. Crea la fila en `cnt_carga` y procesa en segundo plano (`app/contactos/carga.py`); la página sigue el avance leyendo `cnt_carga`.
+4. Upsert en `cnt_bykom_cuenta` / `cnt_bykom_contacto` por `order_id`. Lo que no vino queda `vigente = false` con `no_vigente_desde`. Los cambios respecto de la carga anterior (altas, bajas, deshabilitadas, teléfonos cambiados) van a `cnt_evento`; la primera carga de cada tipo no genera eventos.
+
+Reglas de ByKom (`app/contactos/telefonos.py`):
+
+- La cuenta de un contacto es el último token de `nombre_dos` (`ANDREA 7005` → `7005`). Con las cuentas cargadas, sólo se acepta si es una cuenta real: **subir primero Clientes cuenta**.
+- Teléfono genérico: el mismo número en `GENERICO_MIN_CUENTAS` (10) cuentas o más (policía, bomberos, UDEC). No se usa para proponer teléfonos.
+- Cada número se separa en característica y número, sin 54, 9, 0 ni 15 (igual que `split_phone()` de la integración GHL). Celular o fijo se infiere: con 15 adelante es celular; si no, los que empiezan con 4 o 2 son fijos.
+
+Variables nuevas (opcionales): `BUCKET_BYKOM`, `CARGAS_A_CONSERVAR`, `GENERICO_MIN_CUENTAS`, `MAX_MB_ARCHIVO`, `MINUTOS_CARGA_COLGADA`.
