@@ -417,5 +417,6 @@
     sinAcceso: sinAcceso, permisos: permisos, barraActualizacion: barraActualizacion,
     xlFecha: xlFecha, xlLink: xlLink, xlHoja: xlHoja, descargarLibro: descargarLibro, exportar: exportar,
     MESES: MESES, TZ: TZ, URL_CLIENTE_NS: URL_CLIENTE_NS, URL_CONTACTO_GHL: URL_CONTACTO_GHL,
+    API_BASE_URL: API_BASE_URL,
   };
 })();

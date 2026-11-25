@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clientes activos + contactos — SP Seguridad</title>
+<link rel="stylesheet" href="../../css/clientes-informe.css">
+<style>
+  /* Propios de esta pestaña (zona de carga, pasos, acciones) */
+  .paso-titulo { color: var(--navy); font-size: 18px; margin: 26px 0 4px; padding-left: 10px; border-left: 3px solid var(--navy); }
+  .paso-texto { color: var(--second); margin: 0 0 14px; max-width: 980px; }
+  .drop { border: 2px dashed var(--rule); border-radius: 8px; padding: 26px 18px; text-align: center; color: var(--second); background: var(--light-fill); transition: background .15s, border-color .15s; }
+  .drop.is-sobre { border-color: var(--blue); background: #e6effb; }
+  .drop.is-deshabilitada { opacity: .6; }
+  .drop strong { color: var(--navy); }
+  .drop input[type=file] { display: none; }
+  .drop .drop-btn { margin-top: 10px; font: inherit; font-size: 14px; padding: 6px 14px; border: 1px solid var(--navy); border-radius: 5px; background: #fff; color: var(--navy); cursor: pointer; }
+  .drop .drop-btn:disabled { cursor: default; opacity: .6; }
+  .drop-estado { margin-top: 10px; font-size: 14px; }
+  .kpi-card.is-clic { cursor: pointer; }
+  .kpi-card.is-clic:hover { background: var(--light-fill); }
+  .kpi-card.is-sel { outline: 2px solid var(--blue); }
+  .sis-card h3 { margin: 0 0 6px; color: var(--navy); font-size: 16px; }
+  .sis-card .sis-sub { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .sis-card ul { margin: 0; padding-left: 18px; color: var(--second); }
+  .sis-card li { margin: 3px 0; }
+  .sis-card li strong { color: var(--ink); }
+  .acc { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  .acc--completar { background: var(--win-bg); color: var(--win-text); }
+  .acc--distinto { background: var(--warn-bg); color: #9a4a10; }
+  .acc--igual, .acc--sin_dato { background: var(--light-fill); color: var(--second); }
+  .acc--ya_no_en_bykom { background: #fde8e7; color: var(--bad); }
+  .tel { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .incluir-chk { width: 16px; height: 16px; cursor: pointer; }
+  .csv-nota { color: var(--muted); font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="report-header">
+    <div class="eyebrow">SP Seguridad Privada &middot; Clientes activos &middot; Contactos</div>
+    <h1>Clientes activos + contactos</h1>
+    <div class="sub">Teléfonos de los clientes de NetSuite a partir de las listas de contactos de ByKom. Primera etapa: simulación de la actualización en NetSuite (no escribe en ningún sistema).</div>
+  </header>
+
+  <div class="cargando" id="cargando" role="status" aria-live="polite">
+    <span>Cargando datos…</span><span class="cargando-barra" aria-hidden="true"></span>
+  </div>
+
+  <main id="main" class="main--cargando">
+
+    <!-- 1. Carga de archivos -->
+    <h2 class="paso-titulo">1 · Archivos de ByKom</h2>
+    <p class="paso-texto">Subí los dos exports de ByKom: <strong>Clientes cuenta</strong> (.XLS) y <strong>Clientes contactos</strong> (.xlsx). El sistema reconoce cuál es cada uno por sus columnas, guarda el archivo como respaldo con la fecha de subida y carga sus datos.</p>
+    <div class="drop" id="drop">
+      <div><strong>Arrastrá los archivos acá</strong> o elegilos desde tu PC</div>
+      <input type="file" id="archivo" accept=".xls,.xlsx" multiple>
+      <button type="button" class="drop-btn" id="elegir">Elegir archivos</button>
+      <div class="drop-estado" id="drop-estado" role="status" aria-live="polite"></div>
+    </div>
+    <div class="explorer" style="margin-top:14px">
+      <div class="explorer-bar"><span class="explorer-title">Cargas anteriores</span><span class="explorer-count" id="cargas-cuenta"></span></div>
+      <div class="table-scroll"><table class="data-table" id="cargas"></table></div>
+    </div>
+
+    <!-- 2. Estado de las bases -->
+    <h2 class="paso-titulo">2 · Estado de las bases</h2>
+    <p class="paso-texto">Qué hay hoy en cada sistema y cuántos registros se pueden vincular. El vínculo es el ID ByKom del establecimiento en NetSuite (<i>custentity_3k_id_bykom</i>) contra la cuenta de ByKom.</p>
+    <div class="grid-3">
+      <div class="bloque sis-card" id="sis-ns"></div>
+      <div class="bloque sis-card" id="sis-bk"></div>
+      <div class="bloque sis-card" id="sis-cruce"></div>
+    </div>
+
+    <!-- 3. Cambios detectados entre cargas -->
+    <h2 class="paso-titulo">3 · Cambios en ByKom desde la carga anterior</h2>
+    <p class="paso-texto">Cuentas y contactos nuevos, eliminados o con teléfono distinto respecto de la carga anterior. Lo eliminado no se borra de la base: queda marcado como no vigente.</p>
+    <div class="kpi-row" id="eventos-kpis"></div>
+
+    <!-- 4. Comparacion -->
+    <h2 class="paso-titulo">4 · Comparación de teléfonos</h2>
+    <p class="paso-texto">Para cada cliente y establecimiento de NetSuite, el teléfono que propone ByKom en cada campo. Hacé clic en una tarjeta para filtrar. Por defecto el CSV lleva sólo <strong>Completar</strong>; los <strong>Distinto</strong> se agregan a mano después de revisarlos.</p>
+    <div class="kpi-row" id="acc-kpis"></div>
+    <div class="filtros">
+      <span class="filtros-titulo">Filtros</span>
+      <input type="search" class="filtro-buscar" id="buscar" placeholder="Buscar ID, nombre, cuenta o teléfono…" aria-label="Buscar">
+      <select id="f-tipo" class="mes-sel" aria-label="Tipo de registro"><option value="">Clientes y establecimientos</option><option value="cliente">Sólo clientes</option><option value="establecimiento">Sólo establecimientos</option></select>
+      <select id="f-campo" class="mes-sel" aria-label="Campo"><option value="">Todos los campos</option><option value="celular">Celular</option><option value="fijo">Fijo</option><option value="telefono2">Teléfono 2</option></select>
+      <button type="button" class="xls-btn" id="csv">Descargar CSV para NetSuite</button>
+    </div>
+    <div class="explorer">
+      <div class="explorer-bar"><span class="explorer-title">Propuestas</span><span class="explorer-count" id="prop-cuenta"></span></div>
+      <div class="table-scroll"><table class="data-table" id="tabla"></table></div>
+      <div class="mas-wrap"><button type="button" class="mas-btn" id="mas" hidden>Mostrar más</button></div>
+    </div>
+    <p class="csv-nota">El CSV es para el Import Assistant de NetSuite: tipo de registro Cliente, modo <i>Actualizar</i>, clave <i>Internal ID</i>. Las celdas vacías no se importan si se deja desmarcada la opción de sobrescribir con valores vacíos.</p>
+  </main>
+  <footer class="report-footer" id="report-footer"></footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script src="/js/clientes-informe.js"></script>
+<script>
+(function () {
+  "use strict";
+  var CI = window.CI, $ = CI.$, esc = CI.esc, num = CI.num, pct = CI.pct;
+  var SECCION = "clientes-contactos";
+  var PAGINA = 200;
+  var ACCIONES = [
+    ["completar", "Completar", "NetSuite vacío, ByKom tiene número"],
+    ["distinto", "Distinto", "NetSuite tiene otro número"],
+    ["igual", "Igual", "no hay nada que cambiar"],
+    ["sin_dato", "Sin teléfono en ByKom", "la cuenta no tiene un número válido"],
+    ["ya_no_en_bykom", "Ya no está en ByKom", "la cuenta dejó de venir en la última carga"],
+  ];
+  var NOMBRE_ACC = {}; ACCIONES.forEach(function (a) { NOMBRE_ACC[a[0]] = a[1]; });
+  var CAMPOS = { celular: "Celular", fijo: "Fijo", telefono2: "Teléfono 2" };
+  var EVENTOS = [
+    ["cuenta_nueva", "Cuentas nuevas"], ["cuenta_eliminada", "Cuentas eliminadas"],
+    ["cuenta_deshabilitada", "Cuentas deshabilitadas"], ["cuenta_habilitada", "Cuentas rehabilitadas"],
+    ["contacto_nuevo", "Contactos nuevos"], ["contacto_eliminado", "Contactos eliminados"], ["telefono_cambiado", "Teléfonos cambiados"],
+  ];
+  var permiso = { editar: false };
+  var apiLista = false;
+  var D = { props: [], porAccion: {} };
+  var filtroAccion = "";
+  var mostrados = PAGINA;
+
+  function setDrop(texto, tipo) {
+    var el = $("drop-estado");
+    el.textContent = texto || "";
+    el.style.color = tipo === "error" ? "var(--bad)" : tipo === "ok" ? "var(--win-text)" : "";
+  }
+  async function contar(tabla, filtros) {
+    var q = CI.sb.from(tabla).select("*", { count: "exact", head: true });
+    (filtros || []).forEach(function (f) { q = q[f[0]](f[1], f[2]); });
+    var r = await q;
+    if (r.error) throw new Error(tabla + ": " + r.error.message);
+    return r.count || 0;
+  }
+
+  // ---------------------------------------------------------------
+  // 1. Carga de archivos
+  // ---------------------------------------------------------------
+  async function verificarApi() {
+    try {
+      var r = await fetch(CI.API_BASE_URL + "/health", { cache: "no-store" });
+      var j = await r.json();
+      apiLista = (j.informes || []).indexOf("contactos") >= 0;
+    } catch (e) { apiLista = false; }
+    var habilitada = apiLista && permiso.editar;
+    $("drop").classList.toggle("is-deshabilitada", !habilitada);
+    $("elegir").disabled = !habilitada;
+    if (!permiso.editar) setDrop("Tu usuario puede ver esta pestaña pero no subir archivos (falta el permiso editar).");
+    else if (!apiLista) setDrop("La carga de archivos se habilita cuando se despliegue la nueva versión de clientes-api (paso 2).");
+  }
+
+  async function subir(archivos) {
+    if (!apiLista || !permiso.editar) return;
+    var s = await CI.sb.auth.getSession();
+    var token = s.data && s.data.session && s.data.session.access_token;
+    if (!token) { setDrop("La sesión venció. Volvé a ingresar a la web interna.", "error"); return; }
+    for (var i = 0; i < archivos.length; i++) {
+      var f = archivos[i];
+      setDrop("Subiendo " + f.name + " (" + num(f.size / 1048576, 1) + " MB)…");
+      var fd = new FormData();
+      fd.append("archivo", f, f.name);
+      try {
+        var r = await fetch(CI.API_BASE_URL + "/clientes/contactos/cargar", { method: "POST", headers: { Authorization: "Bearer " + token }, body: fd });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error((j.detail && (j.detail.mensaje || j.detail)) || ("HTTP " + r.status));
+        setDrop(f.name + ": " + (j.mensaje || "cargado"), "ok");
+      } catch (e) {
+        setDrop(f.name + ": " + e.message, "error");
+        return;
+      }
+    }
+    await recargar();
+  }
+
+  async function pintarCargas() {
+    var r = await CI.sb.from("cnt_carga").select("id,tipo,archivo,ruta,bytes,filas,estado,mensaje,subido_por_nombre,subido_en")
+      .order("subido_en", { ascending: false }).limit(20);
+    if (r.error) { $("cargas").innerHTML = '<tbody><tr><td>No se pudieron leer las cargas: ' + esc(r.error.message) + "</td></tr></tbody>"; return; }
+    $("cargas-cuenta").textContent = r.data.length ? r.data.length + " más recientes" : "";
+    if (!r.data.length) { $("cargas").innerHTML = '<tbody><tr><td class="vacio">Todavía no se subió ningún archivo.</td></tr></tbody>'; return; }
+    $("cargas").innerHTML = "<thead><tr><th>Subido el</th><th>Archivo</th><th>Tipo</th><th>Filas</th><th>Estado</th><th>Usuario</th><th>Respaldo</th></tr></thead><tbody>" +
+      r.data.map(function (c) {
+        return "<tr><td>" + esc(CI.fmtFechaHora(c.subido_en)) + "</td><td>" + esc(c.archivo) + "</td><td>" + (c.tipo === "cuentas" ? "Clientes cuenta" : "Clientes contactos") +
+          "</td><td>" + (c.filas != null ? num(c.filas) : "") + "</td><td>" + (c.estado === "ok" ? '<span class="tag tag--activo">OK</span>' : c.estado === "error" ? '<span class="tag tag--alerta" title="' + esc(c.mensaje || "") + '">Error</span>' : "En curso") +
+          "</td><td>" + esc(c.subido_por_nombre || "") + "</td><td>" + (c.ruta ? '<button type="button" class="chk-limpiar" data-ruta="' + esc(c.ruta) + '">Descargar</button>' : "") + "</td></tr>";
+      }).join("") + "</tbody>";
+  }
+
+  async function descargarRespaldo(ruta) {
+    var r = await CI.sb.storage.from("bykom-exports").createSignedUrl(ruta, 60);
+    if (r.error) { setDrop("No se pudo descargar el respaldo: " + r.error.message, "error"); return; }
+    window.open(r.data.signedUrl, "_blank");
+  }
+
+  // ---------------------------------------------------------------
+  // 2. Estado de las bases
+  // ---------------------------------------------------------------
+  function tieneTel(x) { return !!(x.celular || x.telefono || x.telefono2); }
+  async function pintarEstado() {
+    var r = await Promise.all([
+      CI.leerTodo("cli_cliente", "ns_id,telefono,celular,telefono2", "ns_id", [["eq", "vigente", true]]),
+      CI.leerTodo("cli_establecimiento", "ns_id,cliente_ns_id,id_bykom,activo,telefono,celular,telefono2", "ns_id", [["eq", "vigente", true]]),
+      CI.leerTodo("cnt_bykom_cuenta", "order_id,deshabilitada", "order_id", [["eq", "vigente", true]]),
+      contar("cnt_bykom_contacto", [["eq", "vigente", true]]),
+      contar("cnt_bykom_contacto", [["eq", "vigente", true], ["eq", "generico", true]]),
+      CI.sb.from("cli_corrida").select("finalizado_en").eq("informe", "segmentacion").eq("estado", "ok").order("finalizado_en", { ascending: false }).limit(1),
+      CI.sb.from("cnt_carga").select("tipo,subido_en").eq("estado", "ok").order("subido_en", { ascending: false }).limit(10),
+    ]);
+    var cli = r[0], est = r[1], cuentas = r[2], nContactos = r[3], nGenericos = r[4];
+    var segFecha = r[5].data && r[5].data[0] ? r[5].data[0].finalizado_en : null;
+    var ultCarga = {}; (r[6].data || []).forEach(function (c) { if (!ultCarga[c.tipo]) ultCarga[c.tipo] = c.subido_en; });
+
+    var conId = est.filter(function (e) { return e.id_bykom; });
+    $("sis-ns").innerHTML = "<h3>NetSuite</h3><div class=\"sis-sub\">Segmentación actualizada " + (segFecha ? esc(CI.fmtFechaHora(segFecha)) : "nunca") + "</div><ul>" +
+      "<li><strong>" + num(cli.length) + "</strong> clientes principales; <strong>" + num(cli.filter(tieneTel).length) + "</strong> con algún teléfono (" + pct(cli.filter(tieneTel).length, cli.length) + ")</li>" +
+      "<li><strong>" + num(cli.filter(function (c) { return c.celular; }).length) + "</strong> clientes con celular (<i>altphone</i>)</li>" +
+      "<li><strong>" + num(est.length) + "</strong> establecimientos; <strong>" + num(est.filter(tieneTel).length) + "</strong> con algún teléfono</li>" +
+      "<li><strong>" + num(conId.length) + "</strong> establecimientos con ID ByKom</li></ul>";
+
+    var desh = cuentas.filter(function (c) { return c.deshabilitada; }).length;
+    $("sis-bk").innerHTML = "<h3>ByKom</h3><div class=\"sis-sub\">Cuentas: " + (ultCarga.cuentas ? esc(CI.fmtFechaHora(ultCarga.cuentas)) : "sin cargar") +
+      " · Contactos: " + (ultCarga.contactos ? esc(CI.fmtFechaHora(ultCarga.contactos)) : "sin cargar") + "</div>" +
+      (cuentas.length || nContactos ? "<ul>" +
+        "<li><strong>" + num(cuentas.length) + "</strong> cuentas; <strong>" + num(cuentas.length - desh) + "</strong> habilitadas y <strong>" + num(desh) + "</strong> deshabilitadas</li>" +
+        "<li><strong>" + num(nContactos) + "</strong> contactos vinculados a una cuenta</li>" +
+        "<li><strong>" + num(nGenericos) + "</strong> contactos genéricos (policía, bomberos) que no se usan</li></ul>"
+        : '<p class="vacio">Todavía no hay archivos de ByKom cargados.</p>');
+
+    var ids = new Set(cuentas.map(function (c) { return String(c.order_id); }));
+    var vinc = conId.filter(function (e) { return ids.has(String(e.id_bykom)); }).length;
+    var idsNs = new Set(conId.map(function (e) { return String(e.id_bykom); }));
+    var soloBk = cuentas.filter(function (c) { return !idsNs.has(String(c.order_id)); }).length;
+    $("sis-cruce").innerHTML = "<h3>Cruce</h3><div class=\"sis-sub\">Establecimiento de NetSuite ↔ cuenta de ByKom</div>" +
+      (cuentas.length ? "<ul>" +
+        "<li><strong>" + num(vinc) + "</strong> establecimientos vinculados a una cuenta de ByKom</li>" +
+        "<li><strong>" + num(conId.length - vinc) + "</strong> con un ID ByKom que no está en la última carga</li>" +
+        "<li><strong>" + num(est.length - conId.length) + "</strong> establecimientos sin ID ByKom</li>" +
+        "<li><strong>" + num(soloBk) + "</strong> cuentas de ByKom sin establecimiento en NetSuite</li></ul>"
+        : '<p class="vacio">Se calcula cuando se cargue el archivo de cuentas de ByKom.</p>');
+  }
+
+  // ---------------------------------------------------------------
+  // 3. Eventos de la ultima carga
+  // ---------------------------------------------------------------
+  async function pintarEventos() {
+    var r = await CI.sb.from("cnt_carga").select("id").eq("estado", "ok").order("subido_en", { ascending: false }).limit(2);
+    if (r.error || !r.data.length) { $("eventos-kpis").innerHTML = '<p class="vacio">Los cambios se calculan a partir de la segunda carga de cada archivo.</p>'; return; }
+    var cargas = r.data.map(function (c) { return c.id; });
+    var cuentas = await Promise.all(EVENTOS.map(function (e) { return contar("cnt_evento", [["in", "carga_id", cargas], ["eq", "tipo", e[0]]]); }));
+    if (!cuentas.some(function (n) { return n; })) { $("eventos-kpis").innerHTML = '<p class="vacio">Sin cambios respecto de la carga anterior (o todavía hay una sola carga).</p>'; return; }
+    $("eventos-kpis").innerHTML = CI.kpis(EVENTOS.map(function (e, i) { return { num: num(cuentas[i]), label: e[1] }; }));
+  }
+
+  // ---------------------------------------------------------------
+  // 4. Comparacion
+  // ---------------------------------------------------------------
+  async function cargarPropuestas() {
+    D.props = await CI.leerTodo("cnt_propuesta",
+      "ns_id,campo,tipo_registro,cliente_ns_id,entity_id,nombre,cuenta,actual_car,actual_num,propuesto_car,propuesto_num,accion,fuente_nombre,es_titular,incluir",
+      "ns_id");
+  }
+  function tel(car, n) { return n ? "(" + (car || "?") + ") " + n : "—"; }
+  function vista() {
+    var q = $("buscar").value.trim().toUpperCase(), t = $("f-tipo").value, c = $("f-campo").value;
+    return D.props.filter(function (p) {
+      if (filtroAccion && p.accion !== filtroAccion) return false;
+      if (t && p.tipo_registro !== t) return false;
+      if (c && p.campo !== c) return false;
+      if (q && ([p.entity_id, p.nombre, p.cuenta, p.actual_num, p.propuesto_num, p.fuente_nombre].join(" ").toUpperCase().indexOf(q) < 0)) return false;
+      return true;
+    });
+  }
+  function pintarComparacion() {
+    var t = $("f-tipo").value, c = $("f-campo").value;
+    var base = D.props.filter(function (p) { return (!t || p.tipo_registro === t) && (!c || p.campo === c); });
+    var n = {}; base.forEach(function (p) { n[p.accion] = (n[p.accion] || 0) + 1; });
+    if (!D.props.length) {
+      $("acc-kpis").innerHTML = '<p class="vacio">La comparación se genera al cargar los archivos de ByKom.</p>';
+      $("tabla").innerHTML = ""; $("prop-cuenta").textContent = ""; $("mas").hidden = true; $("csv").disabled = true;
+      return;
+    }
+    $("csv").disabled = false;
+    $("acc-kpis").innerHTML = ACCIONES.map(function (a) {
+      return '<div class="kpi-card is-clic' + (filtroAccion === a[0] ? " is-sel" : "") + '" data-acc="' + a[0] + '"><div class="kpi-num">' + num(n[a[0]] || 0) +
+        '</div><div class="kpi-label">' + esc(a[1]) + '</div><div class="kpi-det">' + esc(a[2]) + "</div></div>";
+    }).join("");
+    var v = vista();
+    var incl = D.props.filter(function (p) { return p.incluir; }).length;
+    $("prop-cuenta").textContent = num(v.length) + " filas · " + num(incl) + " marcadas para el CSV";
+    $("tabla").innerHTML = "<thead><tr><th>Al CSV</th><th>Registro NetSuite</th><th>Tipo</th><th>Cuenta ByKom</th><th>Campo</th><th>Actual en NetSuite</th><th>Propuesto por ByKom</th><th>Contacto de ByKom</th><th>Acción</th></tr></thead><tbody>" +
+      v.slice(0, mostrados).map(function (p) {
+        var editable = permiso.editar && (p.accion === "completar" || p.accion === "distinto");
+        return "<tr><td>" + (editable ? '<input type="checkbox" class="incluir-chk" data-ns="' + p.ns_id + '" data-campo="' + p.campo + '"' + (p.incluir ? " checked" : "") + ">" : "") + "</td>" +
+          "<td>" + CI.linkNS(p.ns_id, p.entity_id || String(p.ns_id)) + " " + esc(p.nombre || "") + "</td>" +
+          "<td>" + (p.tipo_registro === "cliente" ? "Cliente" : "Establecimiento") + "</td><td>" + esc(p.cuenta || "") + "</td><td>" + esc(CAMPOS[p.campo] || p.campo) + "</td>" +
+          '<td class="tel">' + esc(tel(p.actual_car, p.actual_num)) + '</td><td class="tel">' + esc(tel(p.propuesto_car, p.propuesto_num)) + "</td>" +
+          "<td>" + esc(p.fuente_nombre || "") + (p.es_titular ? ' <span class="tag">titular</span>' : "") + "</td>" +
+          '<td><span class="acc acc--' + p.accion + '">' + esc(NOMBRE_ACC[p.accion] || p.accion) + "</span></td></tr>";
+      }).join("") + "</tbody>";
+    $("mas").hidden = v.length <= mostrados;
+  }
+
+  async function marcar(ns, campo, valor) {
+    var r = await CI.sb.from("cnt_propuesta").update({ incluir: valor, revisado_en: new Date().toISOString() }).eq("ns_id", ns).eq("campo", campo);
+    if (r.error) { alert("No se pudo guardar: " + r.error.message); return false; }
+    D.props.forEach(function (p) { if (p.ns_id === ns && p.campo === campo) p.incluir = valor; });
+    return true;
+  }
+
+  function descargarCsv() {
+    var porId = {};
+    D.props.filter(function (p) { return p.incluir; }).forEach(function (p) {
+      var f = porId[p.ns_id] = porId[p.ns_id] || { id: p.ns_id, entity: p.entity_id, nombre: p.nombre };
+      f[p.campo] = p;
+    });
+    var filas = Object.keys(porId).map(function (k) { return porId[k]; });
+    if (!filas.length) { alert("No hay propuestas marcadas para el CSV."); return; }
+    var cab = ["Internal ID", "ID", "Nombre",
+      "custentity_ap_codigo_area_tel_celular", "altphone",
+      "custentity_ap_codigo_de_area_telefono", "phone",
+      "custentity_ap_codigo_area_tel_cont2", "custentity_ap_telefono_contacto2"];
+    function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+    function par(p) { return p ? [p.propuesto_car, p.propuesto_num] : ["", ""]; }
+    var lineas = [cab.join(",")].concat(filas.map(function (f) {
+      return [f.id, f.entity, f.nombre].concat(par(f.celular), par(f.fijo), par(f.telefono2)).map(q).join(",");
+    }));
+    var b = new Blob(["﻿" + lineas.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(b);
+    a.download = "NetSuite_actualizacion_telefonos_" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+  }
+
+  // ---------------------------------------------------------------
+  // Inicio
+  // ---------------------------------------------------------------
+  async function recargar() {
+    await pintarCargas();
+    try { await pintarEstado(); } catch (e) { setDrop("No se pudo leer el estado de las bases: " + e.message + ". ¿Se corrió la migración 55?", "error"); }
+    try { await pintarEventos(); } catch (e) { $("eventos-kpis").innerHTML = '<p class="vacio">' + esc(e.message) + "</p>"; }
+    try { await cargarPropuestas(); } catch (e) { D.props = []; }
+    pintarComparacion();
+  }
+
+  function eventos() {
+    var drop = $("drop");
+    ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); if (!$("elegir").disabled) drop.classList.add("is-sobre"); }); });
+    ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("is-sobre"); }); });
+    drop.addEventListener("drop", function (e) { if (!$("elegir").disabled) subir(e.dataTransfer.files); });
+    $("elegir").addEventListener("click", function () { $("archivo").click(); });
+    $("archivo").addEventListener("change", function () { subir($("archivo").files); $("archivo").value = ""; });
+    $("cargas").addEventListener("click", function (e) { var b = e.target.closest("[data-ruta]"); if (b) descargarRespaldo(b.getAttribute("data-ruta")); });
+    $("acc-kpis").addEventListener("click", function (e) {
+      var k = e.target.closest("[data-acc]"); if (!k) return;
+      filtroAccion = filtroAccion === k.getAttribute("data-acc") ? "" : k.getAttribute("data-acc");
+      mostrados = PAGINA; pintarComparacion();
+    });
+    $("buscar").addEventListener("input", function () { clearTimeout(eventos.t); eventos.t = setTimeout(function () { mostrados = PAGINA; pintarComparacion(); }, 200); });
+    $("f-tipo").addEventListener("change", function () { mostrados = PAGINA; pintarComparacion(); });
+    $("f-campo").addEventListener("change", function () { mostrados = PAGINA; pintarComparacion(); });
+    $("mas").addEventListener("click", function () { mostrados += PAGINA; pintarComparacion(); });
+    $("tabla").addEventListener("change", async function (e) {
+      var c = e.target.closest(".incluir-chk"); if (!c) return;
+      c.disabled = true;
+      var ok = await marcar(+c.getAttribute("data-ns"), c.getAttribute("data-campo"), c.checked);
+      if (!ok) c.checked = !c.checked;
+      c.disabled = false;
+      pintarComparacion();
+    });
+    $("csv").addEventListener("click", descargarCsv);
+  }
+
+  async function iniciar() {
+    var p = await CI.permisos(SECCION);
+    if (!p.sesion) { CI.sinAcceso("Iniciá sesión en la web interna para ver esta pestaña."); return; }
+    if (!p.ver) { CI.sinAcceso("No tenés permiso para ver Clientes activos + contactos. Pedile a un administrador que te lo habilite."); return; }
+    permiso = p;
+    eventos();
+    await verificarApi();
+    await recargar();
+    $("cargando").hidden = true;
+    $("main").classList.remove("main--cargando");
+    $("report-footer").innerHTML = "SP Seguridad Privada &middot; Clientes activos + contactos &middot; simulación, no escribe en NetSuite ni en GHL";
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+</script>
+</body>
+</html>

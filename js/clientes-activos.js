@@ -4,7 +4,7 @@
    pages/clientes-activos.html: una pestaña por informe (solo las que
    el usuario puede ver) y el informe elegido en un iframe con alto
    automático (pages/clientes-activos/<archivo>). La pestaña elegida
-   queda en el hash (#segmentacion / #bajas / #sin-compra).
+   queda en el hash (#contactos / #segmentacion / #bajas / #sin-compra).
 
    Cada informe tiene su propia sección de permisos (clientes-<id>).
    La seguridad real la dan las políticas RLS de las tablas cli_*
@@ -14,6 +14,8 @@
 'use strict';
 
 window.CLIENTES_INFORMES = [
+  // Contactos ByKom -> NetSuite (25/11/2026): seccion propia clientes-contactos (migracion_55).
+  { id: 'contactos', label: 'Clientes activos + contactos', archivo: 'contactos.html', seccion: 'clientes-contactos', icono: 'ti-address-book' },
   { id: 'segmentacion', label: 'Segmentación Clientes', archivo: 'segmentacion.html', seccion: 'clientes-segmentacion', icono: 'ti-users-group' },
   { id: 'bajas', label: 'Análisis Bajas', archivo: 'bajas.html', seccion: 'clientes-bajas', icono: 'ti-user-minus' },
   // Consultas sin compra (12/11/2026): mismo permiso que la Segmentación (migracion_47).
